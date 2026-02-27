@@ -26,8 +26,9 @@ def get_database_path() -> str:
     """Get database path from environment or default. Default is absolute so it works regardless of cwd."""
     default_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "apps",
         "server",
-        "database_management",
         "dementia_tv.db",
     )
     return os.getenv("DATABASE_PATH", default_path)

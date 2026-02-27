@@ -4,6 +4,12 @@ Starts the API server (DB + REST) in a background thread, then runs the Kivy TV 
 """
 
 import os
+import sys
+
+# Ensure src is on path for new package layout
+_src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 # Before any Kivy import: silence Kivy startup logs (Logger, Factory, Image, Window, GL, etc.)
 os.environ["KIVY_LOG_LEVEL"] = "warning"
@@ -13,7 +19,7 @@ os.environ["KCFG_KIVY_LOG_LEVEL"] = "warning"
 import logging
 import threading
 import time
-from config import (
+from shared.config import (
     ConfigManager,
     DatabaseConfig,
     get_database_path,
@@ -21,7 +27,7 @@ from config import (
     get_server_port,
     find_available_port,
 )
-from app_factory import create_app
+from apps.kiosk.app import create_app
 
 DEMO_MODE = True
 DEMO_USER = "0000000000"
@@ -40,15 +46,15 @@ def main():
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("display.widgets").setLevel(logging.WARNING)
-    logging.getLogger("app_factory").setLevel(logging.WARNING)
-    logging.getLogger("demo.demo").setLevel(logging.WARNING)
+    logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
+    logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
     # In demo mode: if DB doesn't exist, create schema and seed before server starts
     db_path = get_database_path()
     if DEMO_MODE and not os.path.exists(db_path):
-        from server.database_management.database_manager import DatabaseManager
-        from demo.demo import demo_main
+        from apps.server.database import DatabaseManager
+        from dev.demo.seed import demo_main
 
         db_config = DatabaseConfig(path=db_path, create_if_missing=True)
         db = DatabaseManager(db_config)
@@ -60,7 +66,7 @@ def main():
             raise RuntimeError("Demo seeding failed")
     if DEMO_MODE:
         try:
-            from demo.demo import (
+            from dev.demo.seed import (
                 load_demo_family_members_from_json_into_db,
                 load_location_checkins_data,
             )
@@ -73,7 +79,7 @@ def main():
     logger.info("Database loaded")
 
     # Start API server in background so DB is created/loaded and client has data
-    from server.app import run_server
+    from apps.server.api import run_server
 
     host = get_server_host()
     start_port = get_server_port()

@@ -3,7 +3,7 @@ Widget creation logic for Dementia TV application.
 Handles the creation of individual UI widgets.
 """
 
-from display.modular_display import (
+from .modular_display import (
     DementiaWidget,
     DementiaLabel,
     DementiaButton,

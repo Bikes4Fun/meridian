@@ -10,11 +10,11 @@ from typing import Optional
 DEFAULT_PLACE_RADIUS_M = 150
 
 try:
-    from ...interfaces import ServiceResult
+    from ...shared.interfaces import ServiceResult
 except ImportError:
-    from interfaces import ServiceResult
+    from shared.interfaces import ServiceResult
 
-from ..database_management.database_manager import DatabaseManager, DatabaseServiceMixin
+from ..database import DatabaseManager, DatabaseServiceMixin
 
 
 class LocationService(DatabaseServiceMixin):

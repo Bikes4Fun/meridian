@@ -10,11 +10,11 @@ from typing import List, Tuple
 from contextlib import contextmanager
 
 try:
-    from ...config import DatabaseConfig
-    from ...interfaces import ServiceResult
+    from ...shared.config import DatabaseConfig
+    from ...shared.interfaces import ServiceResult
 except ImportError:
-    from config import DatabaseConfig
-    from interfaces import ServiceResult
+    from shared.config import DatabaseConfig
+    from shared.interfaces import ServiceResult
 
 
 class DatabaseManager:

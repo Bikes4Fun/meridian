@@ -1,0 +1,244 @@
+#### Key Activities
+
+**QR Code System Setup**
+- [ ] Add `opencv-python` to `requirements.txt`
+- [ ] Add `qrcode` and `pyzbar` libraries for QR code generation/reading
+- [ ] Research QR code standards for medication packets
+- [ ] Design QR code data structure (medication ID, name, dosage, etc.)
+
+**QR Code Generation**
+- [ ] Create QR code generation service
+- [ ] Generate QR codes for existing medications
+- [ ] Test QR code readability
+
+**QR Code Scanning**
+- [ ] Implement camera access (Raspberry Pi compatible)
+- [ ] Create QR code scanning interface
+- [ ] Add scanning button to medication screen
+- [ ] Implement QR code verification logic
+  - [ ] Match scanned code to medication schedule
+  - [ ] Verify correct medication and dosage
+  - [ ] Prevent wrong medication dispensing
+- [ ] Add visual/audio feedback for successful scan
+- [ ] Handle scanning errors gracefully
+
+**Integration with Medication Service**
+- [ ] Connect QR scanning to medication tracking
+- [ ] Auto-mark medication as taken when verified
+- [ ] Log QR code verification events
+- [ ] Update medication status based on scan
+
+**Testing**
+- [ ] Test QR code generation
+- [ ] Test QR code scanning with various lighting conditions
+- [ ] Test verification logic
+- [ ] Test error handling
+- [ ] Command-line testing with fake inputs
+
+#### Deliverables
+- [ ] QR code medication system
+- [ ] QR code scanning functionality
+- [ ] Integration with medication service
+- [ ] Test results
+
+---
+
+## Week 13 (Apr 5–11): Advanced Safety Features
+*Checkpoint Apr 7: Tangible progress*
+
+#### Key Activities
+
+**Enhanced Medication Safety**
+- [ ] Implement multi-dose tracking
+- [ ] Add advanced PRN logic (time-based restrictions)
+- [ ] Enhance overdose prevention with more sophisticated checks
+- [ ] Add medication interaction warnings
+- [ ] Create medication safety dashboard
+
+**Advanced Emergency Features**
+- [ ] Implement automatic emergency alerts
+- [ ] Add fall detection integration (if hardware available)
+- [ ] Create emergency notification system to family
+- [ ] Add remote screen override capability (for family to force ICE screen)
+- [ ] Test emergency alert triggers
+
+**Safety Testing**
+- [ ] Comprehensive safety testing
+- [ ] Test all emergency scenarios
+- [ ] Verify medication safety features
+- [ ] Test with healthcare professionals (pharmacists, doctors)
+
+#### Deliverables
+- [ ] Enhanced safety system
+- [ ] Advanced medication safety features
+- [ ] Emergency alert system
+- [ ] Safety test results
+
+---
+
+## Week 14 (Apr 12–18): Family Education Portal
+
+#### Key Activities
+
+**Caregiver Education Resources**
+- [ ] Research and compile dementia care resources
+- [ ] Create education content sections:
+  - [ ] Understanding dementia symptoms
+  - [ ] Medication management best practices
+  - [ ] Emergency preparedness
+  - [ ] Communication strategies
+- [ ] Design education portal UI
+- [ ] Add navigation to education content
+
+**Legal Resources**
+- [ ] Compile legal resource information
+- [ ] Add links to relevant legal documents
+- [ ] Create legal information display
+- [ ] Ensure accuracy of legal information
+
+**Professional Contacts Directory**
+- [ ] Add professional contacts category
+- [ ] Create directory for:
+  - [ ] Doctors and specialists
+  - [ ] Pharmacies
+  - [ ] Home health services
+  - [ ] Legal services
+- [ ] Add contact information and specialties
+- [ ] Create professional contacts screen
+
+#### Deliverables
+- [ ] Family education features
+- [ ] Legal resources section
+- [ ] Professional contacts directory
+
+---
+
+## Week 15 (Apr 19–25): Final Testing & Polish
+*FINAL PRESENTATION Apr 20*
+
+#### Key Activities
+
+**Comprehensive Testing**
+- [ ] Full system integration testing
+- [ ] Performance optimization
+- [ ] Memory leak testing
+- [ ] Stress testing (multiple users, long runtime)
+- [ ] Cross-platform testing (if applicable)
+
+**Accessibility Testing**
+- [ ] Test with dementia simulation tools
+- [ ] Verify all accessibility features
+- [ ] Test with various screen sizes
+- [ ] Test with different lighting conditions
+- [ ] Verify touch target sizes (minimum 44x44pt)
+
+**UI/UX Final Polish**
+- [ ] Visual design consistency check
+- [ ] Animation and transition polish
+- [ ] Error message clarity
+- [ ] Loading state improvements
+- [ ] Final color contrast verification
+- [ ] Font size verification (all critical text 72pt+)
+
+**Documentation**
+- [ ] Update code documentation
+- [ ] Create user manual draft
+- [ ] Create deployment guide
+- [ ] Document known issues and limitations
+
+**Bug Fixes**
+- [ ] Address all critical bugs
+- [ ] Fix high-priority issues
+- [ ] Document low-priority issues for future releases
+
+#### Deliverables
+- [ ] Production-ready system
+- [ ] Comprehensive test results
+- [ ] User manual draft
+- [ ] Deployment guide
+
+---
+
+--- 
+
+
+#### Key Activities
+
+**Final Documentation**
+- [ ] Complete user manual
+  - [ ] Setup instructions
+  - [ ] Feature usage guides
+  - [ ] Troubleshooting guide
+  - [ ] Caregiver guide
+- [ ] Complete deployment guide
+  - [ ] Raspberry Pi setup instructions
+  - [ ] Network configuration
+  - [ ] Database setup
+  - [ ] Maintenance procedures
+- [ ] Technical documentation
+  - [ ] Architecture overview
+  - [ ] API documentation
+  - [ ] Database schema documentation
+  - [ ] Service documentation
+
+**Deployment Preparation**
+- [ ] Create deployment package
+- [ ] Test deployment on clean Raspberry Pi
+- [ ] Create installation script
+- [ ] Test backup/restore procedures
+- [ ] Prepare cloud backup setup (if applicable)
+
+**Final Presentation Preparation**
+- [ ] Create presentation materials
+- [ ] Prepare demo
+- [ ] Document project outcomes
+- [ ] Prepare success metrics report
+- [ ] Create video demonstration (if required)
+
+**Final User Acceptance Testing**
+- [ ] Conduct final UAT with beta families
+- [ ] Collect final feedback
+- [ ] Verify all success metrics met
+- [ ] Document final results
+
+#### Deliverables
+- [ ] Complete system with documentation
+- [ ] Deployment package
+- [ ] Final presentation
+- [ ] User acceptance test results
+- [ ] Success metrics report
+
+---
+---
+## Code Quality & Refactoring (GitHub Issues)
+
+See GitHub for details. Some issues may duplicate across repos (dementia_tv_python → meridian).
+
+### Closed (completed)
+- [x] #1: Remove responsive_system.py
+- [x] #8: Switch Kivy to HTML/CSS
+- [x] #9: Geofencing/Location checkin
+- [x] #11–13: Map (Data Model, Backend Service, Frontend)
+- [x] #19: ICE #1 – ICE Data Model & Storage
+
+### Closed (skipped / not planned)
+- [x] ~~#2: Consolidate interfaces, remove hardcoded values~~
+- [x] ~~#3: Extract display controller~~
+- [x] ~~#4: Merge database_schema.py~~
+
+### Open – ICE Screen & Smart911
+- [ ] #20: ICE #2 – ICE Screen UI
+- [ ] #21: ICE #3 – Caregiver ICE Profile Editor (Web)
+- [ ] #22: ICE #4 – Printable POLST-Formatted PDF
+- [ ] #23: Apply for Smart911 partnership/API access
+- [ ] #24: ICE #5 – Smart911 Account Connection (Blocked)
+- [ ] #25: ICE #6 – Smart911 Auto-Sync
+- [ ] #26: ICE #7 – 911 Call Trigger + ICE Auto-Display
+
+### Open – Other
+- [ ] #5: LAST final polish
+- [ ] #7: Consider Using a Calendar API
+- [ ] #18: Map details and UI
+- [ ] #28: Architecture review part 1
+- [ ] #29: Define tests | #30: Create tests | #31: Load tests into GitHub
+- [ ] #32: Fix vercel

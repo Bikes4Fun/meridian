@@ -225,11 +225,7 @@ class ScreenFactory:
         # Lazy-load MapView on screen enter (avoids black screen when nested in ScreenManager)
         def on_family_enter(instance):
             container = getattr(family_widget, "map_container", None)
-            if (
-                container
-                and not container.children
-                and hasattr(container, "_map_params")
-            ):
+            if container and not container.children and hasattr(container, "_map_params"):
                 p = container._map_params
                 map_view = MapView(lat=p["lat"], lon=p["lon"], zoom=p["zoom"])
                 base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -244,16 +240,10 @@ class ScreenFactory:
                                 continue
                             photo_fn = checkin.get("photo_filename")
                             if photo_fn:
-                                src = (
-                                    os.path.join(base, photo_fn)
-                                    if not os.path.isabs(photo_fn)
-                                    else photo_fn
-                                )
+                                src = os.path.join(base, photo_fn) if not os.path.isabs(photo_fn) else photo_fn
                                 circle_img = _crop_image_to_circle(src)
                                 if circle_img:
-                                    marker = CustomMarker(
-                                        lat=lat, lon=lon, source=circle_img
-                                    )
+                                    marker = CustomMarker(lat=lat, lon=lon, source=circle_img)
                                 else:
                                     marker = MapMarker(lat=lat, lon=lon)
                             else:

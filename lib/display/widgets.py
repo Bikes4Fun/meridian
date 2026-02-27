@@ -16,6 +16,7 @@ from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
+from kivy.clock import Clock
 from datetime import datetime
 import logging
 
@@ -619,24 +620,47 @@ class WidgetFactory:
         return medical
 
     def create_emergency_profile_widget(self):
-        """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA."""
+        """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA.
+        Light background, dark text for vision-impaired; flashing border for visibility."""
         if not self.display_settings:
             raise ValueError("display_settings must be provided to WidgetFactory")
         display_settings = self.display_settings
 
+        dark_text = (0.1, 0.1, 0.1, 1)
         profile = DementiaWidget(
             display_settings=display_settings,
             orientation="vertical",
-            background_color=(0.85, 0.15, 0.15, 1),
+            background_color=(0.98, 0.98, 0.96, 1),
         )
         profile.spacing = display_settings.spacing["md"]
         profile.padding = display_settings.spacing["lg"]
+
+        flash_state = [0]
+
+        def _draw_flashing_border(w, color):
+            w.canvas.after.clear()
+            with w.canvas.after:
+                Color(*color)
+                Line(rectangle=(w.x, w.y, w.width, w.height), width=8)
+
+        def _flash_border(dt):
+            flash_state[0] = 1 - flash_state[0]
+            c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
+            _draw_flashing_border(profile, c)
+
+        def _update_border(o, v):
+            c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
+            _draw_flashing_border(profile, c)
+
+        profile.bind(pos=_update_border, size=_update_border)
+        Clock.schedule_once(_flash_border, 0.1)
+        Clock.schedule_interval(_flash_border, 0.5)
 
         if self.ice_profile_service:
             result = self.ice_profile_service.get_ice_profile()
             if result.success and result.data:
                 d = result.data
-                profile = d.get("profile") or {}
+                profile_data = d.get("profile") or {}
                 medical = d.get("medical") or {}
                 emergency = d.get("emergency") or {}
                 proxy = emergency.get("proxy") or {}
@@ -644,10 +668,10 @@ class WidgetFactory:
                 name_label = DementiaLabel(
                     display_settings=display_settings,
                     font_size="huge",
-                    text=profile.get("name") or "Patient",
+                    text=profile_data.get("name") or "Patient",
                     color="text",
                 )
-                name_label.color = (1, 1, 1, 1)
+                name_label.color = dark_text
                 profile.add_widget(name_label)
 
                 dnr = medical.get("dnr", False)
@@ -657,7 +681,7 @@ class WidgetFactory:
                     text="DNR" if dnr else "FULL CODE",
                     color="text",
                 )
-                dnr_label.color = (1, 1, 1, 1) if dnr else (0.2, 0.8, 0.2, 1)
+                dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
                 profile.add_widget(dnr_label)
 
                 if medical.get("conditions"):
@@ -667,7 +691,7 @@ class WidgetFactory:
                         text=f"Diagnosis: {medical['conditions']}",
                         color="text",
                     )
-                    cond_label.color = (1, 1, 1, 1)
+                    cond_label.color = dark_text
                     profile.add_widget(cond_label)
 
                 if proxy.get("name") or d.get("medical_proxy_phone"):
@@ -679,7 +703,7 @@ class WidgetFactory:
                             text=proxy_text,
                             color="text",
                         )
-                        p_label.color = (1, 1, 1, 1)
+                        p_label.color = dark_text
                         profile.add_widget(p_label)
 
                 if d.get("poa_name") or d.get("poa_phone"):
@@ -693,7 +717,7 @@ class WidgetFactory:
                             text=poa_text,
                             color="text",
                         )
-                        poa_label.color = (1, 1, 1, 1)
+                        poa_label.color = dark_text
                         profile.add_widget(poa_label)
 
                 allergies = medical.get("allergies") or []
@@ -704,7 +728,7 @@ class WidgetFactory:
                         text="Allergies: " + ", ".join(allergies),
                         color="text",
                     )
-                    a_label.color = (1, 1, 1, 1)
+                    a_label.color = dark_text
                     profile.add_widget(a_label)
 
                 meds = medical.get("medications") or []
@@ -719,7 +743,7 @@ class WidgetFactory:
                         text="Medications: " + "; ".join(med_lines[:5]),
                         color="text",
                     )
-                    med_label.color = (1, 1, 1, 1)
+                    med_label.color = dark_text
                     profile.add_widget(med_label)
 
                 if self.emergency_service:
@@ -735,7 +759,7 @@ class WidgetFactory:
                             text="Emergency Contacts:\n" + str(ec_result.data),
                             color="text",
                         )
-                        ec_label.color = (1, 1, 1, 1)
+                        ec_label.color = dark_text
                         profile.add_widget(ec_label)
             else:
                 err_label = DementiaLabel(
@@ -744,7 +768,7 @@ class WidgetFactory:
                     text="Emergency profile not found",
                     color="text",
                 )
-                err_label.color = (1, 1, 1, 1)
+                err_label.color = dark_text
                 profile.add_widget(err_label)
         else:
             err_label = DementiaLabel(
@@ -753,7 +777,7 @@ class WidgetFactory:
                 text="Emergency profile service not available",
                 color="text",
             )
-            err_label.color = (1, 1, 1, 1)
+            err_label.color = dark_text
             profile.add_widget(err_label)
 
         return profile

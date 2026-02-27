@@ -72,9 +72,7 @@ class DementiaTVApp(App):
         more_screen = self.screen_factory.create_more_screen()
         self.screen_manager.add_widget(more_screen)
 
-        self.screen_manager.current = (
-            "family"  # TODO: make current whatever page we are working on
-        )
+        self.screen_manager.current = "emergency"  # set to "family" or "home" after testing
 
         # Store reference for updates
         self.home_screen = home_screen

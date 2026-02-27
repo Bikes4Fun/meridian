@@ -1,0 +1,48 @@
+{
+  "contacts": [
+    {
+      "id": "contact_001",
+      "display_name": "Dean",
+      "phone": "(555) 123-4567",
+      "email": "dad@family.email",
+      "birthday": "1960-05-12",
+      "relationship": "parent",
+      "priority": "primary_emergency",
+      "photo_filename": "dean gps pin.jpg",
+      "notes": "Primary caregiver"
+    },
+    {
+      "id": "contact_002",
+      "display_name": "Deanna",
+      "phone": "(555) 456-7890",
+      "email": "deanna@family.email",
+      "birthday": "1988-03-22",
+      "relationship": "child",
+      "priority": "secondary_emergency",
+      "photo_filename": "deanna gps pin.jpeg",
+      "notes": "Picks up kids from school"
+    },
+    {
+      "id": "contact_dr_chen",
+      "display_name": "Dr. Michael Chen",
+      "phone": "(555) 987-6543",
+      "email": "dr.chen@medicalclinic.com",
+      "birthday": null,
+      "relationship": "doctor",
+      "priority": "secondary_emergency",
+      "photo_filename": null,
+      "notes": "Family doctor"
+    },
+    {
+      "id": "contact_pt",
+      "display_name": "Physical Therapist",
+      "phone": "(555) 111-2222",
+      "email": "pt@rehab.com",
+      "birthday": null,
+      "relationship": "therapist",
+      "priority": "not_emergency",
+      "photo_filename": null,
+      "notes": "Weekly sessions"
+    }
+  ]
+}

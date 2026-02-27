@@ -1,5 +1,5 @@
 {
-  "photo_base": "demo/demo_data/family_img",
+  "photo_base": "dev/demo/data/family_img",
   "family_members": [
     {
       "id": "fm_001",

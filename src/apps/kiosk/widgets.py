@@ -19,6 +19,7 @@ from kivy.metrics import dp
 from kivy.clock import Clock
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -256,12 +257,13 @@ class WidgetFactory:
 
     def _get_time_of_day_icon(self, time_of_day):
         """Get the appropriate icon for the time of day."""
+        _kiosk_dir = os.path.dirname(os.path.abspath(__file__))
         icon_map = {
-            "Morning": "icons/sunrise.png",
-            "Noon": "icons/noon.png",
-            "Afternoon": "icons/noon.png",  # Use noon for afternoon
-            "Evening": "icons/evening.png",
-            "Night": "icons/night.png",
+            "Morning": os.path.join(_kiosk_dir, "icons", "sunrise.png"),
+            "Noon": os.path.join(_kiosk_dir, "icons", "noon.png"),
+            "Afternoon": os.path.join(_kiosk_dir, "icons", "noon.png"),  # Use noon for afternoon
+            "Evening": os.path.join(_kiosk_dir, "icons", "evening.png"),
+            "Night": os.path.join(_kiosk_dir, "icons", "night.png"),
         }
         return icon_map.get(
             time_of_day

@@ -87,7 +87,7 @@ def main():
     if port != start_port:
         logger.warning(
             "Port %s in use, using port %s instead. Stop any separate "
-            "'python -m lib.server' so web app and TV use the same server.",
+            "'python -m apps.server' so web app and TV use the same server.",
             start_port, port,
         )
     os.environ["PORT"] = str(port)  # so get_server_url() uses this port for the client

@@ -10,6 +10,7 @@
 | **Apr 20** | Final presentation |
 
 ## Current Issues
+- [ ] Map populates but incorrectly. see screenshots
 - [ ] Nav cut off
 - [ ] Database datatype mismatch
 - [ ] modular_display vs app_factory – both needed?

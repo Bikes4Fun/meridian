@@ -1,4 +1,4 @@
-"""Run server: python -m lib.server [port]. Seed DB: python -m lib.server seed."""
+"""Run server: python -m apps.server [port]. Seed DB: python -m apps.server seed."""
 
 import os
 import sys

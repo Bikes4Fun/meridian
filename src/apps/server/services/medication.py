@@ -1,6 +1,6 @@
 """
 Medication service for managing user-defined medication schedules.
-WHERE FUNCTIONALITY MOVED TO (client): client/remote_services.RemoteMedicationService calls GET /api/medications.
+WHERE FUNCTIONALITY MOVED TO (client): client/remote.RemoteMedicationService calls GET /api/medications.
 REMOVAL: Required on server. Can be omitted from client deployment when SERVER_URL is set.
 """
 

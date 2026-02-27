@@ -1,6 +1,6 @@
 """
 Centralized database management for Dementia TV application.
-Used by server only (container_services and app.py). Client gets data via API.
+Used by server only (container and app.py). Client gets data via API.
 """
 
 import os

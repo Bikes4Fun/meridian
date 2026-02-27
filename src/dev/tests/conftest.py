@@ -17,11 +17,11 @@ if str(lib_dir) not in sys.path:
 from config import ConfigManager
 from config import DatabaseConfig
 from database_management.database_manager import DatabaseManager
-from container_services.time_service import TimeService
-from container_services.contact_service import ContactService
-from container_services.calendar_service import CalendarService
-from container_services.medication_service import MedicationService
-from container_services.emergency_service import EmergencyService
+from container.time_service import TimeService
+from container.contact_service import ContactService
+from container.calendar_service import CalendarService
+from container.medication_service import MedicationService
+from container.emergency_service import EmergencyService
 
 
 @pytest.fixture

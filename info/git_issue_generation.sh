@@ -35,7 +35,7 @@ Add \`ice_profile\` table to SQLite schema and define a JSON structure that mirr
 - [ ] Allergies and conditions already exist — reference via foreign key, do not duplicate
 - [ ] Medications already exist — reference via existing \`medications\` table
 - [ ] Define \`ice_profile.json\` schema doc that mirrors Smart911 field mapping
-- [ ] Add \`ICEProfileService\` to \`container_services/\` with \`get_ice_profile(user_id)\` and \`update_ice_profile(user_id, data)\`
+- [ ] Add \`ICEProfileService\` to \`container/\` with \`get_ice_profile(user_id)\` and \`update_ice_profile(user_id, data)\`
 - [ ] Add \`GET /api/ice\` and \`PUT /api/ice\` endpoints to \`server/app.py\`
 - [ ] Seed demo ICE data in \`demo.py\`
 

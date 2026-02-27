@@ -3,7 +3,7 @@ Configuration management for Dementia TV application.
 Simple functions to get configuration values from environment variables.
 
 CLIENT/SERVER: Used by both client and server. get_server_url() controls client use of
-remote_services vs container; get_users_database_path() used by server and by client
+remote vs container; get_users_database_path() used by server and by client
 Do not remove from either deployment.
 """
 

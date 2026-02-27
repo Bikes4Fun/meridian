@@ -98,7 +98,7 @@ Common fixtures available in `conftest.py`:
 Example:
 ```python
 import pytest
-from lib.container_services.my_service import MyService
+from lib.container.my_service import MyService
 
 @pytest.mark.unit
 class TestMyService:

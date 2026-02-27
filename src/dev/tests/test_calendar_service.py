@@ -3,7 +3,7 @@ Unit and integration tests for CalendarService.
 """
 import pytest
 from datetime import datetime
-from container_services.calendar_service import CalendarService
+from container.calendar_service import CalendarService
 
 
 @pytest.mark.unit

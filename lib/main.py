@@ -13,7 +13,14 @@ os.environ["KCFG_KIVY_LOG_LEVEL"] = "warning"
 import logging
 import threading
 import time
-from config import ConfigManager, DatabaseConfig, get_database_path, get_server_host, get_server_port, find_available_port
+from config import (
+    ConfigManager,
+    DatabaseConfig,
+    get_database_path,
+    get_server_host,
+    get_server_port,
+    find_available_port,
+)
 from app_factory import create_app
 
 DEMO_MODE = True
@@ -42,6 +49,7 @@ def main():
     if DEMO_MODE and not os.path.exists(db_path):
         from server.database_management.database_manager import DatabaseManager
         from demo.demo import demo_main
+
         db_config = DatabaseConfig(path=db_path, create_if_missing=True)
         db = DatabaseManager(db_config)
         result = db.create_database_schema()
@@ -52,7 +60,11 @@ def main():
             raise RuntimeError("Demo seeding failed")
     if DEMO_MODE:
         try:
-            from demo.demo import load_demo_family_members_from_json_into_db, load_location_checkins_data
+            from demo.demo import (
+                load_demo_family_members_from_json_into_db,
+                load_location_checkins_data,
+            )
+
             load_demo_family_members_from_json_into_db(db_path, DEMO_USER)
             load_location_checkins_data(db_path, DEMO_USER)
         except Exception as e:
@@ -67,7 +79,11 @@ def main():
     start_port = get_server_port()
     port = find_available_port(host, start_port)
     if port != start_port:
-        logger.warning("Port %s in use, using port %s instead.", start_port, port)
+        logger.warning(
+            "Port %s in use, using port %s instead. Stop any separate "
+            "'python -m lib.server' so web app and TV use the same server.",
+            start_port, port,
+        )
     os.environ["PORT"] = str(port)  # so get_server_url() uses this port for the client
 
     logger.info("Starting API server...")

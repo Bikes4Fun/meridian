@@ -16,6 +16,7 @@ from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.graphics import Color, Line
 from kivy.metrics import dp
+from kivy.clock import Clock
 from datetime import datetime
 import logging
 
@@ -57,6 +58,7 @@ class WidgetFactory:
         self.calendar_service = services.get("calendar_service")
         self.emergency_service = services.get("emergency_service")
         self.medication_service = services.get("medication_service")
+        self.ice_profile_service = services.get("ice_profile_service")
         self.location_service = services.get("location_service")
 
     def create_widget(self, widget_type, **kwargs):
@@ -69,6 +71,7 @@ class WidgetFactory:
             "today_events": self.create_today_events_widget,
             "emergency_contacts": self.create_emergency_contacts_widget,
             "medical_info": self.create_medical_info_widget,
+            "emergency_profile": self.create_emergency_profile_widget,
             "family_locations": self.create_family_locations_widget,
         }
 
@@ -87,6 +90,7 @@ class WidgetFactory:
             "today_events",
             "emergency_contacts",
             "medical_info",
+            "emergency_profile",
         ]
 
     def is_widget_enabled(self, widget_type):
@@ -114,7 +118,7 @@ class WidgetFactory:
         screen_widgets = {
             "home": ["clock", "medication", "events"],
             "calendar": ["calendar", "today_events"],
-            "emergency": ["emergency_contacts", "medical_info"],
+            "emergency": ["emergency_profile"],
             "more": [],
         }
 
@@ -447,7 +451,7 @@ class WidgetFactory:
                             day_btn.bind(on_press=make_click_handler(day, day_btn))
                             day_btn.bind(on_release=make_click_handler(day, day_btn))
                             week_row.add_widget(day_btn)
-                    
+
                     calendar_grid.add_widget(week_row)
 
                 # Store current selection (start with today)
@@ -455,7 +459,7 @@ class WidgetFactory:
                 calendar.day_buttons = day_buttons
 
                 calendar.add_widget(calendar_grid)
-    
+
             else:
                 error_content = DementiaLabel(
                     display_settings=display_settings,
@@ -615,6 +619,175 @@ class WidgetFactory:
         medical.add_widget(medical_content)
         return medical
 
+    def create_emergency_profile_widget(self):
+        """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA.
+        Light background, dark text for vision-impaired; flashing border for visibility."""
+        if not self.display_settings:
+            raise ValueError("display_settings must be provided to WidgetFactory")
+        display_settings = self.display_settings
+
+        dark_text = (0.1, 0.1, 0.1, 1)
+        profile = DementiaWidget(
+            display_settings=display_settings,
+            orientation="vertical",
+            background_color=(0.98, 0.98, 0.96, 1),
+        )
+        profile.spacing = display_settings.spacing["md"]
+        profile.padding = display_settings.spacing["lg"]
+
+        alert_ref = self.services.get("_alert_activated", [False])
+        flash_state = [0]
+
+        def _draw_border(w, color):
+            w.canvas.after.clear()
+            with w.canvas.after:
+                Color(*color)
+                Line(rectangle=(w.x, w.y, w.width, w.height), width=8)
+
+        def _border_tick(dt):
+            if alert_ref[0]:
+                flash_state[0] = 1 - flash_state[0]
+                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
+            else:
+                c = (0.9, 0.4, 0.1, 1)
+            _draw_border(profile, c)
+
+        def _update_border(o, v):
+            if alert_ref[0]:
+                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
+            else:
+                c = (0.9, 0.4, 0.1, 1)
+            _draw_border(profile, c)
+
+        profile.bind(pos=_update_border, size=_update_border)
+        Clock.schedule_interval(_border_tick, 0.5)
+
+        if self.ice_profile_service:
+            result = self.ice_profile_service.get_ice_profile()
+            if result.success and result.data:
+                d = result.data
+                profile_data = d.get("profile") or {}
+                medical = d.get("medical") or {}
+                emergency = d.get("emergency") or {}
+                proxy = emergency.get("proxy") or {}
+
+                name_label = DementiaLabel(
+                    display_settings=display_settings,
+                    font_size="huge",
+                    text=profile_data.get("name") or "Patient",
+                    color="text",
+                )
+                name_label.color = dark_text
+                profile.add_widget(name_label)
+
+                dnr = medical.get("dnr", False)
+                dnr_label = DementiaLabel(
+                    display_settings=display_settings,
+                    font_size="huge",
+                    text="DNR" if dnr else "FULL CODE",
+                    color="text",
+                )
+                dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
+                profile.add_widget(dnr_label)
+
+                if medical.get("conditions"):
+                    cond_label = DementiaLabel(
+                        display_settings=display_settings,
+                        font_size="title",
+                        text=f"Diagnosis: {medical['conditions']}",
+                        color="text",
+                    )
+                    cond_label.color = dark_text
+                    profile.add_widget(cond_label)
+
+                if proxy.get("name") or d.get("medical_proxy_phone"):
+                    proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
+                    if proxy_text:
+                        p_label = DementiaLabel(
+                            display_settings=display_settings,
+                            font_size="large",
+                            text=proxy_text,
+                            color="text",
+                        )
+                        p_label.color = dark_text
+                        profile.add_widget(p_label)
+
+                if d.get("poa_name") or d.get("poa_phone"):
+                    poa_text = (
+                        f"POA: {d.get('poa_name', '')} {d.get('poa_phone', '')}".strip()
+                    )
+                    if poa_text:
+                        poa_label = DementiaLabel(
+                            display_settings=display_settings,
+                            font_size="large",
+                            text=poa_text,
+                            color="text",
+                        )
+                        poa_label.color = dark_text
+                        profile.add_widget(poa_label)
+
+                allergies = medical.get("allergies") or []
+                if allergies:
+                    a_label = DementiaLabel(
+                        display_settings=display_settings,
+                        font_size="large",
+                        text="Allergies: " + ", ".join(allergies),
+                        color="text",
+                    )
+                    a_label.color = dark_text
+                    profile.add_widget(a_label)
+
+                meds = medical.get("medications") or []
+                if meds:
+                    med_lines = [
+                        f"{m.get('name', '')} {m.get('dosage', '')}".strip()
+                        for m in meds
+                    ]
+                    med_label = DementiaLabel(
+                        display_settings=display_settings,
+                        font_size="large",
+                        text="Medications: " + "; ".join(med_lines[:5]),
+                        color="text",
+                    )
+                    med_label.color = dark_text
+                    profile.add_widget(med_label)
+
+                if self.emergency_service:
+                    ec_result = self.emergency_service.format_contacts_for_display()
+                    if (
+                        ec_result.success
+                        and ec_result.data
+                        and "No emergency contacts" not in str(ec_result.data)
+                    ):
+                        ec_label = DementiaLabel(
+                            display_settings=display_settings,
+                            font_size="large",
+                            text="Emergency Contacts:\n" + str(ec_result.data),
+                            color="text",
+                        )
+                        ec_label.color = dark_text
+                        profile.add_widget(ec_label)
+            else:
+                err_label = DementiaLabel(
+                    display_settings=display_settings,
+                    font_size="title",
+                    text="Emergency profile not found",
+                    color="text",
+                )
+                err_label.color = dark_text
+                profile.add_widget(err_label)
+        else:
+            err_label = DementiaLabel(
+                display_settings=display_settings,
+                font_size="title",
+                text="Emergency profile service not available",
+                color="text",
+            )
+            err_label.color = dark_text
+            profile.add_widget(err_label)
+
+        return profile
+
     def _on_date_select(
         self, day_num, clicked_btn, day_buttons, current_date, display_settings
     ):
@@ -641,9 +814,7 @@ class WidgetFactory:
 
         if self.calendar_service and hasattr(self, "today_events_widget"):
             try:
-                date_str = (
-                    datetime.now().replace(day=day_num).strftime("%Y-%m-%d")
-                )
+                date_str = datetime.now().replace(day=day_num).strftime("%Y-%m-%d")
             except ValueError:
                 date_str = datetime.now().strftime("%Y-%m-%d")
             result = self.calendar_service.get_events_for_date(date_str)
@@ -720,12 +891,12 @@ class WidgetFactory:
         if self.location_service:
             result = self.location_service.get_checkins()
             if result.success and result.data:
-            
+
                 checkins_text = []
                 for checkin in result.data:
                     contact_name = checkin.get("contact_name", "Unknown")
                     location = checkin.get("location_name", None)
-                    
+
                     if not location:
                         lat = checkin.get("latitude")
                         lon = checkin.get("longitude")
@@ -735,14 +906,11 @@ class WidgetFactory:
                             else "Unknown location"
                         )
 
-                    time_str = datetime.now().strftime('%H:%M')
-                    
-                    lines = [
-                        f"• {contact_name}",
-                        f"  {location} at {time_str}"
-                    ]
+                    time_str = datetime.now().strftime("%H:%M")
+
+                    lines = [f"• {contact_name}", f"  {location} at {time_str}"]
                     checkins_text.append("\n".join(lines))
-                
+
                 n_lines = (
                     sum(c.count("\n") + 1 for c in checkins_text)
                     + (len(checkins_text) - 1) * 2
@@ -751,11 +919,11 @@ class WidgetFactory:
             else:
                 n_lines = 2
                 text = "No family check-ins yet"
-        
+
         else:
             n_lines = 2
             text = "Location service not available"
-        
+
         widget = DementiaLabel(
             display_settings=self.display_settings,
             font_size="body",

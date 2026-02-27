@@ -8,6 +8,7 @@ WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
   - container_services/medication_service.py → GET /api/medications
   - container_services/emergency_service.py → GET /api/emergency/*
   - container_services/contact_service.py  (used by emergency_service; no direct endpoint)
+  - container_services/ice_profile_service.py → GET /api/ice, PUT /api/ice
 
 WHERE IT MOVED TO (client uses these instead of container on client):
   - client/remote_services.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
@@ -24,13 +25,25 @@ from flask import Flask, jsonify, request, g, send_from_directory, Response
 
 # config at top level (lib); server internals relative
 try:
-    from ..config import DatabaseConfig, get_database_path, get_server_host, get_server_port
+    from ..config import (
+        DatabaseConfig,
+        get_database_path,
+        get_server_host,
+        get_server_port,
+    )
 except ImportError:
-    from config import DatabaseConfig, get_database_path, get_server_host, get_server_port
+    from config import (
+        DatabaseConfig,
+        get_database_path,
+        get_server_host,
+        get_server_port,
+    )
 from .database_management.database_manager import DatabaseManager
 from .container_services.container import create_service_container
 
 DEFAULT_USER_ID = "0000000000"
+
+_alert_activated = False
 
 
 def _row_to_display_settings_response(row) -> dict:
@@ -38,10 +51,26 @@ def _row_to_display_settings_response(row) -> dict:
     return {
         "user_id": row["user_id"],
         "display": {
-            "font_sizes": json.loads(row["font_sizes"]) if isinstance(row["font_sizes"], str) else row["font_sizes"],
-            "colors": json.loads(row["colors"]) if isinstance(row["colors"], str) else row["colors"],
-            "spacing": json.loads(row["spacing"]) if isinstance(row["spacing"], str) else row["spacing"],
-            "touch_targets": json.loads(row["touch_targets"]) if isinstance(row["touch_targets"], str) else row["touch_targets"],
+            "font_sizes": (
+                json.loads(row["font_sizes"])
+                if isinstance(row["font_sizes"], str)
+                else row["font_sizes"]
+            ),
+            "colors": (
+                json.loads(row["colors"])
+                if isinstance(row["colors"], str)
+                else row["colors"]
+            ),
+            "spacing": (
+                json.loads(row["spacing"])
+                if isinstance(row["spacing"], str)
+                else row["spacing"]
+            ),
+            "touch_targets": (
+                json.loads(row["touch_targets"])
+                if isinstance(row["touch_targets"], str)
+                else row["touch_targets"]
+            ),
             "window_width": row["window_width"],
             "window_height": row["window_height"],
             "window_left": row["window_left"],
@@ -53,21 +82,57 @@ def _row_to_display_settings_response(row) -> dict:
             "clock_time_height": row["clock_time_height"],
             "clock_date_height": row["clock_date_height"],
             "clock_spacing": row["clock_spacing"],
-            "clock_padding": json.loads(row["clock_padding"]) if isinstance(row["clock_padding"], str) else row["clock_padding"],
-            "main_padding": json.loads(row["main_padding"]) if isinstance(row["main_padding"], str) else row["main_padding"],
+            "clock_padding": (
+                json.loads(row["clock_padding"])
+                if isinstance(row["clock_padding"], str)
+                else row["clock_padding"]
+            ),
+            "main_padding": (
+                json.loads(row["main_padding"])
+                if isinstance(row["main_padding"], str)
+                else row["main_padding"]
+            ),
             "home_layout": row["home_layout"],
             "clock_proportion": row["clock_proportion"],
             "todo_proportion": row["todo_proportion"],
             "med_events_split": row["med_events_split"],
             "navigation_height": row["navigation_height"],
             "button_flat_style": bool(row["button_flat_style"]),
-            "clock_background_color": json.loads(row["clock_background_color"]) if isinstance(row["clock_background_color"], str) else row["clock_background_color"],
-            "med_background_color": json.loads(row["med_background_color"]) if isinstance(row["med_background_color"], str) else row["med_background_color"],
-            "events_background_color": json.loads(row["events_background_color"]) if isinstance(row["events_background_color"], str) else row["events_background_color"],
-            "contacts_background_color": json.loads(row["contacts_background_color"]) if isinstance(row["contacts_background_color"], str) else row["contacts_background_color"],
-            "medical_background_color": json.loads(row["medical_background_color"]) if isinstance(row["medical_background_color"], str) else row["medical_background_color"],
-            "calendar_background_color": json.loads(row["calendar_background_color"]) if isinstance(row["calendar_background_color"], str) else row["calendar_background_color"],
-            "nav_background_color": json.loads(row["nav_background_color"]) if isinstance(row["nav_background_color"], str) else row["nav_background_color"],
+            "clock_background_color": (
+                json.loads(row["clock_background_color"])
+                if isinstance(row["clock_background_color"], str)
+                else row["clock_background_color"]
+            ),
+            "med_background_color": (
+                json.loads(row["med_background_color"])
+                if isinstance(row["med_background_color"], str)
+                else row["med_background_color"]
+            ),
+            "events_background_color": (
+                json.loads(row["events_background_color"])
+                if isinstance(row["events_background_color"], str)
+                else row["events_background_color"]
+            ),
+            "contacts_background_color": (
+                json.loads(row["contacts_background_color"])
+                if isinstance(row["contacts_background_color"], str)
+                else row["contacts_background_color"]
+            ),
+            "medical_background_color": (
+                json.loads(row["medical_background_color"])
+                if isinstance(row["medical_background_color"], str)
+                else row["medical_background_color"]
+            ),
+            "calendar_background_color": (
+                json.loads(row["calendar_background_color"])
+                if isinstance(row["calendar_background_color"], str)
+                else row["calendar_background_color"]
+            ),
+            "nav_background_color": (
+                json.loads(row["nav_background_color"])
+                if isinstance(row["nav_background_color"], str)
+                else row["nav_background_color"]
+            ),
             "clock_orientation": row["clock_orientation"],
             "med_orientation": row["med_orientation"],
             "events_orientation": row["events_orientation"],
@@ -75,8 +140,16 @@ def _row_to_display_settings_response(row) -> dict:
             "high_contrast": bool(row["high_contrast"]),
             "large_text": bool(row["large_text"]),
             "reduced_motion": bool(row["reduced_motion"]),
-            "navigation_buttons": json.loads(row["navigation_buttons"]) if isinstance(row["navigation_buttons"], str) else row["navigation_buttons"],
-            "borders": json.loads(row["borders"]) if row["borders"] and isinstance(row["borders"], str) else (row["borders"] or {}),
+            "navigation_buttons": (
+                json.loads(row["navigation_buttons"])
+                if isinstance(row["navigation_buttons"], str)
+                else row["navigation_buttons"]
+            ),
+            "borders": (
+                json.loads(row["borders"])
+                if row["borders"] and isinstance(row["borders"], str)
+                else (row["borders"] or {})
+            ),
         },
     }
 
@@ -93,7 +166,7 @@ def create_server_app(db_path=None):
     @app.after_request
     def add_cors(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-Id"
         return resp
 
@@ -105,12 +178,17 @@ def create_server_app(db_path=None):
     @app.before_request
     def set_user_id():
         """Read user_id from X-User-Id header or ?user_id= query; default for demo."""
-        g.user_id = request.headers.get("X-User-Id") or request.args.get("user_id") or DEFAULT_USER_ID
+        g.user_id = (
+            request.headers.get("X-User-Id")
+            or request.args.get("user_id")
+            or DEFAULT_USER_ID
+        )
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
     emergency_svc = container.get_emergency_service()
     location_svc = container.get_location_service()
+    ice_profile_svc = container.get_ice_profile_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -177,7 +255,35 @@ def create_server_app(db_path=None):
     def api_health():
         return jsonify({"status": "ok"})
 
-    _web_client_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client"))
+    @app.route("/api/alert/status")
+    def api_alert_status():
+        return jsonify({"data": {"activated": _alert_activated}})
+
+    @app.route("/api/alert", methods=["POST"])
+    def api_alert():
+        global _alert_activated
+        data = request.get_json() or {}
+        _alert_activated = bool(data.get("activated", False))
+        return jsonify({"data": {"activated": _alert_activated}})
+
+    @app.route("/api/ice", methods=["GET", "PUT"])
+    def api_ice():
+        if request.method == "GET":
+            r = ice_profile_svc.get_ice_profile(g.user_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 500
+            return jsonify({"data": r.data})
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "no data provided"}), 400
+        r = ice_profile_svc.update_ice_profile(g.user_id, data)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data})
+
+    _web_client_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")
+    )
 
     @app.route("/checkin")
     def serve_checkin():
@@ -211,7 +317,7 @@ def create_server_app(db_path=None):
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
-        
+
         family_member_id = data.get("family_member_id")
         latitude = data.get("latitude")
         longitude = data.get("longitude")
@@ -219,7 +325,12 @@ def create_server_app(db_path=None):
         # location_name is always resolved from GPS in create_checkin; never from client
 
         if not family_member_id or latitude is None or longitude is None:
-            return jsonify({"error": "family_member_id, latitude, and longitude are required"}), 400
+            return (
+                jsonify(
+                    {"error": "family_member_id, latitude, and longitude are required"}
+                ),
+                400,
+            )
 
         r = location_svc.create_checkin(
             g.user_id, family_member_id, latitude, longitude, notes=notes

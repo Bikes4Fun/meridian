@@ -105,6 +105,7 @@ class DementiaButton(Button):
         self.background_color = self.display_settings.colors[background_color]
         self.size_hint = size_hint
 
+
 class DementiaImage(Image):
     """Configurable image widget with dementia-friendly defaults."""
 

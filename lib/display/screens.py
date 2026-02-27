@@ -29,7 +29,11 @@ def _crop_image_to_circle(src_path, size=200):
     if os.path.exists(out):
         return os.path.abspath(out)
     try:
-        img = Image.open(src_abs).convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
+        img = (
+            Image.open(src_abs)
+            .convert("RGBA")
+            .resize((size, size), Image.Resampling.LANCZOS)
+        )
         mask = Image.new("L", (size, size), 0)
         ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
         out_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -140,35 +144,21 @@ class ScreenFactory:
         return screen
 
     def create_emergency_screen(self):
-        """Create emergency screen using modular components."""
+        """Create emergency screen: critical patient info for EMS (name, DNR, contacts, meds, allergies)."""
         screen = Screen(name="emergency")
 
-        # Main layout
         main_layout = BoxLayout(orientation="vertical")
         main_layout.size_hint = (1, 1)
         main_layout.padding = self.display_settings.main_padding
 
-        # Navigation bar
         nav_widget = self._create_navigation()
         main_layout.add_widget(nav_widget)
 
-        # Emergency content area
-        content_layout = BoxLayout(orientation="horizontal")
-        content_layout.size_hint = (1, 1)
+        emergency_profile = self.widget_factory.create_widget("emergency_profile")
+        emergency_profile.size_hint = (1, 1)
+        main_layout.add_widget(emergency_profile)
 
-        # Emergency contacts widget (left side)
-        contacts_widget = self.widget_factory.create_widget("emergency_contacts")
-        contacts_widget.size_hint = (0.5, 1)
-        content_layout.add_widget(contacts_widget)
-
-        # Medical info widget (right side)
-        medical_widget = self.widget_factory.create_widget("medical_info")
-        medical_widget.size_hint = (0.5, 1)
-        content_layout.add_widget(medical_widget)
-
-        main_layout.add_widget(content_layout)
         screen.add_widget(main_layout)
-
         return screen
 
     def create_more_screen(self):

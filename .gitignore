@@ -1,1 +1,14 @@
-*/cache/*
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+*.db
+
+# Cache
+src/apps/kiosk/cache/
+
+# Environment
+.env
+*.env

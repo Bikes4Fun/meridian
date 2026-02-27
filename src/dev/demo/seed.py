@@ -21,16 +21,16 @@ from datetime import datetime, timedelta
 import sys
 
 try:
-    from lib.server.database_management.database_manager import DatabaseManager
-    from lib.config import DatabaseConfig, get_database_path
+    from apps.server.database import DatabaseManager
+    from shared.config import DatabaseConfig, get_database_path
 except ImportError:
-    from server.database_management.database_manager import DatabaseManager
-    from config import DatabaseConfig, get_database_path
+    from apps.server.database import DatabaseManager
+    from shared.config import DatabaseConfig, get_database_path
 
 
 def get_data_dir():
     """Get the path to the demo data directory."""
-    return os.path.join(os.path.dirname(__file__), "demo_data")
+    return os.path.join(os.path.dirname(__file__), "data")
 
 
 _db_manager_cache = {}
@@ -109,7 +109,7 @@ def load_demo_family_members_from_json_into_db(db_path: str, user_id: str):
 
 def load_demo_medication_groups_from_json_into_db(db_path: str, user_id: str):
     """Load medication groups from JSON into SQLite database."""
-    medical_data = load_json_file("medical_info.json")
+    medical_data = load_json_file("medical.json")
     groups = medical_data.get("medication_groups", {})
 
     db_manager = get_database_manager(db_path)
@@ -131,7 +131,7 @@ def load_demo_medication_groups_from_json_into_db(db_path: str, user_id: str):
 
 def load_demo_medications_data_from_json_to_db(db_path: str, user_id: str):
     """Load medications from JSON into SQLite database."""
-    medical_data = load_json_file("medical_info.json")
+    medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
 
     db_manager = get_database_manager(db_path)
@@ -186,7 +186,7 @@ def load_demo_medications_data_from_json_to_db(db_path: str, user_id: str):
 
 def load_allergies_data(db_path: str, user_id: str):
     """Load allergies from JSON into SQLite database."""
-    medical_data = load_json_file("medical_info.json")
+    medical_data = load_json_file("medical.json")
     allergies = medical_data.get("allergies", [])
 
     db_manager = get_database_manager(db_path)
@@ -202,7 +202,7 @@ def load_allergies_data(db_path: str, user_id: str):
 
 def load_demo_ice_profile_data(db_path: str, user_id: str):
     """Load ICE profile from JSON (users row created in demo_main)."""
-    medical_data = load_json_file("medical_info.json")
+    medical_data = load_json_file("medical.json")
     ice_data = medical_data.get("ice_profile", {})
     if not ice_data:
         return
@@ -252,7 +252,7 @@ def load_demo_ice_profile_data(db_path: str, user_id: str):
 
 def load_conditions_data(db_path: str, user_id: str):
     """Load medical conditions from JSON into SQLite database."""
-    medical_data = load_json_file("medical_info.json")
+    medical_data = load_json_file("medical.json")
     conditions = medical_data.get("conditions", [])
 
     db_manager = get_database_manager(db_path)
@@ -275,7 +275,7 @@ def load_conditions_data(db_path: str, user_id: str):
 
 def load_calendar_events_data(db_path: str, user_id: str):
     """Load calendar events from JSON into SQLite database."""
-    calendar_data = load_json_file("calendar_events.json")
+    calendar_data = load_json_file("calendar.json")
     events = calendar_data.get("calendar_events", [])
 
     db_manager = get_database_manager(db_path)

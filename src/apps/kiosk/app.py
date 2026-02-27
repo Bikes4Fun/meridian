@@ -13,14 +13,14 @@ SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses s
 
 import logging
 from typing import Optional
-from config import ConfigManager, get_server_url
-from display.remote import create_remote, get_display_settings
+from shared.config import ConfigManager, get_server_url
+from .api_client import create_remote, get_display_settings
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
 from kivy.core.window import Window
-from display.screens import ScreenFactory
-from display.widgets import WidgetFactory
+from .screens import ScreenFactory
+from .widgets import WidgetFactory
 import datetime
 
 

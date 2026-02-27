@@ -23,23 +23,23 @@ import os
 import datetime
 from flask import Flask, jsonify, request, g, send_from_directory, Response
 
-# config at top level (lib); server internals relative
+# config from shared; server internals relative
 try:
-    from ..config import (
+    from ...shared.config import (
         DatabaseConfig,
         get_database_path,
         get_server_host,
         get_server_port,
     )
 except ImportError:
-    from config import (
+    from shared.config import (
         DatabaseConfig,
         get_database_path,
         get_server_host,
         get_server_port,
     )
-from .database_management.database_manager import DatabaseManager
-from .container.container import create_service_container
+from .database import DatabaseManager
+from .services.container import create_service_container
 
 DEFAULT_USER_ID = "0000000000"
 

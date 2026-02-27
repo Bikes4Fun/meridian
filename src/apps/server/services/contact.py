@@ -11,12 +11,12 @@ REMOVAL: Required on server (used by emergency_service). Can be omitted from cli
 from typing import List, Optional
 from dataclasses import dataclass
 
-from ..database_management.database_manager import DatabaseManager, DatabaseServiceMixin
+from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
-    from ...interfaces import ServiceResult
+    from ...shared.interfaces import ServiceResult
 except ImportError:
-    from interfaces import ServiceResult
+    from shared.interfaces import ServiceResult
 
 
 @dataclass

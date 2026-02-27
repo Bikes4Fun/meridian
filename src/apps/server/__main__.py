@@ -5,7 +5,7 @@ import sys
 
 
 def main():
-    from ..config import (
+    from ...shared.config import (
         get_server_host,
         get_server_port,
         get_database_path,
@@ -13,7 +13,7 @@ def main():
     )
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "seed":
-        from ..demo.demo import demo_main
+        from ...dev.demo.seed import demo_main
 
         db_path = get_database_path()
         ok = demo_main("0000000000", db_path=db_path)
@@ -31,7 +31,7 @@ def main():
         print("Port %s in use, using port %s instead." % (start_port, port))
     os.environ["PORT"] = str(port)
 
-    from .app import run_server
+    from .api import run_server
 
     run_server()
 

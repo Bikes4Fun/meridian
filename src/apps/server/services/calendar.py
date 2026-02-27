@@ -9,12 +9,12 @@ import datetime
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..database_management.database_manager import DatabaseManager, DatabaseServiceMixin
+from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
-    from ...interfaces import ServiceResult
+    from ...shared.interfaces import ServiceResult
 except ImportError:
-    from interfaces import ServiceResult
+    from shared.interfaces import ServiceResult
 
 
 @dataclass

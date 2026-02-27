@@ -5,18 +5,18 @@ Handles the creation of different application screens.
 
 import os
 
-from config import get_database_path
+from shared.config import get_database_path
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy_garden.mapview import MapView, MapMarker
-from display.modular_display import (
+from .modular_display import (
     DementiaWidget,
     DementiaLabel,
     DementiaButton,
     DementiaNavBar,
 )
-from display.widgets import WidgetFactory, apply_border
+from .widgets import WidgetFactory, apply_border
 from PIL import Image, ImageDraw
 
 

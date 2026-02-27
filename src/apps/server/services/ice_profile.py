@@ -4,12 +4,12 @@ WHERE FUNCTIONALITY MOVED TO (client): client/remote calls GET /api/ice, PUT /ap
 REMOVAL: Required on server. Can be omitted from client deployment when SERVER_URL is set.
 """
 
-from ..database_management.database_manager import DatabaseManager, DatabaseServiceMixin
+from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
-    from ...interfaces import ServiceResult
+    from ...shared.interfaces import ServiceResult
 except ImportError:
-    from interfaces import ServiceResult
+    from shared.interfaces import ServiceResult
 
 
 class ICEProfileService(DatabaseServiceMixin):

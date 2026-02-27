@@ -9,9 +9,9 @@ from datetime import datetime
 from typing import Any, Optional, Tuple
 
 try:
-    from interfaces import ServiceResult
+    from shared.interfaces import ServiceResult
 except ImportError:
-    from lib.interfaces import ServiceResult
+    from shared.interfaces import ServiceResult
 
 logger = logging.getLogger(__name__)
 
@@ -315,7 +315,7 @@ def get_display_settings(
     session: Optional["requests.Session"] = None,
 ):
     """Fetch display settings from GET /api/settings. Uses display defaults if server has none."""
-    from .user_settings import DisplaySettings
+    from .settings import DisplaySettings
 
     base = server_url.rstrip("/")
     ok, data, err = _get(

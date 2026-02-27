@@ -3,17 +3,17 @@ Flask API server for Dementia TV.
 Exposes the same data as in-process services via REST for client/server mode.
 
 WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
-  - container_services/container.py         → create_service_container(db_path) used here
-  - container_services/calendar_service.py → GET /api/calendar/*
-  - container_services/medication_service.py → GET /api/medications
-  - container_services/emergency_service.py → GET /api/emergency/*
-  - container_services/contact_service.py  (used by emergency_service; no direct endpoint)
-  - container_services/ice_profile_service.py → GET /api/ice, PUT /api/ice
+  - container/container.py         → create_service_container(db_path) used here
+  - container/calendar_service.py → GET /api/calendar/*
+  - container/medication_service.py → GET /api/medications
+  - container/emergency_service.py → GET /api/emergency/*
+  - container/contact_service.py  (used by emergency_service; no direct endpoint)
+  - container/ice_profile_service.py → GET /api/ice, PUT /api/ice
 
 WHERE IT MOVED TO (client uses these instead of container on client):
-  - client/remote_services.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
+  - client/remote.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
 
-SERVER DEPLOYMENT: This module requires config, container_services/, and database_management/.
+SERVER DEPLOYMENT: This module requires config, container/, and database_management/.
 client/, display/, app_factory.py, icons/, and the Kivy app are not needed on the server;
 they can be omitted or relocated to a client-only repo.
 """
@@ -39,7 +39,7 @@ except ImportError:
         get_server_port,
     )
 from .database_management.database_manager import DatabaseManager
-from .container_services.container import create_service_container
+from .container.container import create_service_container
 
 DEFAULT_USER_ID = "0000000000"
 
@@ -156,8 +156,8 @@ def _row_to_display_settings_response(row) -> dict:
 
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
-    Functionality is provided by container_services (via create_service_container).
-    Clients use client/remote_services.create_remote_services() to call this API."""
+    Functionality is provided by container (via create_service_container).
+    Clients use client/remote.create_remote() to call this API."""
     db_path = db_path or get_database_path()
     container = create_service_container(db_path)
 

@@ -4,7 +4,7 @@ These tests don't require a database connection.
 """
 import pytest
 from datetime import datetime
-from container_services.time_service import TimeService
+from container.time_service import TimeService
 
 
 @pytest.mark.unit

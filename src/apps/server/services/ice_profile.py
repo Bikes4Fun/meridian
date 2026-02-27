@@ -1,6 +1,6 @@
 """
 ICE Profile service for In-Case-of-Emergency data.
-WHERE FUNCTIONALITY MOVED TO (client): client/remote_services calls GET /api/ice, PUT /api/ice.
+WHERE FUNCTIONALITY MOVED TO (client): client/remote calls GET /api/ice, PUT /api/ice.
 REMOVAL: Required on server. Can be omitted from client deployment when SERVER_URL is set.
 """
 

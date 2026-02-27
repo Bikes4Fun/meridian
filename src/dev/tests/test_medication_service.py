@@ -2,7 +2,7 @@
 Unit and integration tests for MedicationService.
 """
 import pytest
-from container_services.medication_service import MedicationService, TimedMedication, PRNMedication
+from container.medication_service import MedicationService, TimedMedication, PRNMedication
 
 
 @pytest.mark.unit

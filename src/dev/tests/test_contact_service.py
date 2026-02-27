@@ -2,8 +2,8 @@
 Unit and integration tests for ContactService and EmergencyService.
 """
 import pytest
-from lib.container_services.contact_service import ContactService
-from lib.container_services.emergency_service import EmergencyService
+from lib.container.contact_service import ContactService
+from lib.container.emergency_service import EmergencyService
 
 
 @pytest.mark.unit

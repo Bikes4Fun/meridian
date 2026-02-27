@@ -4,7 +4,7 @@ Creates and configures the application with proper dependency injection.
 
 CLIENT vs SERVER:
 - This module is used only by the client (Kivy UI). When SERVER_URL is set, services come from
-  client/remote_services.create_remote_services(); container_services is not used and can be
+  client/remote.create_remote(); container is not used and can be
   omitted from the client deployment.
 - SERVER_URL is required for the client; display settings from GET /api/settings (no local DB needed).
 
@@ -14,7 +14,7 @@ SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses s
 import logging
 from typing import Optional
 from config import ConfigManager, get_server_url
-from display.remote_services import create_remote_services, get_display_settings
+from display.remote import create_remote, get_display_settings
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
@@ -278,7 +278,7 @@ class AppFactory:
 
     def create_application(self, user_id=None) -> DementiaTVApp:
         """Create the Dementia TV application with all dependencies.
-        Uses client/remote_services (SERVER_URL required). Display settings from GET /api/settings.
+        Uses client/remote (SERVER_URL required). Display settings from GET /api/settings.
         """
         server_url = get_server_url()
         if not server_url:
@@ -295,7 +295,7 @@ class AppFactory:
         display_settings = get_display_settings(
             server_url, user_id=user_id, session=session
         )
-        services = create_remote_services(server_url, user_id=user_id, session=session)
+        services = create_remote(server_url, user_id=user_id, session=session)
 
         # Create and return the application
         return DementiaTVApp(services=services, display_settings=display_settings)

@@ -54,14 +54,14 @@ meridian/
 │   │   ├── screens.py
 │   │   ├── widgets.py
 │   │   ├── user_settings.py
-│   │   └── remote_services.py
+│   │   └── remote.py
 │   ├── server/               # Flask API, services, DB
 │   │   ├── app.py
 │   │   ├── __main__.py
 │   │   ├── database_management/
 │   │   │   ├── database_manager.py
 │   │   │   └── ice_profile.json
-│   │   └── container_services/
+│   │   └── container/
 │   │       ├── container.py
 │   │       ├── calendar_service.py
 │   │       ├── contact_service.py

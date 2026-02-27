@@ -329,7 +329,7 @@ def get_display_settings(
         return DisplaySettings.default()
 
 
-def create_remote_services(
+def create_remote(
     server_url: str,
     user_id: Optional[str] = None,
     session: Optional["requests.Session"] = None,

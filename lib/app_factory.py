@@ -72,7 +72,7 @@ class DementiaTVApp(App):
         more_screen = self.screen_factory.create_more_screen()
         self.screen_manager.add_widget(more_screen)
 
-        self.screen_manager.current = "emergency"  # set to "family" or "home" after testing
+        self.screen_manager.current = "family"
 
         # Store reference for updates
         self.home_screen = home_screen
@@ -82,8 +82,23 @@ class DementiaTVApp(App):
 
         # Schedule periodic updates (every second)
         Clock.schedule_interval(self.update_time, 1.0)
+        # Poll alert status: when activated, switch TV to emergency screen and enable flashing
+        Clock.schedule_interval(self._check_alert_status, 2.0)
 
         return self.screen_manager
+
+    def _check_alert_status(self, dt=None):
+        """Poll alert API; when activated, switch to emergency screen and enable flashing."""
+        alert_svc = self.services.get("alert_service")
+        if not alert_svc:
+            return
+        result = alert_svc.get_alert_status()
+        if not result.success:
+            return
+        activated = result.data.get("activated", False) if result.data else False
+        self.services["_alert_activated"][0] = activated
+        if activated and self.screen_manager:
+            self.screen_manager.current = "emergency"
 
     def update_all(self):
         """Update all display elements."""

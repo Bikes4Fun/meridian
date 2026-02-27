@@ -43,6 +43,8 @@ from .container_services.container import create_service_container
 
 DEFAULT_USER_ID = "0000000000"
 
+_alert_activated = False
+
 
 def _row_to_display_settings_response(row) -> dict:
     """Convert DB row from user_display_settings to JSON-serializable display dict for API."""
@@ -252,6 +254,17 @@ def create_server_app(db_path=None):
     @app.route("/api/health")
     def api_health():
         return jsonify({"status": "ok"})
+
+    @app.route("/api/alert/status")
+    def api_alert_status():
+        return jsonify({"data": {"activated": _alert_activated}})
+
+    @app.route("/api/alert", methods=["POST"])
+    def api_alert():
+        global _alert_activated
+        data = request.get_json() or {}
+        _alert_activated = bool(data.get("activated", False))
+        return jsonify({"data": {"activated": _alert_activated}})
 
     @app.route("/api/ice", methods=["GET", "PUT"])
     def api_ice():

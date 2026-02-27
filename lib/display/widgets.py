@@ -635,26 +635,32 @@ class WidgetFactory:
         profile.spacing = display_settings.spacing["md"]
         profile.padding = display_settings.spacing["lg"]
 
+        alert_ref = self.services.get("_alert_activated", [False])
         flash_state = [0]
 
-        def _draw_flashing_border(w, color):
+        def _draw_border(w, color):
             w.canvas.after.clear()
             with w.canvas.after:
                 Color(*color)
                 Line(rectangle=(w.x, w.y, w.width, w.height), width=8)
 
-        def _flash_border(dt):
-            flash_state[0] = 1 - flash_state[0]
-            c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
-            _draw_flashing_border(profile, c)
+        def _border_tick(dt):
+            if alert_ref[0]:
+                flash_state[0] = 1 - flash_state[0]
+                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
+            else:
+                c = (0.9, 0.4, 0.1, 1)
+            _draw_border(profile, c)
 
         def _update_border(o, v):
-            c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
-            _draw_flashing_border(profile, c)
+            if alert_ref[0]:
+                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
+            else:
+                c = (0.9, 0.4, 0.1, 1)
+            _draw_border(profile, c)
 
         profile.bind(pos=_update_border, size=_update_border)
-        Clock.schedule_once(_flash_border, 0.1)
-        Clock.schedule_interval(_flash_border, 0.5)
+        Clock.schedule_interval(_border_tick, 0.5)
 
         if self.ice_profile_service:
             result = self.ice_profile_service.get_ice_profile()

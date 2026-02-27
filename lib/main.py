@@ -79,7 +79,11 @@ def main():
     start_port = get_server_port()
     port = find_available_port(host, start_port)
     if port != start_port:
-        logger.warning("Port %s in use, using port %s instead.", start_port, port)
+        logger.warning(
+            "Port %s in use, using port %s instead. Stop any separate "
+            "'python -m lib.server' so web app and TV use the same server.",
+            start_port, port,
+        )
     os.environ["PORT"] = str(port)  # so get_server_url() uses this port for the client
 
     logger.info("Starting API server...")

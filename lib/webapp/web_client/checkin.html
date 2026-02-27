@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Check-In</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { color: #333; }
+        select, input, button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 18px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #45a049; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+        }
+        #status div {
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>📍 Family Check-In</h1>
+    
+    <select id="familyMemberSelect">
+        <option value="">-- Select Family Member --</option>
+    </select>
+    
+    <input type="text" id="notes" placeholder="Details / Notes (optional, e.g. note for family)">
+    
+    <button id="checkinBtn" type="button">Check In Now</button>
+    
+    <div id="status"></div>
+
+    <script src="checkin.js"></script>
+</body>
+</html>

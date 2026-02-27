@@ -1,0 +1,242 @@
+Dementia Patient and Family Digital Assistant
+
+Deanna Garrett, Senior Project Proposal, Fall 2026
+
+Basic Overview
+A digital assistant specifically designed to decrease stress and daily burdens for dementia patients and their families by providing daily orientation, easy family tracking and communication, and emergency management assistance via a large-display touch screen with accessible design.
+
+1. Problem Overview
+
+Target Audience
+The primary target audience consists of individuals living with dementia and their family caregivers. Specifically:
+• Primary Users: Adults aged 65+ with mild to moderate dementia who live independently or with minimal supervision
+• Secondary Users: Family caregivers, adult children, emergency services if called to the patients home
+• Future Users: Outpatient healthcare providers, inpatient facilities caring for advanced dementia patients
+• Demographics: Approximately 6.7 million Americans aged 65+ live with dementia, projections reach 12.7 million by 2050 (Alzheimer's Association, 2024). Of these, a majority (approximately 4.2) million live independently at home with family or minimal supervision
+
+Context and Current State
+Dementia patients face significant daily challenges that impact their independence and safety:
+• Time Disorientation: Difficulty tracking dates, times, and appointments, confusion may increase throughout the day
+• Medication Management: Complex medication schedules with high risk of missed doses or overdosing
+• Emergency Preparedness: Difficulty communicating critical medical information during emergencies, forgetting diagnosis and even hiding/misleading providers
+• Family Connection: Paranoia and hypervigilance about family member safety, believing loved ones are "lost" since they don't remember recent visits contributing to wandering behavior
+• Safety Concerns: Increased risk of falls, wandering, and inability to access emergency services
+
+Significance
+The consequences of unaddressed dementia care challenges are severe:
+• Safety Risks: Medication errors account for 125,000 deaths annually in the US (CDC, 2023)
+• Emergency Delays: emergency response time increases 40% if patients can't give clear info (NIH, 2023)
+• Burnout: 40% of family report high stress, leading to patient institutionalization (Alzheimer's Assoc., 2024)
+• Costs: Dementia costs $345 billion annually, with 70% borne by families (Alzheimer's Assoc., 2024)
+
+Existing Solutions and Their Shortcomings
+Current solutions are fragmented and inadequate:
+• Targeted Digital Clocks: Large fonts but difficult to program due to minimalistic interface
+• Medication Reminders: Phone apps that may be physically challenging due to screen size and require patient to remember if they took medication
+• Family Communication: Small screens with confusing interfaces
+• Emergency Systems: Expensive subscription services ($30-150/month) that don't aid in daily communication (future feature)
+• Fall Detection: iOS gyroscopic falls risk system but no integration with holistic, single system actual detection and emergency systems such as necklaces etc listed above. (far future feature)
+
+Gap Analysis: No integrated solution provides comprehensive daily support, emergency preparedness, and family connectivity in a dementia-friendly interface.
+
+TV-Based Interface Rationale: A TV-Screen sized, touch screen system is a familiar technology, avoids physical challenges of small screens, a large view reduces cognitive load.
+
+2. Proposed Solution
+
+Core Concept
+A comprehensive TV-based digital assistant specifically designed for dementia patients that provides:
+• Daily Orientation: Large, clear displays of time, date, and appointments
+• Emergency Preparedness: Instant access to critical medical information and emergency contacts
+• Family Connection: Simple photo-based family directory with contact information and safety status
+
+Additional Features
+• Safety Monitoring: Integration with fall detection and emergency response systems
+• Medication Management: Visual medication reminders with safety features
+
+The system is designed following dementia accessibility principles: consistent visual layouts, clear feedback, high contrast colors, large text, and limited decision branches to minimize cognitive load and maximize usability.
+
+Minimum Viable Product (MVP) Features
+
+Dementia Clock System
+• Large Font Display: Day of week, date, part of day (morning, midday, evening, night), month, year in high-contrast, easy-to-read font
+• Appointment Management: 
+  - Clear display of upcoming appointments
+  - Clearly display "No Appointments today" indicator when no appointments scheduled (anxiety and obsession about forgetting things is a common challenge for dementia patients)
+  - Appointment details: who will drive, when they will arrive for pickup, confirmation status, if related tasks have been completed (pre appointment labs etc)
+
+Basic Medication Management
+• Visual Medication Schedule: AM, Noon, PM, Bedtime medication reminders with accessible color and texture coded indicators, food requirements etc
+• Safety Features: PRN medication tracking, overdose prevention alerts, emergency contact notifications, photo of medication, explanation of its purpose, compliance tracking/loved one notifications
+• Major Integration: QR codes on preexisting medication packets system for verification before dispensing
+
+Emergency Information System
+• Quick Access Medical ID: Name, DOB, photo, emergency contacts, diagnosis, medications, doctor 
+• Legal Documents: DNR status, medical proxy, power of attorney information
+• Major Addition: Emergency Services: One-touch 911 calling with landline integration
+
+Family Connection
+• Photo Directory: Family member photos with relationship labels
+• Contact Information: Phone numbers and addresses
+• Living Arrangements: Who lives with the patient, family member locations/safety status
+• Simple Communication: Easy-touch calling to family members
+
+Family Management System / Mobile App access
+• Primary Caregiver Control: Main family decision-maker has full system access
+• Permission Levels: Primary caregiver (full control), Family members (location sharing, visit scheduling), Extended family (view-only access)
+• Location Sharing: Family members can share their location and safety status
+• Visit Scheduling: Family members can schedule and confirm visits through the app
+• Emergency: Automatic alerts to family during emergencies, remote screen view override to ICE screen
+
+Post-MVP Roadmap
+Phase 2 Features (Weeks 8-12): FaceTime Integration, Location Services
+Phase 3 + (Possible) Features (Weeks 13-15+): QR Code Medication Reader, Family Education Portal, Legal Resources, Professional Contacts, Print Functionality, Advanced Safety Features
+
+Connecting Solution to Problem
+• Time Disorientation → Large, clear date/time display with appointment integration
+• Medication Errors → Visual reminders with safety alerts and overdose prevention
+• Emergency Delays → Instant access to medical information and emergency contacts
+• Family Isolation → Simple photo-based family directory with one-touch communication
+• Caregiver Stress → Comprehensive information system reducing caregiver burden
+
+3. Validation Plan
+
+User Testing & Research
+• Week 1: Conduct interviews with dementia patients and family caregivers
+• Week 6: Usability testing with 3+ dementia patients using paper prototypes
+• Week 10: Beta testing with 2-3 families using functional prototype
+• Week 14: Final user acceptance testing with complete system
+
+Ethics: User testing involving dementia patients with only mild or moderate diagnosis, conducted with time limits, patient and caregiver consent and caregiver observation. Medication tracking integration would need to be reviewed by experts such as pharmacists, Doctors/AP PCP's, and other tech/medical ethics and safety experts.
+
+Feedback Integration
+• weekly sessions with users for usability testing, and satisfaction surveys as tasks/features are completed
+
+Software Testing
+• Automated Testing: Unit tests for core functionality, integration tests for system components
+• Manual QA: Daily testing of user interface, medication reminders, and emergency features
+• Accessibility Testing: Regular testing with dementia simulation tools and accessibility checkers
+• Safety Testing: Comprehensive testing of emergency features and medication safety systems
+
+Metrics: measured through task completion rates, usability, and caregiver satisfaction (target: >4.0/5.0 rating).
+
+4. Iteration Plan (15-Week Outline)
+
+Week 1: Project Setup & Research
+Focus/Goal: Literature review, user research planning, technical stack selection
+Key Activities: Literature review, user research planning, technical stack selection
+Potential Deliverables: Research summary, project charter
+
+Week 2: User Research
+Focus/Goal: Interview dementia patients and caregivers, analyze existing solutions
+Key Activities: Interview dementia patients and caregivers, analyze existing solutions
+Potential Deliverables: User personas, requirements document
+
+Week 3: System Design
+Focus/Goal: Create wireframes, user flow diagrams, system architecture
+Key Activities: Create wireframes, user flow diagrams, system architecture
+Potential Deliverables: Design mockups, technical specification
+
+Week 4: Core Development Setup
+Focus/Goal: Set up development environment, create basic TV interface framework
+Key Activities: Set up development environment, create basic TV interface framework
+Potential Deliverables: Development environment, basic UI framework
+
+Week 5: Dementia Clock MVP
+Focus/Goal: Implement time/date display and appointment system
+Key Activities: Implement time/date display and appointment system
+Potential Deliverables: Functional clock and appointment features
+
+Week 6: Medication Management MVP
+Focus/Goal: Develop medication reminder system with safety features
+Key Activities: Develop medication reminder system with safety features
+Potential Deliverables: Basic medication management system
+
+Week 7: Emergency System MVP
+Focus/Goal: Create emergency information display and 911 integration
+Key Activities: Create emergency information display and 911 integration
+Potential Deliverables: Emergency information system
+
+Week 8: Family Connection MVP
+Focus/Goal: Implement photo directory and contact system
+Key Activities: Implement photo directory and contact system
+Potential Deliverables: Family connection features
+
+Week 9: Integration & Testing
+Focus/Goal: Combine all MVP features, conduct integration testing
+Key Activities: Combine all MVP features, conduct integration testing
+Potential Deliverables: Integrated MVP system
+
+Week 10: User Testing
+Focus/Goal: Beta testing with real users, collect feedback
+Key Activities: Beta testing with real users, collect feedback
+Potential Deliverables: User feedback report, improvement backlog
+
+Week 11: QR Code Integration
+Focus/Goal: Add medication QR code reader functionality
+Key Activities: Add medication QR code reader functionality
+Potential Deliverables: QR code medication system
+
+Week 12: Advanced Safety Features
+Focus/Goal: Implement fall detection and advanced emergency features
+Key Activities: Implement fall detection and advanced emergency features
+Potential Deliverables: Enhanced safety system
+
+Week 13: Family Education Portal
+Focus/Goal: Create caregiver education resources and legal information
+Key Activities: Create caregiver education resources and legal information
+Potential Deliverables: Family education features
+
+Week 14: Final Testing & Polish
+Focus/Goal: Comprehensive testing, bug fixes, performance optimization
+Key Activities: Comprehensive testing, bug fixes, performance optimization
+Potential Deliverables: Production-ready system
+
+Week 15: Documentation & Deployment
+Focus/Goal: Create user manuals, deployment guides, final presentation
+Key Activities: Create user manuals, deployment guides, final presentation
+Potential Deliverables: Complete system with documentation
+
+5. Technical Stack
+
+Python: Primary language for backend logic and data processing
+
+Frameworks & Libraries
+• Kivy: Cross-platform Python framework for TV interface development
+• Flask: Lightweight web framework for API development and data management (NIX)
+• Pillow: Image processing for photo management and QR code reading
+• Requests: HTTP library for external API integrations
+
+Database
+• SQLite: Lightweight database for local data storage (medications, contacts, appointments)
+• JSON Files: Simple data storage for configuration and user preferences
+
+AI Models or Integrations
+• OpenAI API: Natural language processing for voice commands and text-to-speech
+• QR Code Libraries: Python QR code generation and reading capabilities
+• Calendar APIs: Google and iOS Calendar integration
+
+Deployment & Hosting
+• Raspberry Pi: Local deployment on TV-connected device for reliability and privacy
+• Local Network: System operates on home network to ensure data privacy
+• Cloud Backup: Optional cloud backup for emergency contact information
+
+Technology Justification
+• Kivy: Chosen for its ability to create large, touch-friendly interfaces suitable for TV displays
+• Python: Selected for rapid development and extensive library support for healthcare applications
+• SQLite: Ideal for local data storage with minimal setup requirements
+• Raspberry Pi: Cost-effective, reliable platform that can be easily integrated with existing TV systems
+
+Security and Privacy
+• Data Protection: maintain HIPAA-aligned privacy standards
+
+Summary of Expected Impact
+
+The Dementia Care Digital Assistant aims to reduce caregiver stress and patient confusion by providing a dementia-friendly interface that integrates time orientation, medication safety, and emergency preparedness. By consolidating tools into a single accessible system, this delivers a realistic solution for families navigating dementia. The success will be measured through task completion rates, caregiver satisfaction, and theoretical reduced emergency time and confusion, supporting the independence and safety of patients and alleviating burden on families.
+
+Sources
+• Alzheimer's Association. (2024). 2024 Alzheimer's Disease Facts and Figures. Alzheimer's & Dementia, 20(3), 1-180.
+• Centers for Disease Control and Prevention. (2023). Medication Safety Program. Retrieved from https://www.cdc.gov/medicationsafety/
+• National Institutes of Health. (2023). Emergency Response and Dementia Care: A Systematic Review. Journal of Emergency Medicine, 45(2), 123-135.
+• Cursor Agent. (2024). AI Writing Assistant. Retrieved from https://cursor.sh/
+• Garrett, D. (2024). Dementia Care Digital Assistant: Source Code Repository, contains a basic intro test version to experiment with feasibility of libraries and general plans. Retrieved from https://github.com/Bikes4Fun/dementia_tv_python.git
+

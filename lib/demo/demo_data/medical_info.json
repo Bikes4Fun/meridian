@@ -1,0 +1,102 @@
+{
+  "medication_groups": {
+    "Morning": {
+      "time": "08:00:00",
+      "display_name": "Morning"
+    },
+    "Noon": {
+      "time": "12:00:00",
+      "display_name": "Noon"
+    },
+    "Evening": {
+      "time": "18:00:00",
+      "display_name": "Evening"
+    },
+    "prn": {
+      "time": null,
+      "display_name": "As Needed"
+    }
+  },
+
+  "medications": [
+    {
+      "name": "Lisinopril",
+      "dosage": "10mg",
+      "frequency": "Once daily",
+      "groups": ["Morning"],
+      "temporary": false,
+      "taken": false,
+      "notes": "Blood pressure medication",
+      "doctor": "Dr. Smith",
+      "side_effects": "Dry cough, dizziness",
+      "max_daily": 1,
+      "last_taken": null
+    },
+    {
+      "name": "Metformin",
+      "dosage": "500mg",
+      "frequency": "Twice daily",
+      "groups": ["Morning", "Evening"],
+      "temporary": false,
+      "taken": false,
+      "notes": "Diabetes medication",
+      "doctor": "Dr. Johnson",
+      "side_effects": "Nausea, stomach upset",
+      "max_daily": 2,
+      "last_taken": null
+    },
+    {
+      "name": "Dementia meds",
+      "dosage": "5mg",
+      "frequency": "Once daily",
+      "groups": ["Noon"],
+      "temporary": false,
+      "taken": false,
+      "notes": "Memory support medication",
+      "doctor": "Dr. Wilson",
+      "side_effects": "Mild nausea, headache",
+      "max_daily": 1,
+      "last_taken": null
+    },
+    {
+      "name": "Pain Relief",
+      "max_daily": 3,
+      "groups": ["prn"],
+      "notes": "For arthritis pain",
+      "current_quantity": null,
+      "last_taken": null
+    },
+    {
+      "name": "Anxiety Relief",
+      "max_daily": 2,
+      "groups": ["prn"],
+      "notes": "As needed for anxiety",
+      "current_quantity": null,
+      "last_taken": null
+    }
+  ],
+
+  "allergies": [
+    {
+      "allergen": "Penicillin"
+    },
+    {
+      "allergen": "Shellfish"
+    }
+  ],
+
+  "conditions": [
+    {
+      "condition": "Type 2 Diabetes",
+      "diagnosis_date": "2018-03-15",
+      "notes": "Well controlled with diet and medication"
+    },
+    {
+      "condition": "Hypertension",
+      "diagnosis_date": "2019-07-22",
+      "notes": "Blood pressure well controlled with medication"
+    }
+  ],
+  "emergency_info": {},
+  "care_providers": {}
+}

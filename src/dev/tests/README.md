@@ -53,7 +53,7 @@ pytest -m integration
 
 ### Run with coverage report
 ```bash
-pytest --cov=lib --cov-report=html
+pytest --cov=apps --cov=shared --cov-report=html
 ```
 
 This will generate an HTML coverage report in `htmlcov/index.html`.
@@ -98,7 +98,7 @@ Common fixtures available in `conftest.py`:
 Example:
 ```python
 import pytest
-from lib.container.my_service import MyService
+from apps.server.services.my_service import MyService
 
 @pytest.mark.unit
 class TestMyService:

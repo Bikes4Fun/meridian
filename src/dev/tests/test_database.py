@@ -3,9 +3,9 @@ Unit and integration tests for DatabaseManager.
 """
 import pytest
 import sqlite3
-from lib.database_management.database_manager import DatabaseManager
-from lib.config import DatabaseConfig
-from lib.interfaces import ServiceResult
+from apps.server.database import DatabaseManager
+from shared.config import DatabaseConfig
+from shared.interfaces import ServiceResult
 
 
 @pytest.mark.unit

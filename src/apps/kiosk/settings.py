@@ -10,13 +10,15 @@ from typing import Dict, Any
 
 
 def _default_display_settings_path() -> str:
-    """Path to the single default display settings JSON (demo/demo_data/default_display_settings.json)."""
+    """Path to the single default display settings JSON (dev/demo/data/kiosk_settings.json)."""
     return os.path.join(
         os.path.dirname(__file__),
         "..",
+        "..",
+        "dev",
         "demo",
-        "demo_data",
-        "default_display_settings.json",
+        "data",
+        "kiosk_settings.json",
     )
 
 

@@ -6,28 +6,19 @@ Uses the Flask test client; no running server required.
 import sys
 from pathlib import Path
 
-lib_dir = Path(__file__).resolve().parent.parent / "lib"
-if str(lib_dir) not in sys.path:
-    sys.path.insert(0, str(lib_dir))
+src_dir = Path(__file__).resolve().parent.parent.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
 import pytest
-from server.app import create_server_app
-
-
-class _TestConfig:
-    def __init__(self, db_path):
-        self._path = db_path
-
-    def get_users_database_path(self):
-        return self._path
+from apps.server.api import create_server_app
 
 
 @pytest.fixture
 def api_client(populated_test_db):
     """Flask test client for the API server using populated test DB."""
     db_path = populated_test_db.config.path
-    config = _TestConfig(db_path)
-    app = create_server_app(config)
+    app = create_server_app(db_path=db_path)
     return app.test_client()
 
 

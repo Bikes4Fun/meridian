@@ -421,11 +421,9 @@ def load_location_checkins_data(db_path: str, user_id: str):
 def load_demo_settings_from_json_into_db(db_path, user_id):
     """Load user display settings from default_display_settings.json into SQLite database."""
     try:
-        from display.user_settings import DisplaySettings
+        from apps.kiosk.settings import DisplaySettings
     except ImportError:
-        from lib.display.user_settings import (
-            DisplaySettings,
-        )  # pyright: ignore[reportMissingImports]
+        from apps.kiosk.settings import DisplaySettings
     default_settings = (
         DisplaySettings.default()
     )  # single source: demo/demo_data/default_display_settings.json
@@ -511,7 +509,7 @@ def load_demo_settings_from_json_into_db(db_path, user_id):
 
 
 def demo_main(user_id, db_path=None):
-    """Load all JSON demo data into the database. Run via: python -m lib.server seed (or pass db_path)."""
+    """Load all JSON demo data into the database. Run via: python -m apps.server seed (or pass db_path)."""
     logger.debug("Loading demo data into database...")
     if db_path is None:
         db_path = get_database_path()

@@ -4,6 +4,7 @@ Handles the creation of different application screens.
 """
 
 import os
+import logging
 
 from shared.config import get_database_path
 from kivy.metrics import dp
@@ -19,10 +20,16 @@ from .modular_display import (
 from .widgets import WidgetFactory, apply_border
 from PIL import Image, ImageDraw
 
+logger = logging.getLogger(__name__)
+
 
 def _crop_image_to_circle(src_path, size=200):
     """Crop image to circle; save as PNG. Returns absolute path to output file, or None if source missing."""
     if not src_path or not os.path.exists(src_path):
+        logger.warning(
+            "[family map] Could not load photo for marker: %s",
+            "no path provided" if not src_path else "file not found: %s" % src_path,
+        )
         return None
     src_abs = os.path.abspath(src_path)
     out = src_abs.rsplit(".", 1)[0] + "_circle.png"
@@ -40,7 +47,8 @@ def _crop_image_to_circle(src_path, size=200):
         out_img.paste(img, mask=mask)
         out_img.save(out)
         return os.path.abspath(out)
-    except Exception:
+    except Exception as e:
+        logger.warning("[family map] Failed to crop photo to circle: %s - %s", src_path, e)
         return None
 
 
@@ -227,8 +235,10 @@ class ScreenFactory:
             container = getattr(family_widget, "map_container", None)
             if container and not container.children and hasattr(container, "_map_params"):
                 p = container._map_params
-                map_view = MapView(lat=p["lat"], lon=p["lon"], zoom=p["zoom"])
-                base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+                map_view = MapView(lat=p["lat"], lon=p["lon"], zoom=p["zoom"], cache_dir=cache_dir)
+                # Base = src/ so photo_fn (e.g. dev/demo/data/family_img/name.jpg) resolves correctly
+                base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
                 loc_svc = self.services.get("location_service")
                 if loc_svc:
                     result = loc_svc.get_checkins()
@@ -241,10 +251,18 @@ class ScreenFactory:
                             photo_fn = checkin.get("photo_filename")
                             if photo_fn:
                                 src = os.path.join(base, photo_fn) if not os.path.isabs(photo_fn) else photo_fn
+                                # Handle old DB paths: demo/demo_data -> dev/demo/data
+                                if not os.path.exists(src) and "demo/demo_data" in photo_fn:
+                                    src = os.path.join(base, photo_fn.replace("demo/demo_data", "dev/demo/data"))
+                                    logger.info("[family map] Using fallback path for old DB: %s", src)
                                 circle_img = _crop_image_to_circle(src)
                                 if circle_img:
                                     marker = CustomMarker(lat=lat, lon=lon, source=circle_img)
                                 else:
+                                    logger.warning(
+                                        "[family map] Using default marker (no photo) for checkin at %s,%s, photo_filename=%s",
+                                        lat, lon, photo_fn
+                                    )
                                     marker = MapMarker(lat=lat, lon=lon)
                             else:
                                 marker = MapMarker(lat=lat, lon=lon)

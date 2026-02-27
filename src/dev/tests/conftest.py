@@ -7,21 +7,19 @@ import pytest
 import sqlite3
 from pathlib import Path
 
-# Add lib directory to path so relative imports work
+# Add src directory to path for new package layout
 import sys
-lib_dir = Path(__file__).parent.parent / 'lib'
-if str(lib_dir) not in sys.path:
-    sys.path.insert(0, str(lib_dir))
+src_dir = Path(__file__).parent.parent.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
-# Now we can import using the same relative imports the codebase uses
-from config import ConfigManager
-from config import DatabaseConfig
-from database_management.database_manager import DatabaseManager
-from container.time_service import TimeService
-from container.contact_service import ContactService
-from container.calendar_service import CalendarService
-from container.medication_service import MedicationService
-from container.emergency_service import EmergencyService
+from shared.config import ConfigManager, DatabaseConfig
+from apps.server.database import DatabaseManager
+from apps.kiosk.api_client import LocalTimeService
+from apps.server.services.contact import ContactService
+from apps.server.services.calendar import CalendarService
+from apps.server.services.medication import MedicationService
+from apps.server.services.emergency import EmergencyService
 
 
 @pytest.fixture
@@ -49,19 +47,10 @@ def test_db_config(temp_db_path):
 @pytest.fixture
 def test_db_manager(test_db_config):
     """Create a database manager with test database."""
-    # Create schema in test database
-    schema_path = Path(__file__).parent.parent / 'lib' / 'database_management' / 'schema.sql'
-    
     manager = DatabaseManager(test_db_config)
-    
-    # Create schema
-    if schema_path.exists():
-        with open(schema_path, 'r') as f:
-            schema_sql = f.read()
-        with manager.get_connection() as conn:
-            conn.executescript(schema_sql)
-            conn.commit()
-    
+    result = manager.create_database_schema()
+    if not result.success:
+        raise RuntimeError("Schema creation failed: %s" % result.error)
     return manager
 
 
@@ -168,8 +157,8 @@ def populated_test_db(test_db_manager, sample_contacts_data):
 
 @pytest.fixture
 def time_service():
-    """Create a TimeService instance."""
-    return TimeService()
+    """Create a TimeService instance (LocalTimeService from api_client)."""
+    return LocalTimeService(base_url="http://test", user_id="test")
 
 
 @pytest.fixture

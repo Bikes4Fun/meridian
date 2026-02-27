@@ -101,7 +101,15 @@ class LocationService(DatabaseServiceMixin):
         """
         result = self.safe_update(
             query,
-            (user_id, family_member_id, timestamp, latitude, longitude, location_name, notes),
+            (
+                user_id,
+                family_member_id,
+                timestamp,
+                latitude,
+                longitude,
+                location_name,
+                notes,
+            ),
         )
 
         if result.success:
@@ -111,15 +119,17 @@ class LocationService(DatabaseServiceMixin):
                 latitude,
                 longitude,
             )
-            return ServiceResult.success_result({
-                "user_id": user_id,
-                "family_member_id": family_member_id,
-                "timestamp": timestamp,
-                "latitude": latitude,
-                "longitude": longitude,
-                "location_name": location_name,
-                "notes": notes,
-            })
+            return ServiceResult.success_result(
+                {
+                    "user_id": user_id,
+                    "family_member_id": family_member_id,
+                    "timestamp": timestamp,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "location_name": location_name,
+                    "notes": notes,
+                }
+            )
         return result
 
     def get_checkins(self, user_id: str) -> ServiceResult:

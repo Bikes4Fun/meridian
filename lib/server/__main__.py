@@ -1,13 +1,20 @@
 """Run server: python -m lib.server [port]. Seed DB: python -m lib.server seed."""
+
 import os
 import sys
 
 
 def main():
-    from ..config import get_server_host, get_server_port, get_database_path, find_available_port
+    from ..config import (
+        get_server_host,
+        get_server_port,
+        get_database_path,
+        find_available_port,
+    )
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "seed":
         from ..demo.demo import demo_main
+
         db_path = get_database_path()
         ok = demo_main("0000000000", db_path=db_path)
         sys.exit(0 if ok else 1)
@@ -25,6 +32,7 @@ def main():
     os.environ["PORT"] = str(port)
 
     from .app import run_server
+
     run_server()
 
 

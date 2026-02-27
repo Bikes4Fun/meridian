@@ -13,6 +13,7 @@ from .calendar_service import CalendarService
 from .medication_service import MedicationService
 from .emergency_service import EmergencyService
 from .location_service import LocationService
+from .ice_profile_service import ICEProfileService
 
 
 class ServiceContainer:
@@ -62,6 +63,13 @@ class ServiceContainer:
                 self.get_database_manager()
             )
         return self._services["location_service"]
+
+    def get_ice_profile_service(self):
+        if "ice_profile_service" not in self._services:
+            self._services["ice_profile_service"] = ICEProfileService(
+                self.get_database_manager()
+            )
+        return self._services["ice_profile_service"]
 
 
 def create_service_container(db_path: str = "dementia_tv.db") -> ServiceContainer:

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ICE Profile",
+  "description": "In-Case-of-Emergency profile. Mirrors Smart911 structure for zero-migration sync (Issue Bikes4Fun/dementia_tv_python#5-6).",
+  "type": "object",
+  "properties": {
+    "user_id": { "type": "string" },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "dob": { "type": "string" }
+      }
+    },
+    "medical": {
+      "type": "object",
+      "properties": {
+        "conditions": { "type": "string" },
+        "dnr": { "type": "boolean" },
+        "allergies": { "type": "array", "items": { "type": "string" } },
+        "medications": { "type": "array" }
+      }
+    },
+    "emergency": {
+      "type": "object",
+      "properties": {
+        "proxy": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" }
+          }
+        }
+      }
+    },
+    "photo_path": { "type": "string" },
+    "dnr_document_path": { "type": "string" },
+    "medical_proxy_phone": { "type": "string" },
+    "poa_name": { "type": "string" },
+    "poa_phone": { "type": "string" },
+    "notes": { "type": "string" },
+    "last_updated": { "type": "string" },
+    "last_updated_by": { "type": "string" }
+  },
+  "smart911_field_mapping": [
+    { "our_field": "profile.name", "smart911_field": "profile.name", "db_column": "profile_name" },
+    { "our_field": "profile.dob", "smart911_field": "profile.dob", "db_column": "profile_dob" },
+    { "our_field": "medical.conditions", "smart911_field": "medical.conditions", "db_column": "medical_conditions" },
+    { "our_field": "medical.dnr", "smart911_field": "medical.dnr", "db_column": "medical_dnr" },
+    { "our_field": "emergency.proxy.name", "smart911_field": "emergency.proxy.name", "db_column": "emergency_proxy_name" },
+    { "our_field": "medical.allergies", "smart911_field": "medical.allergies", "source": "allergies table" },
+    { "our_field": "medical.medications", "smart911_field": "medical.medications", "source": "medications table" }
+  ]
+}

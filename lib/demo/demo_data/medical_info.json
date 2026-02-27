@@ -1,4 +1,16 @@
 {
+  "ice_profile": {
+    "profile": { "name": "Marian Foster", "dob": "1952-03-14" },
+    "medical": {
+      "conditions": "Dementia, Type 2 Diabetes, Hypertension",
+      "dnr": false
+    },
+    "emergency": { "proxy": { "name": "James Foster" } },
+    "medical_proxy_phone": "(555) 234-5678",
+    "poa_name": "James Foster",
+    "poa_phone": "(555) 234-5678",
+    "notes": "Primary caregiver James has medical proxy and POA."
+  },
   "medication_groups": {
     "Morning": {
       "time": "08:00:00",

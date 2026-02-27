@@ -20,8 +20,8 @@ class ICEProfileService(DatabaseServiceMixin):
         """Get ICE profile for user. Joins allergies and medications from existing tables."""
         profile_result = self.safe_query(
             """
-            SELECT user_id, full_name, date_of_birth, photo_path, diagnosis,
-                   dnr_status, dnr_document_path, medical_proxy_name, medical_proxy_phone,
+            SELECT user_id, profile_name, profile_dob, photo_path, medical_conditions,
+                   medical_dnr, dnr_document_path, emergency_proxy_name, medical_proxy_phone,
                    poa_name, poa_phone, notes, last_updated, last_updated_by
             FROM ice_profile
             WHERE user_id = ?
@@ -63,15 +63,15 @@ class ICEProfileService(DatabaseServiceMixin):
 
         data = {
             "user_id": row["user_id"],
-            "profile": {"name": row["full_name"], "dob": row["date_of_birth"]},
+            "profile": {"name": row["profile_name"], "dob": row["profile_dob"]},
             "medical": {
-                "conditions": row["diagnosis"],
-                "dnr": bool(row["dnr_status"]),
+                "conditions": row["medical_conditions"],
+                "dnr": bool(row["medical_dnr"]),
                 "allergies": allergies,
                 "medications": medications,
             },
             "emergency": {
-                "proxy": {"name": row["medical_proxy_name"]},
+                "proxy": {"name": row["emergency_proxy_name"]},
             },
             "photo_path": row["photo_path"],
             "dnr_document_path": row["dnr_document_path"],
@@ -90,11 +90,11 @@ class ICEProfileService(DatabaseServiceMixin):
         medical = data.get("medical") or {}
         emergency = data.get("emergency") or {}
         proxy = emergency.get("proxy") or {}
-        full_name = profile.get("name")
-        date_of_birth = profile.get("dob")
-        diagnosis = medical.get("conditions")
-        dnr_status = 1 if medical.get("dnr") else 0
-        medical_proxy_name = proxy.get("name")
+        profile_name = profile.get("name")
+        profile_dob = profile.get("dob")
+        medical_conditions = medical.get("conditions")
+        medical_dnr = 1 if medical.get("dnr") else 0
+        emergency_proxy_name = proxy.get("name")
         photo_path = data.get("photo_path")
         dnr_document_path = data.get("dnr_document_path")
         medical_proxy_phone = data.get("medical_proxy_phone")
@@ -110,21 +110,21 @@ class ICEProfileService(DatabaseServiceMixin):
             result = self.safe_update(
                 """
                 UPDATE ice_profile SET
-                    full_name = ?, date_of_birth = ?, photo_path = ?,
-                    diagnosis = ?, dnr_status = ?, dnr_document_path = ?,
-                    medical_proxy_name = ?, medical_proxy_phone = ?,
+                    profile_name = ?, profile_dob = ?, photo_path = ?,
+                    medical_conditions = ?, medical_dnr = ?, dnr_document_path = ?,
+                    emergency_proxy_name = ?, medical_proxy_phone = ?,
                     poa_name = ?, poa_phone = ?, notes = ?,
                     last_updated = CURRENT_TIMESTAMP, last_updated_by = ?
                 WHERE user_id = ?
                 """,
                 (
-                    full_name,
-                    date_of_birth,
+                    profile_name,
+                    profile_dob,
                     photo_path,
-                    diagnosis,
-                    dnr_status,
+                    medical_conditions,
+                    medical_dnr,
                     dnr_document_path,
-                    medical_proxy_name,
+                    emergency_proxy_name,
                     medical_proxy_phone,
                     poa_name,
                     poa_phone,
@@ -137,20 +137,20 @@ class ICEProfileService(DatabaseServiceMixin):
             result = self.safe_update(
                 """
                 INSERT INTO ice_profile
-                (user_id, full_name, date_of_birth, photo_path, diagnosis,
-                 dnr_status, dnr_document_path, medical_proxy_name, medical_proxy_phone,
+                (user_id, profile_name, profile_dob, photo_path, medical_conditions,
+                 medical_dnr, dnr_document_path, emergency_proxy_name, medical_proxy_phone,
                  poa_name, poa_phone, notes, last_updated_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user_id,
-                    full_name,
-                    date_of_birth,
+                    profile_name,
+                    profile_dob,
                     photo_path,
-                    diagnosis,
-                    dnr_status,
+                    medical_conditions,
+                    medical_dnr,
                     dnr_document_path,
-                    medical_proxy_name,
+                    emergency_proxy_name,
                     medical_proxy_phone,
                     poa_name,
                     poa_phone,

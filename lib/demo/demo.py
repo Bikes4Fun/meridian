@@ -230,8 +230,8 @@ def load_demo_ice_profile_data(db_path: str, user_id: str):
         db_manager.execute_update(
             """
             UPDATE ice_profile SET
-                full_name = ?, date_of_birth = ?, diagnosis = ?,
-                dnr_status = ?, medical_proxy_name = ?, medical_proxy_phone = ?,
+                profile_name = ?, profile_dob = ?, medical_conditions = ?,
+                medical_dnr = ?, emergency_proxy_name = ?, medical_proxy_phone = ?,
                 poa_name = ?, poa_phone = ?, notes = ?
             WHERE user_id = ?
             """,
@@ -241,8 +241,8 @@ def load_demo_ice_profile_data(db_path: str, user_id: str):
         db_manager.execute_update(
             """
             INSERT INTO ice_profile
-            (user_id, full_name, date_of_birth, diagnosis, dnr_status,
-             medical_proxy_name, medical_proxy_phone, poa_name, poa_phone, notes)
+            (user_id, profile_name, profile_dob, medical_conditions, medical_dnr,
+             emergency_proxy_name, medical_proxy_phone, poa_name, poa_phone, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (user_id,) + params,

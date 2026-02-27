@@ -196,6 +196,28 @@ class RemoteEmergencyService:
         return ServiceResult.success_result(data)
 
 
+class RemoteICEProfileService:
+    def __init__(
+        self,
+        base_url: str,
+        user_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(user_id)
+        self._session = session
+
+    def get_ice_profile(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/ice",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "ice request failed")
+        return ServiceResult.success_result(data)
+
+
 class RemoteLocationService:
     def __init__(
         self,
@@ -274,7 +296,9 @@ def get_display_settings(
     from .user_settings import DisplaySettings
 
     base = server_url.rstrip("/")
-    ok, data, err = _get(f"{base}/api/settings", headers=_headers(user_id), session=session)
+    ok, data, err = _get(
+        f"{base}/api/settings", headers=_headers(user_id), session=session
+    )
     if not ok or not data or "display" not in data:
         return DisplaySettings.default()
     try:
@@ -291,6 +315,7 @@ def create_remote_services(
     """Return services dict: time from device, rest from server API."""
     try:
         import requests
+
         if session is None:
             session = requests.Session()
     except ImportError:
@@ -300,5 +325,6 @@ def create_remote_services(
         "calendar_service": RemoteCalendarService(server_url, user_id, session),
         "medication_service": RemoteMedicationService(server_url, user_id, session),
         "emergency_service": RemoteEmergencyService(server_url, user_id, session),
+        "ice_profile_service": RemoteICEProfileService(server_url, user_id, session),
         "location_service": RemoteLocationService(server_url, user_id, session),
     }

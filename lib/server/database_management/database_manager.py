@@ -2,6 +2,7 @@
 Centralized database management for Dementia TV application.
 Used by server only (container_services and app.py). Client gets data via API.
 """
+
 import os
 import sqlite3
 import logging
@@ -25,7 +26,9 @@ class DatabaseManager:
     def get_connection(self):
         conn = None
         try:
-            conn = sqlite3.connect(self.config.path, timeout=self.config.connection_timeout)
+            conn = sqlite3.connect(
+                self.config.path, timeout=self.config.connection_timeout
+            )
             conn.row_factory = sqlite3.Row
             yield conn
         except sqlite3.Error as e:
@@ -113,6 +116,7 @@ class DatabaseManager:
             return ServiceResult.error_result("Backup not enabled")
         try:
             import shutil
+
             shutil.copy2(self.config.path, backup_path)
             self.logger.info("Database backed up to: %s", backup_path)
             return ServiceResult.success_result(backup_path)

@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd src/apps/webapp/web_server && node build.js",
+  "outputDirectory": "src/apps/webapp/web_server/dist",
+  "build": {
+    "env": {
+      "API_URL": "https://meridian-production-3734.up.railway.app"
+    }
+  }
+}

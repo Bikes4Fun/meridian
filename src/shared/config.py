@@ -25,7 +25,7 @@ def get_database_path() -> str:
         "..",
         "apps",
         "server",
-        "dementia_tv.db",
+        "meridian_kiosk.db",
     )
     return os.getenv("DATABASE_PATH", default_path)
 

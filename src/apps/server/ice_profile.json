@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ICE Profile",
-  "description": "In-Case-of-Emergency profile. Mirrors Smart911 structure for zero-migration sync (Issue Bikes4Fun/dementia_tv_python#5-6).",
+  "description": "In-Case-of-Emergency profile. Mirrors Smart911 structure for zero-migration sync (Issue Bikes4Fun/meridian#5-6).",
   "type": "object",
   "properties": {
     "user_id": { "type": "string" },

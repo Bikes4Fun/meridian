@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional
 from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
-    from ...shared.interfaces import ServiceResult
+    from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
 

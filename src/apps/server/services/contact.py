@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
-    from ...shared.interfaces import ServiceResult
+    from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
 

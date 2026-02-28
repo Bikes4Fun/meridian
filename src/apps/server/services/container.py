@@ -4,7 +4,7 @@ Used only by server/app.py. Client uses client/remote.create_remote() instead.
 """
 
 try:
-    from ...shared.config import DatabaseConfig
+    from ....shared.config import DatabaseConfig
 except ImportError:
     from shared.config import DatabaseConfig
 from ..database import DatabaseManager

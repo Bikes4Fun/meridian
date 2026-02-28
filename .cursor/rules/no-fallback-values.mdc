@@ -1,0 +1,61 @@
+---
+description: Never use defaults, overrides, or fallbacks silently—fail fast when expected values are missing
+alwaysApply: true
+---
+
+# No Silent Fallbacks
+
+Never use default, override, backup, or any other automatic fallback values. When expected content is not received, the program must fail fast and early.
+
+## Why
+
+- **Security**: Silent fallbacks (e.g. `DEFAULT_USER_ID`) can allow user IDs or other sensitive values to be overridden by defaults, masking auth/identity bugs
+- **Debugging**: Fallbacks hide problems. Missing data is a signal something is wrong—do not paper over it
+- **Correctness**: If a value is required, its absence is an error. Treat it as one
+
+## Rules
+
+1. **No silent fallbacks**: Do not use `or`, `||`, `?.`, or similar to substitute a default when the expected value is missing
+2. **Fail or warn**: If a required value (header, param, config) is missing, either raise an error immediately or log a clear warning—never silently proceed with a substitute
+3. **No DEFAULT_* for identity/auth**: Never fall back to `DEFAULT_USER_ID`, `default_user`, or similar for user identity. If `X-User-Id` (or equivalent) is missing, that is a problem—fail or warn
+4. **Explicit overrides only**: Environment variable overrides (e.g. `RAILWAY_API_URL`) are acceptable when explicitly configured by the operator. Automatic "try X, else Y" fallbacks are not
+
+## Bad
+
+```python
+g.user_id = request.headers.get("X-User-Id") or DEFAULT_USER_ID  # BAD: silences missing header
+api_url = os.getenv("API_URL") or "http://localhost:8080"         # BAD: silent fallback
+```
+
+```javascript
+const userId = headers["X-User-Id"] || "0000000000";  // BAD
+const url = process.env.API_URL || "https://default.com";  // BAD
+```
+
+## Good
+
+```python
+user_id = request.headers.get("X-User-Id")
+if not user_id:
+    abort(401, "X-User-Id header required")
+g.user_id = user_id
+```
+
+```python
+api_url = os.getenv("API_URL")
+if not api_url:
+    logger.error("API_URL not configured")
+    raise RuntimeError("API_URL required")
+```
+
+```javascript
+const userId = headers["X-User-Id"];
+if (!userId) {
+  console.error("X-User-Id header required");
+  throw new Error("X-User-Id required");
+}
+```
+
+## Exception
+
+Prefer early failure. A logged warning with subsequent failure is acceptable if requested ONLY. A default that allows execution to continue is not.

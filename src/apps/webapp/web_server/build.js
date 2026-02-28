@@ -15,7 +15,7 @@ function getRailwayUrl() {
     const cfg = loadApiConfig();
     const url = (cfg.railway_api_url || '').trim();
     if (!url) {
-        console.warn('Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json');
+        console.log('Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json');
         throw new Error('Railway API URL not configured.');
     }
     return url;
@@ -27,9 +27,9 @@ async function resolveApiUrl() {
     try {
         const res = await fetch(railwayUrl.replace(/\/$/, '') + '/api/health', { signal: AbortSignal.timeout(3000) });
         if (res.ok) return railwayUrl;
-        console.warn('Railway API health check failed:', res.status);
+        console.log('Railway API health check failed:', res.status);
     } catch (e) {
-        console.warn('Railway API not reachable, using localhost:', e.message);
+        console.log('Railway API not reachable, using localhost:', e.message);
     }
     return 'http://localhost:8080';
 }

@@ -1,0 +1,11 @@
+# Railway config: server & API only (webapp on Vercel, kiosk local)
+# Docs: https://docs.railway.com/reference/config-as-code
+
+[build]
+builder = "RAILPACK"
+watchPatterns = ["/src/apps/server/**", "/src/shared/**"]
+
+[deploy]
+startCommand = "cd src && python -m apps.server"
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"

@@ -1,10 +1,4 @@
-// testing redployment 
-// result: 
-// 404: NOT_FOUND
-// Code: NOT_FOUND
-// ID: sfo1::p7wmv-1771876097537-f57afe3e03c6
 
-// Read our documentation to learn more about this error.
 (function () {
     'use strict';
 

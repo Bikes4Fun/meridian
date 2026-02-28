@@ -13,9 +13,17 @@ def main():
     )
 
     if len(sys.argv) > 1 and sys.argv[1].lower() == "seed":
+        from ...shared.config import DatabaseConfig
         from ...dev.demo.seed import demo_main
+        from .database import DatabaseManager
 
         db_path = get_database_path()
+        db_config = DatabaseConfig(path=db_path, create_if_missing=True)
+        db = DatabaseManager(db_config)
+        result = db.create_database_schema()
+        if not result.success:
+            print("Schema creation failed:", result.error)
+            sys.exit(1)
         ok = demo_main("0000000000", db_path=db_path)
         sys.exit(0 if ok else 1)
 

@@ -1,15 +1,11 @@
-"""
-Configuration management for Dementia TV application.
-Simple functions to get configuration values from environment variables.
 
-CLIENT/SERVER: Used by both client and server. get_server_url() controls client use of
-remote vs container; get_users_database_path() used by server and by client
-Do not remove from either deployment.
-"""
 
+import logging
 import os
 import socket
 from dataclasses import dataclass
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -70,10 +66,46 @@ def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
     )
 
 
-def get_server_url() -> str:
-    """Get API server base URL for client. Uses SERVER_URL if set, else http://127.0.0.1:<get_server_port()>."""
-    url = (os.getenv("SERVER_URL") or "").strip()
-    return url or ("http://127.0.0.1:%s" % get_server_port())
+def _load_api_config():
+    """Load api_config.json. Used by get_railway_api_url."""
+    import json
+
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api_config.json")
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def get_railway_api_url() -> str:
+    """Get Railway API base URL for remote DB. RAILWAY_API_URL env overrides api_config.json."""
+    url = (os.getenv("RAILWAY_API_URL") or "").strip()
+    if url:
+        return url
+    cfg = _load_api_config()
+    url = (cfg.get("railway_api_url") or "").strip()
+    if not url:
+        _logger.warning(
+            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json"
+        )
+        raise RuntimeError(
+            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json"
+        )
+    return url
+
+
+def is_railway_reachable(timeout: float = 3.0) -> bool:
+    """Return True if Railway API /api/health responds successfully."""
+    try:
+        import urllib.request
+
+        url = get_railway_api_url().rstrip("/") + "/api/health"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
 
 
 # Backward compatibility - simple ConfigManager wrapper

@@ -41,8 +41,6 @@ except ImportError:
 from .database import DatabaseManager
 from .services.container import create_service_container
 
-DEFAULT_USER_ID = "0000000000"
-
 _alert_activated = False
 
 
@@ -181,7 +179,6 @@ def create_server_app(db_path=None):
         g.user_id = (
             request.headers.get("X-User-Id")
             or request.args.get("user_id")
-            or DEFAULT_USER_ID
         )
 
     calendar_svc = container.get_calendar_service()

@@ -21,8 +21,8 @@ from datetime import datetime, timedelta
 import sys
 
 try:
-    from apps.server.database import DatabaseManager
-    from shared.config import DatabaseConfig, get_database_path
+    from src.apps.server.database import DatabaseManager
+    from src.shared.config import DatabaseConfig, get_database_path
 except ImportError:
     from apps.server.database import DatabaseManager
     from shared.config import DatabaseConfig, get_database_path

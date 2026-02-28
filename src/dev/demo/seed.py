@@ -421,7 +421,7 @@ def load_location_checkins_data(db_path: str, user_id: str):
 def load_demo_settings_from_json_into_db(db_path, user_id):
     """Load user display settings from default_display_settings.json into SQLite database."""
     try:
-        from apps.kiosk.settings import DisplaySettings
+        from src.apps.kiosk.settings import DisplaySettings
     except ImportError:
         from apps.kiosk.settings import DisplaySettings
     default_settings = (

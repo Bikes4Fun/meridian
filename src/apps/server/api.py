@@ -21,7 +21,7 @@ they can be omitted or relocated to a client-only repo.
 import json
 import os
 import datetime
-from flask import Flask, jsonify, request, g, send_from_directory, Response
+from flask import Flask, abort, jsonify, request, g, send_from_directory, Response
 
 # config from shared; server internals relative
 try:
@@ -175,11 +175,15 @@ def create_server_app(db_path=None):
 
     @app.before_request
     def set_user_id():
-        """Read user_id from X-User-Id header or ?user_id= query; default for demo."""
-        g.user_id = (
-            request.headers.get("X-User-Id")
-            or request.args.get("user_id")
-        )
+        """Read user_id from X-User-Id header only. Fail if missing (no silent fallback)."""
+        if request.path == "/api/health":
+            g.user_id = None
+            logger.info("No user ID used or required for api/health")
+            return
+        user_id = request.headers.get("X-User-Id")
+        if not user_id:
+            abort(401, "X-User-Id header required")
+        g.user_id = user_id
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()

@@ -9,7 +9,8 @@
     'use strict';
 
     var _u = '__API_URL__';
-    var API_URL = (_u.startsWith('http') ? _u : window.location.origin);
+    var API_URL = (_u.startsWith('http') ? _u : "https://meridian-production-3734.up.railway.app");
+    // INSECURE: Hardcoded fallback. Replace with logged-in user from session when auth is implemented (see SECURITY.md).
     var USER_ID = '0000000000';
 
     function showStatus(message, type) {
@@ -158,6 +159,16 @@
     }
 
     function init() {
+        if (!USER_ID) {
+            showStatus('Open this page from a valid link (user_id required in URL)', 'error');
+            var btn = document.getElementById('checkinBtn');
+            if (btn) btn.disabled = true;
+            var alertBtn = document.getElementById('alertBtn');
+            if (alertBtn) alertBtn.disabled = true;
+            var cancelBtn = document.getElementById('cancelAlertBtn');
+            if (cancelBtn) cancelBtn.disabled = true;
+            return;
+        }
         var btn = document.getElementById('checkinBtn');
         if (btn) btn.addEventListener('click', checkIn);
         var alertBtn = document.getElementById('alertBtn');

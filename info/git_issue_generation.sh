@@ -1,6 +1,6 @@
 #!/bin/bash
 # Create GitHub Milestone and Issues: ICE Screen & Smart911 Profile Sync
-# Run from your dementia_tv_python repo directory
+# Run from your meridian repo directory
 # Requires: gh CLI authenticated (gh auth login)
 
 # ─────────────────────────────────────────────

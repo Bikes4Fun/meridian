@@ -98,3 +98,7 @@ meridian/
 └── todo.md
 ```
 
+
+Railway:
+Vercel:
+Notes: Almost all of the written content in issues, milestone, and many other areas of documentation have been generated entirely by, or with assistance from Cursor Agent.

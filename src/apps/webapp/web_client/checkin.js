@@ -59,7 +59,6 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'X-User-Id': USER_ID,
-                        'ngrok-skip-browser-warning': 'true'
                     },
                     body: JSON.stringify({
                         family_member_id: familyMemberId,

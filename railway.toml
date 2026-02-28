@@ -7,5 +7,5 @@ buildCommand = "true"
 watchPatterns = ["/src/apps/server/**", "/src/shared/**"]
 
 [deploy]
-startCommand = "python -m src.apps.server"
+startCommand = "python -m src.apps.server seed && python -m src.apps.server"
 restartPolicyType = "ON_FAILURE"

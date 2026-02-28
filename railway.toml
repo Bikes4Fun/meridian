@@ -6,6 +6,6 @@ builder = "RAILPACK"
 watchPatterns = ["/src/apps/server/**", "/src/shared/**"]
 
 [deploy]
-startCommand = "cd src && python -m apps.server"
+startCommand = "python -m src.apps.server"
 healthcheckPath = "/api/health"
 restartPolicyType = "ON_FAILURE"

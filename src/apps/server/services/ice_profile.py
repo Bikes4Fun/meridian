@@ -7,7 +7,7 @@ REMOVAL: Required on server. Can be omitted from client deployment when SERVER_U
 from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
-    from ...shared.interfaces import ServiceResult
+    from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
 

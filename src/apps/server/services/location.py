@@ -10,7 +10,7 @@ from typing import Optional
 DEFAULT_PLACE_RADIUS_M = 150
 
 try:
-    from ...shared.interfaces import ServiceResult
+    from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
 

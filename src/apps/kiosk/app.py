@@ -3,17 +3,16 @@ Application factory for Dementia TV.
 Creates and configures the application with proper dependency injection.
 
 CLIENT vs SERVER:
-- This module is used only by the client (Kivy UI). When SERVER_URL is set, services come from
-  client/remote.create_remote(); container is not used and can be
-  omitted from the client deployment.
-- SERVER_URL is required for the client; display settings from GET /api/settings (no local DB needed).
+- This module is used only by the client (Kivy UI). api_url (from main entry) determines where
+  services come from via client/remote.create_remote(); container is not used.
+- Display settings from GET /api/settings (no local DB needed).
 
 SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses server/app.py only.
 """
 
 import logging
 from typing import Optional
-from shared.config import ConfigManager, get_server_url
+from shared.config import ConfigManager
 from .api_client import create_remote, get_display_settings
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
@@ -276,34 +275,28 @@ class AppFactory:
     def __init__(self, config_manager: Optional[ConfigManager] = None):
         self.config_manager = config_manager or ConfigManager()
 
-    def create_application(self, user_id=None) -> DementiaTVApp:
+    def create_application(self, user_id=None, api_url: str = None) -> DementiaTVApp:
         """Create the Dementia TV application with all dependencies.
-        Uses client/remote (SERVER_URL required). Display settings from GET /api/settings.
+        api_url: API server base URL (from main entry config). Display settings from GET /api/settings.
         """
-        server_url = get_server_url()
-        if not server_url:
-            raise ValueError(
-                "SERVER_URL must be set for the client. Run python main.py to start server and client, "
-                "or set SERVER_URL to your API base URL (e.g. http://localhost:8000)."
-            )
+        if not api_url:
+            raise ValueError("api_url required. Pass from main entry (e.g. create_app(..., api_url=...)).")
         try:
             import requests
-
             session = requests.Session()
         except ImportError:
             session = None
         display_settings = get_display_settings(
-            server_url, user_id=user_id, session=session
+            api_url, user_id=user_id, session=session
         )
-        services = create_remote(server_url, user_id=user_id, session=session)
+        services = create_remote(api_url, user_id=user_id, session=session)
 
         # Create and return the application
         return DementiaTVApp(services=services, display_settings=display_settings)
 
 
 def create_app(
-    config_manager: Optional[ConfigManager] = None, user_id=None
-) -> DementiaTVApp:
-    """Create the Dementia TV application."""
+    config_manager: Optional[ConfigManager] = None, user_id=None, api_url: str = None) -> DementiaTVApp:
+    """Create the Dementia TV application. api_url from main entry configuration."""
     factory = AppFactory(config_manager)
-    return factory.create_application(user_id)
+    return factory.create_application(user_id=user_id, api_url=api_url)

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { color: #333; }
+        input, button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #45a049; }
+        label { display: block; text-align: left; margin-top: 15px; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Log In</h1>
+    <p style="color: #666;">Select user and family circle (simulated login for demo).</p>
+    <form id="loginForm">
+        <label for="familyCircleId">Family Circle ID</label>
+        <input type="text" id="familyCircleId" value="F00000" required placeholder="e.g. F00000">
+
+        <label for="userId">User ID</label>
+        <input type="text" id="userId" value="U00001" required placeholder="e.g. U00001">
+
+        <button type="submit">Continue to Check-In</button>
+    </form>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var familyCircleId = document.getElementById('familyCircleId').value.trim();
+            var userId = document.getElementById('userId').value.trim();
+            if (!familyCircleId || !userId) return;
+            fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ user_id: userId, family_circle_id: familyCircleId })
+            })
+            .then(function (r) {
+                if (r.ok) return r.json();
+                return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
+            })
+            .then(function () {
+                window.location.href = '/checkin';
+            })
+            .catch(function (err) {
+                alert(err.message || 'Login failed');
+            });
+        });
+    </script>
+</body>
+</html>

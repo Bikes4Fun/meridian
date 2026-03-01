@@ -21,7 +21,7 @@ they can be omitted or relocated to a client-only repo.
 import json
 import os
 import datetime
-from flask import Flask, abort, jsonify, request, g, send_from_directory, Response
+from flask import Flask, abort, jsonify, request, g, send_from_directory, Response, redirect, session
 
 # config from shared; server internals relative
 try:
@@ -160,12 +160,18 @@ def create_server_app(db_path=None):
     container = create_service_container(db_path)
 
     app = Flask(__name__)
+    _secret = os.environ.get("SECRET_KEY")
+    if not _secret:
+        import logging
+        logging.getLogger(__name__).warning("SECRET_KEY not set; using dev default. Set SECRET_KEY in production.")
+        _secret = "dev-secret-change-in-production"
+    app.secret_key = _secret
 
     @app.after_request
     def add_cors(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-Id"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-Id, X-Family-Circle-Id"
         return resp
 
     @app.before_request
@@ -175,15 +181,41 @@ def create_server_app(db_path=None):
 
     @app.before_request
     def set_user_id():
-        """Read user_id from X-User-Id header only. Fail if missing (no silent fallback)."""
-        if request.path == "/api/health":
+        """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
+        if request.path in ("/api/health", "/api/login"):
             g.user_id = None
-            logger.info("No user ID used or required for api/health")
+            g.family_circle_id = None
             return
+        if request.path == "/login":
+            g.user_id = None
+            g.family_circle_id = None
+            return
+        # Session-based (check-in page and its script)
+        if request.path in ("/checkin", "/checkin.js"):
+            uid = session.get("user_id")
+            fid = session.get("family_circle_id")
+            if not uid or not fid:
+                if request.path == "/checkin":
+                    return redirect("/login")
+                abort(401, "Log in at /login first")
+            g.user_id = uid
+            g.family_circle_id = fid
+            return
+        # API: headers or session
         user_id = request.headers.get("X-User-Id")
+        family_circle_id = request.headers.get("X-Family-Circle-Id")
+        if not user_id or not family_circle_id:
+            uid = session.get("user_id")
+            fid = session.get("family_circle_id")
+            if uid and fid:
+                user_id = uid
+                family_circle_id = fid
         if not user_id:
             abort(401, "X-User-Id header required")
+        if not family_circle_id:
+            abort(401, "X-Family-Circle-Id header required")
         g.user_id = user_id
+        g.family_circle_id = family_circle_id
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
@@ -270,14 +302,14 @@ def create_server_app(db_path=None):
     @app.route("/api/ice", methods=["GET", "PUT"])
     def api_ice():
         if request.method == "GET":
-            r = ice_profile_svc.get_ice_profile(g.user_id)
+            r = ice_profile_svc.get_ice_profile(g.family_circle_id)
             if not r.success:
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
-        r = ice_profile_svc.update_ice_profile(g.user_id, data)
+        r = ice_profile_svc.update_ice_profile(g.family_circle_id, data)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -285,6 +317,24 @@ def create_server_app(db_path=None):
     _web_client_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")
     )
+
+    @app.route("/login")
+    def serve_login():
+        return send_from_directory(_web_client_dir, "login.html")
+
+    @app.route("/api/login", methods=["POST"])
+    def api_login():
+        """Fake login: set session from user_id and family_circle_id. For demo/simulated auth."""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "no data provided"}), 400
+        user_id = data.get("user_id")
+        family_circle_id = data.get("family_circle_id")
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "user_id and family_circle_id required"}), 400
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        return jsonify({"ok": True})
 
     @app.route("/checkin")
     def serve_checkin():
@@ -307,7 +357,7 @@ def create_server_app(db_path=None):
     @app.route("/api/location/family-members")
     def api_get_family_members():
         """Return family members for check-in dropdown."""
-        r = location_svc.get_family_members(g.user_id)
+        r = location_svc.get_family_members(g.family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -334,7 +384,7 @@ def create_server_app(db_path=None):
             )
 
         r = location_svc.create_checkin(
-            g.user_id, family_member_id, latitude, longitude, notes=notes
+            g.family_circle_id, family_member_id, latitude, longitude, notes=notes
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -343,7 +393,7 @@ def create_server_app(db_path=None):
     @app.route("/api/location/places")
     def api_get_named_places():
         """Return all named places for the family."""
-        r = location_svc.get_named_places(g.user_id)
+        r = location_svc.get_named_places(g.family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -351,7 +401,7 @@ def create_server_app(db_path=None):
     @app.route("/api/location/latest")
     def api_get_checkins():
         """Get latest check-in per family member."""
-        r = location_svc.get_checkins(g.user_id)
+        r = location_svc.get_checkins(g.family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})

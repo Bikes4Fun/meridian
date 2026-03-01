@@ -29,6 +29,7 @@ except ImportError:
 
 
 DEMO_FAMILY_CIRCLE_ID = "F00000"
+DEMO_USER_ID = "fm_001"  # Primary demo user; matches main.DEMO_USER_ID
 
 
 def get_data_dir():
@@ -129,28 +130,21 @@ def load_demo_users_from_json_into_db(db_manager):
     _link_users_to_family_circles(db_manager, users)
     logger.debug("  Loaded %d users" % len(users))
 
-
-def load_demo_medication_times_from_json_into_db(db_manager):
-    """Load medication groups from JSON into SQLite database."""
-    medical_data = load_json_file("medical.json")
-    groups = medical_data.get("medication_groups", {})
-
-    for group_name, group_data in groups.items():
-        time_value = group_data.get("time")
-        if time_value == "null" or time_value is None:
-            time_value = None
-
-        query = """
-            INSERT OR REPLACE INTO medication_groups 
-            (name, time, display_name)
-            VALUES (?, ?, ?)
-        """
-        params = (group_name, time_value, group_data.get("display_name"))
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d medication groups" % len(groups))
+def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: str):
+    """Load medication times from medical.json."""
+    data = load_json_file("medical.json").get("medication_times", {})
+    for name, td in data.items():
+        t = td.get("time") if isinstance(td, dict) else None
+        if t == "null":
+            t = None
+        db_manager.execute_update(
+            "INSERT OR REPLACE INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
+            (family_circle_id, name, t),
+        )
+    logger.debug("  Loaded medication times for family %s", family_circle_id)
 
 
-def load_demo_medications_data_from_json_to_db(db_manager, user_id: str):
+def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str):
     """Load medications from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
@@ -161,64 +155,55 @@ def load_demo_medications_data_from_json_to_db(db_manager, user_id: str):
         for med in medications:
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO medications 
-                (user_id, name, dosage, frequency, notes, max_daily, current_quantity, last_taken, taken_today)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO medications
+                (family_circle_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
-                    user_id,
+                    family_circle_id,
                     med.get("name"),
                     med.get("dosage"),
                     med.get("frequency"),
                     med.get("notes"),
                     med.get("max_daily"),
-                    med.get("current_quantity"),
                     med.get("last_taken"),
                     med.get("taken"),
                 ),
             )
-
-            # Get the medication ID for junction table
             medication_id = cursor.lastrowid
 
-            # Add to medication groups
-            groups = med.get("groups", [])
-            for group_name in groups:
-                # Get group ID
+            for time_name in med.get("medication_times", []):
                 cursor.execute(
-                    "SELECT id FROM medication_groups WHERE name = ?", (group_name,)
+                    "SELECT id FROM medication_times WHERE family_circle_id = ? AND name = ?",
+                    (family_circle_id, time_name),
                 )
-                group_result = cursor.fetchone()
-                if group_result:
-                    group_id = group_result[0]
+                row = cursor.fetchone()
+                if row:
                     cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO medication_to_group (medication_id, group_id)
-                        VALUES (?, ?)
-                    """,
-                        (medication_id, group_id),
+                        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (?, ?)",
+                        (medication_id, row[0]),
                     )
 
         conn.commit()
     logger.debug("  Loaded %d medications" % len(medications))
 
 
-def load_allergies_data(db_manager, user_id: str):
+def load_allergies_data(db_manager, family_circle_id: str):
     """Load allergies from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     allergies = medical_data.get("allergies", [])
 
     for allergy in allergies:
         query = """
-            INSERT OR REPLACE INTO allergies (user_id, allergen)
+            INSERT OR REPLACE INTO allergies (family_circle_id, allergen)
             VALUES (?, ?)
         """
-        db_manager.execute_update(query, (user_id, allergy.get("allergen")))
+        db_manager.execute_update(query, (family_circle_id, allergy.get("allergen")))
     logger.debug("  Loaded %d allergies" % len(allergies))
 
 
-def load_demo_ice_profile_data(db_manager, user_id: str):
-    """Load ICE profile from JSON (users row created in demo_main)."""
+def load_demo_ice_profile_data(db_manager, family_circle_id: str):
+    """Load ICE profile from JSON."""
     medical_data = load_json_file("medical.json")
     ice_data = medical_data.get("ice_profile", {})
     if not ice_data:
@@ -229,7 +214,7 @@ def load_demo_ice_profile_data(db_manager, user_id: str):
     emergency = ice_data.get("emergency") or {}
     proxy = emergency.get("proxy") or {}
     existing = db_manager.execute_query(
-        "SELECT id FROM ice_profile WHERE user_id = ?", (user_id,)
+        "SELECT id FROM ice_profile WHERE family_circle_id = ?", (family_circle_id,)
     )
     params = (
         profile.get("name"),
@@ -249,24 +234,24 @@ def load_demo_ice_profile_data(db_manager, user_id: str):
                 profile_name = ?, profile_dob = ?, medical_conditions = ?,
                 medical_dnr = ?, emergency_proxy_name = ?, medical_proxy_phone = ?,
                 poa_name = ?, poa_phone = ?, notes = ?
-            WHERE user_id = ?
+            WHERE family_circle_id = ?
             """,
-            params + (user_id,),
+            params + (family_circle_id,),
         )
     else:
         db_manager.execute_update(
             """
             INSERT INTO ice_profile
-            (user_id, profile_name, profile_dob, medical_conditions, medical_dnr,
+            (family_circle_id, profile_name, profile_dob, medical_conditions, medical_dnr,
              emergency_proxy_name, medical_proxy_phone, poa_name, poa_phone, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id,) + params,
+            (family_circle_id,) + params,
         )
     logger.debug("  Loaded 1 ICE profile")
 
 
-def load_conditions_data(db_manager, user_id: str):
+def load_conditions_data(db_manager, family_circle_id: str):
     """Load medical conditions from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     conditions = medical_data.get("conditions", [])
@@ -274,11 +259,11 @@ def load_conditions_data(db_manager, user_id: str):
     for condition in conditions:
         query = """
             INSERT OR REPLACE INTO conditions 
-            (user_id, condition_name, diagnosis_date, notes)
+            (family_circle_id, condition_name, diagnosis_date, notes)
             VALUES (?, ?, ?, ?)
         """
         params = (
-            user_id,
+            family_circle_id,
             condition.get("condition"),
             condition.get("diagnosis_date"),
             condition.get("notes"),
@@ -287,7 +272,7 @@ def load_conditions_data(db_manager, user_id: str):
     logger.debug("  Loaded %d conditions" % len(conditions))
 
 
-def load_calendar_events_data(db_manager, user_id: str):
+def load_calendar_events_data(db_manager, family_circle_id: str):
     """Load calendar events from JSON into SQLite database."""
     calendar_data = load_json_file("calendar.json")
     events = calendar_data.get("calendar_events", [])
@@ -350,12 +335,12 @@ def load_calendar_events_data(db_manager, user_id: str):
 
         query = """
             INSERT OR REPLACE INTO calendar_events 
-            (id, user_id, title, description, start_time, end_time, location, driver_name, driver_contact_id, pickup_time, leave_time)
+            (id, family_circle_id, title, description, start_time, end_time, location, driver_name, driver_contact_id, pickup_time, leave_time)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             event_data.get("id"),
-            user_id,
+            family_circle_id,
             event_data.get("title"),
             event_data.get("description"),
             start_time,
@@ -370,10 +355,10 @@ def load_calendar_events_data(db_manager, user_id: str):
     logger.debug("  Loaded %d calendar events" % len(events))
 
 
-def load_user_locations_data(db_manager, user_id: str):
-    """Load user designated locations from JSON into SQLite database."""
+def load_user_locations_data(db_manager, family_circle_id: str):
+    """Load named places from JSON into SQLite database."""
     family_data = load_json_file("family.json")
-    locations = family_data.get("named_places")
+    locations = family_data.get("named_places") or []
 
     for location in locations:
         # Parse GPS coordinates
@@ -387,11 +372,12 @@ def load_user_locations_data(db_manager, user_id: str):
 
         query = """
             INSERT OR REPLACE INTO named_places
-            (location_id, location_name, gps_latitude, gps_longitude, radius_metres)
-            VALUES (?, ?, ?, ?, ?)
+            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres)
+            VALUES (?, ?, ?, ?, ?, ?)
         """
         params = (
             location.get("location_id"),
+            family_circle_id,
             location.get("location_name"),
             gps_lat,
             gps_lng,
@@ -538,7 +524,7 @@ def ensure_local_database(db_path: str) -> bool:
         logger.error("Local database setup failed")
         raise RuntimeError("Local database setup failed")
         return False
-    return demo_main(user_id, db_path=db_path)
+    return demo_main(user_id=DEMO_USER_ID, db_path=db_path)
 
 
 def demo_main(user_id, db_path=None):
@@ -556,15 +542,15 @@ def demo_main(user_id, db_path=None):
         load_demo_users_from_json_into_db(db)
         load_demo_family_circles_from_json_into_db(db)
         load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_medication_times_from_json_into_db(db)
-        load_demo_medications_data_from_json_to_db(db, user_id=user_id)
-        load_allergies_data(db, user_id=user_id)
-        load_conditions_data(db, user_id=user_id)
-        load_demo_ice_profile_data(db, user_id=user_id)
-        load_calendar_events_data(db, user_id=user_id)
-        load_user_locations_data(db, user_id=user_id)
+        load_demo_medication_times_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_medications_data_from_json_to_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_allergies_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_conditions_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_ice_profile_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_calendar_events_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_settings_from_json_into_db(db, user_id=user_id)
+        load_demo_settings_from_json_into_db(db, user_id=user_id or DEMO_USER_ID)
 
         logger.info("Demo data loaded successfully!")
         return True

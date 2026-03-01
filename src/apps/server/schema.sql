@@ -35,11 +35,26 @@ CREATE TABLE IF NOT EXISTS contacts (
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
+CREATE TABLE IF NOT EXISTS medication_time_templates (
+    name TEXT PRIMARY KEY,
+    time TEXT
+);
+
+INSERT OR IGNORE INTO medication_time_templates (name, time) VALUES
+    ('Morning', '08:00:00'),
+    ('Noon', '12:00:00'),
+    ('Afternoon', '14:00:00'),
+    ('Evening', '18:00:00'),
+    ('Bedtime', '21:00:00'),
+    ('prn', NULL);
+
 CREATE TABLE IF NOT EXISTS medication_times (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    time TEXT, must be in morning, noon, evening, bedtime, prn?
-    display_name TEXT
+    family_circle_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    time TEXT,
+    UNIQUE (family_circle_id, name),
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS medications (
@@ -50,7 +65,6 @@ CREATE TABLE IF NOT EXISTS medications (
     frequency TEXT,
     notes TEXT,
     max_daily INTEGER,
-    current_quantity INTEGER,
     last_taken TEXT,
     taken_today TEXT,
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
@@ -61,7 +75,7 @@ CREATE TABLE IF NOT EXISTS medication_to_time (
     group_id INTEGER NOT NULL,
     PRIMARY KEY (medication_id, group_id),
     FOREIGN KEY (medication_id) REFERENCES medications(id),
-    FOREIGN KEY (group_id) REFERENCES medication_time(id)
+    FOREIGN KEY (group_id) REFERENCES medication_times(id)
 );
 
 CREATE TABLE IF NOT EXISTS allergies (

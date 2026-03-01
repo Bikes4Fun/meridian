@@ -40,7 +40,7 @@
         <input type="text" id="familyCircleId" value="F00000" required placeholder="e.g. F00000">
 
         <label for="userId">User ID</label>
-        <input type="text" id="userId" value="U00001" required placeholder="e.g. U00001">
+        <input type="text" id="userId" value="fm_001" required placeholder="e.g. fm_001">
 
         <button type="submit">Continue to Check-In</button>
     </form>
@@ -62,7 +62,8 @@
                 return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
             })
             .then(function () {
-                window.location.href = '/checkin';
+                var base = (apiBase ? apiBase.replace(/\/$/, '') : '');
+                window.location.href = base ? base + '/checkin' : '/checkin';
             })
             .catch(function (err) {
                 alert(err.message || 'Login failed');

@@ -80,31 +80,19 @@ class KioskLabel(Label):
 
 
 class KioskButton(Button):
-    """Configurable button - all style parameters required from display_settings."""
+    """Button with hardcoded standard style. Override via kwargs."""
 
-    def __init__(
-        self,
-        display_settings,
-        font_size,
-        color,
-        background_color,
-        size_hint=(1, 1),
-        **kwargs,
-    ):
-        Button.__init__(self, **kwargs)
-
-        self.display_settings = display_settings
-
-        # Use flat style if configured in display_settings
-        if display_settings.button_flat_style:
-            self.background_normal = ""
-            self.background_down = ""
-
-        # All properties from display_settings - no hardcoded values
-        self.font_size = self.display_settings.font_sizes[font_size]
-        self.color = self.display_settings.colors[color]
-        self.background_color = self.display_settings.colors[background_color]
-        self.size_hint = size_hint
+    def __init__(self, **kwargs):
+        defaults = {
+            "font_size": 56,
+            "color": (0.1, 0.1, 0.1, 1),
+            "background_color": (0.4, 0.6, 0.85, 1),
+            "background_normal": "",
+            "background_down": "",
+            "size_hint": (1, 1),
+        }
+        defaults.update(kwargs)
+        Button.__init__(self, **defaults)
 
 
 class DementiaScrollView(ScrollView):
@@ -242,7 +230,7 @@ class KioskNavBar(KioskWidget):
         )
         self.screen_manager = screen_manager
         self.size_hint = (1, None)
-        self.height = display_settings.navigation_height if display_settings else 80
+        self.height = 90
 
         # Use provided buttons or default empty list
         self.buttons = buttons or []
@@ -256,26 +244,17 @@ class KioskNavBar(KioskWidget):
             print("WARNING: No nav buttons configured!")
             return
 
-        # Calculate button width based on number of buttons
         button_width = 1.0 / len(self.buttons)
 
         for button_config in self.buttons:
-            # Extract button configuration - all values required, no defaults
             if isinstance(button_config, dict):
                 text = button_config["text"]
                 screen_name = button_config["screen"]
-                text_color = button_config["color"]
-                background_color = button_config["background_color"]
-                font_size = button_config["font_size"]
             else:
-                continue  # Skip invalid button configurations
+                continue
 
             btn = KioskButton(
-                display_settings=self.display_settings,
                 text=text,
-                font_size=font_size,
-                color=text_color,
-                background_color=background_color,
                 size_hint=(button_width, None),
                 height=self.height,
             )

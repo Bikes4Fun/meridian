@@ -57,9 +57,6 @@ class MeridianKioskApp(App):
         home_screen = self.screen_factory.create_home_screen()
         self.screen_manager.add_widget(home_screen)
 
-        calendar_screen = self.screen_factory.create_calendar_screen()
-        self.screen_manager.add_widget(calendar_screen)
-
         emergency_screen = self.screen_factory.create_emergency_screen()
         self.screen_manager.add_widget(emergency_screen)
 

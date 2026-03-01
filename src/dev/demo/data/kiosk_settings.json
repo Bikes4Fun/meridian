@@ -32,7 +32,6 @@
   "events_background_color": [0.96, 0.98, 0.94, 1],
   "contacts_background_color": [0.98, 0.94, 0.94, 1],
   "medical_background_color": [0.94, 0.98, 0.94, 1],
-  "calendar_background_color": [0.96, 0.94, 0.98, 1],
   "nav_background_color": [0.15, 0.2, 0.3, 1],
   "clock_orientation": "vertical",
   "med_orientation": "vertical",

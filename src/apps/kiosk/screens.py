@@ -89,6 +89,7 @@ class ScreenFactory:
         self.user_id = user_id
         self.widget_factory = WidgetFactory(services, display_settings=display_settings)
 
+
     def screen_template_boxlayout(self):
         template_settings = {
             "orientation": "vertical",
@@ -138,41 +139,6 @@ class ScreenFactory:
         bottom_section.add_widget(events_widget)
 
         main_layout.add_widget(bottom_section)
-        screen.add_widget(main_layout)
-
-        return screen
-
-    def create_calendar_screen(self):
-        """Create calendar screen using modular components."""
-        screen = Screen(name="calendar")
-
-        # Main layout
-        main_layout = BoxLayout(orientation="vertical")
-        main_layout.size_hint = (1, 1)
-        main_layout.padding = self.display_settings.main_padding
-
-        # Navigation bar
-        nav_widget = self._create_navigation()
-        main_layout.add_widget(nav_widget)
-
-        # Calendar content area
-        content_layout = BoxLayout(orientation="horizontal")
-        content_layout.size_hint = (1, 1)
-
-        # Calendar widget (left side)
-        calendar_widget = self.widget_factory.create_widget("calendar")
-        calendar_widget.size_hint = (0.67, 1)
-        content_layout.add_widget(calendar_widget)
-
-        # Today's events widget (right side)
-        today_widget = self.widget_factory.create_widget("today_events")
-        today_widget.size_hint = (0.33, 1)
-        content_layout.add_widget(today_widget)
-
-        # Link today_events_widget to widget_factory so calendar clicks can update it
-        self.widget_factory.today_events_widget = today_widget
-
-        main_layout.add_widget(content_layout)
         screen.add_widget(main_layout)
 
         return screen
@@ -270,19 +236,15 @@ class ScreenFactory:
 
     def _create_navigation(self):
         """Create navigation bar using modular components."""
-        # Navigation buttons from user settings (user-configurable)
-        nav_buttons = self.display_settings.navigation_buttons
-        navigation_buttons = [
-            {"text": "Home", "screen": "home", "color": "text", "background_color": "nav", "font_size": "large"},
-            {"text": "Calendar", "screen": "calendar", "color": "text", "background_color": "nav", "font_size": "large"},
-            {"text": "Emergency", "screen": "emergency", "color": "text", "background_color": "nav", "font_size": "large"},
-            {"text": "Family", "screen": "family", "color": "text", "background_color": "nav", "font_size": "large"},
-            {"text": "More", "screen": "more", "color": "text", "background_color": "nav", "font_size": "large"}
-        ],
+        nav_buttons = [
+            {"text": "Home", "screen": "home"},
+            {"text": "Emergency", "screen": "emergency"},
+            {"text": "Family", "screen": "family"},
+            {"text": "Demo", "screen": "more"},
+        ]
         return KioskNavBar(
             screen_manager=self.screen_manager,
             buttons=nav_buttons,
-            display_settings=self.display_settings,
         )
 
 # -------------

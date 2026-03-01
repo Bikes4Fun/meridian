@@ -11,6 +11,7 @@ SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses s
 """
 
 import logging
+import os
 from typing import Optional
 from shared.config import ConfigManager
 from .api_client import create_remote, get_display_settings
@@ -79,6 +80,9 @@ class MeridianKioskApp(App):
         # Initial update
         self.update_all()
 
+        # Sync photos on boot: fetch from server and cache locally for offline use
+        Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)
+
         # Schedule periodic updates (every second)
         Clock.schedule_interval(self.update_time, 1.0)
         # Poll alert status: when activated, switch TV to emergency screen and enable flashing
@@ -98,6 +102,19 @@ class MeridianKioskApp(App):
         self.services["_alert_activated"][0] = activated
         if activated and self.screen_manager:
             self.screen_manager.current = "emergency"
+
+    def _sync_photos_on_boot(self):
+        """Fetch checkins and download photos to local cache for offline use."""
+        loc_svc = self.services.get("location_service")
+        if not loc_svc or not hasattr(loc_svc, "fetch_photo_to_cache"):
+            return
+        result = loc_svc.get_checkins()
+        if not result.success or not result.data:
+            return
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+        for checkin in result.data:
+            if checkin.get("photo_url") and checkin.get("user_id"):
+                loc_svc.fetch_photo_to_cache(checkin["user_id"], cache_dir)
 
     def update_all(self):
         """Update all display elements."""

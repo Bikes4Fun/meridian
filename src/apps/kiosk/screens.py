@@ -237,7 +237,6 @@ class ScreenFactory:
                 p = container._map_params
                 cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
                 map_view = MapView(lat=p["lat"], lon=p["lon"], zoom=p["zoom"], cache_dir=cache_dir)
-                # Base = src/ so photo_fn (e.g. dev/demo/data/family_img/name.jpg) resolves correctly
                 base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
                 loc_svc = self.services.get("location_service")
                 if loc_svc:
@@ -248,20 +247,31 @@ class ScreenFactory:
                             lon = checkin.get("longitude")
                             if lat is None or lon is None:
                                 continue
-                            photo_fn = checkin.get("photo_filename")
-                            if photo_fn:
-                                src = os.path.join(base, photo_fn) if not os.path.isabs(photo_fn) else photo_fn
-                                # Handle old DB paths: demo/demo_data -> dev/demo/data
-                                if not os.path.exists(src) and "demo/demo_data" in photo_fn:
-                                    src = os.path.join(base, photo_fn.replace("demo/demo_data", "dev/demo/data"))
-                                    logger.info("[family map] Using fallback path for old DB: %s", src)
+                            src = None
+                            photo_url = checkin.get("photo_url")
+                            user_id = checkin.get("user_id")
+                            if photo_url and user_id and hasattr(loc_svc, "fetch_photo_to_cache"):
+                                src = loc_svc.fetch_photo_to_cache(user_id, cache_dir)
+                            if not src:
+                                photo_fn = checkin.get("photo_filename")
+                                if photo_fn:
+                                    if os.path.isabs(photo_fn):
+                                        src = photo_fn
+                                    elif "/" in photo_fn or os.path.sep in photo_fn:
+                                        src = os.path.join(base, photo_fn)
+                                    else:
+                                        src = os.path.join(base, "dev", "demo", "data", "family_img", photo_fn)
+                                    if not os.path.exists(src) and "demo/demo_data" in photo_fn:
+                                        src = os.path.join(base, photo_fn.replace("demo/demo_data", "dev/demo/data"))
+                                        logger.info("[family map] Using fallback path for old DB: %s", src)
+                            if src:
                                 circle_img = _crop_image_to_circle(src)
                                 if circle_img:
                                     marker = CustomMarker(lat=lat, lon=lon, source=circle_img)
                                 else:
                                     logger.warning(
-                                        "[family map] Using default marker (no photo) for checkin at %s,%s, photo_filename=%s",
-                                        lat, lon, photo_fn
+                                        "[family map] Using default marker (no photo) for checkin at %s,%s",
+                                        lat, lon
                                     )
                                     marker = MapMarker(lat=lat, lon=lon)
                             else:

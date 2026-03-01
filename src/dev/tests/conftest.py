@@ -56,6 +56,12 @@ def test_db_manager(test_db_config):
 
 FAMILY_CIRCLE_ID = 'test_family'
 
+
+@pytest.fixture
+def family_circle_id():
+    return FAMILY_CIRCLE_ID
+
+
 @pytest.fixture
 def sample_contacts_data():
     """Sample contact data for testing."""

@@ -24,6 +24,18 @@ import os
 logger = logging.getLogger(__name__)
 
 
+def _format_contacts_for_display(contacts):
+    """Format contact dicts into display text. Used by widgets."""
+    if not contacts:
+        return "No emergency contacts found"
+    lines = ["Emergency Contacts:"]
+    for c in contacts:
+        phone = c.get("phone") or ""
+        rel = c.get("relationship") or ""
+        lines.append(f"• {c.get('display_name', '')} - {phone}\n  {rel}")
+    return "\n".join(lines)
+
+
 def apply_border(widget, key, display_settings):
     """Apply border to widget if configured in display_settings.borders. Uses default when key missing."""
     if display_settings.borders and key in display_settings.borders:
@@ -70,7 +82,6 @@ class WidgetFactory:
             "events": self.create_events_widget,
             "calendar": self.create_calendar_widget,
             "today_events": self.create_today_events_widget,
-            "emergency_contacts": self.create_emergency_contacts_widget,
             "medical_info": self.create_medical_info_widget,
             "emergency_profile": self.create_emergency_profile_widget,
             "family_locations": self.create_family_locations_widget,
@@ -89,7 +100,6 @@ class WidgetFactory:
             "events",
             "calendar",
             "today_events",
-            "emergency_contacts",
             "medical_info",
             "emergency_profile",
         ]
@@ -110,7 +120,6 @@ class WidgetFactory:
             "events": True,
             "calendar": True,
             "today_events": True,
-            "emergency_contacts": True,
             "medical_info": True,
         }
 
@@ -530,52 +539,6 @@ class WidgetFactory:
         events.events_content = events_content
         return events
 
-    def create_emergency_contacts_widget(self):
-        """Create emergency contacts widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        contacts = DementiaWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=display_settings.contacts_background_color,
-        )
-        apply_border(contacts, "emergency_contacts", display_settings)
-
-        # Contacts title
-        title = DementiaLabel(
-            display_settings=display_settings,
-            font_size="title",
-            text="Emergency Contacts",
-        )
-        contacts.add_widget(title)
-
-        # Contacts content
-        if self.emergency_service:
-            result = self.emergency_service.format_contacts_for_display()
-            if result.success:
-                contacts_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text=result.data,
-                )
-            else:
-                contacts_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="Error loading contacts",
-                )
-        else:
-            contacts_content = DementiaLabel(
-                display_settings=display_settings,
-                font_size="body",
-                text="Emergency service not available",
-            )
-
-        contacts.add_widget(contacts_content)
-        return contacts
-
     def create_medical_info_widget(self):
         """Create medical info widget using modular components."""
         if not self.display_settings:
@@ -756,16 +719,12 @@ class WidgetFactory:
                     profile.add_widget(med_label)
 
                 if self.emergency_service:
-                    ec_result = self.emergency_service.format_contacts_for_display()
-                    if (
-                        ec_result.success
-                        and ec_result.data
-                        and "No emergency contacts" not in str(ec_result.data)
-                    ):
+                    ec_result = self.emergency_service.get_emergency_contacts()
+                    if ec_result.success and ec_result.data:
                         ec_label = DementiaLabel(
                             display_settings=display_settings,
                             font_size="large",
-                            text="Emergency Contacts:\n" + str(ec_result.data),
+                            text=_format_contacts_for_display(ec_result.data),
                             color="text",
                         )
                         ec_label.color = dark_text

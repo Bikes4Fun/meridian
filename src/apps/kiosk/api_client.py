@@ -5,6 +5,7 @@ calendar, medications, emergency, and settings come from the server API.
 """
 
 import logging
+import os
 from datetime import datetime
 from typing import Any, Optional, Tuple
 
@@ -77,6 +78,9 @@ class LocalTimeService:
         if hour < 17:
             return "Afternoon"
         return "Evening"
+
+    def get_date(self) -> str:
+        return datetime.now().strftime("%B %-d, %Y").replace(" 0", " ").lstrip()
 
     def get_month_day(self) -> str:
         return datetime.now().strftime("%B %-d").replace(" 0", " ").lstrip()
@@ -180,7 +184,7 @@ class RemoteEmergencyService:
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
-    def format_contacts_for_display(self) -> Any:
+    def get_emergency_contacts(self) -> Any:
         ok, data, err = _get(
             f"{self._base}/api/emergency/contacts",
             headers=self._headers,
@@ -190,7 +194,8 @@ class RemoteEmergencyService:
             return ServiceResult.error_result(
                 err or "emergency/contacts request failed"
             )
-        return ServiceResult.success_result(data)
+        contacts = data if isinstance(data, list) else (data or [])
+        return ServiceResult.success_result(contacts)
 
     def get_medical_summary(self) -> Any:
         ok, data, err = _get(
@@ -219,7 +224,7 @@ class RemoteAlertService:
 
     def get_alert_status(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/alert/status",
+            f"{self._base}/api/emergency/alert/status",
             headers=self._headers,
             session=self._session,
         )
@@ -242,7 +247,7 @@ class RemoteICEProfileService:
 
     def get_ice_profile(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/ice",
+            f"{self._base}/api/emergency/ice",
             headers=self._headers,
             session=self._session,
         )
@@ -319,6 +324,29 @@ class RemoteLocationService:
         except Exception as e:
             logger.debug("Check-in request failed: %s", e)
             return ServiceResult.error_result(str(e))
+
+    def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
+        """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present."""
+        try:
+            import requests
+        except ImportError:
+            return None
+        photo_dir = os.path.join(cache_dir, "photos")
+        os.makedirs(photo_dir, exist_ok=True)
+        cached = os.path.join(photo_dir, user_id)
+        if os.path.exists(cached):
+            return cached
+        try:
+            url = f"{self._base}/api/photos/{user_id}"
+            client = self._session if self._session else requests
+            r = client.get(url, headers=self._headers, timeout=10)
+            r.raise_for_status()
+            with open(cached, "wb") as f:
+                f.write(r.content)
+            return cached
+        except Exception as e:
+            logger.debug("Photo fetch failed for %s: %s", user_id, e)
+            return None
 
 
 def get_display_settings(

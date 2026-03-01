@@ -15,14 +15,11 @@ class EmergencyService:
     def __init__(self, contact_service: ContactService):
         self.contact_service = contact_service
 
-    def get_emergency_contacts(self) -> ServiceResult:
-        return self.contact_service.get_emergency_contacts()
+    def get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
+        return self.contact_service.get_emergency_contacts(family_circle_id)
 
-    def get_all_contacts(self) -> ServiceResult:
-        return self.contact_service.get_all_contacts()
-
-    def format_contacts_for_display(self) -> ServiceResult:
-        return self.contact_service.format_emergency_contacts_for_display()
+    def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
+        return self.contact_service.get_all_contacts(family_circle_id)
 
     def get_medical_summary(self) -> ServiceResult:
         medications_result = self.contact_service.db_manager.execute_query(

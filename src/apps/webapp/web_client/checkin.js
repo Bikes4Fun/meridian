@@ -100,13 +100,18 @@
     }
 
     function loadFamilyMembers() {
-        fetch(API_URL + '/api/location/family-members', {
-            credentials: 'include'
-        })
-            .then(function (r) { return r.json(); })
+        fetch(API_URL + '/api/session', { credentials: 'include' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (session) {
+                if (!session || !session.family_circle_id) return;
+                return fetch(API_URL + '/api/family_circle/family-members/' + session.family_circle_id, {
+                    credentials: 'include'
+                });
+            })
+            .then(function (r) { return r && r.ok ? r.json() : null; })
             .then(function (data) {
                 var sel = document.getElementById('familyMemberSelect');
-                if (!sel || !data.data) return;
+                if (!sel || !data || !data.data) return;
                 data.data.forEach(function (fm) {
                     var opt = document.createElement('option');
                     opt.value = fm.id;
@@ -118,7 +123,7 @@
     }
 
     function activateAlert() {
-        fetch(API_URL + '/api/alert', {
+        fetch(API_URL + '/api/emergency/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -134,7 +139,7 @@
     }
 
     function cancelAlert() {
-        fetch(API_URL + '/api/alert', {
+        fetch(API_URL + '/api/emergency/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

@@ -8,7 +8,7 @@ WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
   - container/medication_service.py → GET /api/medications
   - container/emergency_service.py → GET /api/emergency/*
   - container/contact_service.py  (used by emergency_service; no direct endpoint)
-  - container/ice_profile_service.py → GET /api/ice, PUT /api/ice
+  - container/ice_profile_service.py → GET /api/emergency/ice, PUT /api/emergency/ice
 
 WHERE IT MOVED TO (client uses these instead of container on client):
   - client/remote.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
@@ -21,6 +21,7 @@ they can be omitted or relocated to a client-only repo.
 import json
 import os
 import datetime
+from dataclasses import asdict
 from flask import Flask, abort, jsonify, request, g, send_from_directory, Response, redirect, session
 
 # config from shared; server internals relative
@@ -40,6 +41,11 @@ except ImportError:
     )
 from .database import DatabaseManager
 from .services.container import create_service_container
+
+try:
+    from ...shared.config import get_uploads_dir
+except ImportError:
+    from shared.config import get_uploads_dir
 
 _alert_activated = False
 
@@ -196,12 +202,14 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         # Session-based (check-in page and its script)
-        if request.path in ("/checkin", "/checkin.js"):
+        if request.path in ("/checkin", "/checkin.js", "/api/session"):
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
                 if request.path == "/checkin":
                     return redirect("/login")
+                if request.path == "/api/session":
+                    abort(401, "Not logged in")
                 abort(401, "Log in at /login first")
             g.user_id = uid
             g.family_circle_id = fid
@@ -227,6 +235,7 @@ def create_server_app(db_path=None):
     emergency_svc = container.get_emergency_service()
     location_svc = container.get_location_service()
     ice_profile_svc = container.get_ice_profile_service()
+    family_svc = container.get_family_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -237,6 +246,10 @@ def create_server_app(db_path=None):
             return datetime.datetime.strptime(s, "%Y-%m-%d").date()
         except ValueError:
             return None
+
+    @app.route("/api/health")
+    def api_health():
+        return jsonify({"status": "ok"})
 
     @app.route("/api/calendar/headers")
     def api_calendar_headers():
@@ -277,10 +290,11 @@ def create_server_app(db_path=None):
 
     @app.route("/api/emergency/contacts")
     def api_emergency_contacts():
-        r = emergency_svc.format_contacts_for_display()
+        r = emergency_svc.get_emergency_contacts(g.family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        contacts = [asdict(c) for c in (r.data or [])]
+        return jsonify({"data": contacts})
 
     @app.route("/api/emergency/medical-summary")
     def api_emergency_medical_summary():
@@ -289,22 +303,18 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/health")
-    def api_health():
-        return jsonify({"status": "ok"})
-
-    @app.route("/api/alert/status")
+    @app.route("/api/emergency/alert/status")
     def api_alert_status():
         return jsonify({"data": {"activated": _alert_activated}})
 
-    @app.route("/api/alert", methods=["POST"])
+    @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         global _alert_activated
         data = request.get_json() or {}
         _alert_activated = bool(data.get("activated", False))
         return jsonify({"data": {"activated": _alert_activated}})
 
-    @app.route("/api/ice", methods=["GET", "PUT"])
+    @app.route("/api/emergency/ice", methods=["GET", "PUT"])
     def api_ice():
         if request.method == "GET":
             r = ice_profile_svc.get_ice_profile(g.family_circle_id)
@@ -323,9 +333,24 @@ def create_server_app(db_path=None):
         os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")
     )
 
+    def _serve_with_api_url(filename, api_url=""):
+        """Serve static file with __API_URL__ replaced. Use '' when API and webapp share origin."""
+        path = os.path.join(_web_client_dir, filename)
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read().replace("__API_URL__", api_url)
+        return Response(content, mimetype="text/html" if filename.endswith(".html") else "application/javascript")
+
     @app.route("/login")
     def serve_login():
-        return send_from_directory(_web_client_dir, "login.html")
+        return _serve_with_api_url("login.html")
+
+    @app.route("/api/session")
+    def api_session():
+        """Return current session user_id and family_circle_id."""
+        return jsonify({
+            "user_id": g.user_id,
+            "family_circle_id": g.family_circle_id,
+        })
 
     @app.route("/api/login", methods=["POST"])
     def api_login():
@@ -343,11 +368,11 @@ def create_server_app(db_path=None):
 
     @app.route("/checkin")
     def serve_checkin():
-        return send_from_directory(_web_client_dir, "checkin.html")
+        return _serve_with_api_url("checkin.html")
 
     @app.route("/checkin.js")
     def serve_checkin_js():
-        return send_from_directory(_web_client_dir, "checkin.js")
+        return _serve_with_api_url("checkin.js")
 
     @app.route("/api/settings")
     def api_settings():
@@ -359,10 +384,12 @@ def create_server_app(db_path=None):
             return jsonify({"error": "settings not found"}), 404
         return jsonify({"data": _row_to_display_settings_response(result.data[0])})
 
-    @app.route("/api/location/family-members")
-    def api_get_family_members():
-        """Return family members for check-in dropdown."""
-        r = location_svc.get_family_members(g.family_circle_id)
+    @app.route("/api/family_circle/family-members/<family_circle_id>")
+    def api_get_family_members(family_circle_id):
+        """Return family members for the given family circle."""
+        if family_circle_id != g.family_circle_id:
+            abort(403, "family circle mismatch")
+        r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -407,11 +434,37 @@ def create_server_app(db_path=None):
 
     @app.route("/api/location/latest")
     def api_get_checkins():
-        """Get latest check-in per family member."""
+        """Get latest check-in per family member. Adds photo_url when user has a photo."""
         r = location_svc.get_checkins(g.family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        data = r.data or []
+        base = request.url_root.rstrip("/")
+        for row in data:
+            if row.get("photo_filename") and row.get("user_id"):
+                row["photo_url"] = "%s/api/photos/%s" % (base, row["user_id"])
+        return jsonify({"data": data})
+
+    @app.route("/api/users/photos/<user_id>")
+    def api_serve_photo(user_id):
+        """Serve user photo. User must be in same family. Returns 404 if no photo."""
+        db = container.get_database_manager()
+        r = db.execute_query(
+            "SELECT u.photo_filename FROM users u "
+            "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
+            "WHERE u.id = ? AND ufc.family_circle_id = ?",
+            (user_id, g.family_circle_id),
+        )
+        if not r.success or not r.data or not r.data[0].get("photo_filename"):
+            abort(404)
+        fn = r.data[0]["photo_filename"]
+        if ".." in fn or fn.startswith("/"):
+            abort(404)
+        uploads_dir = get_uploads_dir()
+        path = os.path.join(uploads_dir, fn)
+        if not os.path.exists(path):
+            abort(404)
+        return send_from_directory(uploads_dir, fn, mimetype=None)
 
     return app
 

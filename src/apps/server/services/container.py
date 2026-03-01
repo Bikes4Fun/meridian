@@ -14,6 +14,7 @@ from .medication import MedicationService
 from .emergency import EmergencyService
 from .location import LocationService
 from .ice_profile import ICEProfileService
+from .family import FamilyService
 
 
 class ServiceContainer:
@@ -70,6 +71,13 @@ class ServiceContainer:
                 self.get_database_manager()
             )
         return self._services["ice_profile_service"]
+
+    def get_family_service(self):
+        if "family_service" not in self._services:
+            self._services["family_service"] = FamilyService(
+                self.get_database_manager()
+            )
+        return self._services["family_service"]
 
 
 def create_service_container(db_path: str = "meridian_kiosk.db") -> ServiceContainer:

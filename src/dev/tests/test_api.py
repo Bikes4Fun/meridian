@@ -64,3 +64,25 @@ def test_api_requires_both_headers(api_client):
     assert r.status_code == 401
     r = api_client.get("/api/calendar/headers", headers=API_HEADERS)
     assert r.status_code == 200
+
+
+def test_checkin_succeeds_when_user_matches(api_client):
+    """Check-in succeeds when user_id in body matches logged-in user."""
+    r = api_client.post(
+        "/api/location/checkin",
+        headers=API_HEADERS,
+        json={"user_id": "test_user", "latitude": 37.0, "longitude": -113.0},
+    )
+    assert r.status_code == 201
+    assert r.get_json()["data"]["user_id"] == "test_user"
+
+
+def test_checkin_forbidden_when_user_differs(api_client):
+    """Check-in forbidden when user_id in body differs from logged-in user."""
+    r = api_client.post(
+        "/api/location/checkin",
+        headers=API_HEADERS,
+        json={"user_id": "other_user", "latitude": 37.0, "longitude": -113.0},
+    )
+    assert r.status_code == 403
+    assert "cannot check in for another user" in r.get_json()["error"]

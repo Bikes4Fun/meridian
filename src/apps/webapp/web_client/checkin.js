@@ -3,9 +3,7 @@
     'use strict';
 
     var _u = '__API_URL__';
-    var API_URL = (_u.startsWith('http') ? _u : "https://meridian-production-3734.up.railway.app");
-    // INSECURE: Hardcoded fallback. Replace with logged-in user from session when auth is implemented (see SECURITY.md).
-    var USER_ID = '0000000000';
+    var API_URL = (_u.startsWith('http') ? _u : '');
 
     function showStatus(message, type) {
         var container = document.getElementById('status');
@@ -56,10 +54,8 @@
 
                 fetch(API_URL + '/api/location/checkin', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-Id': USER_ID,
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         family_member_id: familyMemberId,
                         latitude: latitude,
@@ -105,7 +101,7 @@
 
     function loadFamilyMembers() {
         fetch(API_URL + '/api/location/family-members', {
-            headers: {'X-User-Id': USER_ID}
+            credentials: 'same-origin'
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -124,7 +120,8 @@
     function activateAlert() {
         fetch(API_URL + '/api/alert', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-User-Id': USER_ID },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ activated: true })
         })
             .then(function (r) { return r.json(); })
@@ -139,7 +136,8 @@
     function cancelAlert() {
         fetch(API_URL + '/api/alert', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-User-Id': USER_ID },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ activated: false })
         })
             .then(function (r) { return r.json(); })
@@ -152,16 +150,6 @@
     }
 
     function init() {
-        if (!USER_ID) {
-            showStatus('Open this page from a valid link (user_id required in URL)', 'error');
-            var btn = document.getElementById('checkinBtn');
-            if (btn) btn.disabled = true;
-            var alertBtn = document.getElementById('alertBtn');
-            if (alertBtn) alertBtn.disabled = true;
-            var cancelBtn = document.getElementById('cancelAlertBtn');
-            if (cancelBtn) cancelBtn.disabled = true;
-            return;
-        }
         var btn = document.getElementById('checkinBtn');
         if (btn) btn.addEventListener('click', checkIn);
         var alertBtn = document.getElementById('alertBtn');

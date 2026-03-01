@@ -1,32 +1,16 @@
-{
-  "font_sizes": {
-    "small": 28,
-    "medium": 40,
-    "body": 42,
-    "large": 56,
-    "title": 72,
-    "huge": 120
-  },
+
   "colors": {
     "nav": [0.4, 0.6, 0.85, 1],
     "surface": [0.95, 0.95, 0.93, 1],
     "text": [0.1, 0.1, 0.1, 1],
     "error": [0.9, 0.3, 0.3, 1]
   },
-  "spacing": {
-    "xs": 8,
-    "sm": 16,
-    "md": 24,
-    "lg": 40
-  },
+
   "touch_targets": {
     "minimum": 60,
     "comfortable": 80
   },
-  "window_width": 740,
-  "window_height": 1080,
-  "window_left": 10,
-  "window_top": 120,
+  
   "clock_icon_size": 100,
   "clock_icon_height": 100,
   "clock_text_height": 50,
@@ -35,8 +19,6 @@
   "clock_date_height": 60,
   "clock_spacing": 0,
   "clock_padding": [15, 10],
-  "main_padding": [0, 10, 0, 0],
-  "home_layout": "vertical",
   "clock_proportion": 0.35,
   "todo_proportion": 0.65,
   "high_contrast": false,
@@ -56,37 +38,6 @@
   "med_orientation": "vertical",
   "events_orientation": "vertical",
   "bottom_section_orientation": "horizontal",
-  "navigation_buttons": [
-    {"text": "Home", "screen": "home", "color": "text", "background_color": "nav", "font_size": "large"},
-    {"text": "Calendar", "screen": "calendar", "color": "text", "background_color": "nav", "font_size": "large"},
-    {"text": "Emergency", "screen": "emergency", "color": "text", "background_color": "nav", "font_size": "large"},
-    {"text": "Family", "screen": "family", "color": "text", "background_color": "nav", "font_size": "large"},
-    {"text": "More", "screen": "more", "color": "text", "background_color": "nav", "font_size": "large"}
-  ],
-  "borders": {
-    "clock": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_top_section": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_day_label": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_time_of_day_label": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_icon_container": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_time_label": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_bottom_section": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_date_label": {"color": [0, 0, 0, 1], "width": 1},
-    "clock_year_label": {"color": [0, 0, 0, 1], "width": 1},
-    "calendar": {"color": [0, 0, 0, 1], "width": 1},
-    "today_events": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_contacts": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_profile_name": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_profile_dnr": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_profile_medical": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_profile_conditions": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_profile_proxy": {"color": [0, 0, 0, 1], "width": 1},
-    "emergency_profile_poa": {"color": [0, 0, 0, 1], "width": 1},
-    "family_locations": {"color": [0, 0, 0, 1], "width": 1},
-    "family_locations_title": {"color": [0, 0, 0, 1], "width": 1},
-    "family_locations_places": {"color": [0, 0, 0, 1], "width": 1},
-    "family_locations_checkins": {"color": [0, 0, 0, 1], "width": 1},
-    "family_future_map": {"color": [0, 0, 0, 1], "width": 1},
-    "more": {"color": [0, 0, 0, 1], "width": 1}
-  }
+
+
 }

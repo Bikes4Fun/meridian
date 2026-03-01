@@ -14,8 +14,7 @@ import logging
 import os
 from typing import Optional
 from shared.config import ConfigManager
-from .api_client import create_remote
-from .screens import get_kiosk_settings
+from .api_client import create_remote, get_display_settings
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
@@ -38,12 +37,9 @@ class MeridianKioskApp(App):
 
     def build(self):
         """Build the application UI using modular components."""
-        Window.size = (
-            self.display_settings.window_width,
-            self.display_settings.window_height,
-        )
-        Window.left = self.display_settings.window_left
-        Window.top = self.display_settings.window_top
+        Window.size = (740, 1080)
+        Window.left = 10
+        Window.top = 120
         Window.borderless = True  # Remove macOS title bar for TV display
 
         # Create screen manager
@@ -309,7 +305,12 @@ class AppFactory:
             session = requests.Session()
         except ImportError:
             session = None
-        display_settings = get_kiosk_settings()
+        display_settings = get_display_settings(
+            api_url,
+            user_id=user_id,
+            family_circle_id=family_circle_id,
+            session=session,
+        )
         services = create_remote(
             api_url,
             user_id=user_id,

@@ -590,14 +590,17 @@ class WidgetFactory:
                 proxy = emergency.get("proxy") or {}
                 care_recipient_user_id = d.get("care_recipient_user_id")
 
-                name_section = GridLayout(cols=2, size_hint_y=None, height=dp(60))
-                name_section.spacing = display_settings.spacing["md"]
-                name_section.padding = [0, 0]
-                photo_cell = BoxLayout(size_hint_x=None, width=dp(48))
+                name_section = BoxLayout(
+                    orientation="horizontal",
+                    size_hint_y=None,
+                    height=dp(60),
+                    spacing=display_settings.spacing["md"],
+                )
+                photo_cell = BoxLayout(size_hint_x=None, width=dp(60))
                 with photo_cell.canvas.before:
                     Color(0.8, 0.8, 0.8, 1)
-                    photo_cell._bg = Rectangle(pos=(0, 0), size=(dp(48), dp(48)))
-                photo_cell.bind(size=lambda w, v: setattr(w._bg, "size", (w.width, w.height)))
+                    photo_cell._bg = Rectangle(pos=photo_cell.pos, size=photo_cell.size)
+                photo_cell.bind(pos=lambda w, v: setattr(w._bg, "pos", w.pos), size=lambda w, v: setattr(w._bg, "size", w.size))
                 photo_img = Image(size_hint=(1, 1), fit_mode="contain")
                 if care_recipient_user_id and self.location_service and hasattr(self.location_service, "fetch_photo_to_cache"):
                     cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")

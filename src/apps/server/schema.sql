@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS contacts (
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
-CREATE TABLE IF NOT EXISTS medication_groups (
+CREATE TABLE IF NOT EXISTS medication_times (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    time TEXT,
+    time TEXT, must be in morning, noon, evening, bedtime, prn?
     display_name TEXT
 );
 
@@ -56,12 +56,12 @@ CREATE TABLE IF NOT EXISTS medications (
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
-CREATE TABLE IF NOT EXISTS medication_to_group (
+CREATE TABLE IF NOT EXISTS medication_to_time (
     medication_id INTEGER NOT NULL,
     group_id INTEGER NOT NULL,
     PRIMARY KEY (medication_id, group_id),
     FOREIGN KEY (medication_id) REFERENCES medications(id),
-    FOREIGN KEY (group_id) REFERENCES medication_groups(id)
+    FOREIGN KEY (group_id) REFERENCES medication_time(id)
 );
 
 CREATE TABLE IF NOT EXISTS allergies (

@@ -1,5 +1,5 @@
 {
-  "family_circle_id": "F000000",
+  "family_circles": [{"id": "F00000"}],
   "photo_base": "dev/demo/data/family_img",
   "family_members": [
     {

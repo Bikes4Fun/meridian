@@ -82,11 +82,15 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
 
 
 def load_demo_family_circles_from_json_into_db(db_manager):
-    """Load family circles from family_circles.json."""
-    data = load_json_file("family_circles.json")
-    circles = data if isinstance(data, list) else data.get("family_circles", [])
+    """Load family circles from family.json."""
+    data = load_json_file("family.json")
+    circles = data.get("family_circles", [])
+    if not circles and data.get("family_circle_id"):
+        circles = [{"id": data.get("family_circle_id")}]
+    if not circles:
+        raise ValueError("family.json missing family_circles or family_circle_id")
     for circle in circles:
-        fc_id = circle.get("id")
+        fc_id = circle.get("id") if isinstance(circle, dict) else circle
         if fc_id:
             db_manager.execute_update(
                 "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
@@ -126,7 +130,7 @@ def load_demo_users_from_json_into_db(db_manager):
     logger.debug("  Loaded %d users" % len(users))
 
 
-def load_demo_medication_groups_from_json_into_db(db_manager, user_id: str):
+def load_demo_medication_times_from_json_into_db(db_manager):
     """Load medication groups from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     groups = medical_data.get("medication_groups", {})
@@ -552,7 +556,7 @@ def demo_main(user_id, db_path=None):
         load_demo_users_from_json_into_db(db)
         load_demo_family_circles_from_json_into_db(db)
         load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_medication_groups_from_json_into_db(db, user_id=user_id)
+        load_demo_medication_times_from_json_into_db(db)
         load_demo_medications_data_from_json_to_db(db, user_id=user_id)
         load_allergies_data(db, user_id=user_id)
         load_conditions_data(db, user_id=user_id)

@@ -39,19 +39,19 @@ class MedicationService(DatabaseServiceMixin):
         DatabaseServiceMixin.__init__(self, db_manager)
         self.timed_medications: List[TimedMedication] = []
         self.prn_medications: List[PRNMedication] = []
-        self._load_medication_data()
 
-    def _load_medication_data(self):
+    def _load_medication_data(self, family_circle_id: str) -> None:
         self.timed_medications = []
         self.prn_medications = []
         query = """
-            SELECT m.name, m.dosage, m.frequency, m.taken_today, mg.name as group_name, mg.time as group_time, mg.display_name
+            SELECT m.name, m.dosage, m.taken_today, mt.name as time_name, mt.time as group_time
             FROM medications m
-            LEFT JOIN medication_to_group mtg ON m.id = mtg.medication_id
-            LEFT JOIN medication_groups mg ON mtg.group_id = mg.id
-            ORDER BY m.name, mg.time
+            LEFT JOIN medication_to_time mtt ON m.id = mtt.medication_id
+            LEFT JOIN medication_times mt ON mtt.group_id = mt.id
+            WHERE m.family_circle_id = ?
+            ORDER BY m.name, mt.time
         """
-        result = self.safe_query(query)
+        result = self.safe_query(query, (family_circle_id,))
         if not result.success:
             self.logger.error("Failed to load medication data: %s", result.error)
             return
@@ -59,9 +59,8 @@ class MedicationService(DatabaseServiceMixin):
         for row in result.data:
             med_name = row["name"]
             dosage = row["dosage"] or ""
-            group_name = row["group_name"]
+            time_name = row["time_name"]
             group_time = row["group_time"]
-            group_display = row["display_name"]
             taken_today = row["taken_today"]
             if med_name not in medication_groups:
                 medication_groups[med_name] = {
@@ -69,9 +68,9 @@ class MedicationService(DatabaseServiceMixin):
                     "taken_today": taken_today,
                     "groups": [],
                 }
-            if group_name:
+            if time_name:
                 medication_groups[med_name]["groups"].append(
-                    {"name": group_display, "time": group_time}
+                    {"name": time_name, "time": group_time}
                 )
         for med_name, med_data in medication_groups.items():
             if med_data["groups"]:
@@ -100,7 +99,7 @@ class MedicationService(DatabaseServiceMixin):
                             )
                         )
             else:
-                self.logger.warning("Medication '%s' has no groups assigned", med_name)
+                self.logger.warning("Medication '%s' has no times assigned", med_name)
 
     def add_timed_medication(self, name: str, time: str, **kwargs) -> TimedMedication:
         medication = TimedMedication(
@@ -145,10 +144,12 @@ class MedicationService(DatabaseServiceMixin):
                     return ServiceResult.success_result(True)
         return ServiceResult.error_result(f"Medication '{medication_name}' not found")
 
-    def get_medication_data(self) -> ServiceResult:
+    def get_medication_data(self, family_circle_id: str) -> ServiceResult:
+        self._load_medication_data(family_circle_id)
         group_names = {}
         result = self.db_manager.execute_query(
-            "SELECT name, time FROM medication_groups"
+            "SELECT name, time FROM medication_times WHERE family_circle_id = ?",
+            (family_circle_id,),
         )
         if result.success:
             for row in result.data:

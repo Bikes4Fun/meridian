@@ -1,6 +1,6 @@
 """
-Screen creation logic for Dementia TV application.
-Handles the creation of different application screens.
+Screen creation logic for Meridian Kiosk.
+Handles the creation of different kiosk screens.
 """
 
 import os
@@ -64,7 +64,7 @@ class CustomMarker(MapMarker):
 
 
 class ScreenFactory:
-    """Factory for creating application screens."""
+    """Factory for creating kiosk screens."""
 
     def __init__(self, services, screen_manager, display_settings=None, user_id=None):
         self.services = services

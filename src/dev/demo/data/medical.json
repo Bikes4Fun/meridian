@@ -11,7 +11,8 @@
     "poa_phone": "(555) 234-5678",
     "notes": "Primary caregiver James has medical proxy and POA."
   },
-  "medication_groups": {
+
+  "medication_times": {
     "Morning": {
       "time": "08:00:00",
       "display_name": "Morning"
@@ -35,7 +36,7 @@
       "name": "Lisinopril",
       "dosage": "10mg",
       "frequency": "Once daily",
-      "groups": ["Morning"],
+      "medication_times": ["Morning"],
       "temporary": false,
       "taken": false,
       "notes": "Blood pressure medication",
@@ -48,7 +49,7 @@
       "name": "Metformin",
       "dosage": "500mg",
       "frequency": "Twice daily",
-      "groups": ["Morning", "Evening"],
+      "medication_times": ["Morning", "Evening"],
       "temporary": false,
       "taken": false,
       "notes": "Diabetes medication",
@@ -61,7 +62,7 @@
       "name": "Dementia meds",
       "dosage": "5mg",
       "frequency": "Once daily",
-      "groups": ["Noon"],
+      "medication_times": ["Noon"],
       "temporary": false,
       "taken": false,
       "notes": "Memory support medication",
@@ -73,7 +74,7 @@
     {
       "name": "Pain Relief",
       "max_daily": 3,
-      "groups": ["prn"],
+      "medication_times": ["prn"],
       "notes": "For arthritis pain",
       "current_quantity": null,
       "last_taken": null
@@ -81,7 +82,7 @@
     {
       "name": "Anxiety Relief",
       "max_daily": 2,
-      "groups": ["prn"],
+      "medication_times": ["prn"],
       "notes": "As needed for anxiety",
       "current_quantity": null,
       "last_taken": null

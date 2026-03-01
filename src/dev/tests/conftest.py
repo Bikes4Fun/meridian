@@ -1,5 +1,5 @@
 """
-Shared test fixtures and utilities for Dementia TV tests.
+Shared test fixtures and utilities for Meridian tests.
 """
 import os
 import tempfile
@@ -54,13 +54,15 @@ def test_db_manager(test_db_config):
     return manager
 
 
+FAMILY_CIRCLE_ID = 'test_family'
+
 @pytest.fixture
 def sample_contacts_data():
     """Sample contact data for testing."""
     return [
         {
             'id': 'contact1',
-            'user_id': 'test_user',
+            'user_id': FAMILY_CIRCLE_ID,
             'display_name': 'John Doe',
             'phone': '555-0100',
             'email': 'john@example.com',
@@ -69,7 +71,7 @@ def sample_contacts_data():
         },
         {
             'id': 'contact2',
-            'user_id': 'test_user',
+            'user_id': FAMILY_CIRCLE_ID,
             'display_name': 'Jane Doe',
             'phone': '555-0101',
             'email': 'jane@example.com',
@@ -78,7 +80,7 @@ def sample_contacts_data():
         },
         {
             'id': 'contact3',
-            'user_id': 'test_user',
+            'user_id': FAMILY_CIRCLE_ID,
             'display_name': 'Dr. Smith',
             'phone': '555-0200',
             'relationship': 'Doctor',
@@ -119,8 +121,8 @@ def populated_test_db(test_db_manager, sample_contacts_data):
     
     # Insert sample medications
     meds = [
-        ('Lisinopril', '10 mg', 'daily', 'test_user'),
-        ('Metformin', '500 mg', 'twice daily', 'test_user')
+        ('Lisinopril', '10 mg', 'daily', FAMILY_CIRCLE_ID),
+        ('Metformin', '500 mg', 'twice daily', FAMILY_CIRCLE_ID)
     ]
     for name, dosage, frequency, user_id in meds:
         query = """
@@ -142,8 +144,8 @@ def populated_test_db(test_db_manager, sample_contacts_data):
     
     # Insert sample calendar events
     events = [
-        ('event1', 'test_user', 'Doctor Appointment', '2024-01-15 10:00:00', '2024-01-15 11:00:00', 'Clinic'),
-        ('event2', 'test_user', 'Family Visit', '2024-01-15 14:00:00', '2024-01-15 16:00:00', 'Home')
+        ('event1', FAMILY_CIRCLE_ID, 'Doctor Appointment', '2024-01-15 10:00:00', '2024-01-15 11:00:00', 'Clinic'),
+        ('event2', FAMILY_CIRCLE_ID, 'Family Visit', '2024-01-15 14:00:00', '2024-01-15 16:00:00', 'Home')
     ]
     for event_id, user_id, title, start, end, location in events:
         query = """

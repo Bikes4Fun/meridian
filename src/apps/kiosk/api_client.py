@@ -1,5 +1,5 @@
 """
-Remote API client for the Dementia TV server.
+Remote API client for the Meridian server.
 Used when SERVER_URL is set. Time comes from the device (LocalTimeService);
 calendar, medications, emergency, and settings come from the server API.
 """

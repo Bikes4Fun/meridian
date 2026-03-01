@@ -1,5 +1,5 @@
 """
-Modular Display Components for Dementia TV Application
+Modular Display Components for Meridian Kiosk
 
 Simple, reusable UI components that leverage Kivy's built-in capabilities.
 Focus on dementia-friendly design with minimal complexity.

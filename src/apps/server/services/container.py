@@ -1,5 +1,5 @@
 """
-Simplified service container for Dementia TV application.
+Simplified service container for Meridian.
 Used only by server/app.py. Client uses client/remote.create_remote() instead.
 """
 

@@ -1,11 +1,27 @@
--- Schema for Dementia TV application
+-- Schema for Meridian
+
+
 CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    display_name TEXT,
+    photo_filename TEXT
+);
+
+CREATE TABLE IF NOT EXISTS family_circles (
     id TEXT PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS user_family_circle (
+    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, family_circle_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
     display_name TEXT,
     phone TEXT,
     email TEXT,
@@ -14,17 +30,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     priority TEXT,
     photo_filename TEXT,
     notes TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-CREATE TABLE IF NOT EXISTS family_members (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    display_name TEXT,
-    photo_filename TEXT,
-    contact_id TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (contact_id) REFERENCES contacts(id)
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS medication_groups (
@@ -36,7 +42,7 @@ CREATE TABLE IF NOT EXISTS medication_groups (
 
 CREATE TABLE IF NOT EXISTS medications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
     name TEXT NOT NULL,
     dosage TEXT,
     frequency TEXT,
@@ -45,7 +51,7 @@ CREATE TABLE IF NOT EXISTS medications (
     current_quantity INTEGER,
     last_taken TEXT,
     taken_today TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS medication_to_group (
@@ -57,24 +63,24 @@ CREATE TABLE IF NOT EXISTS medication_to_group (
 );
 
 CREATE TABLE IF NOT EXISTS allergies (
-    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
     allergen TEXT NOT NULL,
-    PRIMARY KEY (user_id, allergen),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    PRIMARY KEY (family_circle_id, allergen),
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS conditions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
     condition_name TEXT,
     diagnosis_date TEXT,
     notes TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS ice_profile (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL UNIQUE,
+    family_circle_id TEXT NOT NULL UNIQUE,
     profile_name TEXT,
     profile_dob TEXT,
     photo_path TEXT,
@@ -88,12 +94,12 @@ CREATE TABLE IF NOT EXISTS ice_profile (
     notes TEXT,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_updated_by TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS calendar_events (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
     title TEXT,
     description TEXT,
     start_time TEXT,
@@ -103,28 +109,30 @@ CREATE TABLE IF NOT EXISTS calendar_events (
     driver_contact_id TEXT,
     pickup_time TEXT,
     leave_time TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS named_places (
     location_id TEXT PRIMARY KEY,
+    family_circle_id TEXT NOT NULL,
     location_name TEXT,
     gps_latitude REAL,
     gps_longitude REAL,
-    radius_metres INTEGER DEFAULT 150
+    radius_metres INTEGER DEFAULT 150,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS location_checkins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    family_circle_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    family_member_id TEXT NOT NULL,
     timestamp TEXT NOT NULL,
     latitude REAL,
     longitude REAL,
     location_name TEXT,
     notes TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (family_member_id) REFERENCES family_members(id)
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS user_display_settings (

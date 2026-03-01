@@ -51,7 +51,7 @@ def load_json_file(filename: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def load_demo_contacts_from_json_into_db(db_path: str, user_id: str):
+def load_demo_contacts_from_json_into_db(db_path: str, family_circle_id: str):
     """Load contacts from JSON. Can have photo_filename and notes for contact card."""
     contacts_data = load_json_file("contacts.json")
     contacts = contacts_data.get("contacts", [])
@@ -61,12 +61,12 @@ def load_demo_contacts_from_json_into_db(db_path: str, user_id: str):
     for contact in contacts:
         query = """
             INSERT OR REPLACE INTO contacts 
-            (id, user_id, display_name, phone, email, birthday, relationship, priority, photo_filename, notes)
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, priority, photo_filename, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             contact.get("id"),
-            user_id,
+            family_circle_id,
             contact.get("display_name"),
             contact.get("phone"),
             contact.get("email"),
@@ -80,31 +80,33 @@ def load_demo_contacts_from_json_into_db(db_path: str, user_id: str):
     logger.debug("  Loaded %d contacts" % len(contacts))
 
 
-def load_demo_family_members_from_json_into_db(db_path: str, user_id: str):
-    """Load family members (tracked users). Cross-referenced to contacts via contact_id for contact card."""
+def load_demo_users_from_json_into_db(db_path: str, family_circle_id: str):
+    """Create users from family.json and link them to family circle via user_family_circle."""
     family_data = load_json_file("family.json")
     members = family_data.get("family_members", [])
     photo_base = family_data.get("photo_base", "")
 
     db_manager = get_database_manager(db_path)
 
+    db_manager.execute_update(
+        "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
+        (family_circle_id,),
+    )
     for member in members:
         fn = member.get("photo_filename")
         photo_path = ("%s/%s" % (photo_base, fn)) if photo_base and fn else fn
-        query = """
-            INSERT OR REPLACE INTO family_members 
-            (id, user_id, display_name, photo_filename, contact_id)
-            VALUES (?, ?, ?, ?, ?)
-        """
-        params = (
-            member.get("id"),
-            user_id,
-            member.get("display_name"),
-            photo_path,
-            member.get("contact_id"),
+        db_manager.execute_update(
+            """
+            INSERT OR REPLACE INTO users (id, display_name, photo_filename)
+            VALUES (?, ?, ?)
+            """,
+            (member.get("id"), member.get("display_name"), photo_path),
         )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d family members" % len(members))
+        db_manager.execute_update(
+            "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+            (member.get("id"), family_circle_id),
+        )
+    logger.debug("  Loaded %d users into family" % len(members))
 
 
 def load_demo_medication_groups_from_json_into_db(db_path: str, user_id: str):

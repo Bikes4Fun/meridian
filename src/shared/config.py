@@ -51,6 +51,11 @@ def get_server_port() -> int:
     return int(os.getenv("PORT", "8080"))
 
 
+def get_webapp_port() -> int:
+    """Port the webapp static server binds to. Default 3000. Override with WEBAPP_PORT."""
+    return int(os.getenv("WEBAPP_PORT", "3000"))
+
+
 def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
     """Try binding to start_port, start_port+1, ...; return first available port."""
     for offset in range(max_tries):

@@ -1,4 +1,4 @@
-# Dementia TV - Project Plan & Progress
+# Meridian - Project Plan & Progress
 
 **Overview:** 14-week plan Jan 11–Apr 20 (final presentation). Everything must be done before Apr 20. Weeks 1–6 done: setup, map, GPS, checkin, meds. Week 7 in progress: ICE UI done, org/arch. Weeks 8–14: tests, family, QR, safety, final polish & docs.
 

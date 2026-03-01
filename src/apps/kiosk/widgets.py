@@ -1,5 +1,5 @@
 """
-Widget creation logic for Dementia TV application.
+Widget creation logic for Meridian Kiosk.
 Handles the creation of individual UI widgets.
 """
 

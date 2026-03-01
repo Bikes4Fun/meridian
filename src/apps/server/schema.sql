@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS medication_times (
 
 CREATE TABLE IF NOT EXISTS medications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    family_circle_id TEXT NOT NULL,
+    care_recipient_user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     dosage TEXT,
     frequency TEXT,
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS medications (
     max_daily INTEGER,
     last_taken TEXT,
     taken_today TEXT,
-    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS medication_to_time (
@@ -79,19 +79,41 @@ CREATE TABLE IF NOT EXISTS medication_to_time (
 );
 
 CREATE TABLE IF NOT EXISTS allergies (
-    family_circle_id TEXT NOT NULL,
+    care_recipient_user_id TEXT NOT NULL,
     allergen TEXT NOT NULL,
-    PRIMARY KEY (family_circle_id, allergen),
-    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+    PRIMARY KEY (care_recipient_user_id, allergen),
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS conditions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    family_circle_id TEXT NOT NULL,
+    care_recipient_user_id TEXT NOT NULL,
     condition_name TEXT,
     diagnosis_date TEXT,
     notes TEXT,
-    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS care_recipients (
+    family_circle_id TEXT PRIMARY KEY,
+    care_recipient_user_id TEXT NOT NULL,
+    name TEXT,
+    dob TEXT,
+    photo_path TEXT,
+    medical_dnr INTEGER DEFAULT 0,
+    dnr_document_path TEXT,
+    notes TEXT,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS ice_contact_roles (
+    family_circle_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    contact_id TEXT NOT NULL,
+    PRIMARY KEY (family_circle_id, role),
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
+    FOREIGN KEY (contact_id) REFERENCES contacts(id)
 );
 
 CREATE TABLE IF NOT EXISTS ice_profile (

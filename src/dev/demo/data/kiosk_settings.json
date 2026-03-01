@@ -76,7 +76,6 @@
     "calendar": {"color": [0, 0, 0, 1], "width": 1},
     "today_events": {"color": [0, 0, 0, 1], "width": 1},
     "emergency_contacts": {"color": [0, 0, 0, 1], "width": 1},
-    "medical_info": {"color": [0, 0, 0, 1], "width": 1},
     "family_locations": {"color": [0, 0, 0, 1], "width": 1},
     "family_locations_title": {"color": [0, 0, 0, 1], "width": 1},
     "family_locations_places": {"color": [0, 0, 0, 1], "width": 1},

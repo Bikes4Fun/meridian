@@ -21,17 +21,28 @@ class EmergencyService:
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         return self.contact_service.get_all_contacts(family_circle_id)
 
-    def get_medical_summary(self) -> ServiceResult:
+    def get_medical_summary(self, family_circle_id: str) -> ServiceResult:
+        care = self.contact_service.db_manager.execute_query(
+            "SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?",
+            (family_circle_id,),
+        )
+        care_recipient_user_id = care.data[0]["care_recipient_user_id"] if care.success and care.data else None
+        if not care_recipient_user_id:
+            return ServiceResult.success_result("Medical Information:")
+
         medications_result = self.contact_service.db_manager.execute_query(
-            "SELECT name, dosage, frequency FROM medications"
+            "SELECT name, dosage, frequency FROM medications WHERE care_recipient_user_id = ?",
+            (care_recipient_user_id,),
         )
         medications = medications_result.data if medications_result.success else []
         allergies_result = self.contact_service.db_manager.execute_query(
-            "SELECT allergen FROM allergies"
+            "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
+            (care_recipient_user_id,),
         )
         allergies = allergies_result.data if allergies_result.success else []
         conditions_result = self.contact_service.db_manager.execute_query(
-            "SELECT condition_name FROM conditions"
+            "SELECT condition_name FROM conditions WHERE care_recipient_user_id = ?",
+            (care_recipient_user_id,),
         )
         conditions = conditions_result.data if conditions_result.success else []
         lines = ["Medical Information:"]

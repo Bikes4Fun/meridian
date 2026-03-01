@@ -73,18 +73,14 @@ class TestEmergencyService:
     def test_get_all_contacts(self, emergency_service):
         """Test getting all contacts through emergency service."""
         result = emergency_service.get_all_contacts(FAMILY_CIRCLE_ID)
-        
         assert result.success is True
         assert result.data is not None
-    
+
     def test_get_medical_summary(self, emergency_service, populated_test_db):
         """Test getting medical summary."""
-        result = emergency_service.get_medical_summary()
-        
+        result = emergency_service.get_medical_summary(FAMILY_CIRCLE_ID)
         assert result.success is True
         assert isinstance(result.data, str)
-        # Should contain medical information sections
         assert len(result.data) > 0
-        # Should mention medications, allergies, or conditions sections
         data_lower = result.data.lower()
-        assert 'medical' in data_lower or 'medication' in data_lower or 'allergy' in data_lower
+        assert "medical" in data_lower or "medication" in data_lower or "allergy" in data_lower

@@ -24,11 +24,11 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def _format_contacts_for_display(contacts):
+def _format_contacts_for_display(contacts, include_header=True):
     """Format contact dicts into display text. Used by widgets."""
     if not contacts:
         return "No emergency contacts found"
-    lines = ["Emergency Contacts:"]
+    lines = ["Emergency Contacts:"] if include_header else []
     for c in contacts:
         phone = c.get("phone") or ""
         rel = c.get("relationship") or ""
@@ -82,7 +82,6 @@ class WidgetFactory:
             "events": self.create_events_widget,
             "calendar": self.create_calendar_widget,
             "today_events": self.create_today_events_widget,
-            "medical_info": self.create_medical_info_widget,
             "emergency_profile": self.create_emergency_profile_widget,
             "family_locations": self.create_family_locations_widget,
         }
@@ -100,7 +99,6 @@ class WidgetFactory:
             "events",
             "calendar",
             "today_events",
-            "medical_info",
             "emergency_profile",
         ]
 
@@ -120,7 +118,6 @@ class WidgetFactory:
             "events": True,
             "calendar": True,
             "today_events": True,
-            "medical_info": True,
         }
 
     def create_widgets_for_screen(self, screen_type):
@@ -539,52 +536,6 @@ class WidgetFactory:
         events.events_content = events_content
         return events
 
-    def create_medical_info_widget(self):
-        """Create medical info widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        medical = DementiaWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=display_settings.medical_background_color,
-        )
-        apply_border(medical, "medical_info", display_settings)
-
-        # Medical title
-        title = DementiaLabel(
-            display_settings=display_settings,
-            font_size="title",
-            text="Medical Information",
-        )
-        medical.add_widget(title)
-
-        # Medical content
-        if self.emergency_service:
-            result = self.emergency_service.get_medical_summary()
-            if result.success:
-                medical_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text=result.data,
-                )
-            else:
-                medical_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="Error loading medical info",
-                )
-        else:
-            medical_content = DementiaLabel(
-                display_settings=display_settings,
-                font_size="body",
-                text="Emergency service not available",
-            )
-
-        medical.add_widget(medical_content)
-        return medical
-
     def create_emergency_profile_widget(self):
         """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA.
         Light background, dark text for vision-impaired; flashing border for visibility."""
@@ -636,7 +587,19 @@ class WidgetFactory:
                 medical = d.get("medical") or {}
                 emergency = d.get("emergency") or {}
                 proxy = emergency.get("proxy") or {}
+                care_recipient_user_id = d.get("care_recipient_user_id")
 
+                name_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(56))
+                name_row.spacing = display_settings.spacing["sm"]
+                photo_img = Image(size_hint_x=None, width=dp(40), allow_stretch=True, keep_ratio=True)
+                if care_recipient_user_id and self.location_service and hasattr(self.location_service, "fetch_photo_to_cache"):
+                    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+                    def _set_photo(dt):
+                        path = self.location_service.fetch_photo_to_cache(care_recipient_user_id, cache_dir)
+                        if path and os.path.exists(path):
+                            photo_img.source = path
+                    Clock.schedule_once(_set_photo, 0.1)
+                name_row.add_widget(photo_img)
                 name_label = DementiaLabel(
                     display_settings=display_settings,
                     font_size="huge",
@@ -644,7 +607,8 @@ class WidgetFactory:
                     color="text",
                 )
                 name_label.color = dark_text
-                profile.add_widget(name_label)
+                name_row.add_widget(name_label)
+                profile.add_widget(name_row)
 
                 dnr = medical.get("dnr", False)
                 dnr_label = DementiaLabel(
@@ -656,6 +620,18 @@ class WidgetFactory:
                 dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
                 profile.add_widget(dnr_label)
 
+                if self.emergency_service:
+                    ms_result = self.emergency_service.get_medical_summary()
+                    if ms_result.success and ms_result.data:
+                        ms_label = DementiaLabel(
+                            display_settings=display_settings,
+                            font_size="large",
+                            text=ms_result.data,
+                            color="text",
+                        )
+                        ms_label.color = dark_text
+                        profile.add_widget(ms_label)
+
                 if medical.get("conditions"):
                     cond_label = DementiaLabel(
                         display_settings=display_settings,
@@ -665,6 +641,26 @@ class WidgetFactory:
                     )
                     cond_label.color = dark_text
                     profile.add_widget(cond_label)
+
+                if self.emergency_service:
+                    ec_result = self.emergency_service.get_emergency_contacts()
+                    if ec_result.success and ec_result.data:
+                        ec_label = DementiaLabel(
+                            display_settings=display_settings,
+                            font_size="title",
+                            text="Emergency contacts",
+                            color="text",
+                        )
+                        ec_label.color = dark_text
+                        profile.add_widget(ec_label)
+                        ec_list = DementiaLabel(
+                            display_settings=display_settings,
+                            font_size="large",
+                            text=_format_contacts_for_display(ec_result.data, include_header=False),
+                            color="text",
+                        )
+                        ec_list.color = dark_text
+                        profile.add_widget(ec_list)
 
                 if proxy.get("name") or d.get("medical_proxy_phone"):
                     proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
@@ -691,44 +687,6 @@ class WidgetFactory:
                         )
                         poa_label.color = dark_text
                         profile.add_widget(poa_label)
-
-                allergies = medical.get("allergies") or []
-                if allergies:
-                    a_label = DementiaLabel(
-                        display_settings=display_settings,
-                        font_size="large",
-                        text="Allergies: " + ", ".join(allergies),
-                        color="text",
-                    )
-                    a_label.color = dark_text
-                    profile.add_widget(a_label)
-
-                meds = medical.get("medications") or []
-                if meds:
-                    med_lines = [
-                        f"{m.get('name', '')} {m.get('dosage', '')}".strip()
-                        for m in meds
-                    ]
-                    med_label = DementiaLabel(
-                        display_settings=display_settings,
-                        font_size="large",
-                        text="Medications: " + "; ".join(med_lines[:5]),
-                        color="text",
-                    )
-                    med_label.color = dark_text
-                    profile.add_widget(med_label)
-
-                if self.emergency_service:
-                    ec_result = self.emergency_service.get_emergency_contacts()
-                    if ec_result.success and ec_result.data:
-                        ec_label = DementiaLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text=_format_contacts_for_display(ec_result.data),
-                            color="text",
-                        )
-                        ec_label.color = dark_text
-                        profile.add_widget(ec_label)
             else:
                 err_label = DementiaLabel(
                     display_settings=display_settings,

@@ -98,6 +98,7 @@ class RemoteCalendarService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
@@ -106,7 +107,7 @@ class RemoteCalendarService:
 
     def get_day_headers(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/calendar/headers",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/headers",
             headers=self._headers,
             session=self._session,
         )
@@ -117,7 +118,7 @@ class RemoteCalendarService:
     def get_current_month_data(self, reference_date=None) -> Any:
         today = self._today_param()
         ok, data, err = _get(
-            f"{self._base}/api/calendar/month?date={today}",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/month?date={today}",
             headers=self._headers,
             session=self._session,
         )
@@ -128,7 +129,7 @@ class RemoteCalendarService:
     def get_current_date(self) -> int:
         today = self._today_param()
         ok, data, err = _get(
-            f"{self._base}/api/calendar/date?date={today}",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/date?date={today}",
             headers=self._headers,
             session=self._session,
         )
@@ -140,7 +141,7 @@ class RemoteCalendarService:
 
     def get_events_for_date(self, date: str) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/calendar/events?date={date}",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/events?date={date}",
             headers=self._headers,
             session=self._session,
         )
@@ -158,12 +159,13 @@ class RemoteMedicationService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_medication_data(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/medications",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications",
             headers=self._headers,
             session=self._session,
         )
@@ -181,12 +183,13 @@ class RemoteEmergencyService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_emergency_contacts(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/emergency/contacts",
+            f"{self._base}/api/family_circles/{self._fc_id}/contacts",
             headers=self._headers,
             session=self._session,
         )
@@ -199,7 +202,7 @@ class RemoteEmergencyService:
 
     def get_medical_summary(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/emergency/medical-summary",
+            f"{self._base}/api/family_circles/{self._fc_id}/medical-summary",
             headers=self._headers,
             session=self._session,
         )
@@ -242,12 +245,13 @@ class RemoteICEProfileService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_ice_profile(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/emergency/ice",
+            f"{self._base}/api/family_circles/{self._fc_id}/ice-profile",
             headers=self._headers,
             session=self._session,
         )
@@ -265,12 +269,13 @@ class RemoteLocationService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_checkins(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/location/latest",
+            f"{self._base}/api/family_circles/{self._fc_id}/checkins",
             headers=self._headers,
             session=self._session,
         )
@@ -280,7 +285,7 @@ class RemoteLocationService:
 
     def get_named_places(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/location/places",
+            f"{self._base}/api/family_circles/{self._fc_id}/named-places",
             headers=self._headers,
             session=self._session,
         )
@@ -311,7 +316,7 @@ class RemoteLocationService:
 
             client = self._session if self._session else requests
             r = client.post(
-                f"{self._base}/api/location/checkin",
+                f"{self._base}/api/family_circles/{self._fc_id}/checkin",
                 json=payload,
                 headers=self._headers,
                 timeout=5,
@@ -337,7 +342,7 @@ class RemoteLocationService:
         if os.path.exists(cached):
             return cached
         try:
-            url = f"{self._base}/api/photos/{user_id}"
+            url = f"{self._base}/api/users/{user_id}/photo"
             client = self._session if self._session else requests
             r = client.get(url, headers=self._headers, timeout=10)
             r.raise_for_status()

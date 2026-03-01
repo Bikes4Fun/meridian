@@ -4,6 +4,7 @@
 
     var _u = '__API_URL__';
     var API_URL = (_u.startsWith('http') ? _u : '');
+    var _familyCircleId = null;
 
     function showStatus(message, type) {
         var container = document.getElementById('status');
@@ -52,7 +53,13 @@
 
                 showStatus('Found location: ' + latitude.toFixed(4) + ', ' + longitude.toFixed(4) + '. Sending...', 'info');
 
-                fetch(API_URL + '/api/location/checkin', {
+                var fcId = _familyCircleId;
+                if (!fcId) {
+                    showStatus('Session expired. Please log in again.', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+                fetch(API_URL + '/api/family_circles/' + fcId + '/checkin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -104,7 +111,8 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (session) {
                 if (!session || !session.family_circle_id) return;
-                return fetch(API_URL + '/api/family_circle/family-members/' + session.family_circle_id, {
+                _familyCircleId = session.family_circle_id;
+                return fetch(API_URL + '/api/family_circles/' + session.family_circle_id + '/family-members', {
                     credentials: 'include'
                 });
             })

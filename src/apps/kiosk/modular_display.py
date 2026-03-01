@@ -14,7 +14,7 @@ from kivy.uix.image import Image
 from kivy.graphics import Color, Rectangle
 
 
-class DementiaWidget(BoxLayout):
+class KioskWidget(BoxLayout):
     """Base widget with dementia-friendly defaults."""
 
     def __init__(self, display_settings, background_color=None, **kwargs):
@@ -49,8 +49,9 @@ class DementiaWidget(BoxLayout):
         self.bg_rect.size = self.size
 
 
-class DementiaLabel(Label):
-    """Configurable label with dementia-friendly defaults."""
+class KioskLabel(Label):
+    """Text display widget with dementia-friendly defaults. Named after Kivy's Label (static text);
+    font_size/color/align come from display_settings for consistency."""
 
     def __init__(
         self,
@@ -78,7 +79,7 @@ class DementiaLabel(Label):
         self.text_size = self.size
 
 
-class DementiaButton(Button):
+class KioskButton(Button):
     """Configurable button - all style parameters required from display_settings."""
 
     def __init__(
@@ -103,18 +104,6 @@ class DementiaButton(Button):
         self.font_size = self.display_settings.font_sizes[font_size]
         self.color = self.display_settings.colors[color]
         self.background_color = self.display_settings.colors[background_color]
-        self.size_hint = size_hint
-
-
-class DementiaImage(Image):
-    """Configurable image widget with dementia-friendly defaults."""
-
-    def __init__(self, display_settings, size_hint=(1, 1), **kwargs):
-        Image.__init__(self, **kwargs)
-
-        self.display_settings = display_settings
-
-        # Configurable properties with sensible defaults
         self.size_hint = size_hint
 
 
@@ -146,7 +135,7 @@ class DementiaGridLayout(GridLayout):
         self.size_hint = size_hint
 
 
-class ContentWidget(DementiaWidget):
+class ContentWidget(KioskWidget):
     """Generic content widget that can hold any content."""
 
     def __init__(self, content=None, **kwargs):
@@ -165,7 +154,7 @@ class ContentWidget(DementiaWidget):
         self.add_widget(widget)
 
 
-class ListWidget(DementiaWidget):
+class ListWidget(KioskWidget):
     """Simple list widget using Kivy's built-in capabilities."""
 
     def __init__(self, **kwargs):
@@ -174,7 +163,7 @@ class ListWidget(DementiaWidget):
 
         # Create scrollable content - pass display_settings through
         self.scroll_view = DementiaScrollView()
-        self.content_layout = DementiaWidget(
+        self.content_layout = KioskWidget(
             display_settings=self.display_settings, orientation="vertical"
         )
         self.scroll_view.add_widget(self.content_layout)
@@ -189,7 +178,7 @@ class ListWidget(DementiaWidget):
         self.content_layout.clear_widgets()
 
 
-class GridWidget(DementiaWidget):
+class GridWidget(KioskWidget):
     """Simple grid widget using Kivy's GridLayout."""
 
     def __init__(self, cols=2, **kwargs):
@@ -209,7 +198,7 @@ class GridWidget(DementiaWidget):
         self.grid_layout.clear_widgets()
 
 
-class SectionWidget(DementiaWidget):
+class SectionWidget(KioskWidget):
     """Simple section widget with title and content."""
 
     def __init__(self, title="", **kwargs):
@@ -218,7 +207,7 @@ class SectionWidget(DementiaWidget):
 
         if title:
             # Use display_settings from parent (DementiaWidget)
-            self.title_label = DementiaLabel(
+            self.title_label = KioskLabel(
                 display_settings=self.display_settings, text=title
             )
             self.title_label.font_size = self.display_settings.font_sizes["title"]
@@ -229,7 +218,7 @@ class SectionWidget(DementiaWidget):
         self.add_widget(widget)
 
 
-class ActionWidget(DementiaWidget):
+class ActionWidget(KioskWidget):
     """Simple action widget with buttons."""
 
     def __init__(self, **kwargs):
@@ -238,13 +227,13 @@ class ActionWidget(DementiaWidget):
 
     def add_button(self, text, action=None):
         """Add a button to the action widget."""
-        button = DementiaButton(text=text)
+        button = KioskButton(text=text)
         if action:
             button.bind(on_press=action)
         self.add_widget(button)
 
 
-class DementiaNavBar(DementiaWidget):
+class KioskNavBar(KioskWidget):
     """Generic navigation bar with configurable buttons."""
 
     def __init__(self, display_settings, screen_manager=None, buttons=None, **kwargs):
@@ -281,7 +270,7 @@ class DementiaNavBar(DementiaWidget):
             else:
                 continue  # Skip invalid button configurations
 
-            btn = DementiaButton(
+            btn = KioskButton(
                 display_settings=self.display_settings,
                 text=text,
                 font_size=font_size,

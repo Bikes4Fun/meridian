@@ -14,7 +14,8 @@ import logging
 import os
 from typing import Optional
 from shared.config import ConfigManager
-from .api_client import create_remote, get_display_settings
+from .api_client import create_remote
+from .screens import get_kiosk_settings
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
@@ -69,7 +70,7 @@ class MeridianKioskApp(App):
         family_screen = self.screen_factory.create_family_screen()
         self.screen_manager.add_widget(family_screen)
 
-        more_screen = self.screen_factory.create_more_screen()
+        more_screen = self.screen_factory.create_demo_screen()
         self.screen_manager.add_widget(more_screen)
 
         self.screen_manager.current = "family"
@@ -308,12 +309,7 @@ class AppFactory:
             session = requests.Session()
         except ImportError:
             session = None
-        display_settings = get_display_settings(
-            api_url,
-            user_id=user_id,
-            family_circle_id=family_circle_id,
-            session=session,
-        )
+        display_settings = get_kiosk_settings()
         services = create_remote(
             api_url,
             user_id=user_id,

@@ -4,10 +4,9 @@ Handles the creation of individual UI widgets.
 """
 
 from .modular_display import (
-    DementiaWidget,
-    DementiaLabel,
-    DementiaButton,
-    DementiaImage,
+    KioskWidget,
+    KioskLabel,
+    KioskButton,
 )
 
 # Top section: Day + Time of day (left) | Icon (right)
@@ -151,7 +150,7 @@ class WidgetFactory:
         clock_bg = display_settings.clock_background_color
         text_color = display_settings.colors["text"]
 
-        clock = DementiaWidget(
+        clock = KioskWidget(
             orientation="vertical",
             background_color=clock_bg,
             display_settings=display_settings,
@@ -171,7 +170,7 @@ class WidgetFactory:
         left_stack = BoxLayout(orientation="vertical")
         left_stack.size_hint = (0.7, 1)
 
-        day_label = DementiaLabel(
+        day_label = KioskLabel(
             font_size="title", text="", display_settings=display_settings
         )
         day_label.color = text_color
@@ -181,7 +180,7 @@ class WidgetFactory:
         apply_border(day_label, "clock_day_label", display_settings)
         left_stack.add_widget(day_label)
 
-        time_of_day_label = DementiaLabel(
+        time_of_day_label = KioskLabel(
             font_size="large", text="", display_settings=display_settings
         )
         time_of_day_label.color = text_color
@@ -213,7 +212,7 @@ class WidgetFactory:
         clock.add_widget(top_section)
 
         # Main time display - very large, centered
-        time_label = DementiaLabel(
+        time_label = KioskLabel(
             font_size="huge", text="", display_settings=display_settings
         )
         time_label.color = text_color
@@ -230,7 +229,7 @@ class WidgetFactory:
         bottom_section.height = display_settings.clock_date_height
         apply_border(bottom_section, "clock_bottom_section", display_settings)
 
-        date_label = DementiaLabel(
+        date_label = KioskLabel(
             font_size="large", text="", display_settings=display_settings
         )
         date_label.color = text_color
@@ -240,7 +239,7 @@ class WidgetFactory:
         apply_border(date_label, "clock_date_label", display_settings)
         bottom_section.add_widget(date_label)
 
-        year_label = DementiaLabel(
+        year_label = KioskLabel(
             font_size="large", text="", display_settings=display_settings
         )
         year_label.color = text_color
@@ -284,20 +283,20 @@ class WidgetFactory:
         display_settings = self.display_settings
 
         # Use actual user settings - no hardcoded defaults
-        med = DementiaWidget(
+        med = KioskWidget(
             display_settings=display_settings,
             orientation=display_settings.med_orientation,
             background_color=display_settings.med_background_color,
         )
 
         # Title - much larger
-        title = DementiaLabel(
+        title = KioskLabel(
             display_settings=display_settings, font_size="title", text="Medications"
         )
         med.add_widget(title)
 
         # Medication content
-        med_content = DementiaLabel(
+        med_content = KioskLabel(
             display_settings=display_settings,
             font_size="body",
             text="Loading medications...",
@@ -314,20 +313,20 @@ class WidgetFactory:
         display_settings = self.display_settings
 
         # Use actual user settings - no hardcoded defaults
-        events = DementiaWidget(
+        events = KioskWidget(
             display_settings=display_settings,
             orientation=display_settings.events_orientation,
             background_color=display_settings.events_background_color,
         )
 
         # Title
-        title = DementiaLabel(
+        title = KioskLabel(
             display_settings=display_settings, font_size="title", text="Today's Events"
         )
         events.add_widget(title)
 
         # Events content
-        events_content = DementiaLabel(
+        events_content = KioskLabel(
             display_settings=display_settings,
             font_size="body",
             text="Loading events...",
@@ -346,7 +345,7 @@ class WidgetFactory:
             raise ValueError("display_settings must be provided to WidgetFactory")
         display_settings = self.display_settings
 
-        calendar = DementiaWidget(
+        calendar = KioskWidget(
             display_settings=display_settings,
             orientation="vertical",
             background_color=display_settings.calendar_background_color,
@@ -354,13 +353,13 @@ class WidgetFactory:
         apply_border(calendar, "calendar", display_settings)
 
         # Calendar title
-        title = DementiaLabel(
+        title = KioskLabel(
             display_settings=display_settings, font_size="title", text="Calendar"
         )
         calendar.add_widget(title)
 
         # Calendar grid container (no padding so buttons can receive touches)
-        calendar_grid = DementiaWidget(
+        calendar_grid = KioskWidget(
             display_settings=display_settings, orientation="vertical"
         )
         calendar_grid.size_hint = (1, 1)
@@ -379,7 +378,7 @@ class WidgetFactory:
                 current_date = self.calendar_service.get_current_date()
 
                 # Create day headers row (no padding so buttons fill the row)
-                header_row = DementiaWidget(
+                header_row = KioskWidget(
                     display_settings=display_settings, orientation="horizontal"
                 )
                 header_row.size_hint = (1, None)
@@ -388,7 +387,7 @@ class WidgetFactory:
                 header_row.spacing = 2
 
                 for day in days:
-                    header_btn = DementiaButton(
+                    header_btn = KioskButton(
                         display_settings=display_settings,
                         text=day,
                         font_size="body",
@@ -405,7 +404,7 @@ class WidgetFactory:
 
                 # Create calendar days
                 for week in cal_data:
-                    week_row = DementiaWidget(
+                    week_row = KioskWidget(
                         display_settings=display_settings, orientation="horizontal"
                     )
                     week_row.size_hint = (1, None)
@@ -416,7 +415,7 @@ class WidgetFactory:
                     for day in week:
                         if day == 0:
                             # Empty day
-                            empty_btn = DementiaButton(
+                            empty_btn = KioskButton(
                                 display_settings=display_settings,
                                 text="",
                                 font_size="body",
@@ -427,7 +426,7 @@ class WidgetFactory:
                             week_row.add_widget(empty_btn)
                         else:
                             # Day button
-                            day_btn = DementiaButton(
+                            day_btn = KioskButton(
                                 display_settings=display_settings,
                                 text=str(day),
                                 font_size="body",
@@ -471,14 +470,14 @@ class WidgetFactory:
                 calendar.add_widget(calendar_grid)
 
             else:
-                error_content = DementiaLabel(
+                error_content = KioskLabel(
                     display_settings=display_settings,
                     font_size="body",
                     text="Error loading calendar",
                 )
                 calendar.add_widget(error_content)
         else:
-            error_content = DementiaLabel(
+            error_content = KioskLabel(
                 display_settings=display_settings,
                 font_size="body",
                 text="Calendar service not available",
@@ -493,13 +492,13 @@ class WidgetFactory:
             raise ValueError("display_settings must be provided to WidgetFactory")
         display_settings = self.display_settings
 
-        events = DementiaWidget(
+        events = KioskWidget(
             display_settings=display_settings, orientation="vertical"
         )
         apply_border(events, "today_events", display_settings)
 
         # Events title
-        title = DementiaLabel(
+        title = KioskLabel(
             display_settings=display_settings, font_size="title", text="Today's Events"
         )
         events.add_widget(title)
@@ -513,19 +512,19 @@ class WidgetFactory:
 
             if result.success and result.data:
                 events_text = [f"• {event}" for event in result.data]
-                events_content = DementiaLabel(
+                events_content = KioskLabel(
                     display_settings=display_settings,
                     font_size="body",
                     text="\n".join(events_text),
                 )
             else:
-                events_content = DementiaLabel(
+                events_content = KioskLabel(
                     display_settings=display_settings,
                     font_size="body",
                     text="No events today",
                 )
         else:
-            events_content = DementiaLabel(
+            events_content = KioskLabel(
                 display_settings=display_settings,
                 font_size="body",
                 text="Calendar service not available",
@@ -545,7 +544,7 @@ class WidgetFactory:
         display_settings = self.display_settings
 
         dark_text = (0.1, 0.1, 0.1, 1)
-        profile = DementiaWidget(
+        profile = KioskWidget(
             display_settings=display_settings,
             orientation="vertical",
             background_color=(0.98, 0.98, 0.96, 1),
@@ -611,7 +610,7 @@ class WidgetFactory:
                     Clock.schedule_once(_set_photo, 0.1)
                 photo_cell.add_widget(photo_img)
                 name_section.add_widget(photo_cell)
-                name_label = DementiaLabel(
+                name_label = KioskLabel(
                     display_settings=display_settings,
                     font_size="huge",
                     text=profile_data.get("name") or "Patient",
@@ -623,7 +622,7 @@ class WidgetFactory:
                 profile.add_widget(name_section)
 
                 dnr = medical.get("dnr", False)
-                dnr_label = DementiaLabel(
+                dnr_label = KioskLabel(
                     display_settings=display_settings,
                     font_size="huge",
                     text="DNR" if dnr else "FULL CODE",
@@ -636,7 +635,7 @@ class WidgetFactory:
                 if self.emergency_service:
                     ms_result = self.emergency_service.get_medical_summary()
                     if ms_result.success and ms_result.data:
-                        ms_label = DementiaLabel(
+                        ms_label = KioskLabel(
                             display_settings=display_settings,
                             font_size="large",
                             text=ms_result.data,
@@ -647,7 +646,7 @@ class WidgetFactory:
                         profile.add_widget(ms_label)
 
                 if medical.get("conditions"):
-                    cond_label = DementiaLabel(
+                    cond_label = KioskLabel(
                         display_settings=display_settings,
                         font_size="title",
                         text=f"Diagnosis: {medical['conditions']}",
@@ -661,7 +660,7 @@ class WidgetFactory:
                     ec_result = self.emergency_service.get_emergency_contacts()
                     if ec_result.success and ec_result.data:
                         ec_block = BoxLayout(orientation="vertical")
-                        ec_label = DementiaLabel(
+                        ec_label = KioskLabel(
                             display_settings=display_settings,
                             font_size="title",
                             text="Emergency contacts",
@@ -669,7 +668,7 @@ class WidgetFactory:
                         )
                         ec_label.color = dark_text
                         ec_block.add_widget(ec_label)
-                        ec_list = DementiaLabel(
+                        ec_list = KioskLabel(
                             display_settings=display_settings,
                             font_size="large",
                             text=_format_contacts_for_display(ec_result.data, include_header=False),
@@ -683,7 +682,7 @@ class WidgetFactory:
                 if proxy.get("name") or d.get("medical_proxy_phone"):
                     proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
                     if proxy_text:
-                        p_label = DementiaLabel(
+                        p_label = KioskLabel(
                             display_settings=display_settings,
                             font_size="large",
                             text=proxy_text,
@@ -698,7 +697,7 @@ class WidgetFactory:
                         f"POA: {d.get('poa_name', '')} {d.get('poa_phone', '')}".strip()
                     )
                     if poa_text:
-                        poa_label = DementiaLabel(
+                        poa_label = KioskLabel(
                             display_settings=display_settings,
                             font_size="large",
                             text=poa_text,
@@ -708,7 +707,7 @@ class WidgetFactory:
                         apply_border(poa_label, "emergency_profile_poa", display_settings)
                         profile.add_widget(poa_label)
             else:
-                err_label = DementiaLabel(
+                err_label = KioskLabel(
                     display_settings=display_settings,
                     font_size="title",
                     text="Emergency profile not found",
@@ -717,7 +716,7 @@ class WidgetFactory:
                 err_label.color = dark_text
                 profile.add_widget(err_label)
         else:
-            err_label = DementiaLabel(
+            err_label = KioskLabel(
                 display_settings=display_settings,
                 font_size="title",
                 text="Emergency profile service not available",
@@ -784,7 +783,7 @@ class WidgetFactory:
 
     def _create_family_locations_title(self):
         """Create Family Locations screen title block."""
-        title = DementiaLabel(
+        title = KioskLabel(
             display_settings=self.display_settings,
             font_size="title",
             text="Family Locations",
@@ -814,7 +813,7 @@ class WidgetFactory:
                 suffix = "(none)"
         else:
             suffix = "(unavailable)"
-        widget = DementiaLabel(
+        widget = KioskLabel(
             display_settings=self.display_settings,
             font_size="body",
             text=prefix + suffix,
@@ -864,7 +863,7 @@ class WidgetFactory:
             n_lines = 2
             text = "Location service not available"
 
-        widget = DementiaLabel(
+        widget = KioskLabel(
             display_settings=self.display_settings,
             font_size="body",
             text=text,
@@ -888,7 +887,7 @@ class WidgetFactory:
         """Create family location check-in widget; arranges title, possible places, and check-ins."""
         if not self.display_settings:
             raise ValueError("display_settings must be provided to WidgetFactory")
-        family = DementiaWidget(
+        family = KioskWidget(
             display_settings=self.display_settings, orientation="vertical"
         )
         apply_border(family, "family_locations", self.display_settings)

@@ -1,26 +1,123 @@
 """
 Screen creation logic for Meridian Kiosk.
 Handles the creation of different kiosk screens.
+All widget/screen settings defined here (no external display_settings).
 """
 
 import os
 import logging
 
 from shared.config import get_database_path
+from .settings import DisplaySettings
+
+# All kiosk display/widget settings defined here
+KIOSK_SETTINGS = {
+    "font_sizes": {"small": 28, "medium": 40, "body": 42, "large": 56, "title": 72, "huge": 120},
+    "colors": {"nav": [0.4, 0.6, 0.85, 1], "surface": [0.95, 0.95, 0.93, 1], "text": [0.1, 0.1, 0.1, 1], "error": [0.9, 0.3, 0.3, 1]},
+    "spacing": {"xs": 8, "sm": 16, "md": 24, "lg": 40},
+    "touch_targets": {"minimum": 60, "comfortable": 80},
+    "window_width": 740,
+    "window_height": 1080,
+    "window_left": 10,
+    "window_top": 120,
+    "clock_icon_size": 100,
+    "clock_icon_height": 100,
+    "clock_text_height": 50,
+    "clock_day_height": 60,
+    "clock_time_height": 120,
+    "clock_date_height": 60,
+    "clock_spacing": 0,
+    "clock_padding": [15, 10],
+    "main_padding": [0, 10, 0, 0],
+    "home_layout": "vertical",
+    "clock_proportion": 0.35,
+    "todo_proportion": 0.65,
+    "high_contrast": False,
+    "large_text": True,
+    "reduced_motion": False,
+    "med_events_split": 0.5,
+    "navigation_height": 90,
+    "button_flat_style": True,
+    "clock_background_color": [0.98, 0.98, 0.96, 1],
+    "med_background_color": [0.94, 0.96, 0.98, 1],
+    "events_background_color": [0.96, 0.98, 0.94, 1],
+    "contacts_background_color": [0.98, 0.94, 0.94, 1],
+    "medical_background_color": [0.94, 0.98, 0.94, 1],
+    "calendar_background_color": [0.96, 0.94, 0.98, 1],
+    "nav_background_color": [0.15, 0.2, 0.3, 1],
+    "clock_orientation": "vertical",
+    "med_orientation": "vertical",
+    "events_orientation": "vertical",
+    "bottom_section_orientation": "horizontal",
+    "navigation_buttons": [
+        {"text": "Home", "screen": "home", "color": "text", "background_color": "nav", "font_size": "large"},
+        {"text": "Calendar", "screen": "calendar", "color": "text", "background_color": "nav", "font_size": "large"},
+        {"text": "Emergency", "screen": "emergency", "color": "text", "background_color": "nav", "font_size": "large"},
+        {"text": "Family", "screen": "family", "color": "text", "background_color": "nav", "font_size": "large"},
+        {"text": "More", "screen": "more", "color": "text", "background_color": "nav", "font_size": "large"},
+    ],
+    "borders": {
+        "clock": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_top_section": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_day_label": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_time_of_day_label": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_icon_container": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_time_label": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_bottom_section": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_date_label": {"color": [0, 0, 0, 1], "width": 1},
+        "clock_year_label": {"color": [0, 0, 0, 1], "width": 1},
+        "calendar": {"color": [0, 0, 0, 1], "width": 1},
+        "today_events": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_contacts": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_profile_name": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_profile_dnr": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_profile_medical": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_profile_conditions": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_profile_proxy": {"color": [0, 0, 0, 1], "width": 1},
+        "emergency_profile_poa": {"color": [0, 0, 0, 1], "width": 1},
+        "family_locations": {"color": [0, 0, 0, 1], "width": 1},
+        "family_locations_title": {"color": [0, 0, 0, 1], "width": 1},
+        "family_locations_places": {"color": [0, 0, 0, 1], "width": 1},
+        "family_locations_checkins": {"color": [0, 0, 0, 1], "width": 1},
+        "family_future_map": {"color": [0, 0, 0, 1], "width": 1},
+        "more": {"color": [0, 0, 0, 1], "width": 1},
+    },
+}
+
+
+def get_kiosk_settings():
+    """Return DisplaySettings built from KIOSK_SETTINGS. Used by app and factories."""
+    return DisplaySettings.from_dict(KIOSK_SETTINGS)
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
+from kivy.graphics import Color, Line
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
-    DementiaWidget,
-    DementiaLabel,
-    DementiaButton,
-    DementiaNavBar,
+    KioskWidget,
+    KioskLabel,
+    KioskButton,
+    KioskNavBar,
 )
 from .widgets import WidgetFactory, apply_border
 from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
+
+
+def _apply_demo_border(widget, color=(0.2, 0.4, 0.8, 1), width=3):
+    """Apply a visible border for layout demo. Color is RGBA tuple."""
+
+    def _draw(instance, value):
+        instance.canvas.after.clear()
+        with instance.canvas.after:
+            Color(*color)
+            Line(
+                rectangle=(instance.x, instance.y, instance.width, instance.height),
+                width=width,
+            )
+
+    widget.bind(pos=_draw, size=_draw)
 
 
 def _crop_image_to_circle(src_path, size=200):
@@ -67,11 +164,22 @@ class ScreenFactory:
     """Factory for creating kiosk screens."""
 
     def __init__(self, services, screen_manager, display_settings=None, user_id=None):
+        settings = get_kiosk_settings() if display_settings is None else display_settings
         self.services = services
         self.screen_manager = screen_manager
-        self.display_settings = display_settings
+        self.display_settings = settings
         self.user_id = user_id
-        self.widget_factory = WidgetFactory(services, display_settings=display_settings)
+        self.widget_factory = WidgetFactory(services, display_settings=settings)
+
+    def screen_template_boxlayout(self):
+        s = self.display_settings
+        return {
+            "orientation": s.home_layout,
+            "size_hint": (1, 1),
+            "padding": s.main_padding,
+            "spacing": s.spacing["md"],
+        }
+
 
     def create_home_screen(self):
         """Create home screen using modular components."""
@@ -169,47 +277,6 @@ class ScreenFactory:
         screen.add_widget(main_layout)
         return screen
 
-    def create_more_screen(self):
-        """Create more options screen using modular components."""
-        screen = Screen(name="more")
-
-        # Main layout
-        main_layout = BoxLayout(orientation="vertical")
-        main_layout.size_hint = (1, 1)
-        main_layout.padding = self.display_settings.main_padding
-
-        # Navigation bar
-        nav_widget = self._create_navigation()
-        main_layout.add_widget(nav_widget)
-
-        # More content
-        more_widget = DementiaWidget(
-            orientation="vertical", display_settings=self.display_settings
-        )
-        more_widget.size_hint = (1, 1)
-        apply_border(more_widget, "more", self.display_settings)
-
-        # More title
-        title = DementiaLabel(
-            display_settings=self.display_settings,
-            font_size="title",
-            text="More Options",
-        )
-        more_widget.add_widget(title)
-
-        # More content
-        more_content = DementiaLabel(
-            display_settings=self.display_settings,
-            font_size="body",
-            text="Additional features coming soon...",
-        )
-        more_widget.add_widget(more_content)
-
-        main_layout.add_widget(more_widget)
-        screen.add_widget(main_layout)
-
-        return screen
-
     def create_family_screen(self):
         """Create family location check-in screen using modular components."""
         screen = Screen(name="family")
@@ -288,8 +355,90 @@ class ScreenFactory:
         # Navigation buttons from user settings (user-configurable)
         nav_buttons = self.display_settings.navigation_buttons
 
-        return DementiaNavBar(
+        return KioskNavBar(
             screen_manager=self.screen_manager,
             buttons=nav_buttons,
             display_settings=self.display_settings,
         )
+
+# -------------
+
+    def _demo_header(self):
+        header = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=dp(80),
+            spacing=dp(8),
+            padding=dp(8),
+        )
+
+        _apply_demo_border(header, color=(0.8, 0.2, 0.2, 1))
+        
+        left_box = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(120), spacing=dp(8))
+        left_label = KioskLabel(
+            display_settings=self.display_settings, font_size="body", text="LEFT"
+        )
+        left_label.color = (0.55, 0.55, 0.55, 1)
+        left_box.add_widget(left_label)
+        _apply_demo_border(left_box, color=(0.2, 0.2, 0.2, 1))
+        header.add_widget(left_box)
+        
+        right_box = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(120), spacing=dp(8))
+        right_label = KioskLabel(
+            display_settings=self.display_settings, font_size="body", text="RIGHT"
+        )
+        right_label.color = (0.55, 0.55, 0.55, 1)
+        right_box.add_widget(right_label)
+        _apply_demo_border(right_box, color=(0.2, 0.2, 0.2, 1))
+        header.add_widget(right_box)
+        
+        return header
+
+    def _demo_content(self):
+        content = BoxLayout(orientation="horizontal", size_hint=(1, 1), spacing=dp(8))
+        sidebar = BoxLayout(orientation="vertical", size_hint_x=0.25)
+        
+        # Sidebar
+        sidebar_label = KioskLabel(
+            display_settings=self.display_settings, font_size="body", text="SIDEBAR"
+        )
+        sidebar_label.color = (0.55, 0.55, 0.55, 1)
+        sidebar.add_widget(sidebar_label)
+        _apply_demo_border(sidebar, color=(0.2, 0.7, 0.3, 1))
+        content.add_widget(sidebar)
+
+        # Main
+        main_area = BoxLayout(orientation="vertical", size_hint_x=0.75)
+        main_label = KioskLabel(
+            display_settings=self.display_settings, font_size="body", text="MAIN"
+        )
+        main_label.color = (0.55, 0.55, 0.55, 1)
+        main_area.add_widget(main_label)
+        _apply_demo_border(main_area, color=(0.2, 0.4, 0.8, 1))
+        content.add_widget(main_area)
+        
+        return content
+
+    def _demo_footer(self):
+        footer = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(60))
+        footer_label = KioskLabel(
+            display_settings=self.display_settings, font_size="body", text="FOOTER"
+        )
+        footer_label.color = (0.55, 0.55, 0.55, 1)
+        footer.add_widget(footer_label)
+        _apply_demo_border(footer, color=(0.9, 0.6, 0.1, 1))
+        return footer
+
+    def create_demo_screen(self):
+        """Demo screen: blank boxes with labeled regions to visualize layout behavior."""
+        screen = Screen(name="more")
+
+        main = BoxLayout(**self.screen_template_boxlayout())
+        main.add_widget(self._create_navigation())
+        main.add_widget(self._demo_header())
+        main.add_widget(self._demo_content())
+        main.add_widget(self._demo_footer())
+
+        screen.add_widget(main)
+        return screen
+

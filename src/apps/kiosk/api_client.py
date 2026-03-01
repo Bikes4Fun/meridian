@@ -360,21 +360,10 @@ def get_display_settings(
     family_circle_id: Optional[str] = None,
     session: Optional["requests.Session"] = None,
 ):
-    """Fetch display settings from GET /api/settings. Uses display defaults if server has none."""
+    """Load display settings from kiosk_settings.json. API override disabled for now."""
     from .settings import DisplaySettings
 
-    base = server_url.rstrip("/")
-    ok, data, err = _get(
-        f"{base}/api/settings",
-        headers=_headers(user_id, family_circle_id),
-        session=session,
-    )
-    if not ok or not data or "display" not in data:
-        return DisplaySettings.default()
-    try:
-        return DisplaySettings.from_dict(data["display"])
-    except Exception:
-        return DisplaySettings.default()
+    return DisplaySettings.default()
 
 
 def create_remote(

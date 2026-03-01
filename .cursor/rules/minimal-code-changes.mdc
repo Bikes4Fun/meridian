@@ -1,0 +1,15 @@
+---
+description: Keep changes and additions to the bare minimum requested functionality; prefer short and simple code
+alwaysApply: true
+---
+
+# Minimal Code Changes
+
+Keep any changes and additions to an absolute bare minimum for the requested functionality. Emphasize short and simple.
+
+## Rules
+
+1. **Bare minimum**: Implement only what was asked—no extra features, helpers, or "improvements"
+2. **Short and simple**: Prefer fewer lines, less branching, simpler logic
+3. **No scope creep**: Do not refactor, expand, or polish unrelated code
+4. **One thing at a time**: Address the specific request only

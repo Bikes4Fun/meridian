@@ -256,7 +256,7 @@ class WidgetFactory:
         return clock
 
     def _get_time_of_day_icon(self, time_of_day):
-        """Get the appropriate icon for the time of day."""
+        """Get the appropriate icon for the time of day. Returns None if file not found."""
         _kiosk_dir = os.path.dirname(os.path.abspath(__file__))
         icon_map = {
             "Morning": os.path.join(_kiosk_dir, "icons", "sunrise.png"),
@@ -265,9 +265,10 @@ class WidgetFactory:
             "Evening": os.path.join(_kiosk_dir, "icons", "evening.png"),
             "Night": os.path.join(_kiosk_dir, "icons", "night.png"),
         }
-        return icon_map.get(
-            time_of_day
-        )  # TODO: had a default but shouldn't be using defaults
+        path = icon_map.get(time_of_day)
+        if path and os.path.exists(path):
+            return path
+        return ""
 
     def create_medication_widget(self):
         """Create medication widget using modular components."""

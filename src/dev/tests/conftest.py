@@ -92,10 +92,14 @@ def sample_contacts_data():
 @pytest.fixture
 def populated_test_db(test_db_manager, sample_contacts_data):
     """Create a test database with sample data."""
+    test_db_manager.execute_update(
+        "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
+        (FAMILY_CIRCLE_ID,),
+    )
     # Insert sample contacts
     for contact in sample_contacts_data:
         query = """
-            INSERT INTO contacts (id, user_id, display_name, phone, email, relationship, priority)
+            INSERT INTO contacts (id, family_circle_id, display_name, phone, email, relationship, priority)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         test_db_manager.execute_update(query, (
@@ -108,38 +112,33 @@ def populated_test_db(test_db_manager, sample_contacts_data):
             contact.get('priority')
         ))
     
-    # Insert medication groups
-    groups = [
-        ('Morning', '06:00:00', 'Morning'),
-        ('Afternoon', '12:00:00', 'Afternoon'),
-        ('Evening', '18:00:00', 'Evening'),
-        ('PRN', None, 'PRN (As Needed)')
+    # Insert medication times (family-scoped)
+    times = [
+        ('Morning', '06:00:00'),
+        ('Afternoon', '12:00:00'),
+        ('Evening', '18:00:00'),
+        ('prn', None),
     ]
-    for name, time, display in groups:
-        query = "INSERT INTO medication_groups (name, time, display_name) VALUES (?, ?, ?)"
-        test_db_manager.execute_update(query, (name, time, display))
-    
+    for name, time_val in times:
+        query = "INSERT INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)"
+        test_db_manager.execute_update(query, (FAMILY_CIRCLE_ID, name, time_val))
     # Insert sample medications
     meds = [
         ('Lisinopril', '10 mg', 'daily', FAMILY_CIRCLE_ID),
-        ('Metformin', '500 mg', 'twice daily', FAMILY_CIRCLE_ID)
+        ('Metformin', '500 mg', 'twice daily', FAMILY_CIRCLE_ID),
     ]
-    for name, dosage, frequency, user_id in meds:
+    for name, dosage, frequency, fc_id in meds:
         query = """
-            INSERT INTO medications (name, dosage, frequency, user_id, taken_today)
+            INSERT INTO medications (name, dosage, frequency, family_circle_id, taken_today)
             VALUES (?, ?, ?, ?, 0)
         """
-        result = test_db_manager.execute_update(query, (name, dosage, frequency, user_id))
-        # Link to morning group (assuming first medication gets ID 1, second gets ID 2)
-    
-    # Link medications to groups
+        test_db_manager.execute_update(query, (name, dosage, frequency, fc_id))
+    # Link medications to times (Lisinopril->Morning, Metformin->Afternoon)
     test_db_manager.execute_update(
-        "INSERT INTO medication_to_group (medication_id, group_id) VALUES (1, 1)",
-        ()
+        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (1, 1)", ()
     )
     test_db_manager.execute_update(
-        "INSERT INTO medication_to_group (medication_id, group_id) VALUES (2, 2)",
-        ()
+        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (2, 2)", ()
     )
     
     # Insert sample calendar events
@@ -147,12 +146,12 @@ def populated_test_db(test_db_manager, sample_contacts_data):
         ('event1', FAMILY_CIRCLE_ID, 'Doctor Appointment', '2024-01-15 10:00:00', '2024-01-15 11:00:00', 'Clinic'),
         ('event2', FAMILY_CIRCLE_ID, 'Family Visit', '2024-01-15 14:00:00', '2024-01-15 16:00:00', 'Home')
     ]
-    for event_id, user_id, title, start, end, location in events:
+    for event_id, fc_id, title, start, end, location in events:
         query = """
-            INSERT INTO calendar_events (id, user_id, title, start_time, end_time, location)
+            INSERT INTO calendar_events (id, family_circle_id, title, start_time, end_time, location)
             VALUES (?, ?, ?, ?, ?, ?)
         """
-        test_db_manager.execute_update(query, (event_id, user_id, title, start, end, location))
+        test_db_manager.execute_update(query, (event_id, fc_id, title, start, end, location))
     
     return test_db_manager
 

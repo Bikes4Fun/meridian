@@ -50,9 +50,9 @@ class LocationService(DatabaseServiceMixin):
         # angular dist (radians) × Earth radius → arc length in metres
         return r * ang_dist
 
-    def resolve_place_name(self, lat: float, lon: float, user_id: str) -> Optional[str]:
+    def resolve_place_name(self, lat: float, lon: float, family_circle_id: str) -> Optional[str]:
         """Return the name of the nearest named place whose radius contains the point, or None. Nearest wins when places overlap."""
-        result = self.get_named_places(user_id)
+        result = self.get_named_places(family_circle_id)
         if not result.success or not result.data:
             return None
         nearest_name = None
@@ -77,8 +77,8 @@ class LocationService(DatabaseServiceMixin):
 
     def create_checkin(
         self,
+        family_circle_id: str,
         user_id: str,
-        family_member_id: str,
         latitude: float,
         longitude: float,
         notes: Optional[str] = None,
@@ -90,20 +90,20 @@ class LocationService(DatabaseServiceMixin):
         if timestamp is None:
             timestamp = datetime.datetime.now().isoformat()
 
-        location_name = self.resolve_place_name(latitude, longitude, user_id)
+        location_name = self.resolve_place_name(latitude, longitude, family_circle_id)
         if location_name is not None:
             self.logger.info("Resolved place name: %s", location_name)
 
         query = """
             INSERT INTO location_checkins 
-            (user_id, family_member_id, timestamp, latitude, longitude, location_name, notes)
+            (family_circle_id, user_id, timestamp, latitude, longitude, location_name, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         result = self.safe_update(
             query,
             (
+                family_circle_id,
                 user_id,
-                family_member_id,
                 timestamp,
                 latitude,
                 longitude,
@@ -114,15 +114,15 @@ class LocationService(DatabaseServiceMixin):
 
         if result.success:
             self.logger.info(
-                "Check-in created for family member %s at (%s, %s)",
-                family_member_id,
+                "Check-in created for user %s at (%s, %s)",
+                user_id,
                 latitude,
                 longitude,
             )
             return ServiceResult.success_result(
                 {
+                    "family_circle_id": family_circle_id,
                     "user_id": user_id,
-                    "family_member_id": family_member_id,
                     "timestamp": timestamp,
                     "latitude": latitude,
                     "longitude": longitude,
@@ -132,46 +132,48 @@ class LocationService(DatabaseServiceMixin):
             )
         return result
 
-    def get_checkins(self, user_id: str) -> ServiceResult:
-        """Get latest check-in per family member."""
+    def get_checkins(self, family_circle_id: str) -> ServiceResult:
+        """Get latest check-in per user in the family."""
         query = """
-            SELECT c.id, c.user_id, c.family_member_id, c.timestamp,
+            SELECT c.id, c.family_circle_id, c.user_id, c.timestamp,
                    c.latitude, c.longitude, c.location_name, c.notes,
-                   fm.display_name as contact_name,
-                   con.relationship,
-                   fm.photo_filename
+                   u.display_name as contact_name,
+                   u.photo_filename
             FROM location_checkins c
             INNER JOIN (
-                SELECT family_member_id, MAX(timestamp) as max_timestamp
+                SELECT user_id, MAX(timestamp) as max_timestamp
                 FROM location_checkins
-                WHERE user_id = ?
-                GROUP BY family_member_id
-            ) latest ON c.family_member_id = latest.family_member_id
+                WHERE family_circle_id = ?
+                GROUP BY user_id
+            ) latest ON c.user_id = latest.user_id
                     AND c.timestamp = latest.max_timestamp
-            LEFT JOIN family_members fm ON c.family_member_id = fm.id
-            LEFT JOIN contacts con ON fm.contact_id = con.id
-            WHERE c.user_id = ?
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.family_circle_id = ?
             ORDER BY c.timestamp DESC
         """
-        return self.safe_query(query, (user_id, user_id))
+        return self.safe_query(query, (family_circle_id, family_circle_id))
 
-    def get_family_members(self, user_id: str) -> ServiceResult:
-        """Return family members (for check-in dropdown). No user permissions in contacts."""
+    def get_family_members(self, family_circle_id: str) -> ServiceResult:
+        """Return users in the family (for check-in dropdown)."""
         query = """
-            SELECT id, display_name, photo_filename, contact_id
-            FROM family_members
-            WHERE user_id = ?
-            ORDER BY display_name
+            SELECT u.id, u.display_name, u.photo_filename
+            FROM users u
+            INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
+            WHERE ufc.family_circle_id = ?
+            ORDER BY u.display_name
         """
-        return self.safe_query(query, (user_id,))
+        return self.safe_query(query, (family_circle_id,))
 
-    def get_named_places(self, user_id: Optional[str] = None) -> ServiceResult:
-        """Return all family-wide named places for the user. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""
+    def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
+        """Return all family-wide named places. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""
+        if not family_circle_id:
+            return self.safe_query("SELECT 1 WHERE 0", ())
         query = """
             SELECT location_id, location_name, gps_latitude, gps_longitude,
                    COALESCE(radius_metres, ?) as radius_metres,
                    NULL as safe
             FROM named_places
+            WHERE family_circle_id = ?
             ORDER BY location_name
         """
-        return self.safe_query(query, (DEFAULT_PLACE_RADIUS_M,))
+        return self.safe_query(query, (DEFAULT_PLACE_RADIUS_M, family_circle_id))

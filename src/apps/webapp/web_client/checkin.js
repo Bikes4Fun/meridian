@@ -3,9 +3,7 @@
     'use strict';
 
     var _u = '__API_URL__';
-    var API_URL = (_u.startsWith('http') ? _u : "https://meridian-production-3734.up.railway.app");
-    // INSECURE: Hardcoded fallback. Replace with logged-in user from session when auth is implemented (see SECURITY.md).
-    var USER_ID = '0000000000';
+    var API_URL = (_u.startsWith('http') ? _u : '');
 
     function showStatus(message, type) {
         var container = document.getElementById('status');
@@ -17,12 +15,12 @@
     }
 
     function checkIn() {
-        var familyMemberId = document.getElementById('familyMemberSelect').value;
+        var userId = document.getElementById('familyMemberSelect').value;
         var notes = document.getElementById('notes').value;
         var btn = document.getElementById('checkinBtn');
 
-        if (!familyMemberId) {
-            showStatus('Please select a family member!', 'error');
+        if (!userId) {
+            showStatus('Please select who to check in!', 'error');
             return;
         }
 
@@ -56,12 +54,10 @@
 
                 fetch(API_URL + '/api/location/checkin', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-Id': USER_ID,
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
-                        family_member_id: familyMemberId,
+                        user_id: userId,
                         latitude: latitude,
                         longitude: longitude,
                         notes: notes || null
@@ -105,7 +101,7 @@
 
     function loadFamilyMembers() {
         fetch(API_URL + '/api/location/family-members', {
-            headers: {'X-User-Id': USER_ID}
+            credentials: 'include'
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -124,7 +120,8 @@
     function activateAlert() {
         fetch(API_URL + '/api/alert', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-User-Id': USER_ID },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ activated: true })
         })
             .then(function (r) { return r.json(); })
@@ -139,7 +136,8 @@
     function cancelAlert() {
         fetch(API_URL + '/api/alert', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-User-Id': USER_ID },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ activated: false })
         })
             .then(function (r) { return r.json(); })
@@ -152,16 +150,6 @@
     }
 
     function init() {
-        if (!USER_ID) {
-            showStatus('Open this page from a valid link (user_id required in URL)', 'error');
-            var btn = document.getElementById('checkinBtn');
-            if (btn) btn.disabled = true;
-            var alertBtn = document.getElementById('alertBtn');
-            if (alertBtn) alertBtn.disabled = true;
-            var cancelBtn = document.getElementById('cancelAlertBtn');
-            if (cancelBtn) cancelBtn.disabled = true;
-            return;
-        }
         var btn = document.getElementById('checkinBtn');
         if (btn) btn.addEventListener('click', checkIn);
         var alertBtn = document.getElementById('alertBtn');

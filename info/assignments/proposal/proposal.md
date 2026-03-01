@@ -189,4 +189,4 @@ The Dementia Care Digital Assistant aims to reduce caregiver stress and patient 
 - Centers for Disease Control and Prevention. (2023). Medication Safety Program. Retrieved from https://www.cdc.gov/medicationsafety/
 - National Institutes of Health. (2023). Emergency Response and Dementia Care: A Systematic Review. Journal of Emergency Medicine, 45(2), 123-135.
 - Cursor Agent. (2024). AI Writing Assistant. Retrieved from https://cursor.sh/
-- Garrett, D. (2024). Dementia Care Digital Assistant: Source Code Repository, contains a basic intro test version to experiment with feasibility of libraries and general plans. Retrieved from https://github.com/Bikes4Fun/dementia_tv_python.git
+- Garrett, D. (2024). Dementia Care Digital Assistant: Source Code Repository, contains a basic intro test version to experiment with feasibility of libraries and general plans. Retrieved from https://github.com/Bikes4Fun/meridian.git

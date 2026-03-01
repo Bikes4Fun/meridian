@@ -28,6 +28,10 @@ except ImportError:
     from shared.config import DatabaseConfig, get_database_path
 
 
+DEMO_FAMILY_CIRCLE_ID = "F00000"
+DEMO_USER_ID = "fm_001"  # Primary demo user; matches main.DEMO_USER_ID
+
+
 def get_data_dir():
     """Get the path to the demo data directory."""
     return os.path.join(os.path.dirname(__file__), "data")
@@ -51,22 +55,20 @@ def load_json_file(filename: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def load_demo_contacts_from_json_into_db(db_path: str, user_id: str):
+def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
     """Load contacts from JSON. Can have photo_filename and notes for contact card."""
     contacts_data = load_json_file("contacts.json")
     contacts = contacts_data.get("contacts", [])
 
-    db_manager = get_database_manager(db_path)
-
     for contact in contacts:
         query = """
             INSERT OR REPLACE INTO contacts 
-            (id, user_id, display_name, phone, email, birthday, relationship, priority, photo_filename, notes)
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, priority, photo_filename, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             contact.get("id"),
-            user_id,
+            family_circle_id,
             contact.get("display_name"),
             contact.get("phone"),
             contact.get("email"),
@@ -80,61 +82,72 @@ def load_demo_contacts_from_json_into_db(db_path: str, user_id: str):
     logger.debug("  Loaded %d contacts" % len(contacts))
 
 
-def load_demo_family_members_from_json_into_db(db_path: str, user_id: str):
-    """Load family members (tracked users). Cross-referenced to contacts via contact_id for contact card."""
-    family_data = load_json_file("family.json")
-    members = family_data.get("family_members", [])
-    photo_base = family_data.get("photo_base", "")
+def load_demo_family_circles_from_json_into_db(db_manager):
+    """Load family circles from family.json."""
+    data = load_json_file("family.json")
+    circles = data.get("family_circles", [])
+    if not circles and data.get("family_circle_id"):
+        circles = [{"id": data.get("family_circle_id")}]
+    if not circles:
+        raise ValueError("family.json missing family_circles or family_circle_id")
+    for circle in circles:
+        fc_id = circle.get("id") if isinstance(circle, dict) else circle
+        if fc_id:
+            db_manager.execute_update(
+                "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
+                (fc_id,),
+            )
+    logger.debug("  Loaded %d family circles" % len(circles))
 
-    db_manager = get_database_manager(db_path)
 
-    for member in members:
-        fn = member.get("photo_filename")
-        photo_path = ("%s/%s" % (photo_base, fn)) if photo_base and fn else fn
-        query = """
-            INSERT OR REPLACE INTO family_members 
-            (id, user_id, display_name, photo_filename, contact_id)
-            VALUES (?, ?, ?, ?, ?)
-        """
-        params = (
-            member.get("id"),
-            user_id,
-            member.get("display_name"),
-            photo_path,
-            member.get("contact_id"),
+def _link_users_to_family_circles(db_manager, users):
+    """Link users to family circles via user_family_circle."""
+    for user in users:
+        uid = user.get("id")
+        fc_id = user.get("family_circle_id")
+        if fc_id:
+            db_manager.execute_update(
+                "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+                (uid, fc_id),
+            )
+
+
+def load_demo_users_from_json_into_db(db_manager):
+    """Load all users from users.json."""
+    users = load_json_file("users.json")
+
+    for user in users:
+        uid = user.get("id")
+        photo_filename = user.get("photo_filename")
+        db_manager.execute_update(
+            """
+            INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id)
+            VALUES (?, ?, ?, ?)
+            """,
+            (uid, user.get("display_name"), photo_filename, user.get("family_circle_id")),
         )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d family members" % len(members))
+
+    _link_users_to_family_circles(db_manager, users)
+    logger.debug("  Loaded %d users" % len(users))
+
+def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: str):
+    """Load medication times from medical.json."""
+    data = load_json_file("medical.json").get("medication_times", {})
+    for name, td in data.items():
+        t = td.get("time") if isinstance(td, dict) else None
+        if t == "null":
+            t = None
+        db_manager.execute_update(
+            "INSERT OR REPLACE INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
+            (family_circle_id, name, t),
+        )
+    logger.debug("  Loaded medication times for family %s", family_circle_id)
 
 
-def load_demo_medication_groups_from_json_into_db(db_path: str, user_id: str):
-    """Load medication groups from JSON into SQLite database."""
-    medical_data = load_json_file("medical.json")
-    groups = medical_data.get("medication_groups", {})
-
-    db_manager = get_database_manager(db_path)
-
-    for group_name, group_data in groups.items():
-        time_value = group_data.get("time")
-        if time_value == "null" or time_value is None:
-            time_value = None
-
-        query = """
-            INSERT OR REPLACE INTO medication_groups 
-            (name, time, display_name)
-            VALUES (?, ?, ?)
-        """
-        params = (group_name, time_value, group_data.get("display_name"))
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d medication groups" % len(groups))
-
-
-def load_demo_medications_data_from_json_to_db(db_path: str, user_id: str):
+def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str):
     """Load medications from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
-
-    db_manager = get_database_manager(db_path)
 
     with db_manager.get_connection() as conn:
         cursor = conn.cursor()
@@ -142,78 +155,66 @@ def load_demo_medications_data_from_json_to_db(db_path: str, user_id: str):
         for med in medications:
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO medications 
-                (user_id, name, dosage, frequency, notes, max_daily, current_quantity, last_taken, taken_today)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO medications
+                (family_circle_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
-                    user_id,
+                    family_circle_id,
                     med.get("name"),
                     med.get("dosage"),
                     med.get("frequency"),
                     med.get("notes"),
                     med.get("max_daily"),
-                    med.get("current_quantity"),
                     med.get("last_taken"),
                     med.get("taken"),
                 ),
             )
-
-            # Get the medication ID for junction table
             medication_id = cursor.lastrowid
 
-            # Add to medication groups
-            groups = med.get("groups", [])
-            for group_name in groups:
-                # Get group ID
+            for time_name in med.get("medication_times", []):
                 cursor.execute(
-                    "SELECT id FROM medication_groups WHERE name = ?", (group_name,)
+                    "SELECT id FROM medication_times WHERE family_circle_id = ? AND name = ?",
+                    (family_circle_id, time_name),
                 )
-                group_result = cursor.fetchone()
-                if group_result:
-                    group_id = group_result[0]
+                row = cursor.fetchone()
+                if row:
                     cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO medication_to_group (medication_id, group_id)
-                        VALUES (?, ?)
-                    """,
-                        (medication_id, group_id),
+                        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (?, ?)",
+                        (medication_id, row[0]),
                     )
 
         conn.commit()
     logger.debug("  Loaded %d medications" % len(medications))
 
 
-def load_allergies_data(db_path: str, user_id: str):
+def load_allergies_data(db_manager, family_circle_id: str):
     """Load allergies from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     allergies = medical_data.get("allergies", [])
 
-    db_manager = get_database_manager(db_path)
-
     for allergy in allergies:
         query = """
-            INSERT OR REPLACE INTO allergies (user_id, allergen)
+            INSERT OR REPLACE INTO allergies (family_circle_id, allergen)
             VALUES (?, ?)
         """
-        db_manager.execute_update(query, (user_id, allergy.get("allergen")))
+        db_manager.execute_update(query, (family_circle_id, allergy.get("allergen")))
     logger.debug("  Loaded %d allergies" % len(allergies))
 
 
-def load_demo_ice_profile_data(db_path: str, user_id: str):
-    """Load ICE profile from JSON (users row created in demo_main)."""
+def load_demo_ice_profile_data(db_manager, family_circle_id: str):
+    """Load ICE profile from JSON."""
     medical_data = load_json_file("medical.json")
     ice_data = medical_data.get("ice_profile", {})
     if not ice_data:
         return
 
-    db_manager = get_database_manager(db_path)
     profile = ice_data.get("profile") or {}
     medical = ice_data.get("medical") or {}
     emergency = ice_data.get("emergency") or {}
     proxy = emergency.get("proxy") or {}
     existing = db_manager.execute_query(
-        "SELECT id FROM ice_profile WHERE user_id = ?", (user_id,)
+        "SELECT id FROM ice_profile WHERE family_circle_id = ?", (family_circle_id,)
     )
     params = (
         profile.get("name"),
@@ -233,38 +234,36 @@ def load_demo_ice_profile_data(db_path: str, user_id: str):
                 profile_name = ?, profile_dob = ?, medical_conditions = ?,
                 medical_dnr = ?, emergency_proxy_name = ?, medical_proxy_phone = ?,
                 poa_name = ?, poa_phone = ?, notes = ?
-            WHERE user_id = ?
+            WHERE family_circle_id = ?
             """,
-            params + (user_id,),
+            params + (family_circle_id,),
         )
     else:
         db_manager.execute_update(
             """
             INSERT INTO ice_profile
-            (user_id, profile_name, profile_dob, medical_conditions, medical_dnr,
+            (family_circle_id, profile_name, profile_dob, medical_conditions, medical_dnr,
              emergency_proxy_name, medical_proxy_phone, poa_name, poa_phone, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id,) + params,
+            (family_circle_id,) + params,
         )
     logger.debug("  Loaded 1 ICE profile")
 
 
-def load_conditions_data(db_path: str, user_id: str):
+def load_conditions_data(db_manager, family_circle_id: str):
     """Load medical conditions from JSON into SQLite database."""
     medical_data = load_json_file("medical.json")
     conditions = medical_data.get("conditions", [])
 
-    db_manager = get_database_manager(db_path)
-
     for condition in conditions:
         query = """
             INSERT OR REPLACE INTO conditions 
-            (user_id, condition_name, diagnosis_date, notes)
+            (family_circle_id, condition_name, diagnosis_date, notes)
             VALUES (?, ?, ?, ?)
         """
         params = (
-            user_id,
+            family_circle_id,
             condition.get("condition"),
             condition.get("diagnosis_date"),
             condition.get("notes"),
@@ -273,12 +272,10 @@ def load_conditions_data(db_path: str, user_id: str):
     logger.debug("  Loaded %d conditions" % len(conditions))
 
 
-def load_calendar_events_data(db_path: str, user_id: str):
+def load_calendar_events_data(db_manager, family_circle_id: str):
     """Load calendar events from JSON into SQLite database."""
     calendar_data = load_json_file("calendar.json")
     events = calendar_data.get("calendar_events", [])
-
-    db_manager = get_database_manager(db_path)
 
     for event_data in events:
         # Handle dynamic date placeholders
@@ -338,12 +335,12 @@ def load_calendar_events_data(db_path: str, user_id: str):
 
         query = """
             INSERT OR REPLACE INTO calendar_events 
-            (id, user_id, title, description, start_time, end_time, location, driver_name, driver_contact_id, pickup_time, leave_time)
+            (id, family_circle_id, title, description, start_time, end_time, location, driver_name, driver_contact_id, pickup_time, leave_time)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             event_data.get("id"),
-            user_id,
+            family_circle_id,
             event_data.get("title"),
             event_data.get("description"),
             start_time,
@@ -358,12 +355,10 @@ def load_calendar_events_data(db_path: str, user_id: str):
     logger.debug("  Loaded %d calendar events" % len(events))
 
 
-def load_user_locations_data(db_path: str, user_id: str):
-    """Load user designated locations from JSON into SQLite database."""
+def load_user_locations_data(db_manager, family_circle_id: str):
+    """Load named places from JSON into SQLite database."""
     family_data = load_json_file("family.json")
-    locations = family_data.get("named_places")
-
-    db_manager = get_database_manager(db_path)
+    locations = family_data.get("named_places") or []
 
     for location in locations:
         # Parse GPS coordinates
@@ -377,11 +372,12 @@ def load_user_locations_data(db_path: str, user_id: str):
 
         query = """
             INSERT OR REPLACE INTO named_places
-            (location_id, location_name, gps_latitude, gps_longitude, radius_metres)
-            VALUES (?, ?, ?, ?, ?)
+            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres)
+            VALUES (?, ?, ?, ?, ?, ?)
         """
         params = (
             location.get("location_id"),
+            family_circle_id,
             location.get("location_name"),
             gps_lat,
             gps_lng,
@@ -391,23 +387,24 @@ def load_user_locations_data(db_path: str, user_id: str):
     logger.debug("  Loaded %d named places" % len(locations))
 
 
-def load_location_checkins_data(db_path: str, user_id: str):
-    """Load location check-ins from JSON. Uses family_member_id."""
+def load_location_checkins_data(db_manager, family_circle_id: str):
+    """Load location check-ins from JSON into location_checkins table."""
     family_data = load_json_file("family.json")
     checkins = family_data.get("location_checkins", [])
 
-    db_manager = get_database_manager(db_path)
-
     now = datetime.now().isoformat()
     for checkin in checkins:
+        uid = checkin.get("user_id")
+        if not uid:
+            raise ValueError("location_checkins entry missing user_id")
         query = """
-            INSERT INTO location_checkins 
-            (user_id, family_member_id, timestamp, latitude, longitude, location_name, notes)
+            INSERT INTO location_checkins
+            (family_circle_id, user_id, timestamp, latitude, longitude, location_name, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            user_id,
-            checkin.get("family_member_id"),
+            family_circle_id,
+            uid,
             now,
             checkin.get("latitude"),
             checkin.get("longitude"),
@@ -418,7 +415,17 @@ def load_location_checkins_data(db_path: str, user_id: str):
     logger.debug("  Loaded %d location check-ins" % len(checkins))
 
 
-def load_demo_settings_from_json_into_db(db_path, user_id):
+def refresh_demo_checkins(db_path: str) -> None:
+    """Refresh demo location check-ins. Logs and continues on failure (e.g. old schema)."""
+    try:
+        load_location_checkins_data(
+            get_database_manager(db_path), family_circle_id=DEMO_FAMILY_CIRCLE_ID
+        )
+    except Exception as e:
+        logger.debug("Demo checkins refresh skipped (old schema?): %s", e)
+
+
+def load_demo_settings_from_json_into_db(db_manager, user_id):
     """Load user display settings from default_display_settings.json into SQLite database."""
     try:
         from src.apps.kiosk.settings import DisplaySettings
@@ -427,8 +434,6 @@ def load_demo_settings_from_json_into_db(db_path, user_id):
     default_settings = (
         DisplaySettings.default()
     )  # single source: demo/demo_data/default_display_settings.json
-
-    db_manager = get_database_manager(db_path)
 
     # Serialize default settings to JSON strings
     font_sizes_json = json.dumps(default_settings.font_sizes)
@@ -508,6 +513,20 @@ def load_demo_settings_from_json_into_db(db_path, user_id):
     logger.debug("  Loaded 1 display settings")
 
 
+def ensure_local_database(db_path: str) -> bool:
+    """Create schema and seed demo data if DB file does not exist. Returns True on success."""
+    if os.path.exists(db_path):
+        return True
+    db_config = DatabaseConfig(path=db_path, create_if_missing=True)
+    db = DatabaseManager(db_config)
+    result = db.create_database_schema()
+    if not result.success:
+        logger.error("Local database setup failed")
+        raise RuntimeError("Local database setup failed")
+        return False
+    return demo_main(user_id=DEMO_USER_ID, db_path=db_path)
+
+
 def demo_main(user_id, db_path=None):
     """Load all JSON demo data into the database. Run via: python -m apps.server seed (or pass db_path)."""
     logger.debug("Loading demo data into database...")
@@ -518,24 +537,20 @@ def demo_main(user_id, db_path=None):
     # Schema must already exist (main.py creates it when demo mode and DB missing)
 
     try:
-        # Ensure demo user exists (ice_profile FK)
-        get_database_manager(db_path).execute_update(
-            "INSERT OR IGNORE INTO users (id) VALUES (?)", (user_id,)
-        )
+        db = get_database_manager(db_path)
         # Load all JSON data into database
-        load_demo_contacts_from_json_into_db(db_path, user_id=user_id)
-        load_demo_family_members_from_json_into_db(db_path, user_id=user_id)
-        load_demo_medication_groups_from_json_into_db(db_path, user_id=user_id)
-        load_demo_medications_data_from_json_to_db(db_path, user_id=user_id)
-        load_allergies_data(db_path, user_id=user_id)
-        load_conditions_data(db_path, user_id=user_id)
-        load_demo_ice_profile_data(db_path, user_id=user_id)
-        load_calendar_events_data(db_path, user_id=user_id)
-        load_user_locations_data(db_path, user_id=user_id)
-        load_location_checkins_data(
-            db_path, user_id=user_id
-        )  # there should potentially be data from the webapp checkin
-        load_demo_settings_from_json_into_db(db_path, user_id=user_id)
+        load_demo_users_from_json_into_db(db)
+        load_demo_family_circles_from_json_into_db(db)
+        load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_medication_times_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_medications_data_from_json_to_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_allergies_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_conditions_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_ice_profile_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_calendar_events_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_settings_from_json_into_db(db, user_id=user_id or DEMO_USER_ID)
 
         logger.info("Demo data loaded successfully!")
         return True

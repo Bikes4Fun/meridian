@@ -1,5 +1,5 @@
 """
-Flask API server for Dementia TV.
+Flask API server for Meridian.
 Exposes the same data as in-process services via REST for client/server mode.
 
 WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
@@ -169,7 +169,12 @@ def create_server_app(db_path=None):
 
     @app.after_request
     def add_cors(resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
+        origin = os.environ.get("CORS_ORIGIN", "").strip()
+        if origin:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-Id, X-Family-Circle-Id"
         return resp
@@ -369,22 +374,22 @@ def create_server_app(db_path=None):
         if not data:
             return jsonify({"error": "no data provided"}), 400
 
-        family_member_id = data.get("family_member_id")
+        user_id = data.get("user_id")
         latitude = data.get("latitude")
         longitude = data.get("longitude")
         notes = data.get("notes")
         # location_name is always resolved from GPS in create_checkin; never from client
 
-        if not family_member_id or latitude is None or longitude is None:
+        if not user_id or latitude is None or longitude is None:
             return (
                 jsonify(
-                    {"error": "family_member_id, latitude, and longitude are required"}
+                    {"error": "user_id, latitude, and longitude are required"}
                 ),
                 400,
             )
 
         r = location_svc.create_checkin(
-            g.family_circle_id, family_member_id, latitude, longitude, notes=notes
+            g.family_circle_id, user_id, latitude, longitude, notes=notes
         )
         if not r.success:
             return jsonify({"error": r.error}), 500

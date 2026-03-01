@@ -15,12 +15,12 @@
     }
 
     function checkIn() {
-        var familyMemberId = document.getElementById('familyMemberSelect').value;
+        var userId = document.getElementById('familyMemberSelect').value;
         var notes = document.getElementById('notes').value;
         var btn = document.getElementById('checkinBtn');
 
-        if (!familyMemberId) {
-            showStatus('Please select a family member!', 'error');
+        if (!userId) {
+            showStatus('Please select who to check in!', 'error');
             return;
         }
 
@@ -55,9 +55,9 @@
                 fetch(API_URL + '/api/location/checkin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
+                    credentials: 'include',
                     body: JSON.stringify({
-                        family_member_id: familyMemberId,
+                        user_id: userId,
                         latitude: latitude,
                         longitude: longitude,
                         notes: notes || null
@@ -101,7 +101,7 @@
 
     function loadFamilyMembers() {
         fetch(API_URL + '/api/location/family-members', {
-            credentials: 'same-origin'
+            credentials: 'include'
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -121,7 +121,7 @@
         fetch(API_URL + '/api/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
+            credentials: 'include',
             body: JSON.stringify({ activated: true })
         })
             .then(function (r) { return r.json(); })
@@ -137,7 +137,7 @@
         fetch(API_URL + '/api/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
+            credentials: 'include',
             body: JSON.stringify({ activated: false })
         })
             .then(function (r) { return r.json(); })

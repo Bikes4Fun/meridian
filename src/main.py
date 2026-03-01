@@ -1,5 +1,5 @@
 """
-Main entry point for the Dementia TV application.
+Main entry point for the Meridian.
 Starts the API server (DB + REST) in a background thread, then runs the Kivy TV client.
 """
 
@@ -26,6 +26,7 @@ from shared.config import (
     get_railway_api_url,
     get_server_host,
     get_server_port,
+    get_webapp_port,
     find_available_port,
     is_railway_reachable,
 )
@@ -112,13 +113,52 @@ def main():
         logger.info("Server activated")
         api_url = "http://127.0.0.1:%s" % port
 
-    logger.info("Starting Dementia TV Application...")
+        webapp_port = find_available_port(host, get_webapp_port())
+        os.environ["CORS_ORIGIN"] = "http://127.0.0.1:%s" % webapp_port
+        webapp_dist = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "apps",
+            "webapp",
+            "web_server",
+            "dist",
+        )
+        webapp_server_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "apps",
+            "webapp",
+            "web_server",
+        )
+        import subprocess
+        try:
+            subprocess.run(
+                ["node", "build.js"],
+                cwd=webapp_server_dir,
+                env={**os.environ, "API_URL": api_url},
+                check=True,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.warning("Webapp build skipped (%s). Use API /checkin for web UI.", e)
+        if os.path.exists(webapp_dist):
+            from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+            class WebappHandler(SimpleHTTPRequestHandler):
+                def __init__(self, request, client_address, server):
+                    super().__init__(request, client_address, server, directory=webapp_dist)
+
+            webapp_server = HTTPServer(("127.0.0.1", webapp_port), WebappHandler)
+            webapp_thread = threading.Thread(target=webapp_server.serve_forever, daemon=True)
+            webapp_thread.start()
+            logger.info("Webapp at http://127.0.0.1:%s", webapp_port)
+
+    logger.info("Starting Meridian ...")
     try:
         app = create_app(config_manager, user_id, api_url=api_url)
-        logger.info("Application created successfully, starting...")
+        logger.info("Meridian Kiosk, server, and webapp created successfully, starting...")
         app.run()
     except Exception as e:
-        logger.error("Application startup failed: %s", e)
+        logger.error("Meridian startup failed: %s", e)
         raise
 
 

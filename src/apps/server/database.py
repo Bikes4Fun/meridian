@@ -1,5 +1,5 @@
 """
-Centralized database management for Dementia TV application.
+Centralized database management for Meridian.
 Used by server only (container and app.py). Client gets data via API.
 """
 

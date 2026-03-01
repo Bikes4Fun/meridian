@@ -22,7 +22,8 @@ def api_client(populated_test_db):
     return app.test_client()
 
 
-API_HEADERS = {"X-User-Id": "test_user", "X-Family-Circle-Id": "test_user"}
+# user_id = who is requesting; family_circle_id = which family's data (matches conftest FAMILY_CIRCLE_ID).
+API_HEADERS = {"X-User-Id": "test_user", "X-Family-Circle-Id": "test_family"}
 
 
 def test_api_health(api_client):

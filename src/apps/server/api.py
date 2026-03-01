@@ -270,7 +270,7 @@ def create_server_app(db_path=None):
 
     @app.route("/api/medications")
     def api_medications():
-        r = medication_svc.get_medication_data()
+        r = medication_svc.get_medication_data(g.family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})

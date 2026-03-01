@@ -1,5 +1,5 @@
 """
-Simplified service container for Dementia TV application.
+Simplified service container for Meridian.
 Used only by server/app.py. Client uses client/remote.create_remote() instead.
 """
 
@@ -17,7 +17,7 @@ from .ice_profile import ICEProfileService
 
 
 class ServiceContainer:
-    def __init__(self, db_path: str = "dementia_tv.db"):
+    def __init__(self, db_path: str = "meridian_kiosk.db"):
         self.db_path = db_path
         self._db_manager = None
         self._services = {}
@@ -72,5 +72,5 @@ class ServiceContainer:
         return self._services["ice_profile_service"]
 
 
-def create_service_container(db_path: str = "dementia_tv.db") -> ServiceContainer:
+def create_service_container(db_path: str = "meridian_kiosk.db") -> ServiceContainer:
     return ServiceContainer(db_path)

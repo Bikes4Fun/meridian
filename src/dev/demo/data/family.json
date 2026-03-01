@@ -1,4 +1,5 @@
 {
+  "family_circles": [{"id": "F00000"}],
   "photo_base": "dev/demo/data/family_img",
   "family_members": [
     {
@@ -34,12 +35,6 @@
       "radius_metres": 350
     },
     {
-      "location_id": "loc_002",
-      "location_name": "Dylan's Work",
-      "gps": "37.100361,-113.594666",
-      "radius_metres": 350
-    },
-    {
       "location_id": "loc_003",
       "location_name": "Landon's School",
       "gps": "37.005556,-113.562030",
@@ -59,9 +54,9 @@
     }
   ],
   "location_checkins": [
-    {"family_member_id": "fm_001", "latitude": 37.139688, "longitude": -113.503014, "location_name": "Dean's Work", "notes": null},
-    {"family_member_id": "fm_002", "latitude": 37.103532, "longitude": -113.565523, "location_name": "Deanna's School", "notes": null},
-    {"family_member_id": "fm_003", "latitude": 37.139688, "longitude": -113.503014, "location_name": "Eleanor Home", "notes": null},
-    {"family_member_id": "fm_004", "latitude": 37.005556, "longitude": -113.562030, "location_name": "Dylan's Work", "notes": null}
+    {"user_id": "fm_001", "latitude": 37.139688, "longitude": -113.503014, "location_name": "Dean's Work", "notes": null},
+    {"user_id": "fm_002", "latitude": 37.103532, "longitude": -113.565523, "location_name": "Deanna's School", "notes": null},
+    {"user_id": "fm_003", "latitude": 37.139688, "longitude": -113.503014, "location_name": "Eleanor Home", "notes": null},
+    {"user_id": "fm_004", "latitude": 37.005556, "longitude": -113.562030, "location_name": "Dylan's Work", "notes": null}
   ]
 }

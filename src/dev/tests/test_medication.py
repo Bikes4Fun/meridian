@@ -81,13 +81,13 @@ class TestMedicationService:
         assert result.success is False
         assert 'not found' in result.error.lower()
     
-    def test_get_medication_data(self, medication_service):
+    def test_get_medication_data(self, medication_service, family_circle_id):
         """Test getting medication data for display."""
         # Add some test medications
         medication_service.add_timed_medication('Med1', 'Morning')
         medication_service.add_prn_medication('PRN1')
         
-        result = medication_service.get_medication_data()
+        result = medication_service.get_medication_data(family_circle_id)
         
         assert result.success is True
         assert result.data is not None
@@ -114,11 +114,11 @@ class TestMedicationService:
 class TestMedicationServiceIntegration:
     """Integration tests for MedicationService with database."""
     
-    def test_load_medication_data_from_db(self, medication_service, populated_test_db):
+    def test_load_medication_data_from_db(self, medication_service, populated_test_db, family_circle_id):
         """Test loading medications from database."""
         # The medication_service should load data in __init__
         # Verify it loaded the test data
-        result = medication_service.get_medication_data()
+        result = medication_service.get_medication_data(family_circle_id)
         
         assert result.success is True
         # Should have loaded medications from the test database

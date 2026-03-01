@@ -1,5 +1,5 @@
 """
-Contact service for Dementia TV application.
+Contact service for Meridian.
 Loads contacts from SQLite database.
 
 WHERE FUNCTIONALITY MOVED TO (client): No direct API; client uses RemoteEmergencyService.
@@ -40,12 +40,13 @@ class ContactService(DatabaseServiceMixin):
     def __init__(self, db_manager: DatabaseManager):
         DatabaseServiceMixin.__init__(self, db_manager)
 
-    def get_all_contacts(self) -> ServiceResult:
+    def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
             SELECT id, display_name, phone, email, birthday, relationship, priority
             FROM contacts
+            WHERE family_circle_id = ?
         """
-        result = self.safe_query(query)
+        result = self.safe_query(query, (family_circle_id,))
         if not result.success:
             return result
         contacts = [
@@ -62,13 +63,13 @@ class ContactService(DatabaseServiceMixin):
         ]
         return ServiceResult.success_result(contacts)
 
-    def get_emergency_contacts(self) -> ServiceResult:
+    def get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
             SELECT id, display_name, phone, email, birthday, relationship, priority
             FROM contacts
-            WHERE priority IN ('primary_emergency', 'secondary_emergency')
+            WHERE family_circle_id = ? AND priority IN ('primary_emergency', 'secondary_emergency')
         """
-        result = self.safe_query(query)
+        result = self.safe_query(query, (family_circle_id,))
         if not result.success:
             return result
         contacts = [

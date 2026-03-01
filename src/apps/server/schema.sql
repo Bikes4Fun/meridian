@@ -4,7 +4,9 @@
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     display_name TEXT,
-    photo_filename TEXT
+    photo_filename TEXT,
+    family_circle_id TEXT,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS family_circles (

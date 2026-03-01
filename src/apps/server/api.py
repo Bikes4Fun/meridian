@@ -387,6 +387,8 @@ def create_server_app(db_path=None):
                 ),
                 400,
             )
+        if user_id != g.user_id:
+            return jsonify({"error": "cannot check in for another user"}), 403
 
         r = location_svc.create_checkin(
             g.family_circle_id, user_id, latitude, longitude, notes=notes

@@ -20,10 +20,16 @@ class RemoteServiceError(Exception):
     """Raised when a remote API request fails in an unrecoverable way."""
 
 
-def _headers(user_id: Optional[str] = None) -> dict:
-    if not user_id:
-        return {}
-    return {"X-User-Id": user_id}
+def _headers(
+    user_id: Optional[str] = None,
+    family_circle_id: Optional[str] = None,
+) -> dict:
+    out = {}
+    if user_id:
+        out["X-User-Id"] = user_id
+    if family_circle_id:
+        out["X-Family-Circle-Id"] = family_circle_id
+    return out
 
 
 def _get(
@@ -84,10 +90,11 @@ class RemoteCalendarService:
         self,
         base_url: str,
         user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id)
+        self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def _today_param(self) -> str:
@@ -143,10 +150,11 @@ class RemoteMedicationService:
         self,
         base_url: str,
         user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id)
+        self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_medication_data(self) -> Any:
@@ -165,10 +173,11 @@ class RemoteEmergencyService:
         self,
         base_url: str,
         user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id)
+        self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def format_contacts_for_display(self) -> Any:
@@ -201,10 +210,11 @@ class RemoteAlertService:
         self,
         base_url: str,
         user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id)
+        self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_alert_status(self) -> Any:
@@ -223,10 +233,11 @@ class RemoteICEProfileService:
         self,
         base_url: str,
         user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id)
+        self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_ice_profile(self) -> Any:
@@ -245,10 +256,11 @@ class RemoteLocationService:
         self,
         base_url: str,
         user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id)
+        self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_checkins(self) -> Any:
@@ -312,6 +324,7 @@ class RemoteLocationService:
 def get_display_settings(
     server_url: str,
     user_id: Optional[str] = None,
+    family_circle_id: Optional[str] = None,
     session: Optional["requests.Session"] = None,
 ):
     """Fetch display settings from GET /api/settings. Uses display defaults if server has none."""
@@ -319,7 +332,9 @@ def get_display_settings(
 
     base = server_url.rstrip("/")
     ok, data, err = _get(
-        f"{base}/api/settings", headers=_headers(user_id), session=session
+        f"{base}/api/settings",
+        headers=_headers(user_id, family_circle_id),
+        session=session,
     )
     if not ok or not data or "display" not in data:
         return DisplaySettings.default()
@@ -332,6 +347,7 @@ def get_display_settings(
 def create_remote(
     server_url: str,
     user_id: Optional[str] = None,
+    family_circle_id: Optional[str] = None,
     session: Optional["requests.Session"] = None,
 ) -> dict:
     """Return services dict: time from device, rest from server API."""
@@ -344,12 +360,24 @@ def create_remote(
         session = None
     services = {
         "time_service": LocalTimeService(server_url, user_id),
-        "calendar_service": RemoteCalendarService(server_url, user_id, session),
-        "medication_service": RemoteMedicationService(server_url, user_id, session),
-        "emergency_service": RemoteEmergencyService(server_url, user_id, session),
-        "ice_profile_service": RemoteICEProfileService(server_url, user_id, session),
-        "location_service": RemoteLocationService(server_url, user_id, session),
-        "alert_service": RemoteAlertService(server_url, user_id, session),
+        "calendar_service": RemoteCalendarService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "medication_service": RemoteMedicationService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "emergency_service": RemoteEmergencyService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "ice_profile_service": RemoteICEProfileService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "location_service": RemoteLocationService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "alert_service": RemoteAlertService(
+            server_url, user_id, family_circle_id, session
+        ),
     }
     services["_alert_activated"] = [False]
     return services

@@ -275,7 +275,12 @@ class AppFactory:
     def __init__(self, config_manager: Optional[ConfigManager] = None):
         self.config_manager = config_manager or ConfigManager()
 
-    def create_application(self, user_id=None, api_url: str = None) -> MeridianKioskApp:
+    def create_application(
+        self,
+        user_id=None,
+        family_circle_id=None,
+        api_url: str = None,
+    ) -> MeridianKioskApp:
         """Create the Meridian Kiosk application with all dependencies.
         api_url: API server base URL (from main entry config). Display settings from GET /api/settings.
         """
@@ -287,16 +292,32 @@ class AppFactory:
         except ImportError:
             session = None
         display_settings = get_display_settings(
-            api_url, user_id=user_id, session=session
+            api_url,
+            user_id=user_id,
+            family_circle_id=family_circle_id,
+            session=session,
         )
-        services = create_remote(api_url, user_id=user_id, session=session)
+        services = create_remote(
+            api_url,
+            user_id=user_id,
+            family_circle_id=family_circle_id,
+            session=session,
+        )
 
         # Create and return the application
         return MeridianKioskApp(services=services, display_settings=display_settings)
 
 
 def create_app(
-    config_manager: Optional[ConfigManager] = None, user_id=None, api_url: str = None) -> MeridianKioskApp:
+    config_manager: Optional[ConfigManager] = None,
+    user_id=None,
+    family_circle_id=None,
+    api_url: str = None,
+) -> MeridianKioskApp:
     """Create the Meridian Kiosk. api_url from main entry configuration."""
     factory = AppFactory(config_manager)
-    return factory.create_application(user_id=user_id, api_url=api_url)
+    return factory.create_application(
+        user_id=user_id,
+        family_circle_id=family_circle_id,
+        api_url=api_url,
+    )

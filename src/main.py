@@ -15,13 +15,15 @@ if _src_dir not in sys.path:
 os.environ["KIVY_LOG_LEVEL"] = "warning"
 os.environ["KCFG_KIVY_LOG_LEVEL"] = "warning"
 # os.environ["KIVY_NO_CONSOLELOG"] = "2"
+if "--local" in sys.argv:
+    os.environ["KIVY_NO_ARGS"] = "1"
 
 import logging
+import subprocess
 import threading
 import time
 from shared.config import (
     ConfigManager,
-    DatabaseConfig,
     get_database_path,
     get_railway_api_url,
     get_server_host,
@@ -34,11 +36,76 @@ from apps.kiosk.app import create_app
 
 # TODO: from auth when not demo
 DEMO_MODE = True
-user_id = "0000000000" if DEMO_MODE else None
+DEMO_USER_ID = "fm_001"
+DEMO_FAMILY_CIRCLE_ID = "F00000"
+
+
+def _start_local_api_server(logger):
+    """Start API server in background. Returns api_url."""
+    from apps.server.api import run_server
+
+    host = get_server_host()
+    start_port = get_server_port()
+    port = find_available_port(host, start_port)
+    if port != start_port:
+        logger.warning(
+            "Port %s in use, using port %s instead. Stop any separate "
+            "'python -m apps.server' so web app and TV use the same server.",
+            start_port, port,
+        )
+    os.environ["PORT"] = str(port)
+
+    logger.info("Starting API server...")
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    time.sleep(0.5)
+
+    api_url = "http://127.0.0.1:%s" % port
+    logger.info("API/DB: %s", api_url)
+    return api_url
+
+
+def _start_local_webapp_server(api_url, logger):
+    """Build and serve webapp on webapp port. Sets CORS_ORIGIN."""
+    host = get_server_host()
+    webapp_port = find_available_port(host, get_webapp_port())
+    os.environ["CORS_ORIGIN"] = "http://127.0.0.1:%s" % webapp_port
+
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    webapp_dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
+    webapp_server_dir = os.path.join(src_dir, "apps", "webapp", "web_server")
+
+    try:
+        subprocess.run(
+            ["node", "build.js"],
+            cwd=webapp_server_dir,
+            env={**os.environ, "API_URL": api_url},
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        logger.warning("Webapp build skipped (%s). Use API /checkin for web UI.", e)
+
+    if os.path.exists(webapp_dist):
+        from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+        class WebappHandler(SimpleHTTPRequestHandler):
+            def __init__(self, request, client_address, server):
+                super().__init__(request, client_address, server, directory=webapp_dist)
+
+        webapp_server = HTTPServer(("127.0.0.1", webapp_port), WebappHandler)
+        webapp_thread = threading.Thread(target=webapp_server.serve_forever, daemon=True)
+        webapp_thread.start()
+        webapp_url = "http://127.0.0.1:%s" % webapp_port
+        logger.info("Webapp: %s", webapp_url)
+    else:
+        webapp_url = "%s/checkin" % api_url
+        logger.info("Webapp: %s (served by API)", webapp_url)
+    return webapp_url
 
 
 def main():
     """Start Kivy TV client. Use Railway API if reachable, else start local server + DB."""
+    use_local = "--local" in sys.argv
 
     config_manager = ConfigManager()
     logging.basicConfig(
@@ -54,107 +121,40 @@ def main():
     logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
-    if is_railway_reachable():
+    if not use_local and is_railway_reachable():
         api_url = get_railway_api_url()
-        logger.info("Using Railway API: %s", api_url)
+        logger.info("API/DB: %s", api_url)
+        logger.info("Webapp: %s/checkin (served by API)", api_url)
     
-    else:
-        logger.warning(
-            "Railway API not reachable (%s), using local database.",
-            get_railway_api_url(),
-        )
+    elif not is_railway_reachable():
+            logger.warning(
+                "Railway API not reachable (%s), using local database.",
+                get_railway_api_url(),
+            )
+    elif use_local:
         
         # Build local DB if needed
         db_path = get_database_path()
-        if not os.path.exists(db_path):
-            from apps.server.database import DatabaseManager
-            from dev.demo.seed import demo_main
 
-            db_config = DatabaseConfig(path=db_path, create_if_missing=True)
-            db = DatabaseManager(db_config)
-            result = db.create_database_schema()
-            if not result.success:
-                logger.error("Schema creation failed: %s", result.error)
-                raise RuntimeError("Schema creation failed: %s" % result.error)
-            if not demo_main(user_id, db_path=db_path):
-                raise RuntimeError("Demo seeding failed")
-        
-        if DEMO_MODE:
-            # update demo family location
-            try:
-                from dev.demo.seed import (
-                    load_location_checkins_data,
-                )
-                load_location_checkins_data(db_path, user_id)
-            except Exception as e:
-                logger.debug("Demo family/checkins refresh skipped (old schema?): %s", e)
+        from dev.demo.seed import ensure_local_database
+        ensure_local_database(db_path)
+        logger.info("Local DB validated.")
 
+        from dev.demo.seed import refresh_demo_checkins
+        refresh_demo_checkins(db_path)
         logger.info("Database loaded")
 
-        # Start local API server in background
-        from apps.server.api import run_server
-
-        host = get_server_host()
-        start_port = get_server_port()
-        port = find_available_port(host, start_port)
-        if port != start_port:
-            logger.warning(
-                "Port %s in use, using port %s instead. Stop any separate "
-                "'python -m apps.server' so web app and TV use the same server.",
-                start_port, port,
-            )
-        os.environ["PORT"] = str(port)
-
-        logger.info("Starting API server...")
-        server_thread = threading.Thread(target=run_server, daemon=True)
-        server_thread.start()
-        time.sleep(0.5)
-
-        logger.info("Server activated")
-        api_url = "http://127.0.0.1:%s" % port
-
-        webapp_port = find_available_port(host, get_webapp_port())
-        os.environ["CORS_ORIGIN"] = "http://127.0.0.1:%s" % webapp_port
-        webapp_dist = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            "apps",
-            "webapp",
-            "web_server",
-            "dist",
-        )
-        webapp_server_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            "apps",
-            "webapp",
-            "web_server",
-        )
-        import subprocess
-        try:
-            subprocess.run(
-                ["node", "build.js"],
-                cwd=webapp_server_dir,
-                env={**os.environ, "API_URL": api_url},
-                check=True,
-            )
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            logger.warning("Webapp build skipped (%s). Use API /checkin for web UI.", e)
-        if os.path.exists(webapp_dist):
-            from http.server import HTTPServer, SimpleHTTPRequestHandler
-
-            class WebappHandler(SimpleHTTPRequestHandler):
-                def __init__(self, request, client_address, server):
-                    super().__init__(request, client_address, server, directory=webapp_dist)
-
-            webapp_server = HTTPServer(("127.0.0.1", webapp_port), WebappHandler)
-            webapp_thread = threading.Thread(target=webapp_server.serve_forever, daemon=True)
-            webapp_thread.start()
-            logger.info("Webapp at http://127.0.0.1:%s", webapp_port)
+        api_url = _start_local_api_server(logger)
+        webapp_url = _start_local_webapp_server(api_url, logger)
 
     logger.info("Starting Meridian ...")
     try:
-        app = create_app(config_manager, user_id, api_url=api_url)
+        auth = (
+            {"user_id": DEMO_USER_ID, "family_circle_id": DEMO_FAMILY_CIRCLE_ID}
+            if use_local
+            else {}
+        )
+        app = create_app(config_manager, api_url=api_url, **auth)
         logger.info("Meridian Kiosk, server, and webapp created successfully, starting...")
         app.run()
     except Exception as e:

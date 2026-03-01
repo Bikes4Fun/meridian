@@ -8,9 +8,6 @@ Focus on dementia-friendly design with minimal complexity.
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.image import Image
 from kivy.graphics import Color, Rectangle
 
 
@@ -20,9 +17,8 @@ class KioskWidget(BoxLayout):
     def __init__(self, display_settings, background_color=None, **kwargs):
         if "background_color" in kwargs:
             kwargs.pop("background_color")
-        BoxLayout.__init__(self, **kwargs)
-
         self.display_settings = display_settings
+        BoxLayout.__init__(self, **kwargs)
 
         # Dementia-friendly defaults using user settings
         self.size_hint = (1, 1)
@@ -95,132 +91,6 @@ class KioskButton(Button):
         Button.__init__(self, **defaults)
 
 
-class DementiaScrollView(ScrollView):
-    """Configurable ScrollView with dementia-friendly defaults."""
-
-    def __init__(self, size_hint=(1, 1), bar_width=20, scroll_distance=100, **kwargs):
-        ScrollView.__init__(self, **kwargs)
-
-        # Configurable properties with sensible defaults
-        self.size_hint = size_hint
-        self.bar_width = bar_width
-        self.scroll_distance = scroll_distance
-
-
-class DementiaGridLayout(GridLayout):
-    """Configurable GridLayout with dementia-friendly defaults."""
-
-    def __init__(
-        self, display_settings, spacing=None, padding=None, size_hint=(1, 1), **kwargs
-    ):
-        GridLayout.__init__(self, **kwargs)
-
-        self.display_settings = display_settings
-
-        # Configurable properties - use actual user settings
-        self.spacing = spacing or display_settings.spacing["md"]
-        self.padding = padding or display_settings.spacing["sm"]
-        self.size_hint = size_hint
-
-
-class ContentWidget(KioskWidget):
-    """Generic content widget that can hold any content."""
-
-    def __init__(self, content=None, **kwargs):
-        super().__init__(**kwargs)
-
-        if content:
-            self.add_widget(content)
-
-    def set_content(self, widget):
-        """Set the content widget."""
-        self.clear_widgets()
-        self.add_widget(widget)
-
-    def add_content(self, widget):
-        """Add content to the widget."""
-        self.add_widget(widget)
-
-
-class ListWidget(KioskWidget):
-    """Simple list widget using Kivy's built-in capabilities."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "vertical"
-
-        # Create scrollable content - pass display_settings through
-        self.scroll_view = DementiaScrollView()
-        self.content_layout = KioskWidget(
-            display_settings=self.display_settings, orientation="vertical"
-        )
-        self.scroll_view.add_widget(self.content_layout)
-        self.add_widget(self.scroll_view)
-
-    def add_item(self, widget):
-        """Add an item to the list."""
-        self.content_layout.add_widget(widget)
-
-    def clear_items(self):
-        """Clear all items from the list."""
-        self.content_layout.clear_widgets()
-
-
-class GridWidget(KioskWidget):
-    """Simple grid widget using Kivy's GridLayout."""
-
-    def __init__(self, cols=2, **kwargs):
-        super().__init__(**kwargs)
-
-        self.grid_layout = DementiaGridLayout(
-            display_settings=self.display_settings, cols=cols
-        )
-        self.add_widget(self.grid_layout)
-
-    def add_item(self, widget):
-        """Add an item to the grid."""
-        self.grid_layout.add_widget(widget)
-
-    def clear_items(self):
-        """Clear all items from the grid."""
-        self.grid_layout.clear_widgets()
-
-
-class SectionWidget(KioskWidget):
-    """Simple section widget with title and content."""
-
-    def __init__(self, title="", **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "vertical"
-
-        if title:
-            # Use display_settings from parent (DementiaWidget)
-            self.title_label = KioskLabel(
-                display_settings=self.display_settings, text=title
-            )
-            self.title_label.font_size = self.display_settings.font_sizes["title"]
-            self.add_widget(self.title_label)
-
-    def add_content(self, widget):
-        """Add content to the section."""
-        self.add_widget(widget)
-
-
-class ActionWidget(KioskWidget):
-    """Simple action widget with buttons."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = "horizontal"
-
-    def add_button(self, text, action=None):
-        """Add a button to the action widget."""
-        button = KioskButton(text=text)
-        if action:
-            button.bind(on_press=action)
-        self.add_widget(button)
-
-
 class KioskNavBar(KioskWidget):
     """Generic navigation bar with configurable buttons."""
 
@@ -244,7 +114,7 @@ class KioskNavBar(KioskWidget):
             print("WARNING: No nav buttons configured!")
             return
 
-        button_width = 1.0 / len(self.buttons)
+        nav_button_width = 1.0 / len(self.buttons)
 
         for button_config in self.buttons:
             if isinstance(button_config, dict):
@@ -255,14 +125,13 @@ class KioskNavBar(KioskWidget):
 
             btn = KioskButton(
                 text=text,
-                size_hint=(button_width, None),
+                size_hint=(nav_button_width, None),
                 height=self.height,
             )
 
             # Create proper closures for all callbacks to avoid reference issues
             def make_press_handler(btn_text, btn_screen):
                 def press_handler(instance):
-                    # print(f"on_press FIRED for button '{btn_text}' -> screen '{btn_screen}'")
                     self._navigate_to_screen(btn_screen)
 
                 return press_handler

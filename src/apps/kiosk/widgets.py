@@ -6,7 +6,6 @@ Handles the creation of individual UI widgets.
 from .modular_display import (
     KioskWidget,
     KioskLabel,
-    KioskButton,
 )
 
 # Top section: Day + Time of day (left) | Icon (right)
@@ -59,6 +58,92 @@ def apply_border(widget, key, display_settings):
         pos=make_updater(b["color"], b["width"]),
         size=make_updater(b["color"], b["width"]),
     )
+
+
+class KioskNavBar(KioskWidget):
+    """Generic navigation bar with configurable buttons."""
+
+    def __init__(self, display_settings, screen_manager=None, buttons=None, **kwargs):
+        super().__init__(
+            display_settings=display_settings, orientation="horizontal", **kwargs
+        )
+        self.screen_manager = screen_manager
+        self.size_hint = (1, None)
+        self.height = 90
+
+        # Use provided buttons or default empty list
+        self.buttons = buttons or []
+
+        # Create navigation buttons
+        self._create_nav_buttons()
+
+    def _create_nav_buttons(self):
+        """Create navigation buttons from configuration."""
+        if not self.buttons:
+            print("WARNING: No nav buttons configured!")
+            return
+
+        nav_button_width = 1.0 / len(self.buttons)
+
+        for button_config in self.buttons:
+            if isinstance(button_config, dict):
+                text = button_config["text"]
+                screen_name = button_config["screen"]
+            else:
+                continue
+
+            btn = KioskButton(
+                text=text,
+                size_hint=(nav_button_width, None),
+                height=self.height,
+            )
+
+            # Create proper closures for all callbacks to avoid reference issues
+            def make_press_handler(btn_text, btn_screen):
+                def press_handler(instance):
+                    # print(f"on_press FIRED for button '{btn_text}' -> screen '{btn_screen}'")
+                    self._navigate_to_screen(btn_screen)
+
+                return press_handler
+
+            btn.bind(on_press=make_press_handler(text, screen_name))
+            self.add_widget(btn)
+
+    def _navigate_to_screen(self, screen_name):
+        """Navigate to specified screen."""
+        if self.screen_manager:
+            self.screen_manager.current = screen_name
+        else:
+            print(
+                f"ERROR: Cannot navigate to '{screen_name}' - screen_manager is None!"
+            )
+
+    def add_button(self, text, screen_name, color="primary", font_size="large"):
+        """Add a button to the navigation bar dynamically."""
+        button_config = {
+            "text": text,
+            "screen": screen_name,
+            "color": color,
+            "font_size": font_size,
+        }
+        self.buttons.append(button_config)
+
+        # Recreate buttons
+        self.clear_widgets()
+        self._create_nav_buttons()
+
+    def remove_button(self, screen_name):
+        """Remove a button from the navigation bar."""
+        self.buttons = [
+            btn
+            for btn in self.buttons
+            if (isinstance(btn, dict) and btn.get("screen") != screen_name)
+            or (isinstance(btn, tuple) and len(btn) > 1 and btn[1] != screen_name)
+        ]
+
+        # Recreate buttons
+        self.clear_widgets()
+        self._create_nav_buttons()
 
 
 class WidgetFactory:

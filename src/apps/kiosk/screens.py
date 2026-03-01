@@ -13,9 +13,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, Line
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
-    KioskWidget,
     KioskLabel,
-    KioskButton,
     KioskNavBar,
 )
 from .widgets import WidgetFactory, apply_border
@@ -97,51 +95,51 @@ class ScreenFactory:
             "padding": 24,
             "spacing": 24,
         }
-        return template_settings
-
-
-    def create_home_screen(self):
-        """Create home screen using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to ScreenFactory")
-
-        screen = Screen(name="home")
-
-        # Use actual user settings - no hardcoded defaults
-        settings = self.display_settings
-
+        
         # Main layout
-        main_layout = BoxLayout(orientation=settings.home_layout)
-        main_layout.size_hint = (1, 1)
-        main_layout.padding = settings.main_padding
+        main_layout = BoxLayout(template_settings)
 
         # Navigation bar
         nav_widget = self._create_navigation()
         main_layout.add_widget(nav_widget)
+        
+        return main_layout
 
+
+    def create_home_screen(self):
+        """Create home screen using modular components."""
+        screen = Screen(name="home")
+        main_layout = self.screen_template_boxlayout()
+
+        top_bottom_split = .35
+        # TOP SECTION
         # Clock widget
         clock_widget = self.widget_factory.create_widget("clock")
-        clock_widget.size_hint = (1, settings.clock_proportion)
+        clock_widget.size_hint = (1, top_bottom_split)
         main_layout.add_widget(clock_widget)
 
-        # Bottom section - medications and events side by side
-        bottom_section = BoxLayout(orientation=settings.bottom_section_orientation)
-        bottom_section.size_hint = (1, settings.todo_proportion)
+        # BOTTOM SECTION - medications and events side by side
+        bottom_section = BoxLayout(
+            orientation="horizontal",
+            size_hint = (1, 1-top_bottom_split)
+        )
 
+        med_events_split = .5
         # Medications (left side)
         med_widget = self.widget_factory.create_widget("medication")
-        med_widget.size_hint = (settings.med_events_split, 1)
+        med_widget.size_hint = (med_events_split, 1)
         bottom_section.add_widget(med_widget)
 
         # Events (right side)
         events_widget = self.widget_factory.create_widget("events")
-        events_widget.size_hint = (1 - settings.med_events_split, 1)
+        events_widget.size_hint = (1 - med_events_split, 1)
         bottom_section.add_widget(events_widget)
 
         main_layout.add_widget(bottom_section)
+        
         screen.add_widget(main_layout)
-
         return screen
+
 
     def create_emergency_screen(self):
         """Create emergency screen: critical patient info for EMS (name, DNR, contacts, meds, allergies)."""

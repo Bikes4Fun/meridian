@@ -19,12 +19,9 @@
   "clock_date_height": 60,
   "clock_spacing": 0,
   "clock_padding": [15, 10],
-  "clock_proportion": 0.35,
-  "todo_proportion": 0.65,
   "high_contrast": false,
   "large_text": true,
   "reduced_motion": false,
-  "med_events_split": 0.5,
   "navigation_height": 90,
   "button_flat_style": true,
   "clock_background_color": [0.98, 0.98, 0.96, 1],
@@ -36,7 +33,6 @@
   "clock_orientation": "vertical",
   "med_orientation": "vertical",
   "events_orientation": "vertical",
-  "bottom_section_orientation": "horizontal",
 
 
 }

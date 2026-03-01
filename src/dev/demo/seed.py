@@ -520,9 +520,7 @@ def load_demo_settings_from_json_into_db(db_manager, user_id):
 
 
 def ensure_local_database(db_path: str) -> bool:
-    """Create schema (adds missing tables like care_recipients). Seed demo data only if DB was new."""
-    if os.path.exists(db_path):
-        return True
+    """Create schema (adds missing tables). Always seed demo data so DB stays updated."""
     db_config = DatabaseConfig(path=db_path, create_if_missing=True)
     db = DatabaseManager(db_config)
     result = db.create_database_schema()

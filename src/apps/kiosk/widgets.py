@@ -12,9 +12,10 @@ from .modular_display import (
 
 # Top section: Day + Time of day (left) | Icon (right)
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
-from kivy.graphics import Color, Line
+from kivy.graphics import Color, Line, Rectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
 from datetime import datetime
@@ -589,9 +590,15 @@ class WidgetFactory:
                 proxy = emergency.get("proxy") or {}
                 care_recipient_user_id = d.get("care_recipient_user_id")
 
-                name_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(56))
-                name_row.spacing = display_settings.spacing["sm"]
-                photo_img = Image(size_hint_x=None, width=dp(40), allow_stretch=True, keep_ratio=True)
+                name_section = GridLayout(cols=2, size_hint_y=None, height=dp(60))
+                name_section.spacing = display_settings.spacing["md"]
+                name_section.padding = [0, 0]
+                photo_cell = BoxLayout(size_hint_x=None, width=dp(48))
+                with photo_cell.canvas.before:
+                    Color(0.8, 0.8, 0.8, 1)
+                    photo_cell._bg = Rectangle(pos=(0, 0), size=(dp(48), dp(48)))
+                photo_cell.bind(size=lambda w, v: setattr(w._bg, "size", (w.width, w.height)))
+                photo_img = Image(size_hint=(1, 1), fit_mode="contain")
                 if care_recipient_user_id and self.location_service and hasattr(self.location_service, "fetch_photo_to_cache"):
                     cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
                     def _set_photo(dt):
@@ -599,7 +606,8 @@ class WidgetFactory:
                         if path and os.path.exists(path):
                             photo_img.source = path
                     Clock.schedule_once(_set_photo, 0.1)
-                name_row.add_widget(photo_img)
+                photo_cell.add_widget(photo_img)
+                name_section.add_widget(photo_cell)
                 name_label = DementiaLabel(
                     display_settings=display_settings,
                     font_size="huge",
@@ -607,8 +615,9 @@ class WidgetFactory:
                     color="text",
                 )
                 name_label.color = dark_text
-                name_row.add_widget(name_label)
-                profile.add_widget(name_row)
+                name_section.add_widget(name_label)
+                apply_border(name_section, "emergency_profile_name", display_settings)
+                profile.add_widget(name_section)
 
                 dnr = medical.get("dnr", False)
                 dnr_label = DementiaLabel(
@@ -618,6 +627,7 @@ class WidgetFactory:
                     color="text",
                 )
                 dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
+                apply_border(dnr_label, "emergency_profile_dnr", display_settings)
                 profile.add_widget(dnr_label)
 
                 if self.emergency_service:
@@ -630,6 +640,7 @@ class WidgetFactory:
                             color="text",
                         )
                         ms_label.color = dark_text
+                        apply_border(ms_label, "emergency_profile_medical", display_settings)
                         profile.add_widget(ms_label)
 
                 if medical.get("conditions"):
@@ -640,11 +651,13 @@ class WidgetFactory:
                         color="text",
                     )
                     cond_label.color = dark_text
+                    apply_border(cond_label, "emergency_profile_conditions", display_settings)
                     profile.add_widget(cond_label)
 
                 if self.emergency_service:
                     ec_result = self.emergency_service.get_emergency_contacts()
                     if ec_result.success and ec_result.data:
+                        ec_block = BoxLayout(orientation="vertical")
                         ec_label = DementiaLabel(
                             display_settings=display_settings,
                             font_size="title",
@@ -652,7 +665,7 @@ class WidgetFactory:
                             color="text",
                         )
                         ec_label.color = dark_text
-                        profile.add_widget(ec_label)
+                        ec_block.add_widget(ec_label)
                         ec_list = DementiaLabel(
                             display_settings=display_settings,
                             font_size="large",
@@ -660,7 +673,9 @@ class WidgetFactory:
                             color="text",
                         )
                         ec_list.color = dark_text
-                        profile.add_widget(ec_list)
+                        ec_block.add_widget(ec_list)
+                        apply_border(ec_block, "emergency_contacts", display_settings)
+                        profile.add_widget(ec_block)
 
                 if proxy.get("name") or d.get("medical_proxy_phone"):
                     proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
@@ -672,6 +687,7 @@ class WidgetFactory:
                             color="text",
                         )
                         p_label.color = dark_text
+                        apply_border(p_label, "emergency_profile_proxy", display_settings)
                         profile.add_widget(p_label)
 
                 if d.get("poa_name") or d.get("poa_phone"):
@@ -686,6 +702,7 @@ class WidgetFactory:
                             color="text",
                         )
                         poa_label.color = dark_text
+                        apply_border(poa_label, "emergency_profile_poa", display_settings)
                         profile.add_widget(poa_label)
             else:
                 err_label = DementiaLabel(

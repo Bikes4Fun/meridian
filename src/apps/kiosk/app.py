@@ -1,5 +1,5 @@
 """
-Application factory for Dementia TV.
+Application factory for Meridian Kiosk.
 Creates and configures the application with proper dependency injection.
 
 CLIENT vs SERVER:
@@ -23,8 +23,8 @@ from .widgets import WidgetFactory
 import datetime
 
 
-class DementiaTVApp(App):
-    """Main Kivy application for Dementia TV using modular components."""
+class MeridianKioskApp(App):
+    """Main Kivy application for Meridian Kiosk using modular components."""
 
     def __init__(self, services, display_settings=None, **kwargs):
         super().__init__(**kwargs)
@@ -270,13 +270,18 @@ class DementiaTVApp(App):
 
 
 class AppFactory:
-    """Factory for creating the Dementia TV application."""
+    """Factory for creating the Meridian Kiosk."""
 
     def __init__(self, config_manager: Optional[ConfigManager] = None):
         self.config_manager = config_manager or ConfigManager()
 
-    def create_application(self, user_id=None, api_url: str = None) -> DementiaTVApp:
-        """Create the Dementia TV application with all dependencies.
+    def create_application(
+        self,
+        user_id=None,
+        family_circle_id=None,
+        api_url: str = None,
+    ) -> MeridianKioskApp:
+        """Create the Meridian Kiosk application with all dependencies.
         api_url: API server base URL (from main entry config). Display settings from GET /api/settings.
         """
         if not api_url:
@@ -287,16 +292,32 @@ class AppFactory:
         except ImportError:
             session = None
         display_settings = get_display_settings(
-            api_url, user_id=user_id, session=session
+            api_url,
+            user_id=user_id,
+            family_circle_id=family_circle_id,
+            session=session,
         )
-        services = create_remote(api_url, user_id=user_id, session=session)
+        services = create_remote(
+            api_url,
+            user_id=user_id,
+            family_circle_id=family_circle_id,
+            session=session,
+        )
 
         # Create and return the application
-        return DementiaTVApp(services=services, display_settings=display_settings)
+        return MeridianKioskApp(services=services, display_settings=display_settings)
 
 
 def create_app(
-    config_manager: Optional[ConfigManager] = None, user_id=None, api_url: str = None) -> DementiaTVApp:
-    """Create the Dementia TV application. api_url from main entry configuration."""
+    config_manager: Optional[ConfigManager] = None,
+    user_id=None,
+    family_circle_id=None,
+    api_url: str = None,
+) -> MeridianKioskApp:
+    """Create the Meridian Kiosk. api_url from main entry configuration."""
     factory = AppFactory(config_manager)
-    return factory.create_application(user_id=user_id, api_url=api_url)
+    return factory.create_application(
+        user_id=user_id,
+        family_circle_id=family_circle_id,
+        api_url=api_url,
+    )

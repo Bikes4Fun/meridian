@@ -1,5 +1,5 @@
 """
-Simplified interfaces for Dementia TV services.
+Simplified interfaces for Meridian services.
 Just contains the ServiceResult class for consistent error handling.
 """
 

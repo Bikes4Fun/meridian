@@ -1,6 +1,6 @@
-# Testing Guide for Dementia TV
+# Testing Guide for Meridian
 
-This directory contains the test suite for the Dementia TV Python application.
+This directory contains the test suite for Meridian.
 
 ## Setup
 

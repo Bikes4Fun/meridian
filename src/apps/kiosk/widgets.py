@@ -164,7 +164,7 @@ class WidgetFactory:
             "clock": self.create_clock_widget,
             "medication": self.create_medication_widget,
             "events": self.create_events_widget,
-            "emergency_profile": self.create_emergency_profile_widget,
+            "emergency_profile": self.create_emergency_screen_widget,
             "family_locations": self.create_family_locations_widget,
         }
 
@@ -372,142 +372,42 @@ class WidgetFactory:
 
         return events
 
-    def create_emergency_profile_widget(self):
-        """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA.
-        Light background, dark text for vision-impaired; flashing border for visibility."""
-        dark_text = (0.1, 0.1, 0.1, 1)
-        profile = KioskWidget(orientation="vertical")
-        profile.spacing = 16
-        profile.padding = 24
+    def create_emergency_screen_widget(self):
+        """Create emergency profile in form style. Implemented in emergency_profile.py."""
+        from .emergency_profile_widget import create_emergency_layout_widget as build_emergency_layout_widget
+        emergency_widget = KioskWidget()
 
-        alert_ref = self.services.get("_alert_activated", [False])
-        flash_state = [0]
-
-        def _draw_border(w, color):
-            w.canvas.after.clear()
-            with w.canvas.after:
-                Color(*color)
-                Line(rectangle=(w.x, w.y, w.width, w.height), width=8)
-
-        def _border_tick(dt):
-            if alert_ref[0]:
-                flash_state[0] = 1 - flash_state[0]
-                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
-            else:
-                c = (0.9, 0.4, 0.1, 1)
-            _draw_border(profile, c)
-
-        def _update_border(o, v):
-            if alert_ref[0]:
-                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
-            else:
-                c = (0.9, 0.4, 0.1, 1)
-            _draw_border(profile, c)
-
-        profile.bind(pos=_update_border, size=_update_border)
-        Clock.schedule_interval(_border_tick, 0.5)
-
-        if self.ice_profile_service:
-            result = self.ice_profile_service.get_ice_profile()
-            if result.success and result.data:
-                d = result.data
-                profile_data = d.get("profile") or {}
-                medical = d.get("medical") or {}
-                emergency = d.get("emergency") or {}
-                proxy = emergency.get("proxy") or {}
-                care_recipient_user_id = d.get("care_recipient_user_id")
-
-                name_photo_section = BoxLayout(
-                    orientation="horizontal",
-                    size_hint_y=None,
-                    height=dp(60),
-                    spacing=16,
-                )
-
-                photo_cell = BoxLayout(size_hint_x=None, width=dp(60))
-                with photo_cell.canvas.before:
-                    Color(0.8, 0.8, 0.8, 1)
-                    photo_cell._bg = Rectangle(pos=photo_cell.pos, size=photo_cell.size)
-                photo_cell.bind(pos=lambda w, v: setattr(w._bg, "pos", w.pos), size=lambda w, v: setattr(w._bg, "size", w.size))
-                photo_img = Image(size_hint=(1, 1), fit_mode="contain")
-                if care_recipient_user_id and self.location_service and hasattr(self.location_service, "fetch_photo_to_cache"):
-                    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-                    def _set_photo(dt):
-                        path = self.location_service.fetch_photo_to_cache(care_recipient_user_id, cache_dir)
-                        if path and os.path.exists(path):
-                            photo_img.source = path
-                    Clock.schedule_once(_set_photo, 0.1)
-                photo_cell.add_widget(photo_img)
-                name_photo_section.add_widget(photo_cell)
-                name_label = KioskLabel(
-                    type="hero",
-                    text=profile_data.get("name") or "Patient",
-                )
-                name_label.color = dark_text
-                name_photo_section.add_widget(name_label)
-                apply_debug_border(name_photo_section)
-                profile.add_widget(name_photo_section)
-
-                dnr = medical.get("dnr", False)
-                dnr_label = KioskLabel(
-                    type="hero",
-                    text="DNR" if dnr else "FULL CODE",
-                )
-                dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
-                apply_debug_border(dnr_label)
-                profile.add_widget(dnr_label)
-
-                if self.emergency_service:
-                    ms_result = self.emergency_service.get_medical_summary()
-                    if ms_result.success and ms_result.data:
-                        ms_label = KioskLabel(type="subheader", text=ms_result.data)
-                        ms_label.color = dark_text
-                        apply_debug_border(ms_label)
-                        profile.add_widget(ms_label)
-
-                if self.emergency_service:
-                    ec_result = self.emergency_service.get_emergency_contacts()
-                    if ec_result.success and ec_result.data:
-                        ec_block = BoxLayout(orientation="vertical")
-                        ec_label = KioskLabel(type="header", text="Emergency contacts")
-                        ec_label.color = dark_text
-                        ec_block.add_widget(ec_label)
-                        ec_list = KioskLabel(
-                            type="subheader",
-                            text=_format_contacts_for_display(ec_result.data, include_header=False),
-                        )
-                        ec_list.color = dark_text
-                        ec_block.add_widget(ec_list)
-                        apply_debug_border(ec_block)
-                        profile.add_widget(ec_block)
-
-                if proxy.get("name") or d.get("medical_proxy_phone"):
-                    proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
-                    if proxy_text:
-                        p_label = KioskLabel(type="subheader", text=proxy_text)
-                        p_label.color = dark_text
-                        apply_debug_border(p_label)
-                        profile.add_widget(p_label)
-
-                if d.get("poa_name") or d.get("poa_phone"):
-                    poa_text = (
-                        f"POA: {d.get('poa_name', '')} {d.get('poa_phone', '')}".strip()
-                    )
-                    if poa_text:
-                        poa_label = KioskLabel(type="subheader", text=poa_text)
-                        poa_label.color = dark_text
-                        apply_debug_border(poa_label)
-                        profile.add_widget(poa_label)
-            else:
-                err_label = KioskLabel(type="header", text="Emergency profile not found")
-                err_label.color = dark_text
-                profile.add_widget(err_label)
-        else:
+        if not self.ice_profile_service:
             err_label = KioskLabel(type="header", text="Emergency profile service not available")
-            err_label.color = dark_text
-            profile.add_widget(err_label)
+            emergency_widget.add_widget(err_label)
+            return emergency_widget
 
-        return profile
+        all_data = self.ice_profile_service.get_ice_profile()
+        if not all_data.success or not all_data.data:
+            err_label = KioskLabel(type="header", text="Emergency profile not found")
+            emergency_widget.add_widget(err_label)
+            return emergency_widget
+
+        ec_result = self.ice_profile_service.get_emergency_contacts()
+        if not ec_result.success or not ec_result.data:
+            # create error for emergency data
+            return emergency_widget
+
+        e_data = all_data.data
+        e_contacts = {
+            "contacts": ec_result.data,
+            "poa_name": e_data.get("poa_name"),
+            "poa_phone": e_data.get("poa_phone"),
+            "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get("name"),
+            "medical_proxy_phone": e_data.get("medical_proxy_phone"),
+        }
+
+        return build_emergency_layout_widget(
+            emergency_widget,
+            e_data,
+            e_contacts,
+            self.services,
+        )
 
     def _create_family_locations_title(self):
         """Create Family Locations screen title block."""

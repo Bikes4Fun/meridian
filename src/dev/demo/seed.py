@@ -155,7 +155,7 @@ def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str
         for med in medications:
             cursor.execute(
                 """
-                INSERT INTO medications
+                INSERT OR REPLACE INTO medications
                 (care_recipient_user_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,

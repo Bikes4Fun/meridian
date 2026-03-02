@@ -30,6 +30,21 @@ def get_database_path() -> str:
     return os.getenv("DATABASE_PATH", default_path)
 
 
+def get_uploads_dir() -> str:
+    """Directory for user photos. Server serves from here; kiosks fetch and cache."""
+    path = os.getenv("UPLOADS_DIR", "").strip()
+    if path:
+        return os.path.abspath(path)
+    return os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..",
+        "dev",
+        "demo",
+        "data",
+        "family_img",
+    )
+
+
 def get_log_level() -> str:
     """Get log level from environment or default."""
     return os.getenv("LOG_LEVEL", "INFO")

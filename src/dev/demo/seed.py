@@ -144,8 +144,8 @@ def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: s
     logger.debug("  Loaded medication times for family %s", family_circle_id)
 
 
-def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str):
-    """Load medications from JSON into SQLite database."""
+def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str, care_recipient_user_id: str):
+    """Load medications from JSON into SQLite database. care_recipient_user_id = person meds belong to."""
     medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
 
@@ -155,12 +155,12 @@ def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str
         for med in medications:
             cursor.execute(
                 """
-                INSERT INTO medications
-                (family_circle_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
+                INSERT OR REPLACE INTO medications
+                (care_recipient_user_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
-                    family_circle_id,
+                    care_recipient_user_id,
                     med.get("name"),
                     med.get("dosage"),
                     med.get("frequency"),
@@ -188,82 +188,88 @@ def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str
     logger.debug("  Loaded %d medications" % len(medications))
 
 
-def load_allergies_data(db_manager, family_circle_id: str):
-    """Load allergies from JSON into SQLite database."""
+def load_allergies_data(db_manager, care_recipient_user_id: str):
+    """Load allergies from JSON into SQLite database. care_recipient_user_id = person allergies belong to."""
     medical_data = load_json_file("medical.json")
     allergies = medical_data.get("allergies", [])
 
     for allergy in allergies:
         query = """
-            INSERT OR REPLACE INTO allergies (family_circle_id, allergen)
+            INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen)
             VALUES (?, ?)
         """
-        db_manager.execute_update(query, (family_circle_id, allergy.get("allergen")))
+        db_manager.execute_update(query, (care_recipient_user_id, allergy.get("allergen")))
     logger.debug("  Loaded %d allergies" % len(allergies))
 
 
-def load_demo_ice_profile_data(db_manager, family_circle_id: str):
-    """Load ICE profile from JSON."""
+def load_demo_care_recipient_data(db_manager, family_circle_id: str):
+    """Load care recipient and contact roles (proxy, POA) from care_recipient section. Legal/medical data, not ICE-specific."""
     medical_data = load_json_file("medical.json")
-    ice_data = medical_data.get("ice_profile", {})
-    if not ice_data:
+    cr_data = medical_data.get("care_recipient", {})
+    if not cr_data:
         return
 
-    profile = ice_data.get("profile") or {}
-    medical = ice_data.get("medical") or {}
-    emergency = ice_data.get("emergency") or {}
+    care_recipient_user_id = cr_data.get("user_id")
+    if not care_recipient_user_id:
+        raise ValueError("care_recipient requires user_id")
+
+    profile = cr_data.get("profile") or {}
+    medical = cr_data.get("medical") or {}
+    emergency = cr_data.get("emergency") or {}
     proxy = emergency.get("proxy") or {}
-    existing = db_manager.execute_query(
-        "SELECT id FROM ice_profile WHERE family_circle_id = ?", (family_circle_id,)
+    name = profile.get("name")
+    dob = profile.get("dob")
+    medical_dnr = 1 if medical.get("dnr") else 0
+    proxy_name = proxy.get("name")
+    medical_proxy_phone = cr_data.get("medical_proxy_phone")
+    poa_name = cr_data.get("poa_name")
+    poa_phone = cr_data.get("poa_phone")
+    notes = cr_data.get("notes")
+
+    db_manager.execute_update(
+        """
+        INSERT OR REPLACE INTO care_recipients (family_circle_id, care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (family_circle_id, care_recipient_user_id, name, dob, None, medical_dnr, None, notes),
     )
-    params = (
-        profile.get("name"),
-        profile.get("dob"),
-        medical.get("conditions"),
-        1 if medical.get("dnr") else 0,
-        proxy.get("name"),
-        ice_data.get("medical_proxy_phone"),
-        ice_data.get("poa_name"),
-        ice_data.get("poa_phone"),
-        ice_data.get("notes"),
-    )
-    if existing.success and existing.data:
+
+    if proxy_name or medical_proxy_phone:
+        cid = f"proxy_{family_circle_id}"
         db_manager.execute_update(
-            """
-            UPDATE ice_profile SET
-                profile_name = ?, profile_dob = ?, medical_conditions = ?,
-                medical_dnr = ?, emergency_proxy_name = ?, medical_proxy_phone = ?,
-                poa_name = ?, poa_phone = ?, notes = ?
-            WHERE family_circle_id = ?
-            """,
-            params + (family_circle_id,),
+            "INSERT OR REPLACE INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
+            (cid, family_circle_id, proxy_name or "", medical_proxy_phone or ""),
         )
-    else:
         db_manager.execute_update(
-            """
-            INSERT INTO ice_profile
-            (family_circle_id, profile_name, profile_dob, medical_conditions, medical_dnr,
-             emergency_proxy_name, medical_proxy_phone, poa_name, poa_phone, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (family_circle_id,) + params,
+            "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
+            (family_circle_id, "medical_proxy", cid),
         )
-    logger.debug("  Loaded 1 ICE profile")
+    if poa_name or poa_phone:
+        cid = f"poa_{family_circle_id}"
+        db_manager.execute_update(
+            "INSERT OR REPLACE INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
+            (cid, family_circle_id, poa_name or "", poa_phone or ""),
+        )
+        db_manager.execute_update(
+            "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
+            (family_circle_id, "poa", cid),
+        )
+    logger.debug("  Loaded care recipient and contact roles")
 
 
-def load_conditions_data(db_manager, family_circle_id: str):
-    """Load medical conditions from JSON into SQLite database."""
+def load_conditions_data(db_manager, care_recipient_user_id: str):
+    """Load medical conditions from JSON into SQLite database. care_recipient_user_id = person conditions belong to."""
     medical_data = load_json_file("medical.json")
     conditions = medical_data.get("conditions", [])
 
     for condition in conditions:
         query = """
             INSERT OR REPLACE INTO conditions 
-            (family_circle_id, condition_name, diagnosis_date, notes)
+            (care_recipient_user_id, condition_name, diagnosis_date, notes)
             VALUES (?, ?, ?, ?)
         """
         params = (
-            family_circle_id,
+            care_recipient_user_id,
             condition.get("condition"),
             condition.get("diagnosis_date"),
             condition.get("notes"),
@@ -425,109 +431,22 @@ def refresh_demo_checkins(db_path: str) -> None:
         logger.debug("Demo checkins refresh skipped (old schema?): %s", e)
 
 
-def load_demo_settings_from_json_into_db(db_manager, user_id):
-    """Load user display settings from default_display_settings.json into SQLite database."""
-    try:
-        from src.apps.kiosk.settings import DisplaySettings
-    except ImportError:
-        from apps.kiosk.settings import DisplaySettings
-    default_settings = (
-        DisplaySettings.default()
-    )  # single source: demo/demo_data/default_display_settings.json
-
-    # Serialize default settings to JSON strings
-    font_sizes_json = json.dumps(default_settings.font_sizes)
-    colors_json = json.dumps({k: list(v) for k, v in default_settings.colors.items()})
-    spacing_json = json.dumps(default_settings.spacing)
-    touch_targets_json = json.dumps(default_settings.touch_targets)
-    clock_padding_json = json.dumps(default_settings.clock_padding)
-    main_padding_json = json.dumps(default_settings.main_padding)
-    clock_bg_json = json.dumps(list(default_settings.clock_background_color))
-    med_bg_json = json.dumps(list(default_settings.med_background_color))
-    events_bg_json = json.dumps(list(default_settings.events_background_color))
-    contacts_bg_json = json.dumps(list(default_settings.contacts_background_color))
-    medical_bg_json = json.dumps(list(default_settings.medical_background_color))
-    calendar_bg_json = json.dumps(list(default_settings.calendar_background_color))
-    nav_bg_json = json.dumps(list(default_settings.nav_background_color))
-    navigation_buttons_json = json.dumps(default_settings.navigation_buttons)
-    borders_json = json.dumps(default_settings.borders)
-
-    query = """
-        INSERT OR REPLACE INTO user_display_settings 
-        (user_id, font_sizes, colors, spacing, touch_targets, window_width, window_height,
-         window_left, window_top, clock_icon_size, clock_icon_height, clock_text_height,
-         clock_day_height, clock_time_height, clock_date_height, clock_spacing, clock_padding, main_padding,
-         home_layout, clock_proportion, todo_proportion, med_events_split, navigation_height, button_flat_style,
-         clock_background_color, med_background_color, events_background_color,
-         contacts_background_color, medical_background_color, calendar_background_color, nav_background_color,
-         clock_orientation, med_orientation, events_orientation, bottom_section_orientation,
-         high_contrast, large_text, reduced_motion, navigation_buttons, borders)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    params = (
-        user_id,
-        font_sizes_json,
-        colors_json,
-        spacing_json,
-        touch_targets_json,
-        default_settings.window_width,
-        default_settings.window_height,
-        default_settings.window_left,
-        default_settings.window_top,
-        default_settings.clock_icon_size,
-        default_settings.clock_icon_height,
-        default_settings.clock_text_height,
-        default_settings.clock_day_height,
-        default_settings.clock_time_height,
-        default_settings.clock_date_height,
-        default_settings.clock_spacing,
-        clock_padding_json,
-        main_padding_json,
-        default_settings.home_layout,
-        default_settings.clock_proportion,
-        default_settings.todo_proportion,
-        default_settings.med_events_split,
-        default_settings.navigation_height,
-        int(bool(default_settings.button_flat_style)),
-        clock_bg_json,
-        med_bg_json,
-        events_bg_json,
-        contacts_bg_json,
-        medical_bg_json,
-        calendar_bg_json,
-        nav_bg_json,
-        default_settings.clock_orientation,
-        default_settings.med_orientation,
-        default_settings.events_orientation,
-        default_settings.bottom_section_orientation,
-        int(bool(default_settings.high_contrast)),
-        int(bool(default_settings.large_text)),
-        int(bool(default_settings.reduced_motion)),
-        navigation_buttons_json,
-        borders_json,
-    )
-
-    result = db_manager.execute_update(query, params)
-    if not result.success:
-        raise RuntimeError(f"Failed to load display settings: {result.error}")
-    logger.debug("  Loaded 1 display settings")
-
-
 def ensure_local_database(db_path: str) -> bool:
-    """Create schema and seed demo data if DB file does not exist. Returns True on success."""
-    if os.path.exists(db_path):
-        return True
+    """Create schema (adds missing tables). Always seed demo data so DB stays updated."""
     db_config = DatabaseConfig(path=db_path, create_if_missing=True)
     db = DatabaseManager(db_config)
     result = db.create_database_schema()
     if not result.success:
         logger.error("Local database setup failed")
         raise RuntimeError("Local database setup failed")
-        return False
-    return demo_main(user_id=DEMO_USER_ID, db_path=db_path)
+    data_loaded = demo_main(user_id=DEMO_USER_ID, db_path=db_path)
+    if not data_loaded:
+        logger.error("Local demo data loading error")
+        raise RuntimeError("Local demo data loading error")
+    return True
 
 
-def demo_main(user_id, db_path=None):
+def demo_main(user_id, db_path=None) -> bool:
     """Load all JSON demo data into the database. Run via: python -m apps.server seed (or pass db_path)."""
     logger.debug("Loading demo data into database...")
     if db_path is None:
@@ -542,15 +461,17 @@ def demo_main(user_id, db_path=None):
         load_demo_users_from_json_into_db(db)
         load_demo_family_circles_from_json_into_db(db)
         load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        care_recipient_user_id = load_json_file("medical.json").get("care_recipient", {}).get("user_id")
+        if not care_recipient_user_id:
+            raise ValueError("medical.json care_recipient must have user_id")
         load_demo_medication_times_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_medications_data_from_json_to_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_allergies_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_conditions_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_ice_profile_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+        load_demo_medications_data_from_json_to_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID, care_recipient_user_id=care_recipient_user_id)
+        load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
+        load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
+        load_demo_care_recipient_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_calendar_events_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_settings_from_json_into_db(db, user_id=user_id or DEMO_USER_ID)
 
         logger.info("Demo data loaded successfully!")
         return True

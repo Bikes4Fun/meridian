@@ -33,7 +33,7 @@ def test_api_health(api_client):
 
 
 def test_api_calendar_headers(api_client):
-    r = api_client.get("/api/calendar/headers", headers=API_HEADERS)
+    r = api_client.get("/api/family_circles/test_family/calendar/headers", headers=API_HEADERS)
     assert r.status_code == 200
     j = r.get_json()
     assert "data" in j
@@ -42,7 +42,7 @@ def test_api_calendar_headers(api_client):
 
 
 def test_api_calendar_month(api_client):
-    r = api_client.get("/api/calendar/month", headers=API_HEADERS)
+    r = api_client.get("/api/family_circles/test_family/calendar/month", headers=API_HEADERS)
     assert r.status_code == 200
     j = r.get_json()
     assert "data" in j
@@ -50,7 +50,7 @@ def test_api_calendar_month(api_client):
 
 
 def test_api_calendar_events(api_client):
-    r = api_client.get("/api/calendar/events?date=15", headers=API_HEADERS)
+    r = api_client.get("/api/family_circles/test_family/calendar/events?date=15", headers=API_HEADERS)
     assert r.status_code == 200
     j = r.get_json()
     assert "data" in j
@@ -58,18 +58,18 @@ def test_api_calendar_events(api_client):
 
 
 def test_api_requires_both_headers(api_client):
-    r = api_client.get("/api/calendar/headers")
+    r = api_client.get("/api/family_circles/test_family/calendar/headers")
     assert r.status_code == 401
-    r = api_client.get("/api/calendar/headers", headers={"X-User-Id": "u1"})
+    r = api_client.get("/api/family_circles/test_family/calendar/headers", headers={"X-User-Id": "u1"})
     assert r.status_code == 401
-    r = api_client.get("/api/calendar/headers", headers=API_HEADERS)
+    r = api_client.get("/api/family_circles/test_family/calendar/headers", headers=API_HEADERS)
     assert r.status_code == 200
 
 
 def test_checkin_succeeds_when_user_matches(api_client):
     """Check-in succeeds when user_id in body matches logged-in user."""
     r = api_client.post(
-        "/api/location/checkin",
+        "/api/family_circles/test_family/checkin",
         headers=API_HEADERS,
         json={"user_id": "test_user", "latitude": 37.0, "longitude": -113.0},
     )
@@ -80,7 +80,7 @@ def test_checkin_succeeds_when_user_matches(api_client):
 def test_checkin_forbidden_when_user_differs(api_client):
     """Check-in forbidden when user_id in body differs from logged-in user."""
     r = api_client.post(
-        "/api/location/checkin",
+        "/api/family_circles/test_family/checkin",
         headers=API_HEADERS,
         json={"user_id": "other_user", "latitude": 37.0, "longitude": -113.0},
     )

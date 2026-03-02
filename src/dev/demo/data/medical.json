@@ -1,5 +1,6 @@
 {
-  "ice_profile": {
+  "care_recipient": {
+    "user_id": "fm_care_001",
     "profile": { "name": "Marian Foster", "dob": "1952-03-14" },
     "medical": {
       "conditions": "Dementia, Type 2 Diabetes, Hypertension",

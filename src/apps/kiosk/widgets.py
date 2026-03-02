@@ -4,17 +4,18 @@ Handles the creation of individual UI widgets.
 """
 
 from .modular_display import (
-    DementiaWidget,
-    DementiaLabel,
-    DementiaButton,
-    DementiaImage,
+    KioskWidget,
+    KioskLabel,
+    KioskButton,
 )
+
 
 # Top section: Day + Time of day (left) | Icon (right)
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
-from kivy.graphics import Color, Line
+from kivy.graphics import Color, Line, Rectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
 from datetime import datetime
@@ -24,13 +25,23 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def apply_border(widget, key, display_settings):
-    """Apply border to widget if configured in display_settings.borders. Uses default when key missing."""
-    if display_settings.borders and key in display_settings.borders:
-        b = display_settings.borders[key]
-    else:
-        b = {"color": [0, 0, 0, 1], "width": 1}
+def _format_contacts_for_display(contacts, include_header=True):
+    """Format contact dicts into display text. Used by widgets."""
+    if not contacts:
+        return "No emergency contacts found"
+    lines = ["Emergency Contacts:"] if include_header else []
+    for c in contacts:
+        phone = c.get("phone") or ""
+        rel = c.get("relationship") or ""
+        lines.append(f"• {c.get('display_name', '')} - {phone}: {rel}")
+    return "\n".join(lines)
 
+
+def apply_debug_border(widget, **kwargs):
+    """Apply default border to widget."""
+    b = {"color": [0, 0, 0, 1], "width": 1}
+    b.update(kwargs)
+    
     def make_updater(color, width):
         def update(instance, value):
             instance.canvas.after.clear()
@@ -49,12 +60,97 @@ def apply_border(widget, key, display_settings):
     )
 
 
+class KioskNavBar(KioskWidget):
+    """Generic navigation bar with configurable buttons."""
+
+    def __init__(self, screen_manager=None, buttons=None, **kwargs):
+        defaults = {
+            "orientation": "horizontal",
+            "size_hint": (1, None),
+            "height": 90,
+        }
+        defaults.update(kwargs)
+        super().__init__(**defaults)
+        self.screen_manager = screen_manager
+        self.buttons = buttons or []
+
+        # Create navigation buttons
+        self._create_nav_buttons()
+
+    def _create_nav_buttons(self):
+        """Create navigation buttons from configuration."""
+        if not self.buttons:
+            print("WARNING: No nav buttons configured!")
+            return
+
+        nav_button_width = 1.0 / len(self.buttons)
+
+        for button_config in self.buttons:
+            if isinstance(button_config, dict):
+                text = button_config["text"]
+                screen_name = button_config["screen"]
+            else:
+                continue
+
+            btn = KioskButton(
+                text=text,
+                size_hint=(nav_button_width, None),
+                height=self.height,
+            )
+
+            # Create proper closures for all callbacks to avoid reference issues
+            def make_press_handler(btn_text, btn_screen):
+                def press_handler(instance):
+                    # print(f"on_press FIRED for button '{btn_text}' -> screen '{btn_screen}'")
+                    self._navigate_to_screen(btn_screen)
+
+                return press_handler
+
+            btn.bind(on_press=make_press_handler(text, screen_name))
+            self.add_widget(btn)
+
+    def _navigate_to_screen(self, screen_name):
+        """Navigate to specified screen."""
+        if self.screen_manager:
+            self.screen_manager.current = screen_name
+        else:
+            print(
+                f"ERROR: Cannot navigate to '{screen_name}' - screen_manager is None!"
+            )
+
+    def add_button(self, text, screen_name, color="primary", font_size="large"):
+        """Add a button to the navigation bar dynamically."""
+        button_config = {
+            "text": text,
+            "screen": screen_name,
+            "color": color,
+            "font_size": font_size,
+        }
+        self.buttons.append(button_config)
+
+        # Recreate buttons
+        self.clear_widgets()
+        self._create_nav_buttons()
+
+    def remove_button(self, screen_name):
+        """Remove a button from the navigation bar."""
+        self.buttons = [
+            btn
+            for btn in self.buttons
+            if (isinstance(btn, dict) and btn.get("screen") != screen_name)
+            or (isinstance(btn, tuple) and len(btn) > 1 and btn[1] != screen_name)
+        ]
+
+        # Recreate buttons
+        self.clear_widgets()
+        self._create_nav_buttons()
+
+
 class WidgetFactory:
     """Factory for creating UI widgets based on user preferences."""
 
-    def __init__(self, services, display_settings=None):
+    def __init__(self, services):
         self.services = services
-        self.display_settings = display_settings
         self.time_service = services.get("time_service")
         self.calendar_service = services.get("calendar_service")
         self.emergency_service = services.get("emergency_service")
@@ -68,11 +164,7 @@ class WidgetFactory:
             "clock": self.create_clock_widget,
             "medication": self.create_medication_widget,
             "events": self.create_events_widget,
-            "calendar": self.create_calendar_widget,
-            "today_events": self.create_today_events_widget,
-            "emergency_contacts": self.create_emergency_contacts_widget,
-            "medical_info": self.create_medical_info_widget,
-            "emergency_profile": self.create_emergency_profile_widget,
+            "emergency_profile": self.create_emergency_screen_widget,
             "family_locations": self.create_family_locations_widget,
         }
 
@@ -87,11 +179,8 @@ class WidgetFactory:
             "clock",
             "medication",
             "events",
-            "calendar",
-            "today_events",
-            "emergency_contacts",
-            "medical_info",
             "emergency_profile",
+            "family_locations",
         ]
 
     def is_widget_enabled(self, widget_type):
@@ -108,17 +197,14 @@ class WidgetFactory:
             "clock": True,
             "medication": True,
             "events": True,
-            "calendar": True,
-            "today_events": True,
-            "emergency_contacts": True,
-            "medical_info": True,
+            "emergency_profile": True,
+            "family_locations": True,
         }
 
     def create_widgets_for_screen(self, screen_type):
         """Create all widgets needed for a specific screen type."""
         screen_widgets = {
             "home": ["clock", "medication", "events"],
-            "calendar": ["calendar", "today_events"],
             "emergency": ["emergency_profile"],
             "more": [],
         }
@@ -136,52 +222,42 @@ class WidgetFactory:
 
     def create_clock_widget(self):
         """Create clock widget using modular components - dementia clock style."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
+        # Widget-specific tokens (clock, med, events)
+        CLOCK_ICON_SIZE = 100
+        CLOCK_DAY_HEIGHT = 60
+        CLOCK_TEXT_HEIGHT = 50
+        CLOCK_TIME_HEIGHT = 120
+        CLOCK_DATE_HEIGHT = 60
+        CLOCK_SPACING = 0
+        CLOCK_PADDING = [15, 10]
+        text_color = (0.1, 0.1, 0.1, 1)
 
-        # Use colors from settings
-        clock_bg = display_settings.clock_background_color
-        text_color = display_settings.colors["text"]
-
-        clock = DementiaWidget(
-            orientation="vertical",
-            background_color=clock_bg,
-            display_settings=display_settings,
-        )
-        clock.spacing = display_settings.clock_spacing
-        clock.padding = display_settings.clock_padding
-        apply_border(clock, "clock", display_settings)
+        clock = KioskWidget()
+        clock.spacing = CLOCK_SPACING
+        clock.padding = CLOCK_PADDING
+        apply_debug_border(clock)
 
         top_section = BoxLayout(orientation="horizontal")
         top_section.size_hint = (1, None)
-        top_section.height = (
-            display_settings.clock_day_height + display_settings.clock_text_height
-        )
-        apply_border(top_section, "clock_top_section", display_settings)
+        top_section.height = CLOCK_DAY_HEIGHT + CLOCK_TEXT_HEIGHT
+        apply_debug_border(top_section)
 
         # Left side: Day and Time of day stacked
         left_stack = BoxLayout(orientation="vertical")
         left_stack.size_hint = (0.7, 1)
 
-        day_label = DementiaLabel(
-            font_size="title", text="", display_settings=display_settings
-        )
+        day_label = KioskLabel(type="header", text="")
         day_label.color = text_color
-        day_label.halign = "left"
-        day_label.valign = "middle"
         day_label.size_hint = (1, 0.5)
-        apply_border(day_label, "clock_day_label", display_settings)
+        apply_debug_border(day_label)
         left_stack.add_widget(day_label)
 
-        time_of_day_label = DementiaLabel(
-            font_size="large", text="", display_settings=display_settings
-        )
+        time_of_day_label = KioskLabel(type="subheader", text="")
         time_of_day_label.color = text_color
         time_of_day_label.halign = "left"
         time_of_day_label.valign = "top"
         time_of_day_label.size_hint = (1, 0.5)
-        apply_border(time_of_day_label, "clock_time_of_day_label", display_settings)
+        apply_debug_border(time_of_day_label)
         left_stack.add_widget(time_of_day_label)
 
         top_section.add_widget(left_stack)
@@ -189,12 +265,12 @@ class WidgetFactory:
         # Right side: Icon (centered in container)
         icon_container = AnchorLayout(anchor_x="center", anchor_y="center")
         icon_container.size_hint = (0.3, 1)
-        apply_border(icon_container, "clock_icon_container", display_settings)
+        apply_debug_border(icon_container)
 
         time_of_day_icon = Image()
         time_of_day_icon.size_hint = (None, None)
-        time_of_day_icon.width = display_settings.clock_icon_size
-        time_of_day_icon.height = display_settings.clock_icon_size
+        time_of_day_icon.width = CLOCK_ICON_SIZE
+        time_of_day_icon.height = CLOCK_ICON_SIZE
         # Set initial icon based on current time
         initial_time_of_day = (
             self.time_service.get_am_pm() if self.time_service else "Morning"
@@ -206,41 +282,35 @@ class WidgetFactory:
         clock.add_widget(top_section)
 
         # Main time display - very large, centered
-        time_label = DementiaLabel(
-            font_size="huge", text="", display_settings=display_settings
-        )
+        time_label = KioskLabel(type="hero", text="")
         time_label.color = text_color
         time_label.halign = "center"
         time_label.valign = "middle"
         time_label.size_hint = (1, None)
-        time_label.height = display_settings.clock_time_height
-        apply_border(time_label, "clock_time_label", display_settings)
+        time_label.height = CLOCK_TIME_HEIGHT
+        apply_debug_border(time_label)
         clock.add_widget(time_label)
 
         # Bottom section: Month Day (left) | Year (right)
         bottom_section = BoxLayout(orientation="horizontal")
         bottom_section.size_hint = (1, None)
-        bottom_section.height = display_settings.clock_date_height
-        apply_border(bottom_section, "clock_bottom_section", display_settings)
+        bottom_section.height = CLOCK_DATE_HEIGHT
+        apply_debug_border(bottom_section)
 
-        date_label = DementiaLabel(
-            font_size="large", text="", display_settings=display_settings
-        )
+        date_label = KioskLabel(type="subheader", text="")
         date_label.color = text_color
         date_label.halign = "left"
         date_label.valign = "middle"
         date_label.size_hint = (0.6, 1)
-        apply_border(date_label, "clock_date_label", display_settings)
+        apply_debug_border(date_label)
         bottom_section.add_widget(date_label)
 
-        year_label = DementiaLabel(
-            font_size="large", text="", display_settings=display_settings
-        )
+        year_label = KioskLabel(type="subheader", text="")
         year_label.color = text_color
         year_label.halign = "right"
         year_label.valign = "middle"
         year_label.size_hint = (0.4, 1)
-        apply_border(year_label, "clock_year_label", display_settings)
+        apply_debug_border(year_label)
         bottom_section.add_widget(year_label)
 
         clock.add_widget(bottom_section)
@@ -270,31 +340,16 @@ class WidgetFactory:
             return path
         return ""
 
+
     def create_medication_widget(self):
         """Create medication widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
+        light_blue = (0.94, 0.96, 0.98, 1)
+        med = KioskWidget(background_color=light_blue,)
 
-        # Use actual user settings - no hardcoded defaults
-        med = DementiaWidget(
-            display_settings=display_settings,
-            orientation=display_settings.med_orientation,
-            background_color=display_settings.med_background_color,
-        )
-
-        # Title - much larger
-        title = DementiaLabel(
-            display_settings=display_settings, font_size="title", text="Medications"
-        )
+        title = KioskLabel(type="header", text="Medications")
         med.add_widget(title)
 
-        # Medication content
-        med_content = DementiaLabel(
-            display_settings=display_settings,
-            font_size="body",
-            text="Loading medications...",
-        )
+        med_content = KioskLabel(type="body", text="Loading medications...")
         med.add_widget(med_content)
         med.medication_content = med_content
 
@@ -302,559 +357,64 @@ class WidgetFactory:
 
     def create_events_widget(self):
         """Create events widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        # Use actual user settings - no hardcoded defaults
-        events = DementiaWidget(
-            display_settings=display_settings,
-            orientation=display_settings.events_orientation,
-            background_color=display_settings.events_background_color,
+        EVENTS_BG = (0.96, 0.98, 0.94, 1)
+        events = KioskWidget(
+            orientation="vertical",
+            background_color=EVENTS_BG,
         )
 
-        # Title
-        title = DementiaLabel(
-            display_settings=display_settings, font_size="title", text="Today's Events"
-        )
+        title = KioskLabel(type="header", text="Today's Events")
         events.add_widget(title)
 
-        # Events content
-        events_content = DementiaLabel(
-            display_settings=display_settings,
-            font_size="body",
-            text="Loading events...",
-        )
+        events_content = KioskLabel(type="body", text="Loading events...")
         events.add_widget(events_content)
         events.events_content = events_content
 
         return events
 
-    def create_calendar_widget(self):
-        """Create interactive calendar widget using modular components."""
-        logger.debug(
-            f"[CALENDAR] create_calendar_widget called, calendar_service={self.calendar_service is not None}"
+    def create_emergency_screen_widget(self):
+        """Create emergency profile in form style. Implemented in emergency_profile.py."""
+        from .emergency_profile_widget import create_emergency_layout_widget as build_emergency_layout_widget
+        emergency_widget = KioskWidget()
+
+        if not self.ice_profile_service:
+            err_label = KioskLabel(type="header", text="Emergency profile service not available")
+            emergency_widget.add_widget(err_label)
+            return emergency_widget
+
+        all_data = self.ice_profile_service.get_ice_profile()
+        if not all_data.success or not all_data.data:
+            err_label = KioskLabel(type="header", text="Emergency profile not found")
+            emergency_widget.add_widget(err_label)
+            return emergency_widget
+
+        ec_result = self.ice_profile_service.get_emergency_contacts()
+        if not ec_result.success or not ec_result.data:
+            # create error for emergency data
+            return emergency_widget
+
+        e_data = all_data.data
+        e_contacts = {
+            "contacts": ec_result.data,
+            "poa_name": e_data.get("poa_name"),
+            "poa_phone": e_data.get("poa_phone"),
+            "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get("name"),
+            "medical_proxy_phone": e_data.get("medical_proxy_phone"),
+        }
+
+        return build_emergency_layout_widget(
+            emergency_widget,
+            e_data,
+            e_contacts,
+            self.services,
         )
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        calendar = DementiaWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=display_settings.calendar_background_color,
-        )
-        apply_border(calendar, "calendar", display_settings)
-
-        # Calendar title
-        title = DementiaLabel(
-            display_settings=display_settings, font_size="title", text="Calendar"
-        )
-        calendar.add_widget(title)
-
-        # Calendar grid container (no padding so buttons can receive touches)
-        calendar_grid = DementiaWidget(
-            display_settings=display_settings, orientation="vertical"
-        )
-        calendar_grid.size_hint = (1, 1)
-        calendar_grid.padding = 0
-        calendar_grid.spacing = 2
-
-        if self.calendar_service:
-            # Get calendar data
-            days_result = self.calendar_service.get_day_headers()
-            cal_data_result = self.calendar_service.get_current_month_data()
-
-            if days_result.success and cal_data_result.success:
-                # Day headers
-                days = days_result.data
-                cal_data = cal_data_result.data
-                current_date = self.calendar_service.get_current_date()
-
-                # Create day headers row (no padding so buttons fill the row)
-                header_row = DementiaWidget(
-                    display_settings=display_settings, orientation="horizontal"
-                )
-                header_row.size_hint = (1, None)
-                header_row.height = 50
-                header_row.padding = 0
-                header_row.spacing = 2
-
-                for day in days:
-                    header_btn = DementiaButton(
-                        display_settings=display_settings,
-                        text=day,
-                        font_size="body",
-                        color="text",
-                        background_color="surface",
-                        size_hint=(1, 1),
-                    )
-                    header_row.add_widget(header_btn)
-
-                calendar_grid.add_widget(header_row)
-
-                # Store day buttons for selection highlighting
-                day_buttons = {}
-
-                # Create calendar days
-                for week in cal_data:
-                    week_row = DementiaWidget(
-                        display_settings=display_settings, orientation="horizontal"
-                    )
-                    week_row.size_hint = (1, None)
-                    week_row.height = 50
-                    week_row.padding = 0
-                    week_row.spacing = 2
-
-                    for day in week:
-                        if day == 0:
-                            # Empty day
-                            empty_btn = DementiaButton(
-                                display_settings=display_settings,
-                                text="",
-                                font_size="body",
-                                color="text",
-                                background_color="surface",
-                                size_hint=(1, 1),
-                            )
-                            week_row.add_widget(empty_btn)
-                        else:
-                            # Day button
-                            day_btn = DementiaButton(
-                                display_settings=display_settings,
-                                text=str(day),
-                                font_size="body",
-                                color="text",
-                                background_color="surface",
-                                size_hint=(1, 1),
-                            )
-
-                            # Store reference for selection highlighting
-                            day_buttons[day] = day_btn
-
-                            if day == current_date:
-                                day_btn.background_color = display_settings.colors[
-                                    "error"
-                                ]  # Highlight today
-
-                            # Bind click event
-                            def make_click_handler(day_num, btn):
-                                def handler(instance):
-                                    logger.debug(f"Button CLICKED for day {day_num}")
-                                    self._on_date_select(
-                                        day_num,
-                                        btn,
-                                        day_buttons,
-                                        current_date,
-                                        display_settings,
-                                    )
-
-                                return handler
-
-                            day_btn.bind(on_press=make_click_handler(day, day_btn))
-                            day_btn.bind(on_release=make_click_handler(day, day_btn))
-                            week_row.add_widget(day_btn)
-
-                    calendar_grid.add_widget(week_row)
-
-                # Store current selection (start with today)
-                calendar.selected_day = current_date
-                calendar.day_buttons = day_buttons
-
-                calendar.add_widget(calendar_grid)
-
-            else:
-                error_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="Error loading calendar",
-                )
-                calendar.add_widget(error_content)
-        else:
-            error_content = DementiaLabel(
-                display_settings=display_settings,
-                font_size="body",
-                text="Calendar service not available",
-            )
-            calendar.add_widget(error_content)
-
-        return calendar
-
-    def create_today_events_widget(self):
-        """Create today's events widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        events = DementiaWidget(
-            display_settings=display_settings, orientation="vertical"
-        )
-        apply_border(events, "today_events", display_settings)
-
-        # Events title
-        title = DementiaLabel(
-            display_settings=display_settings, font_size="title", text="Today's Events"
-        )
-        events.add_widget(title)
-
-        # Events content
-        if self.calendar_service:
-            today = datetime.now()
-            result = self.calendar_service.get_events_for_date(
-                today.strftime("%Y-%m-%d")
-            )
-
-            if result.success and result.data:
-                events_text = [f"• {event}" for event in result.data]
-                events_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="\n".join(events_text),
-                )
-            else:
-                events_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="No events today",
-                )
-        else:
-            events_content = DementiaLabel(
-                display_settings=display_settings,
-                font_size="body",
-                text="Calendar service not available",
-            )
-
-        events.add_widget(events_content)
-
-        # Store reference for updates from calendar clicks
-        events.events_content = events_content
-        return events
-
-    def create_emergency_contacts_widget(self):
-        """Create emergency contacts widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        contacts = DementiaWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=display_settings.contacts_background_color,
-        )
-        apply_border(contacts, "emergency_contacts", display_settings)
-
-        # Contacts title
-        title = DementiaLabel(
-            display_settings=display_settings,
-            font_size="title",
-            text="Emergency Contacts",
-        )
-        contacts.add_widget(title)
-
-        # Contacts content
-        if self.emergency_service:
-            result = self.emergency_service.format_contacts_for_display()
-            if result.success:
-                contacts_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text=result.data,
-                )
-            else:
-                contacts_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="Error loading contacts",
-                )
-        else:
-            contacts_content = DementiaLabel(
-                display_settings=display_settings,
-                font_size="body",
-                text="Emergency service not available",
-            )
-
-        contacts.add_widget(contacts_content)
-        return contacts
-
-    def create_medical_info_widget(self):
-        """Create medical info widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        medical = DementiaWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=display_settings.medical_background_color,
-        )
-        apply_border(medical, "medical_info", display_settings)
-
-        # Medical title
-        title = DementiaLabel(
-            display_settings=display_settings,
-            font_size="title",
-            text="Medical Information",
-        )
-        medical.add_widget(title)
-
-        # Medical content
-        if self.emergency_service:
-            result = self.emergency_service.get_medical_summary()
-            if result.success:
-                medical_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text=result.data,
-                )
-            else:
-                medical_content = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="body",
-                    text="Error loading medical info",
-                )
-        else:
-            medical_content = DementiaLabel(
-                display_settings=display_settings,
-                font_size="body",
-                text="Emergency service not available",
-            )
-
-        medical.add_widget(medical_content)
-        return medical
-
-    def create_emergency_profile_widget(self):
-        """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA.
-        Light background, dark text for vision-impaired; flashing border for visibility."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        dark_text = (0.1, 0.1, 0.1, 1)
-        profile = DementiaWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=(0.98, 0.98, 0.96, 1),
-        )
-        profile.spacing = display_settings.spacing["md"]
-        profile.padding = display_settings.spacing["lg"]
-
-        alert_ref = self.services.get("_alert_activated", [False])
-        flash_state = [0]
-
-        def _draw_border(w, color):
-            w.canvas.after.clear()
-            with w.canvas.after:
-                Color(*color)
-                Line(rectangle=(w.x, w.y, w.width, w.height), width=8)
-
-        def _border_tick(dt):
-            if alert_ref[0]:
-                flash_state[0] = 1 - flash_state[0]
-                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
-            else:
-                c = (0.9, 0.4, 0.1, 1)
-            _draw_border(profile, c)
-
-        def _update_border(o, v):
-            if alert_ref[0]:
-                c = (1, 0.3, 0.1, 1) if flash_state[0] else (1, 0.5, 0, 1)
-            else:
-                c = (0.9, 0.4, 0.1, 1)
-            _draw_border(profile, c)
-
-        profile.bind(pos=_update_border, size=_update_border)
-        Clock.schedule_interval(_border_tick, 0.5)
-
-        if self.ice_profile_service:
-            result = self.ice_profile_service.get_ice_profile()
-            if result.success and result.data:
-                d = result.data
-                profile_data = d.get("profile") or {}
-                medical = d.get("medical") or {}
-                emergency = d.get("emergency") or {}
-                proxy = emergency.get("proxy") or {}
-
-                name_label = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="huge",
-                    text=profile_data.get("name") or "Patient",
-                    color="text",
-                )
-                name_label.color = dark_text
-                profile.add_widget(name_label)
-
-                dnr = medical.get("dnr", False)
-                dnr_label = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="huge",
-                    text="DNR" if dnr else "FULL CODE",
-                    color="text",
-                )
-                dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
-                profile.add_widget(dnr_label)
-
-                if medical.get("conditions"):
-                    cond_label = DementiaLabel(
-                        display_settings=display_settings,
-                        font_size="title",
-                        text=f"Diagnosis: {medical['conditions']}",
-                        color="text",
-                    )
-                    cond_label.color = dark_text
-                    profile.add_widget(cond_label)
-
-                if proxy.get("name") or d.get("medical_proxy_phone"):
-                    proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
-                    if proxy_text:
-                        p_label = DementiaLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text=proxy_text,
-                            color="text",
-                        )
-                        p_label.color = dark_text
-                        profile.add_widget(p_label)
-
-                if d.get("poa_name") or d.get("poa_phone"):
-                    poa_text = (
-                        f"POA: {d.get('poa_name', '')} {d.get('poa_phone', '')}".strip()
-                    )
-                    if poa_text:
-                        poa_label = DementiaLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text=poa_text,
-                            color="text",
-                        )
-                        poa_label.color = dark_text
-                        profile.add_widget(poa_label)
-
-                allergies = medical.get("allergies") or []
-                if allergies:
-                    a_label = DementiaLabel(
-                        display_settings=display_settings,
-                        font_size="large",
-                        text="Allergies: " + ", ".join(allergies),
-                        color="text",
-                    )
-                    a_label.color = dark_text
-                    profile.add_widget(a_label)
-
-                meds = medical.get("medications") or []
-                if meds:
-                    med_lines = [
-                        f"{m.get('name', '')} {m.get('dosage', '')}".strip()
-                        for m in meds
-                    ]
-                    med_label = DementiaLabel(
-                        display_settings=display_settings,
-                        font_size="large",
-                        text="Medications: " + "; ".join(med_lines[:5]),
-                        color="text",
-                    )
-                    med_label.color = dark_text
-                    profile.add_widget(med_label)
-
-                if self.emergency_service:
-                    ec_result = self.emergency_service.format_contacts_for_display()
-                    if (
-                        ec_result.success
-                        and ec_result.data
-                        and "No emergency contacts" not in str(ec_result.data)
-                    ):
-                        ec_label = DementiaLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text="Emergency Contacts:\n" + str(ec_result.data),
-                            color="text",
-                        )
-                        ec_label.color = dark_text
-                        profile.add_widget(ec_label)
-            else:
-                err_label = DementiaLabel(
-                    display_settings=display_settings,
-                    font_size="title",
-                    text="Emergency profile not found",
-                    color="text",
-                )
-                err_label.color = dark_text
-                profile.add_widget(err_label)
-        else:
-            err_label = DementiaLabel(
-                display_settings=display_settings,
-                font_size="title",
-                text="Emergency profile service not available",
-                color="text",
-            )
-            err_label.color = dark_text
-            profile.add_widget(err_label)
-
-        return profile
-
-    def _on_date_select(
-        self, day_num, clicked_btn, day_buttons, current_date, display_settings
-    ):
-        """Handle date selection in calendar."""
-        logger.debug(f"Calendar day clicked: day_num={day_num}")
-        logger.debug(
-            f"calendar_service={self.calendar_service is not None}, has today_events_widget={hasattr(self, 'today_events_widget')}"
-        )
-
-        # Highlight selected day - reset all buttons first
-        for day, btn in day_buttons.items():
-            if day == current_date:
-                # Today stays highlighted with error color
-                btn.background_color = display_settings.colors["error"]
-            else:
-                # Reset to surface color
-                btn.background_color = display_settings.colors["surface"]
-
-        # Highlight the clicked day with nav color (unless it's today, which keeps error color)
-        if day_num != current_date:
-            clicked_btn.background_color = display_settings.colors["nav"]
-
-        logger.debug(f"Highlighted day {day_num}")
-
-        if self.calendar_service and hasattr(self, "today_events_widget"):
-            try:
-                date_str = datetime.now().replace(day=day_num).strftime("%Y-%m-%d")
-            except ValueError:
-                date_str = datetime.now().strftime("%Y-%m-%d")
-            result = self.calendar_service.get_events_for_date(date_str)
-            logger.debug(
-                f"Events for day {day_num}: success={result.success}, count={len(result.data) if result.data else 0}"
-            )
-
-            # Update the events_content label directly (not searching children)
-            if hasattr(self.today_events_widget, "events_content"):
-                if result.success and result.data:
-                    events_text = [f"• {event}" for event in result.data]
-                    self.today_events_widget.events_content.text = (
-                        f"Day {day_num} Events:\n" + "\n".join(events_text)
-                    )
-                    logger.debug(f"Updated events_content with: {events_text}")
-                else:
-                    self.today_events_widget.events_content.text = (
-                        f"Day {day_num}: No events"
-                    )
-                    logger.debug(f"Updated events_content to 'No events'")
-            else:
-                logger.debug(f"today_events_widget has no events_content attribute!")
-        else:
-            logger.debug(
-                f"Cannot update - missing calendar_service or today_events_widget"
-            )
 
     def _create_family_locations_title(self):
         """Create Family Locations screen title block."""
-        title = DementiaLabel(
-            display_settings=self.display_settings,
-            font_size="title",
-            text="Family Locations",
-        )
+        title = KioskLabel(type="header", text="Family Locations")
         title.size_hint_y = None
         title.height = 70
-        apply_border(title, "family_locations_title", self.display_settings)
+        apply_debug_border(title)
         return title
 
     def _create_family_possible_places_block(self):
@@ -877,20 +437,15 @@ class WidgetFactory:
                 suffix = "(none)"
         else:
             suffix = "(unavailable)"
-        widget = DementiaLabel(
-            display_settings=self.display_settings,
-            font_size="body",
-            text=prefix + suffix,
-            shorten=False,
-        )
+        widget = KioskLabel(type="body", text=prefix + suffix, shorten=False)
         widget.size_hint_x = 0.5  # for_columns
 
-        apply_border(widget, "family_locations_places", self.display_settings)
+        apply_debug_border(widget)
         return widget
 
     def _create_family_checkins_block(self):
         """Create family check-ins block."""
-        line_h = self.display_settings.font_sizes["body"] + 4
+        line_h = 32 + 4
         if self.location_service:
             result = self.location_service.get_checkins()
             if result.success and result.data:
@@ -927,15 +482,10 @@ class WidgetFactory:
             n_lines = 2
             text = "Location service not available"
 
-        widget = DementiaLabel(
-            display_settings=self.display_settings,
-            font_size="body",
-            text=text,
-            shorten=False,
-        )
+        widget = KioskLabel(type="body", text=text, shorten=False)
         widget.size_hint_x = 0.5  # for columns
         widget.height = max(120, int(n_lines * line_h))
-        apply_border(widget, "family_locations_checkins", self.display_settings)
+        apply_debug_border(widget)
         return widget
 
     def _create_family_future_map_block(self):
@@ -943,18 +493,14 @@ class WidgetFactory:
         map_lat = (37.0056 + 37.139) / 2
         map_lon = (-113.503 + -113.599) / 2
         container = BoxLayout(size_hint_y=0.72)
-        apply_border(container, "family_future_map", self.display_settings)
+        apply_debug_border(container)
         container._map_params = {"lat": map_lat, "lon": map_lon, "zoom": 11}
         return container
 
     def create_family_locations_widget(self):
         """Create family location check-in widget; arranges title, possible places, and check-ins."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        family = DementiaWidget(
-            display_settings=self.display_settings, orientation="vertical"
-        )
-        apply_border(family, "family_locations", self.display_settings)
+        family = KioskWidget(orientation="vertical")
+        apply_debug_border(family)
         family.add_widget(self._create_family_locations_title())
 
         columns_row = BoxLayout(orientation="horizontal", size_hint_y=0.28)

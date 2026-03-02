@@ -4,11 +4,11 @@ Exposes the same data as in-process services via REST for client/server mode.
 
 WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
   - container/container.py         → create_service_container(db_path) used here
-  - container/calendar_service.py → GET /api/calendar/*
-  - container/medication_service.py → GET /api/medications
-  - container/emergency_service.py → GET /api/emergency/*
+  - container/calendar_service.py → GET /api/family_circles/<id>/calendar/*
+  - container/medication_service.py → GET /api/family_circles/<id>/medications
+  - container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary
   - container/contact_service.py  (used by emergency_service; no direct endpoint)
-  - container/ice_profile_service.py → GET /api/ice, PUT /api/ice
+  - container/ice_profile_service.py → GET/PUT /api/family_circles/<id>/ice-profile
 
 WHERE IT MOVED TO (client uses these instead of container on client):
   - client/remote.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
@@ -21,6 +21,7 @@ they can be omitted or relocated to a client-only repo.
 import json
 import os
 import datetime
+from dataclasses import asdict
 from flask import Flask, abort, jsonify, request, g, send_from_directory, Response, redirect, session
 
 # config from shared; server internals relative
@@ -41,115 +42,12 @@ except ImportError:
 from .database import DatabaseManager
 from .services.container import create_service_container
 
+try:
+    from ...shared.config import get_uploads_dir
+except ImportError:
+    from shared.config import get_uploads_dir
+
 _alert_activated = False
-
-
-def _row_to_display_settings_response(row) -> dict:
-    """Convert DB row from user_display_settings to JSON-serializable display dict for API."""
-    return {
-        "user_id": row["user_id"],
-        "display": {
-            "font_sizes": (
-                json.loads(row["font_sizes"])
-                if isinstance(row["font_sizes"], str)
-                else row["font_sizes"]
-            ),
-            "colors": (
-                json.loads(row["colors"])
-                if isinstance(row["colors"], str)
-                else row["colors"]
-            ),
-            "spacing": (
-                json.loads(row["spacing"])
-                if isinstance(row["spacing"], str)
-                else row["spacing"]
-            ),
-            "touch_targets": (
-                json.loads(row["touch_targets"])
-                if isinstance(row["touch_targets"], str)
-                else row["touch_targets"]
-            ),
-            "window_width": row["window_width"],
-            "window_height": row["window_height"],
-            "window_left": row["window_left"],
-            "window_top": row["window_top"],
-            "clock_icon_size": row["clock_icon_size"],
-            "clock_icon_height": row["clock_icon_height"],
-            "clock_text_height": row["clock_text_height"],
-            "clock_day_height": row["clock_day_height"],
-            "clock_time_height": row["clock_time_height"],
-            "clock_date_height": row["clock_date_height"],
-            "clock_spacing": row["clock_spacing"],
-            "clock_padding": (
-                json.loads(row["clock_padding"])
-                if isinstance(row["clock_padding"], str)
-                else row["clock_padding"]
-            ),
-            "main_padding": (
-                json.loads(row["main_padding"])
-                if isinstance(row["main_padding"], str)
-                else row["main_padding"]
-            ),
-            "home_layout": row["home_layout"],
-            "clock_proportion": row["clock_proportion"],
-            "todo_proportion": row["todo_proportion"],
-            "med_events_split": row["med_events_split"],
-            "navigation_height": row["navigation_height"],
-            "button_flat_style": bool(row["button_flat_style"]),
-            "clock_background_color": (
-                json.loads(row["clock_background_color"])
-                if isinstance(row["clock_background_color"], str)
-                else row["clock_background_color"]
-            ),
-            "med_background_color": (
-                json.loads(row["med_background_color"])
-                if isinstance(row["med_background_color"], str)
-                else row["med_background_color"]
-            ),
-            "events_background_color": (
-                json.loads(row["events_background_color"])
-                if isinstance(row["events_background_color"], str)
-                else row["events_background_color"]
-            ),
-            "contacts_background_color": (
-                json.loads(row["contacts_background_color"])
-                if isinstance(row["contacts_background_color"], str)
-                else row["contacts_background_color"]
-            ),
-            "medical_background_color": (
-                json.loads(row["medical_background_color"])
-                if isinstance(row["medical_background_color"], str)
-                else row["medical_background_color"]
-            ),
-            "calendar_background_color": (
-                json.loads(row["calendar_background_color"])
-                if isinstance(row["calendar_background_color"], str)
-                else row["calendar_background_color"]
-            ),
-            "nav_background_color": (
-                json.loads(row["nav_background_color"])
-                if isinstance(row["nav_background_color"], str)
-                else row["nav_background_color"]
-            ),
-            "clock_orientation": row["clock_orientation"],
-            "med_orientation": row["med_orientation"],
-            "events_orientation": row["events_orientation"],
-            "bottom_section_orientation": row["bottom_section_orientation"],
-            "high_contrast": bool(row["high_contrast"]),
-            "large_text": bool(row["large_text"]),
-            "reduced_motion": bool(row["reduced_motion"]),
-            "navigation_buttons": (
-                json.loads(row["navigation_buttons"])
-                if isinstance(row["navigation_buttons"], str)
-                else row["navigation_buttons"]
-            ),
-            "borders": (
-                json.loads(row["borders"])
-                if row["borders"] and isinstance(row["borders"], str)
-                else (row["borders"] or {})
-            ),
-        },
-    }
 
 
 def create_server_app(db_path=None):
@@ -196,12 +94,14 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         # Session-based (check-in page and its script)
-        if request.path in ("/checkin", "/checkin.js"):
+        if request.path in ("/checkin", "/checkin.js", "/api/session"):
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
                 if request.path == "/checkin":
                     return redirect("/login")
+                if request.path == "/api/session":
+                    abort(401, "Not logged in")
                 abort(401, "Log in at /login first")
             g.user_id = uid
             g.family_circle_id = fid
@@ -224,9 +124,10 @@ def create_server_app(db_path=None):
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
-    emergency_svc = container.get_emergency_service()
+    contact_svc = container.get_contact_service()
     location_svc = container.get_location_service()
     ice_profile_svc = container.get_ice_profile_service()
+    family_svc = container.get_family_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -238,28 +139,41 @@ def create_server_app(db_path=None):
         except ValueError:
             return None
 
-    @app.route("/api/calendar/headers")
-    def api_calendar_headers():
+    def _require_family_access(family_circle_id):
+        """Verify requester has access to family_circle_id. Abort 403 if not."""
+        if family_circle_id != g.family_circle_id:
+            abort(403, "family circle mismatch")
+
+    @app.route("/api/health")
+    def api_health():
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/family_circles/<family_circle_id>/calendar/headers")
+    def api_calendar_headers(family_circle_id):
+        _require_family_access(family_circle_id)
         r = calendar_svc.get_day_headers()
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/calendar/month")
-    def api_calendar_month():
+    @app.route("/api/family_circles/<family_circle_id>/calendar/month")
+    def api_calendar_month(family_circle_id):
+        _require_family_access(family_circle_id)
         ref = _parse_date_param()
         r = calendar_svc.get_current_month_data(reference_date=ref)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/calendar/date")
-    def api_calendar_date():
+    @app.route("/api/family_circles/<family_circle_id>/calendar/date")
+    def api_calendar_date(family_circle_id):
+        _require_family_access(family_circle_id)
         ref = _parse_date_param()
         return jsonify({"data": calendar_svc.get_current_date(reference_date=ref)})
 
-    @app.route("/api/calendar/events")
-    def api_calendar_events():
+    @app.route("/api/family_circles/<family_circle_id>/calendar/events")
+    def api_calendar_events(family_circle_id):
+        _require_family_access(family_circle_id)
         date = request.args.get("date")
         if not date:
             return jsonify({"error": "missing date"}), 400
@@ -268,53 +182,67 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/medications")
-    def api_medications():
-        r = medication_svc.get_medication_data(g.family_circle_id)
+    @app.route("/api/family_circles/<family_circle_id>/medications")
+    def api_medications(family_circle_id):
+        _require_family_access(family_circle_id)
+        r = medication_svc.get_medication_data(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/emergency/contacts")
-    def api_emergency_contacts():
-        r = emergency_svc.format_contacts_for_display()
+    @app.route("/api/family_circles/<family_circle_id>/contacts")
+    def api_contacts(family_circle_id):
+        """All contacts for the family."""
+        _require_family_access(family_circle_id)
+        r = contact_svc.get_all_contacts(family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        contacts = [asdict(c) for c in (r.data or [])]
+        return jsonify({"data": contacts})
+
+    @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
+    def api_emergency_contacts(family_circle_id):
+        """Only emergency-priority contacts."""
+        _require_family_access(family_circle_id)
+        r = contact_svc.get_emergency_contacts(family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        contacts = [asdict(c) for c in (r.data or [])]
+        return jsonify({"data": contacts})
+
+    @app.route("/api/family_circles/<family_circle_id>/medical-summary")
+    def api_medical_summary(family_circle_id):
+        _require_family_access(family_circle_id)
+        r = ice_profile_svc.get_medical_summary(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/emergency/medical-summary")
-    def api_emergency_medical_summary():
-        r = emergency_svc.get_medical_summary()
-        if not r.success:
-            return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
-
-    @app.route("/api/health")
-    def api_health():
-        return jsonify({"status": "ok"})
-
-    @app.route("/api/alert/status")
+    @app.route("/api/emergency/alert/status")
     def api_alert_status():
         return jsonify({"data": {"activated": _alert_activated}})
 
-    @app.route("/api/alert", methods=["POST"])
+    @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         global _alert_activated
         data = request.get_json() or {}
         _alert_activated = bool(data.get("activated", False))
         return jsonify({"data": {"activated": _alert_activated}})
 
-    @app.route("/api/ice", methods=["GET", "PUT"])
-    def api_ice():
+    @app.route("/api/family_circles/<family_circle_id>/ice-profile", methods=["GET", "PUT"])
+    def api_ice_profile(family_circle_id):
+        _require_family_access(family_circle_id)
         if request.method == "GET":
-            r = ice_profile_svc.get_ice_profile(g.family_circle_id)
+            r = ice_profile_svc.get_ice_profile(family_circle_id)
             if not r.success:
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
-        r = ice_profile_svc.update_ice_profile(g.family_circle_id, data)
+        # TODO: why does ice profile need to ever PUT or update care recipient? 
+        care_recipient_svc = container.get_care_recipient_service()
+        r = care_recipient_svc.update_care_recipient(family_circle_id, data)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -323,9 +251,24 @@ def create_server_app(db_path=None):
         os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")
     )
 
+    def _serve_with_api_url(filename, api_url=""):
+        """Serve static file with __API_URL__ replaced. Use '' when API and webapp share origin."""
+        path = os.path.join(_web_client_dir, filename)
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read().replace("__API_URL__", api_url)
+        return Response(content, mimetype="text/html" if filename.endswith(".html") else "application/javascript")
+
     @app.route("/login")
     def serve_login():
-        return send_from_directory(_web_client_dir, "login.html")
+        return _serve_with_api_url("login.html")
+
+    @app.route("/api/session")
+    def api_session():
+        """Return current session user_id and family_circle_id."""
+        return jsonify({
+            "user_id": g.user_id,
+            "family_circle_id": g.family_circle_id,
+        })
 
     @app.route("/api/login", methods=["POST"])
     def api_login():
@@ -343,32 +286,22 @@ def create_server_app(db_path=None):
 
     @app.route("/checkin")
     def serve_checkin():
-        return send_from_directory(_web_client_dir, "checkin.html")
+        return _serve_with_api_url("checkin.html")
 
     @app.route("/checkin.js")
     def serve_checkin_js():
-        return send_from_directory(_web_client_dir, "checkin.js")
+        return _serve_with_api_url("checkin.js")
 
-    @app.route("/api/settings")
-    def api_settings():
-        """Return display settings for the current user (X-User-Id). 404 when none in DB; client uses display defaults."""
-        db_config = DatabaseConfig(path=db_path, create_if_missing=True)
-        db = DatabaseManager(db_config)
-        result = db.get_user_display_settings_from_db_query(g.user_id)
-        if not result.success or not result.data:
-            return jsonify({"error": "settings not found"}), 404
-        return jsonify({"data": _row_to_display_settings_response(result.data[0])})
-
-    @app.route("/api/location/family-members")
-    def api_get_family_members():
-        """Return family members for check-in dropdown."""
-        r = location_svc.get_family_members(g.family_circle_id)
+    @app.route("/api/family_circles/<family_circle_id>/family-members")
+    def api_get_family_members(family_circle_id):
+        _require_family_access(family_circle_id)
+        r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/location/checkin", methods=["POST"])
-    def api_create_checkin():
+    @app.route("/api/family_circles/<family_circle_id>/checkin", methods=["POST"])
+    def api_create_checkin(family_circle_id):
         """Create a new location check-in."""
         data = request.get_json()
         if not data:
@@ -390,28 +323,57 @@ def create_server_app(db_path=None):
         if user_id != g.user_id:
             return jsonify({"error": "cannot check in for another user"}), 403
 
+        _require_family_access(family_circle_id)
         r = location_svc.create_checkin(
-            g.family_circle_id, user_id, latitude, longitude, notes=notes
+            family_circle_id, user_id, latitude, longitude, notes=notes
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data}), 201
 
-    @app.route("/api/location/places")
-    def api_get_named_places():
-        """Return all named places for the family."""
-        r = location_svc.get_named_places(g.family_circle_id)
+    @app.route("/api/family_circles/<family_circle_id>/named-places")
+    def api_get_named_places(family_circle_id):
+        _require_family_access(family_circle_id)
+        r = location_svc.get_named_places(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/location/latest")
-    def api_get_checkins():
-        """Get latest check-in per family member."""
-        r = location_svc.get_checkins(g.family_circle_id)
+    @app.route("/api/family_circles/<family_circle_id>/checkins")
+    def api_get_checkins(family_circle_id):
+        """Get latest check-in per family member. Adds photo_url when user has a photo.
+        Why: family map needs checkins and photos in one call."""
+        _require_family_access(family_circle_id)
+        r = location_svc.get_checkins(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        data = r.data or []
+        base = request.url_root.rstrip("/")
+        for row in data:
+            if row.get("photo_filename") and row.get("user_id"):
+                row["photo_url"] = "%s/api/users/%s/photo" % (base, row["user_id"])
+        return jsonify({"data": data})
+
+    @app.route("/api/users/<user_id>/photo")
+    def api_serve_photo(user_id):
+        """Serve user photo. User must be in same family. Returns 404 if no photo."""
+        db = container.get_database_manager()
+        r = db.execute_query(
+            "SELECT u.photo_filename FROM users u "
+            "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
+            "WHERE u.id = ? AND ufc.family_circle_id = ?",
+            (user_id, g.family_circle_id),
+        )
+        if not r.success or not r.data or not r.data[0].get("photo_filename"):
+            abort(404)
+        fn = r.data[0]["photo_filename"]
+        if ".." in fn or fn.startswith("/"):
+            abort(404)
+        uploads_dir = get_uploads_dir()
+        path = os.path.join(uploads_dir, fn)
+        if not os.path.exists(path):
+            abort(404)
+        return send_from_directory(uploads_dir, fn, mimetype=None)
 
     return app
 

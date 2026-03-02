@@ -5,15 +5,15 @@ Creates and configures the application with proper dependency injection.
 CLIENT vs SERVER:
 - This module is used only by the client (Kivy UI). api_url (from main entry) determines where
   services come from via client/remote.create_remote(); container is not used.
-- Display settings from GET /api/settings (no local DB needed).
 
 SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses server/app.py only.
 """
 
 import logging
+import os
 from typing import Optional
 from shared.config import ConfigManager
-from .api_client import create_remote, get_display_settings
+from .api_client import create_remote
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
@@ -26,22 +26,21 @@ import datetime
 class MeridianKioskApp(App):
     """Main Kivy application for Meridian Kiosk using modular components."""
 
-    def __init__(self, services, display_settings=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, services, **kwargs):
+        defaults = {}
+        defaults.update(kwargs)
+        super().__init__(**defaults)
         self.services = services
-        self.display_settings = display_settings
         self.screen_manager = None
         self.screen_factory = None
         self.widget_factory = None
 
     def build(self):
         """Build the application UI using modular components."""
-        Window.size = (
-            self.display_settings.window_width,
-            self.display_settings.window_height,
-        )
-        Window.left = self.display_settings.window_left
-        Window.top = self.display_settings.window_top
+        Window.clearcolor = (0.98, 0.98, 0.96, 1)
+        Window.size = (740, 1080)
+        Window.left = 10
+        Window.top = 120
         Window.borderless = True  # Remove macOS title bar for TV display
 
         # Create screen manager
@@ -49,18 +48,13 @@ class MeridianKioskApp(App):
 
         # Create factories
         self.screen_factory = ScreenFactory(
-            self.services, self.screen_manager, display_settings=self.display_settings
+            self.services, self.screen_manager
         )
-        self.widget_factory = WidgetFactory(
-            self.services, display_settings=self.display_settings
-        )
+        self.widget_factory = WidgetFactory(self.services)
 
         # Create screens
         home_screen = self.screen_factory.create_home_screen()
         self.screen_manager.add_widget(home_screen)
-
-        calendar_screen = self.screen_factory.create_calendar_screen()
-        self.screen_manager.add_widget(calendar_screen)
 
         emergency_screen = self.screen_factory.create_emergency_screen()
         self.screen_manager.add_widget(emergency_screen)
@@ -68,7 +62,7 @@ class MeridianKioskApp(App):
         family_screen = self.screen_factory.create_family_screen()
         self.screen_manager.add_widget(family_screen)
 
-        more_screen = self.screen_factory.create_more_screen()
+        more_screen = self.screen_factory.create_demo_screen()
         self.screen_manager.add_widget(more_screen)
 
         self.screen_manager.current = "family"
@@ -78,6 +72,9 @@ class MeridianKioskApp(App):
 
         # Initial update
         self.update_all()
+
+        # Sync photos on boot: fetch from server and cache locally for offline use
+        Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)
 
         # Schedule periodic updates (every second)
         Clock.schedule_interval(self.update_time, 1.0)
@@ -98,6 +95,19 @@ class MeridianKioskApp(App):
         self.services["_alert_activated"][0] = activated
         if activated and self.screen_manager:
             self.screen_manager.current = "emergency"
+
+    def _sync_photos_on_boot(self):
+        """Fetch checkins and download photos to local cache for offline use."""
+        loc_svc = self.services.get("location_service")
+        if not loc_svc or not hasattr(loc_svc, "fetch_photo_to_cache"):
+            return
+        result = loc_svc.get_checkins()
+        if not result.success or not result.data:
+            return
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+        for checkin in result.data:
+            if checkin.get("photo_url") and checkin.get("user_id"):
+                loc_svc.fetch_photo_to_cache(checkin["user_id"], cache_dir)
 
     def update_all(self):
         """Update all display elements."""
@@ -282,7 +292,7 @@ class AppFactory:
         api_url: str = None,
     ) -> MeridianKioskApp:
         """Create the Meridian Kiosk application with all dependencies.
-        api_url: API server base URL (from main entry config). Display settings from GET /api/settings.
+        api_url: API server base URL (from main entry config).
         """
         if not api_url:
             raise ValueError("api_url required. Pass from main entry (e.g. create_app(..., api_url=...)).")
@@ -291,12 +301,6 @@ class AppFactory:
             session = requests.Session()
         except ImportError:
             session = None
-        display_settings = get_display_settings(
-            api_url,
-            user_id=user_id,
-            family_circle_id=family_circle_id,
-            session=session,
-        )
         services = create_remote(
             api_url,
             user_id=user_id,
@@ -305,7 +309,7 @@ class AppFactory:
         )
 
         # Create and return the application
-        return MeridianKioskApp(services=services, display_settings=display_settings)
+        return MeridianKioskApp(services=services)
 
 
 def create_app(

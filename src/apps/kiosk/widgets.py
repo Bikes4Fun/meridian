@@ -6,7 +6,9 @@ Handles the creation of individual UI widgets.
 from .modular_display import (
     KioskWidget,
     KioskLabel,
+    KioskButton,
 )
+
 
 # Top section: Day + Time of day (left) | Icon (right)
 from kivy.uix.boxlayout import BoxLayout
@@ -31,17 +33,15 @@ def _format_contacts_for_display(contacts, include_header=True):
     for c in contacts:
         phone = c.get("phone") or ""
         rel = c.get("relationship") or ""
-        lines.append(f"• {c.get('display_name', '')} - {phone}\n  {rel}")
+        lines.append(f"• {c.get('display_name', '')} - {phone}: {rel}")
     return "\n".join(lines)
 
 
-def apply_border(widget, key, display_settings):
-    """Apply border to widget if configured in display_settings.borders. Uses default when key missing."""
-    if display_settings.borders and key in display_settings.borders:
-        b = display_settings.borders[key]
-    else:
-        b = {"color": [0, 0, 0, 1], "width": 1}
-
+def apply_debug_border(widget, **kwargs):
+    """Apply default border to widget."""
+    b = {"color": [0, 0, 0, 1], "width": 1}
+    b.update(kwargs)
+    
     def make_updater(color, width):
         def update(instance, value):
             instance.canvas.after.clear()
@@ -63,15 +63,15 @@ def apply_border(widget, key, display_settings):
 class KioskNavBar(KioskWidget):
     """Generic navigation bar with configurable buttons."""
 
-    def __init__(self, display_settings, screen_manager=None, buttons=None, **kwargs):
-        super().__init__(
-            display_settings=display_settings, orientation="horizontal", **kwargs
-        )
+    def __init__(self, screen_manager=None, buttons=None, **kwargs):
+        defaults = {
+            "orientation": "horizontal",
+            "size_hint": (1, None),
+            "height": 90,
+        }
+        defaults.update(kwargs)
+        super().__init__(**defaults)
         self.screen_manager = screen_manager
-        self.size_hint = (1, None)
-        self.height = 90
-
-        # Use provided buttons or default empty list
         self.buttons = buttons or []
 
         # Create navigation buttons
@@ -149,9 +149,8 @@ class KioskNavBar(KioskWidget):
 class WidgetFactory:
     """Factory for creating UI widgets based on user preferences."""
 
-    def __init__(self, services, display_settings=None):
+    def __init__(self, services):
         self.services = services
-        self.display_settings = display_settings
         self.time_service = services.get("time_service")
         self.calendar_service = services.get("calendar_service")
         self.emergency_service = services.get("emergency_service")
@@ -223,52 +222,42 @@ class WidgetFactory:
 
     def create_clock_widget(self):
         """Create clock widget using modular components - dementia clock style."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
+        # Widget-specific tokens (clock, med, events)
+        CLOCK_ICON_SIZE = 100
+        CLOCK_DAY_HEIGHT = 60
+        CLOCK_TEXT_HEIGHT = 50
+        CLOCK_TIME_HEIGHT = 120
+        CLOCK_DATE_HEIGHT = 60
+        CLOCK_SPACING = 0
+        CLOCK_PADDING = [15, 10]
+        text_color = (0.1, 0.1, 0.1, 1)
 
-        # Use colors from settings
-        clock_bg = display_settings.clock_background_color
-        text_color = display_settings.colors["text"]
-
-        clock = KioskWidget(
-            orientation="vertical",
-            background_color=clock_bg,
-            display_settings=display_settings,
-        )
-        clock.spacing = display_settings.clock_spacing
-        clock.padding = display_settings.clock_padding
-        apply_border(clock, "clock", display_settings)
+        clock = KioskWidget()
+        clock.spacing = CLOCK_SPACING
+        clock.padding = CLOCK_PADDING
+        apply_debug_border(clock)
 
         top_section = BoxLayout(orientation="horizontal")
         top_section.size_hint = (1, None)
-        top_section.height = (
-            display_settings.clock_day_height + display_settings.clock_text_height
-        )
-        apply_border(top_section, "clock_top_section", display_settings)
+        top_section.height = CLOCK_DAY_HEIGHT + CLOCK_TEXT_HEIGHT
+        apply_debug_border(top_section)
 
         # Left side: Day and Time of day stacked
         left_stack = BoxLayout(orientation="vertical")
         left_stack.size_hint = (0.7, 1)
 
-        day_label = KioskLabel(
-            font_size="title", text="", display_settings=display_settings
-        )
+        day_label = KioskLabel(type="header", text="")
         day_label.color = text_color
-        day_label.halign = "left"
-        day_label.valign = "middle"
         day_label.size_hint = (1, 0.5)
-        apply_border(day_label, "clock_day_label", display_settings)
+        apply_debug_border(day_label)
         left_stack.add_widget(day_label)
 
-        time_of_day_label = KioskLabel(
-            font_size="large", text="", display_settings=display_settings
-        )
+        time_of_day_label = KioskLabel(type="subheader", text="")
         time_of_day_label.color = text_color
         time_of_day_label.halign = "left"
         time_of_day_label.valign = "top"
         time_of_day_label.size_hint = (1, 0.5)
-        apply_border(time_of_day_label, "clock_time_of_day_label", display_settings)
+        apply_debug_border(time_of_day_label)
         left_stack.add_widget(time_of_day_label)
 
         top_section.add_widget(left_stack)
@@ -276,12 +265,12 @@ class WidgetFactory:
         # Right side: Icon (centered in container)
         icon_container = AnchorLayout(anchor_x="center", anchor_y="center")
         icon_container.size_hint = (0.3, 1)
-        apply_border(icon_container, "clock_icon_container", display_settings)
+        apply_debug_border(icon_container)
 
         time_of_day_icon = Image()
         time_of_day_icon.size_hint = (None, None)
-        time_of_day_icon.width = display_settings.clock_icon_size
-        time_of_day_icon.height = display_settings.clock_icon_size
+        time_of_day_icon.width = CLOCK_ICON_SIZE
+        time_of_day_icon.height = CLOCK_ICON_SIZE
         # Set initial icon based on current time
         initial_time_of_day = (
             self.time_service.get_am_pm() if self.time_service else "Morning"
@@ -293,41 +282,35 @@ class WidgetFactory:
         clock.add_widget(top_section)
 
         # Main time display - very large, centered
-        time_label = KioskLabel(
-            font_size="huge", text="", display_settings=display_settings
-        )
+        time_label = KioskLabel(type="hero", text="")
         time_label.color = text_color
         time_label.halign = "center"
         time_label.valign = "middle"
         time_label.size_hint = (1, None)
-        time_label.height = display_settings.clock_time_height
-        apply_border(time_label, "clock_time_label", display_settings)
+        time_label.height = CLOCK_TIME_HEIGHT
+        apply_debug_border(time_label)
         clock.add_widget(time_label)
 
         # Bottom section: Month Day (left) | Year (right)
         bottom_section = BoxLayout(orientation="horizontal")
         bottom_section.size_hint = (1, None)
-        bottom_section.height = display_settings.clock_date_height
-        apply_border(bottom_section, "clock_bottom_section", display_settings)
+        bottom_section.height = CLOCK_DATE_HEIGHT
+        apply_debug_border(bottom_section)
 
-        date_label = KioskLabel(
-            font_size="large", text="", display_settings=display_settings
-        )
+        date_label = KioskLabel(type="subheader", text="")
         date_label.color = text_color
         date_label.halign = "left"
         date_label.valign = "middle"
         date_label.size_hint = (0.6, 1)
-        apply_border(date_label, "clock_date_label", display_settings)
+        apply_debug_border(date_label)
         bottom_section.add_widget(date_label)
 
-        year_label = KioskLabel(
-            font_size="large", text="", display_settings=display_settings
-        )
+        year_label = KioskLabel(type="subheader", text="")
         year_label.color = text_color
         year_label.halign = "right"
         year_label.valign = "middle"
         year_label.size_hint = (0.4, 1)
-        apply_border(year_label, "clock_year_label", display_settings)
+        apply_debug_border(year_label)
         bottom_section.add_widget(year_label)
 
         clock.add_widget(bottom_section)
@@ -357,31 +340,16 @@ class WidgetFactory:
             return path
         return ""
 
+
     def create_medication_widget(self):
         """Create medication widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
+        light_blue = (0.94, 0.96, 0.98, 1)
+        med = KioskWidget(background_color=light_blue,)
 
-        # Use actual user settings - no hardcoded defaults
-        med = KioskWidget(
-            display_settings=display_settings,
-            orientation=display_settings.med_orientation,
-            background_color=display_settings.med_background_color,
-        )
-
-        # Title - much larger
-        title = KioskLabel(
-            display_settings=display_settings, font_size="title", text="Medications"
-        )
+        title = KioskLabel(type="header", text="Medications")
         med.add_widget(title)
 
-        # Medication content
-        med_content = KioskLabel(
-            display_settings=display_settings,
-            font_size="body",
-            text="Loading medications...",
-        )
+        med_content = KioskLabel(type="body", text="Loading medications...")
         med.add_widget(med_content)
         med.medication_content = med_content
 
@@ -389,29 +357,16 @@ class WidgetFactory:
 
     def create_events_widget(self):
         """Create events widget using modular components."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
-        # Use actual user settings - no hardcoded defaults
+        EVENTS_BG = (0.96, 0.98, 0.94, 1)
         events = KioskWidget(
-            display_settings=display_settings,
-            orientation=display_settings.events_orientation,
-            background_color=display_settings.events_background_color,
+            orientation="vertical",
+            background_color=EVENTS_BG,
         )
 
-        # Title
-        title = KioskLabel(
-            display_settings=display_settings, font_size="title", text="Today's Events"
-        )
+        title = KioskLabel(type="header", text="Today's Events")
         events.add_widget(title)
 
-        # Events content
-        events_content = KioskLabel(
-            display_settings=display_settings,
-            font_size="body",
-            text="Loading events...",
-        )
+        events_content = KioskLabel(type="body", text="Loading events...")
         events.add_widget(events_content)
         events.events_content = events_content
 
@@ -420,18 +375,10 @@ class WidgetFactory:
     def create_emergency_profile_widget(self):
         """Create emergency profile: patient name, DNR, contacts, meds, allergies, proxy, POA.
         Light background, dark text for vision-impaired; flashing border for visibility."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        display_settings = self.display_settings
-
         dark_text = (0.1, 0.1, 0.1, 1)
-        profile = KioskWidget(
-            display_settings=display_settings,
-            orientation="vertical",
-            background_color=(0.98, 0.98, 0.96, 1),
-        )
-        profile.spacing = display_settings.spacing["md"]
-        profile.padding = display_settings.spacing["lg"]
+        profile = KioskWidget(orientation="vertical")
+        profile.spacing = 16
+        profile.padding = 24
 
         alert_ref = self.services.get("_alert_activated", [False])
         flash_state = [0]
@@ -470,12 +417,13 @@ class WidgetFactory:
                 proxy = emergency.get("proxy") or {}
                 care_recipient_user_id = d.get("care_recipient_user_id")
 
-                name_section = BoxLayout(
+                name_photo_section = BoxLayout(
                     orientation="horizontal",
                     size_hint_y=None,
                     height=dp(60),
-                    spacing=display_settings.spacing["md"],
+                    spacing=16,
                 )
+
                 photo_cell = BoxLayout(size_hint_x=None, width=dp(60))
                 with photo_cell.canvas.before:
                     Color(0.8, 0.8, 0.8, 1)
@@ -490,87 +438,55 @@ class WidgetFactory:
                             photo_img.source = path
                     Clock.schedule_once(_set_photo, 0.1)
                 photo_cell.add_widget(photo_img)
-                name_section.add_widget(photo_cell)
+                name_photo_section.add_widget(photo_cell)
                 name_label = KioskLabel(
-                    display_settings=display_settings,
-                    font_size="huge",
+                    type="hero",
                     text=profile_data.get("name") or "Patient",
-                    color="text",
                 )
                 name_label.color = dark_text
-                name_section.add_widget(name_label)
-                apply_border(name_section, "emergency_profile_name", display_settings)
-                profile.add_widget(name_section)
+                name_photo_section.add_widget(name_label)
+                apply_debug_border(name_photo_section)
+                profile.add_widget(name_photo_section)
 
                 dnr = medical.get("dnr", False)
                 dnr_label = KioskLabel(
-                    display_settings=display_settings,
-                    font_size="huge",
+                    type="hero",
                     text="DNR" if dnr else "FULL CODE",
-                    color="text",
                 )
                 dnr_label.color = (0.8, 0.2, 0.2, 1) if dnr else (0.2, 0.6, 0.2, 1)
-                apply_border(dnr_label, "emergency_profile_dnr", display_settings)
+                apply_debug_border(dnr_label)
                 profile.add_widget(dnr_label)
 
                 if self.emergency_service:
                     ms_result = self.emergency_service.get_medical_summary()
                     if ms_result.success and ms_result.data:
-                        ms_label = KioskLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text=ms_result.data,
-                            color="text",
-                        )
+                        ms_label = KioskLabel(type="subheader", text=ms_result.data)
                         ms_label.color = dark_text
-                        apply_border(ms_label, "emergency_profile_medical", display_settings)
+                        apply_debug_border(ms_label)
                         profile.add_widget(ms_label)
-
-                if medical.get("conditions"):
-                    cond_label = KioskLabel(
-                        display_settings=display_settings,
-                        font_size="title",
-                        text=f"Diagnosis: {medical['conditions']}",
-                        color="text",
-                    )
-                    cond_label.color = dark_text
-                    apply_border(cond_label, "emergency_profile_conditions", display_settings)
-                    profile.add_widget(cond_label)
 
                 if self.emergency_service:
                     ec_result = self.emergency_service.get_emergency_contacts()
                     if ec_result.success and ec_result.data:
                         ec_block = BoxLayout(orientation="vertical")
-                        ec_label = KioskLabel(
-                            display_settings=display_settings,
-                            font_size="title",
-                            text="Emergency contacts",
-                            color="text",
-                        )
+                        ec_label = KioskLabel(type="header", text="Emergency contacts")
                         ec_label.color = dark_text
                         ec_block.add_widget(ec_label)
                         ec_list = KioskLabel(
-                            display_settings=display_settings,
-                            font_size="large",
+                            type="subheader",
                             text=_format_contacts_for_display(ec_result.data, include_header=False),
-                            color="text",
                         )
                         ec_list.color = dark_text
                         ec_block.add_widget(ec_list)
-                        apply_border(ec_block, "emergency_contacts", display_settings)
+                        apply_debug_border(ec_block)
                         profile.add_widget(ec_block)
 
                 if proxy.get("name") or d.get("medical_proxy_phone"):
                     proxy_text = f"Medical Proxy: {proxy.get('name', '')} {d.get('medical_proxy_phone', '')}".strip()
                     if proxy_text:
-                        p_label = KioskLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text=proxy_text,
-                            color="text",
-                        )
+                        p_label = KioskLabel(type="subheader", text=proxy_text)
                         p_label.color = dark_text
-                        apply_border(p_label, "emergency_profile_proxy", display_settings)
+                        apply_debug_border(p_label)
                         profile.add_widget(p_label)
 
                 if d.get("poa_name") or d.get("poa_phone"):
@@ -578,31 +494,16 @@ class WidgetFactory:
                         f"POA: {d.get('poa_name', '')} {d.get('poa_phone', '')}".strip()
                     )
                     if poa_text:
-                        poa_label = KioskLabel(
-                            display_settings=display_settings,
-                            font_size="large",
-                            text=poa_text,
-                            color="text",
-                        )
+                        poa_label = KioskLabel(type="subheader", text=poa_text)
                         poa_label.color = dark_text
-                        apply_border(poa_label, "emergency_profile_poa", display_settings)
+                        apply_debug_border(poa_label)
                         profile.add_widget(poa_label)
             else:
-                err_label = KioskLabel(
-                    display_settings=display_settings,
-                    font_size="title",
-                    text="Emergency profile not found",
-                    color="text",
-                )
+                err_label = KioskLabel(type="header", text="Emergency profile not found")
                 err_label.color = dark_text
                 profile.add_widget(err_label)
         else:
-            err_label = KioskLabel(
-                display_settings=display_settings,
-                font_size="title",
-                text="Emergency profile service not available",
-                color="text",
-            )
+            err_label = KioskLabel(type="header", text="Emergency profile service not available")
             err_label.color = dark_text
             profile.add_widget(err_label)
 
@@ -610,14 +511,10 @@ class WidgetFactory:
 
     def _create_family_locations_title(self):
         """Create Family Locations screen title block."""
-        title = KioskLabel(
-            display_settings=self.display_settings,
-            font_size="title",
-            text="Family Locations",
-        )
+        title = KioskLabel(type="header", text="Family Locations")
         title.size_hint_y = None
         title.height = 70
-        apply_border(title, "family_locations_title", self.display_settings)
+        apply_debug_border(title)
         return title
 
     def _create_family_possible_places_block(self):
@@ -640,20 +537,15 @@ class WidgetFactory:
                 suffix = "(none)"
         else:
             suffix = "(unavailable)"
-        widget = KioskLabel(
-            display_settings=self.display_settings,
-            font_size="body",
-            text=prefix + suffix,
-            shorten=False,
-        )
+        widget = KioskLabel(type="body", text=prefix + suffix, shorten=False)
         widget.size_hint_x = 0.5  # for_columns
 
-        apply_border(widget, "family_locations_places", self.display_settings)
+        apply_debug_border(widget)
         return widget
 
     def _create_family_checkins_block(self):
         """Create family check-ins block."""
-        line_h = self.display_settings.font_sizes["body"] + 4
+        line_h = 32 + 4
         if self.location_service:
             result = self.location_service.get_checkins()
             if result.success and result.data:
@@ -690,15 +582,10 @@ class WidgetFactory:
             n_lines = 2
             text = "Location service not available"
 
-        widget = KioskLabel(
-            display_settings=self.display_settings,
-            font_size="body",
-            text=text,
-            shorten=False,
-        )
+        widget = KioskLabel(type="body", text=text, shorten=False)
         widget.size_hint_x = 0.5  # for columns
         widget.height = max(120, int(n_lines * line_h))
-        apply_border(widget, "family_locations_checkins", self.display_settings)
+        apply_debug_border(widget)
         return widget
 
     def _create_family_future_map_block(self):
@@ -706,18 +593,14 @@ class WidgetFactory:
         map_lat = (37.0056 + 37.139) / 2
         map_lon = (-113.503 + -113.599) / 2
         container = BoxLayout(size_hint_y=0.72)
-        apply_border(container, "family_future_map", self.display_settings)
+        apply_debug_border(container)
         container._map_params = {"lat": map_lat, "lon": map_lon, "zoom": 11}
         return container
 
     def create_family_locations_widget(self):
         """Create family location check-in widget; arranges title, possible places, and check-ins."""
-        if not self.display_settings:
-            raise ValueError("display_settings must be provided to WidgetFactory")
-        family = KioskWidget(
-            display_settings=self.display_settings, orientation="vertical"
-        )
-        apply_border(family, "family_locations", self.display_settings)
+        family = KioskWidget(orientation="vertical")
+        apply_debug_border(family)
         family.add_widget(self._create_family_locations_title())
 
         columns_row = BoxLayout(orientation="horizontal", size_hint_y=0.28)

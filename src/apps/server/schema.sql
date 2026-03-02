@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS medications (
     max_daily INTEGER,
     last_taken TEXT,
     taken_today TEXT,
-    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id),
+    UNIQUE (care_recipient_user_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS medication_to_time (
@@ -91,7 +92,8 @@ CREATE TABLE IF NOT EXISTS conditions (
     condition_name TEXT,
     diagnosis_date TEXT,
     notes TEXT,
-    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id),
+    UNIQUE (care_recipient_user_id, condition_name)
 );
 
 CREATE TABLE IF NOT EXISTS care_recipients (
@@ -173,46 +175,3 @@ CREATE TABLE IF NOT EXISTS location_checkins (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS user_display_settings (
-    user_id TEXT PRIMARY KEY,
-    font_sizes TEXT,
-    colors TEXT,
-    spacing TEXT,
-    touch_targets TEXT,
-    window_width INTEGER,
-    window_height INTEGER,
-    window_left INTEGER,
-    window_top INTEGER,
-    clock_icon_size INTEGER,
-    clock_icon_height INTEGER,
-    clock_text_height INTEGER,
-    clock_day_height INTEGER,
-    clock_time_height INTEGER,
-    clock_date_height INTEGER,
-    clock_spacing INTEGER,
-    clock_padding TEXT,
-    main_padding TEXT,
-    home_layout TEXT,
-    clock_proportion REAL,
-    todo_proportion REAL,
-    med_events_split REAL,
-    navigation_height INTEGER,
-    button_flat_style INTEGER,
-    clock_background_color TEXT,
-    med_background_color TEXT,
-    events_background_color TEXT,
-    contacts_background_color TEXT,
-    medical_background_color TEXT,
-    calendar_background_color TEXT,
-    nav_background_color TEXT,
-    clock_orientation TEXT,
-    med_orientation TEXT,
-    events_orientation TEXT,
-    bottom_section_orientation TEXT,
-    high_contrast INTEGER,
-    large_text INTEGER,
-    reduced_motion INTEGER,
-    navigation_buttons TEXT,
-    borders TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);

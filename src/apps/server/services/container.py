@@ -11,7 +11,6 @@ from ..database import DatabaseManager
 from .contact import ContactService
 from .calendar import CalendarService
 from .medication import MedicationService
-from .emergency import EmergencyService
 from .location import LocationService
 from .ice_profile import ICEProfileService
 from .care_recipient import CareRecipientService
@@ -51,13 +50,6 @@ class ServiceContainer:
                 self.get_database_manager()
             )
         return self._services["medication_service"]
-
-    def get_emergency_service(self):
-        if "emergency_service" not in self._services:
-            self._services["emergency_service"] = EmergencyService(
-                self.get_contact_service()
-            )
-        return self._services["emergency_service"]
 
     def get_location_service(self):
         if "location_service" not in self._services:

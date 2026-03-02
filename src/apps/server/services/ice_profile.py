@@ -27,7 +27,7 @@ class ICEProfileService(DatabaseServiceMixin):
         care_recipient_user_id = care_row["care_recipient_user_id"] if care_row else None
         conditions_result = self.safe_query(
             "SELECT condition_name FROM conditions WHERE care_recipient_user_id = ? ORDER BY condition_name",
-            (care_recipient_user_id,),
+                        (care_recipient_user_id,),
         ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
         conditions_list = (
             [r["condition_name"] for r in conditions_result.data if r.get("condition_name")]
@@ -110,4 +110,36 @@ class ICEProfileService(DatabaseServiceMixin):
             "last_updated_by": None,
         }
         return ServiceResult.success_result(data)
+
+    def get_medical_summary(self, family_circle_id: str) -> ServiceResult:
+        """Formatted medical summary string for emergency display."""
+        r = self.get_ice_profile(family_circle_id)
+        if not r.success or not r.data:
+            return ServiceResult.success_result("Medical Information:")
+        medical = r.data.get("medical") or {}
+        lines = ["Medical Information:"]
+        meds = medical.get("medications") or []
+        if meds:
+            lines.append("\nMedications:")
+            for m in meds:
+                name = m.get("name") or ""
+                dosage = m.get("dosage") or ""
+                frequency = m.get("frequency") or ""
+                parts = [name]
+            if dosage or frequency:
+                parts.append(f"{dosage} {frequency}".strip())
+            lines.append("• " + " - ".join(parts))
+        allergies = medical.get("allergies") or []
+        if allergies:
+            lines.append("\nAllergies:")
+            for a in allergies:
+                lines.append(f"• {a}")
+        conditions_str = medical.get("conditions")
+        if conditions_str:
+            lines.append("\nMedical Conditions:")
+            for c in conditions_str.split(","):
+                c = c.strip()
+                if c:
+                    lines.append(f"• {c}")
+        return ServiceResult.success_result("\n".join(lines))
 

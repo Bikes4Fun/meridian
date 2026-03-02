@@ -431,94 +431,6 @@ def refresh_demo_checkins(db_path: str) -> None:
         logger.debug("Demo checkins refresh skipped (old schema?): %s", e)
 
 
-def load_demo_settings_from_json_into_db(db_manager, user_id):
-    """Load user display settings from default_display_settings.json into SQLite database."""
-    try:
-        from src.apps.kiosk.settings import DisplaySettings
-    except ImportError:
-        from apps.kiosk.settings import DisplaySettings
-    default_settings = (
-        DisplaySettings.default()
-    )  # single source: demo/demo_data/default_display_settings.json
-
-    # Serialize default settings to JSON strings
-    font_sizes_json = json.dumps(default_settings.font_sizes)
-    colors_json = json.dumps({k: list(v) for k, v in default_settings.colors.items()})
-    spacing_json = json.dumps(default_settings.spacing)
-    touch_targets_json = json.dumps(default_settings.touch_targets)
-    clock_padding_json = json.dumps(default_settings.clock_padding)
-    main_padding_json = json.dumps(default_settings.main_padding)
-    clock_bg_json = json.dumps(list(default_settings.clock_background_color))
-    med_bg_json = json.dumps(list(default_settings.med_background_color))
-    events_bg_json = json.dumps(list(default_settings.events_background_color))
-    contacts_bg_json = json.dumps(list(default_settings.contacts_background_color))
-    medical_bg_json = json.dumps(list(default_settings.medical_background_color))
-    calendar_bg_json = json.dumps(list(default_settings.calendar_background_color))
-    nav_bg_json = json.dumps(list(default_settings.nav_background_color))
-    navigation_buttons_json = json.dumps(default_settings.navigation_buttons)
-    borders_json = json.dumps(default_settings.borders)
-
-    query = """
-        INSERT OR REPLACE INTO user_display_settings 
-        (user_id, font_sizes, colors, spacing, touch_targets, window_width, window_height,
-         window_left, window_top, clock_icon_size, clock_icon_height, clock_text_height,
-         clock_day_height, clock_time_height, clock_date_height, clock_spacing, clock_padding, main_padding,
-         home_layout, clock_proportion, todo_proportion, med_events_split, navigation_height, button_flat_style,
-         clock_background_color, med_background_color, events_background_color,
-         contacts_background_color, medical_background_color, calendar_background_color, nav_background_color,
-         clock_orientation, med_orientation, events_orientation, bottom_section_orientation,
-         high_contrast, large_text, reduced_motion, navigation_buttons, borders)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    params = (
-        user_id,
-        font_sizes_json,
-        colors_json,
-        spacing_json,
-        touch_targets_json,
-        default_settings.window_width,
-        default_settings.window_height,
-        default_settings.window_left,
-        default_settings.window_top,
-        default_settings.clock_icon_size,
-        default_settings.clock_icon_height,
-        default_settings.clock_text_height,
-        default_settings.clock_day_height,
-        default_settings.clock_time_height,
-        default_settings.clock_date_height,
-        default_settings.clock_spacing,
-        clock_padding_json,
-        main_padding_json,
-        default_settings.home_layout,
-        default_settings.clock_proportion,
-        default_settings.todo_proportion,
-        default_settings.med_events_split,
-        default_settings.navigation_height,
-        int(bool(default_settings.button_flat_style)),
-        clock_bg_json,
-        med_bg_json,
-        events_bg_json,
-        contacts_bg_json,
-        medical_bg_json,
-        calendar_bg_json,
-        nav_bg_json,
-        default_settings.clock_orientation,
-        default_settings.med_orientation,
-        default_settings.events_orientation,
-        default_settings.bottom_section_orientation,
-        int(bool(default_settings.high_contrast)),
-        int(bool(default_settings.large_text)),
-        int(bool(default_settings.reduced_motion)),
-        navigation_buttons_json,
-        borders_json,
-    )
-
-    result = db_manager.execute_update(query, params)
-    if not result.success:
-        raise RuntimeError(f"Failed to load display settings: {result.error}")
-    logger.debug("  Loaded 1 display settings")
-
-
 def ensure_local_database(db_path: str) -> bool:
     """Create schema (adds missing tables). Always seed demo data so DB stays updated."""
     db_config = DatabaseConfig(path=db_path, create_if_missing=True)
@@ -560,7 +472,6 @@ def demo_main(user_id, db_path=None) -> bool:
         load_calendar_events_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_settings_from_json_into_db(db, user_id=user_id or DEMO_USER_ID)
 
         logger.info("Demo data loaded successfully!")
         return True

@@ -3,6 +3,7 @@ Modular Display Components for Meridian Kiosk
 
 Simple, reusable UI components that leverage Kivy's built-in capabilities.
 Focus on dementia-friendly design with minimal complexity.
+Design tokens live here; widget-specific values live in widgets.py.
 """
 
 from kivy.uix.boxlayout import BoxLayout
@@ -11,32 +12,31 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 
 
+
 class KioskWidget(BoxLayout):
     """Base widget with dementia-friendly defaults."""
 
-    def __init__(self, display_settings, background_color=None, **kwargs):
-        if "background_color" in kwargs:
-            kwargs.pop("background_color")
-        self.display_settings = display_settings
-        BoxLayout.__init__(self, **kwargs)
+    def __init__(self, background_color=None, **kwargs):
+        defaults = {
+            "size_hint": (1, 1),
+            "padding": 16,
+            "spacing": 16,
+            "orientation": "vertical",
+        }
+        defaults.update(kwargs)
+        background_color = defaults.pop("background_color", background_color)
+        BoxLayout.__init__(self, **defaults)
 
-        # Dementia-friendly defaults using user settings
-        self.size_hint = (1, 1)
-        self.padding = self.display_settings.spacing["lg"]
-        self.spacing = self.display_settings.spacing["md"]
-
-        # Setup background with custom color if provided
         self._setup_background(background_color)
         self.bind(pos=self._update_bg, size=self._update_bg)
 
     def _setup_background(self, custom_color=None):
         """Setup background with dementia-friendly colors."""
         with self.canvas.before:
-            # Use custom color if provided, otherwise use default from settings
             if custom_color:
                 Color(*custom_color)
             else:
-                Color(*self.display_settings.colors["surface"])
+                Color(0.95, 0.95, 0.93, 1)
             self.bg_rect = Rectangle(pos=self.pos, size=self.size)
 
     def _update_bg(self, instance, value):
@@ -46,33 +46,28 @@ class KioskWidget(BoxLayout):
 
 
 class KioskLabel(Label):
-    """Text display widget with dementia-friendly defaults. Named after Kivy's Label (static text);
-    font_size/color/align come from display_settings for consistency."""
+    """Text display widget with dementia-friendly defaults. type='header'|'subheader'|'body'|'hero'|'caption'|'button' for presets."""
 
-    def __init__(
-        self,
-        display_settings,
-        font_size="large",
-        color="text",
-        halign="center",
-        valign="middle",
-        **kwargs,
-    ):
-        Label.__init__(self, **kwargs)
+    def __init__(self, type=None, **kwargs):
 
-        self.display_settings = display_settings
+        # Only add overrides that differ from Kivy Label defaults (halign=left, valign=bottom)
+        LABEL_TYPES = {
+            "header": {"font_size": 56, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
+            "subheader": {"font_size": 48, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
+            "body": {"font_size": 32, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
+            "hero": {"font_size": 96, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
+            "caption": {"font_size": 32, "color": (0.55, 0.55, 0.55, 1), "halign": "center", "valign": "middle"},
+            "button": {"font_size": 56, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
+        }
+        defaults = dict(LABEL_TYPES.get(type, LABEL_TYPES["body"]))
+        defaults.update(kwargs)
+        Label.__init__(self, **defaults)
 
-        # Configurable properties with sensible defaults
-        self.font_size = self.display_settings.font_sizes[font_size]
-        self.color = self.display_settings.colors[color]
-        self.halign = halign
-        self.valign = valign
-        self.text_size = self.size
-        self.bind(size=self._update_text_size)
+        def _update_text_size(widget, *args):
+            widget.text_size = widget.size
 
-    def _update_text_size(self, instance, value):
-        """Update text size when widget size changes."""
-        self.text_size = self.size
+        self.bind(size=_update_text_size)
+        _update_text_size(self)
 
 
 class KioskButton(Button):
@@ -94,15 +89,15 @@ class KioskButton(Button):
 class KioskNavBar(KioskWidget):
     """Generic navigation bar with configurable buttons."""
 
-    def __init__(self, display_settings, screen_manager=None, buttons=None, **kwargs):
-        super().__init__(
-            display_settings=display_settings, orientation="horizontal", **kwargs
-        )
+    def __init__(self, screen_manager=None, buttons=None, **kwargs):
+        defaults = {
+            "orientation": "horizontal",
+            "size_hint": (1, None),
+            "height": 90,
+        }
+        defaults.update(kwargs)
+        super().__init__(**defaults)
         self.screen_manager = screen_manager
-        self.size_hint = (1, None)
-        self.height = 90
-
-        # Use provided buttons or default empty list
         self.buttons = buttons or []
 
         # Create navigation buttons

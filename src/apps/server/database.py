@@ -96,21 +96,6 @@ class DatabaseManager:
             self.logger.error("Schema creation failed: %s", e)
             return ServiceResult.error_result("Schema creation failed: %s" % e)
 
-    def get_user_display_settings_from_db_query(self, user_id: str) -> ServiceResult:
-        query = """
-            SELECT user_id, font_sizes, colors, spacing, touch_targets, window_width, window_height,
-                   window_left, window_top, clock_icon_size, clock_icon_height, clock_text_height,
-                   clock_day_height, clock_time_height, clock_date_height, clock_spacing, clock_padding, main_padding,
-                   home_layout, clock_proportion, todo_proportion, med_events_split, navigation_height, button_flat_style,
-                   clock_background_color, med_background_color, events_background_color,
-                   contacts_background_color, medical_background_color, calendar_background_color, nav_background_color,
-                   clock_orientation, med_orientation, events_orientation, bottom_section_orientation,
-                   high_contrast, large_text, reduced_motion, navigation_buttons, borders
-            FROM user_display_settings
-            WHERE user_id = ?
-        """
-        return self.execute_query(query, (user_id,))
-
     def backup_database(self, backup_path: str) -> ServiceResult:
         if not self.config.backup_enabled:
             return ServiceResult.error_result("Backup not enabled")

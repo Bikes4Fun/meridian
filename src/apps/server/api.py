@@ -50,114 +50,6 @@ except ImportError:
 _alert_activated = False
 
 
-def _row_to_display_settings_response(row) -> dict:
-    """Convert DB row from user_display_settings to JSON-serializable display dict for API."""
-    return {
-        "user_id": row["user_id"],
-        "display": {
-            "font_sizes": (
-                json.loads(row["font_sizes"])
-                if isinstance(row["font_sizes"], str)
-                else row["font_sizes"]
-            ),
-            "colors": (
-                json.loads(row["colors"])
-                if isinstance(row["colors"], str)
-                else row["colors"]
-            ),
-            "spacing": (
-                json.loads(row["spacing"])
-                if isinstance(row["spacing"], str)
-                else row["spacing"]
-            ),
-            "touch_targets": (
-                json.loads(row["touch_targets"])
-                if isinstance(row["touch_targets"], str)
-                else row["touch_targets"]
-            ),
-            "window_width": row["window_width"],
-            "window_height": row["window_height"],
-            "window_left": row["window_left"],
-            "window_top": row["window_top"],
-            "clock_icon_size": row["clock_icon_size"],
-            "clock_icon_height": row["clock_icon_height"],
-            "clock_text_height": row["clock_text_height"],
-            "clock_day_height": row["clock_day_height"],
-            "clock_time_height": row["clock_time_height"],
-            "clock_date_height": row["clock_date_height"],
-            "clock_spacing": row["clock_spacing"],
-            "clock_padding": (
-                json.loads(row["clock_padding"])
-                if isinstance(row["clock_padding"], str)
-                else row["clock_padding"]
-            ),
-            "main_padding": (
-                json.loads(row["main_padding"])
-                if isinstance(row["main_padding"], str)
-                else row["main_padding"]
-            ),
-            "home_layout": row["home_layout"],
-            "clock_proportion": row["clock_proportion"],
-            "todo_proportion": row["todo_proportion"],
-            "med_events_split": row["med_events_split"],
-            "navigation_height": row["navigation_height"],
-            "button_flat_style": bool(row["button_flat_style"]),
-            "clock_background_color": (
-                json.loads(row["clock_background_color"])
-                if isinstance(row["clock_background_color"], str)
-                else row["clock_background_color"]
-            ),
-            "med_background_color": (
-                json.loads(row["med_background_color"])
-                if isinstance(row["med_background_color"], str)
-                else row["med_background_color"]
-            ),
-            "events_background_color": (
-                json.loads(row["events_background_color"])
-                if isinstance(row["events_background_color"], str)
-                else row["events_background_color"]
-            ),
-            "contacts_background_color": (
-                json.loads(row["contacts_background_color"])
-                if isinstance(row["contacts_background_color"], str)
-                else row["contacts_background_color"]
-            ),
-            "medical_background_color": (
-                json.loads(row["medical_background_color"])
-                if isinstance(row["medical_background_color"], str)
-                else row["medical_background_color"]
-            ),
-            "calendar_background_color": (
-                json.loads(row["calendar_background_color"])
-                if isinstance(row["calendar_background_color"], str)
-                else row["calendar_background_color"]
-            ),
-            "nav_background_color": (
-                json.loads(row["nav_background_color"])
-                if isinstance(row["nav_background_color"], str)
-                else row["nav_background_color"]
-            ),
-            "clock_orientation": row["clock_orientation"],
-            "med_orientation": row["med_orientation"],
-            "events_orientation": row["events_orientation"],
-            "bottom_section_orientation": row["bottom_section_orientation"],
-            "high_contrast": bool(row["high_contrast"]),
-            "large_text": bool(row["large_text"]),
-            "reduced_motion": bool(row["reduced_motion"]),
-            "navigation_buttons": (
-                json.loads(row["navigation_buttons"])
-                if isinstance(row["navigation_buttons"], str)
-                else row["navigation_buttons"]
-            ),
-            "borders": (
-                json.loads(row["borders"])
-                if row["borders"] and isinstance(row["borders"], str)
-                else (row["borders"] or {})
-            ),
-        },
-    }
-
-
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
     Functionality is provided by container (via create_service_container).
@@ -232,7 +124,7 @@ def create_server_app(db_path=None):
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
-    emergency_svc = container.get_emergency_service()
+    contact_svc = container.get_contact_service()
     location_svc = container.get_location_service()
     ice_profile_svc = container.get_ice_profile_service()
     family_svc = container.get_family_service()
@@ -300,9 +192,19 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
-        """Emergency contacts for the family."""
+        """All contacts for the family."""
         _require_family_access(family_circle_id)
-        r = emergency_svc.get_emergency_contacts(family_circle_id)
+        r = contact_svc.get_all_contacts(family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        contacts = [asdict(c) for c in (r.data or [])]
+        return jsonify({"data": contacts})
+
+    @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
+    def api_emergency_contacts(family_circle_id):
+        """Only emergency-priority contacts."""
+        _require_family_access(family_circle_id)
+        r = contact_svc.get_emergency_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         contacts = [asdict(c) for c in (r.data or [])]
@@ -311,7 +213,7 @@ def create_server_app(db_path=None):
     @app.route("/api/family_circles/<family_circle_id>/medical-summary")
     def api_medical_summary(family_circle_id):
         _require_family_access(family_circle_id)
-        r = emergency_svc.get_medical_summary(family_circle_id)
+        r = ice_profile_svc.get_medical_summary(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -389,16 +291,6 @@ def create_server_app(db_path=None):
     @app.route("/checkin.js")
     def serve_checkin_js():
         return _serve_with_api_url("checkin.js")
-
-    @app.route("/api/settings")
-    def api_settings():
-        """Return display settings for the current user (X-User-Id). 404 when none in DB; client uses display defaults."""
-        db_config = DatabaseConfig(path=db_path, create_if_missing=True)
-        db = DatabaseManager(db_config)
-        result = db.get_user_display_settings_from_db_query(g.user_id)
-        if not result.success or not result.data:
-            return jsonify({"error": "settings not found"}), 404
-        return jsonify({"data": _row_to_display_settings_response(result.data[0])})
 
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):

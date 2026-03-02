@@ -187,15 +187,26 @@ class RemoteEmergencyService:
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
-    def get_emergency_contacts(self) -> Any:
+    def get_all_contacts(self) -> Any:
         ok, data, err = _get(
             f"{self._base}/api/family_circles/{self._fc_id}/contacts",
             headers=self._headers,
             session=self._session,
         )
         if not ok:
+            return ServiceResult.error_result(err or "contacts request failed")
+        contacts = data if isinstance(data, list) else (data or [])
+        return ServiceResult.success_result(contacts)
+
+    def get_emergency_contacts(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/emergency-contacts",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
             return ServiceResult.error_result(
-                err or "emergency/contacts request failed"
+                err or "emergency-contacts request failed"
             )
         contacts = data if isinstance(data, list) else (data or [])
         return ServiceResult.success_result(contacts)
@@ -352,18 +363,6 @@ class RemoteLocationService:
         except Exception as e:
             logger.debug("Photo fetch failed for %s: %s", user_id, e)
             return None
-
-
-def get_display_settings(
-    server_url: str,
-    user_id: Optional[str] = None,
-    family_circle_id: Optional[str] = None,
-    session: Optional["requests.Session"] = None,
-):
-    """Load display settings from kiosk_settings.json. API override disabled for now."""
-    from .settings import DisplaySettings
-
-    return DisplaySettings.default()
 
 
 def create_remote(

@@ -4,6 +4,7 @@ Used by WidgetFactory.create_emergency_layout_widget().
 """
 
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.graphics import Color, Line, Rectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
@@ -74,17 +75,18 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     patient_data = e_data.get("profile") or {}
     medical_data = e_data.get("medical") or {}
 
-    # BOTTOM: two section boxes centered on y
+
+    # BOTTOM: AnchorLayout centers the two section boxes on y
     red_bar = (0.75, 0.2, 0.2, 1)
-    bottom_box = BoxLayout(orientation="vertical", size_hint_y=1, center_y=True)
+    # PERSONAL section height: red bar (40dp) + 7 form rows (40dp each)
+    personal_height = dp(40) + 7 * dp(40)
 
     # PERSONAL
     personal = BoxLayout(
         orientation="vertical",
         spacing=dp(4),
-        size_hint_y=.5,
-        minimum_height=dp(40) + 7 * dp(36),
-        center_y=True
+        size_hint_y=None,
+        height=personal_height,
     )
     personal.add_widget(_form_section_bar("PERSONAL INFORMATION", red_bar, height=dp(40)))
     name = patient_data.get("name") or "Patient"
@@ -107,7 +109,6 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     cond = medical_data.get("conditions")
     personal.add_widget(_form_row("CURRENT HEALTH CONDITIONS", cond))
     apply_debug_border(personal)
-    bottom_box.add_widget(personal)
 
     # CONTACTS
     ec_list = []
@@ -116,14 +117,13 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
         rel = c.get("relationship") or ""
         ec_list.append(f"{c.get('display_name', '')} ({rel}): {phone}".strip())
     n_contact_rows = len(ec_list) + 2
-    min_height = dp(40) + n_contact_rows * dp(36)
+    contacts_height = dp(40) + n_contact_rows * dp(40)
 
     contacts_section = BoxLayout(
         orientation="vertical",
         spacing=dp(4),
-        size_hint_y=.5,
-        minimum_height = min_height,
-        center_y=True
+        size_hint_y=None,
+        height=contacts_height,
     )
 
     contacts_section.add_widget(_form_section_bar("EMERGENCY CONTACTS", red_bar, height=dp(40)))
@@ -139,10 +139,24 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     poa_phone = e_contacts.get("poa_phone") or ""
     contacts_section.add_widget(_form_row("POA", f"{poa_name} {poa_phone}".strip()))
     apply_debug_border(contacts_section)
-    bottom_box.add_widget(contacts_section)
-    # bottom_box.add_widget(BoxLayout(size_hint_y=1))
 
-    apply_debug_border(bottom_box)
+    # box for bottom two sections: each half gets an AnchorLayout to center its content
+    bottom_box = BoxLayout(
+        orientation="vertical",
+        size_hint_y=1,
+        spacing=dp(8),
+    )
+    top_half = AnchorLayout(anchor_y="center", size_hint_y=0.5)
+    top_half.add_widget(personal)
+    apply_debug_border(top_half)
+    bottom_box.add_widget(top_half)
+
+    bottom_half = AnchorLayout(anchor_y="center", size_hint_y=0.5)
+    bottom_half.add_widget(contacts_section)
+    apply_debug_border(bottom_half)
+    bottom_box.add_widget(bottom_half)
+
+    # apply_debug_border(bottom_box)
     layout.add_widget(bottom_box)
     attach_emergency_border(layout, services)
     return layout

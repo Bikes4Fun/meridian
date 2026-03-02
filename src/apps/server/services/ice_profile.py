@@ -1,7 +1,7 @@
 """
 ICE Profile service for In-Case-of-Emergency data.
-WHERE FUNCTIONALITY MOVED TO (client): client/remote calls GET /api/ice, PUT /api/ice.
-REMOVAL: Required on server. Can be omitted from client deployment when SERVER_URL is set.
+Composes from canonical sources: care_recipients, medications, allergies, conditions, contacts.
+ICE does not store data; it gathers it for the emergency display.
 """
 
 from ..database import DatabaseManager, DatabaseServiceMixin
@@ -17,26 +17,29 @@ class ICEProfileService(DatabaseServiceMixin):
         DatabaseServiceMixin.__init__(self, db_manager)
 
     def get_ice_profile(self, family_circle_id: str) -> ServiceResult:
-        """Get ICE profile for family. Joins allergies and medications from existing tables."""
-        profile_result = self.safe_query(
-            """
-            SELECT family_circle_id, profile_name, profile_dob, photo_path, medical_conditions,
-                   medical_dnr, dnr_document_path, emergency_proxy_name, medical_proxy_phone,
-                   poa_name, poa_phone, notes, last_updated, last_updated_by
-            FROM ice_profile
-            WHERE family_circle_id = ?
-            """,
+        """Compose ICE profile from canonical sources. No data stored in ICE."""
+        care = self.safe_query(
+            "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
-        if not profile_result.success:
-            return profile_result
-        if not profile_result.data:
-            return ServiceResult.success_result(None)
+        care_row = care.data[0] if care.success and care.data else None
 
-        row = profile_result.data[0]
-        allergies_result = self.safe_query(
-            "SELECT allergen FROM allergies WHERE family_circle_id = ?", (family_circle_id,)
+        care_recipient_user_id = care_row["care_recipient_user_id"] if care_row else None
+        conditions_result = self.safe_query(
+            "SELECT condition_name FROM conditions WHERE care_recipient_user_id = ? ORDER BY condition_name",
+                        (care_recipient_user_id,),
+        ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
+        conditions_list = (
+            [r["condition_name"] for r in conditions_result.data if r.get("condition_name")]
+            if conditions_result.success and conditions_result.data
+            else []
         )
+        medical_conditions = ", ".join(conditions_list) if conditions_list else None
+
+        allergies_result = self.safe_query(
+            "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
+            (care_recipient_user_id,),
+        ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
         allergies = (
             [a["allergen"] for a in allergies_result.data]
             if allergies_result.success and allergies_result.data
@@ -47,11 +50,11 @@ class ICEProfileService(DatabaseServiceMixin):
             """
             SELECT m.name, m.dosage, m.frequency
             FROM medications m
-            WHERE m.family_circle_id = ?
+            WHERE m.care_recipient_user_id = ?
             ORDER BY m.name
             """,
-            (family_circle_id,),
-        )
+            (care_recipient_user_id,),
+        ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
         medications = (
             [
                 {"name": m["name"], "dosage": m["dosage"], "frequency": m["frequency"]}
@@ -61,103 +64,82 @@ class ICEProfileService(DatabaseServiceMixin):
             else []
         )
 
+        proxy_name, proxy_phone, poa_name, poa_phone = None, None, None, None
+        roles_result = self.safe_query(
+            "SELECT role, contact_id FROM ice_contact_roles WHERE family_circle_id = ?",
+            (family_circle_id,),
+        )
+        if roles_result.success and roles_result.data:
+            contact_ids = [r["contact_id"] for r in roles_result.data]
+            if contact_ids:
+                placeholders = ",".join("?" * len(contact_ids))
+                contacts_result = self.safe_query(
+                    f"SELECT id, display_name, phone FROM contacts WHERE id IN ({placeholders})",
+                    tuple(contact_ids),
+                )
+                contacts_by_id = {c["id"]: c for c in (contacts_result.data or [])} if contacts_result.success else {}
+                for r in roles_result.data:
+                    c = contacts_by_id.get(r["contact_id"])
+                    if c:
+                        if r["role"] == "medical_proxy":
+                            proxy_name, proxy_phone = c.get("display_name"), c.get("phone")
+                        elif r["role"] == "poa":
+                            poa_name, poa_phone = c.get("display_name"), c.get("phone")
+
+        if not care_row and not conditions_list and not allergies and not medications and not proxy_name and not poa_name:
+            return ServiceResult.success_result(None)
+
         data = {
-            "family_circle_id": row["family_circle_id"],
-            "profile": {"name": row["profile_name"], "dob": row["profile_dob"]},
+            "family_circle_id": family_circle_id,
+            "care_recipient_user_id": care_recipient_user_id,
+            "profile": {"name": care_row["name"] if care_row else None, "dob": care_row["dob"] if care_row else None},
             "medical": {
-                "conditions": row["medical_conditions"],
-                "dnr": bool(row["medical_dnr"]),
+                "conditions": medical_conditions,
+                "dnr": bool(care_row["medical_dnr"]) if care_row else False,
                 "allergies": allergies,
                 "medications": medications,
             },
-            "emergency": {
-                "proxy": {"name": row["emergency_proxy_name"]},
-            },
-            "photo_path": row["photo_path"],
-            "dnr_document_path": row["dnr_document_path"],
-            "medical_proxy_phone": row["medical_proxy_phone"],
-            "poa_name": row["poa_name"],
-            "poa_phone": row["poa_phone"],
-            "notes": row["notes"],
-            "last_updated": row["last_updated"],
-            "last_updated_by": row["last_updated_by"],
+            "emergency": {"proxy": {"name": proxy_name}},
+            "photo_path": care_row["photo_path"] if care_row else None,
+            "dnr_document_path": care_row["dnr_document_path"] if care_row else None,
+            "medical_proxy_phone": proxy_phone,
+            "poa_name": poa_name,
+            "poa_phone": poa_phone,
+            "notes": care_row["notes"] if care_row else None,
+            "last_updated": None,
+            "last_updated_by": None,
         }
         return ServiceResult.success_result(data)
 
-    def update_ice_profile(self, family_circle_id: str, data: dict) -> ServiceResult:
-        """Insert or replace ICE profile row. Accepts Smart911-shaped JSON (profile.name, medical.conditions, etc.)."""
-        profile = data.get("profile") or {}
-        medical = data.get("medical") or {}
-        emergency = data.get("emergency") or {}
-        proxy = emergency.get("proxy") or {}
-        profile_name = profile.get("name")
-        profile_dob = profile.get("dob")
-        medical_conditions = medical.get("conditions")
-        medical_dnr = 1 if medical.get("dnr") else 0
-        emergency_proxy_name = proxy.get("name")
-        photo_path = data.get("photo_path")
-        dnr_document_path = data.get("dnr_document_path")
-        medical_proxy_phone = data.get("medical_proxy_phone")
-        poa_name = data.get("poa_name")
-        poa_phone = data.get("poa_phone")
-        notes = data.get("notes")
-        last_updated_by = data.get("last_updated_by")
+    def get_medical_summary(self, family_circle_id: str) -> ServiceResult:
+        """Formatted medical summary string for emergency display."""
+        r = self.get_ice_profile(family_circle_id)
+        if not r.success or not r.data:
+            return ServiceResult.success_result("Medical Information:")
+        medical = r.data.get("medical") or {}
+        lines = ["Medical Information:"]
+        meds = medical.get("medications") or []
+        if meds:
+            lines.append("\nMedications:")
+            for m in meds:
+                name = m.get("name") or ""
+                dosage = m.get("dosage") or ""
+                frequency = m.get("frequency") or ""
+                parts = [name]
+            if dosage or frequency:
+                parts.append(f"{dosage} {frequency}".strip())
+            lines.append("• " + " - ".join(parts))
+        allergies = medical.get("allergies") or []
+        if allergies:
+            lines.append("\nAllergies:")
+            for a in allergies:
+                lines.append(f"• {a}")
+        conditions_str = medical.get("conditions")
+        if conditions_str:
+            lines.append("\nMedical Conditions:")
+            for c in conditions_str.split(","):
+                c = c.strip()
+                if c:
+                    lines.append(f"• {c}")
+        return ServiceResult.success_result("\n".join(lines))
 
-        existing = self.safe_query(
-            "SELECT id FROM ice_profile WHERE family_circle_id = ?", (family_circle_id,)
-        )
-        if existing.success and existing.data:
-            result = self.safe_update(
-                """
-                UPDATE ice_profile SET
-                    profile_name = ?, profile_dob = ?, photo_path = ?,
-                    medical_conditions = ?, medical_dnr = ?, dnr_document_path = ?,
-                    emergency_proxy_name = ?, medical_proxy_phone = ?,
-                    poa_name = ?, poa_phone = ?, notes = ?,
-                    last_updated = CURRENT_TIMESTAMP, last_updated_by = ?
-                WHERE family_circle_id = ?
-                """,
-                (
-                    profile_name,
-                    profile_dob,
-                    photo_path,
-                    medical_conditions,
-                    medical_dnr,
-                    dnr_document_path,
-                    emergency_proxy_name,
-                    medical_proxy_phone,
-                    poa_name,
-                    poa_phone,
-                    notes,
-                    last_updated_by,
-                    family_circle_id,
-                ),
-            )
-        else:
-            result = self.safe_update(
-                """
-                INSERT INTO ice_profile
-                (family_circle_id, profile_name, profile_dob, photo_path, medical_conditions,
-                 medical_dnr, dnr_document_path, emergency_proxy_name, medical_proxy_phone,
-                 poa_name, poa_phone, notes, last_updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    family_circle_id,
-                    profile_name,
-                    profile_dob,
-                    photo_path,
-                    medical_conditions,
-                    medical_dnr,
-                    dnr_document_path,
-                    emergency_proxy_name,
-                    medical_proxy_phone,
-                    poa_name,
-                    poa_phone,
-                    notes,
-                    last_updated_by,
-                ),
-            )
-        if not result.success:
-            return result
-        return self.get_ice_profile(family_circle_id)

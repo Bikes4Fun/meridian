@@ -4,6 +4,7 @@
 
     var _u = '__API_URL__';
     var API_URL = (_u.startsWith('http') ? _u : '');
+    var _familyCircleId = null;
 
     function showStatus(message, type) {
         var container = document.getElementById('status');
@@ -52,7 +53,13 @@
 
                 showStatus('Found location: ' + latitude.toFixed(4) + ', ' + longitude.toFixed(4) + '. Sending...', 'info');
 
-                fetch(API_URL + '/api/location/checkin', {
+                var fcId = _familyCircleId;
+                if (!fcId) {
+                    showStatus('Session expired. Please log in again.', 'error');
+                    btn.disabled = false;
+                    return;
+                }
+                fetch(API_URL + '/api/family_circles/' + fcId + '/checkin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -100,13 +107,19 @@
     }
 
     function loadFamilyMembers() {
-        fetch(API_URL + '/api/location/family-members', {
-            credentials: 'include'
-        })
-            .then(function (r) { return r.json(); })
+        fetch(API_URL + '/api/session', { credentials: 'include' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (session) {
+                if (!session || !session.family_circle_id) return;
+                _familyCircleId = session.family_circle_id;
+                return fetch(API_URL + '/api/family_circles/' + session.family_circle_id + '/family-members', {
+                    credentials: 'include'
+                });
+            })
+            .then(function (r) { return r && r.ok ? r.json() : null; })
             .then(function (data) {
                 var sel = document.getElementById('familyMemberSelect');
-                if (!sel || !data.data) return;
+                if (!sel || !data || !data.data) return;
                 data.data.forEach(function (fm) {
                     var opt = document.createElement('option');
                     opt.value = fm.id;
@@ -118,7 +131,7 @@
     }
 
     function activateAlert() {
-        fetch(API_URL + '/api/alert', {
+        fetch(API_URL + '/api/emergency/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -134,7 +147,7 @@
     }
 
     function cancelAlert() {
-        fetch(API_URL + '/api/alert', {
+        fetch(API_URL + '/api/emergency/alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

@@ -46,9 +46,11 @@ class TestTimeService:
     def test_get_month_day_format(self, time_service):
         """Test that get_month_day returns properly formatted month and day."""
         month_day = time_service.get_month_day()
-        # Should be in format like "JANUARY 15" (uppercase)
-        assert month_day.isupper()
+        # Should be in format like "March 1" (month and day)
         assert ' ' in month_day
+        parts = month_day.split()
+        assert len(parts) == 2
+        assert parts[1].isdigit()
     
     def test_get_year(self, time_service):
         """Test that get_year returns current year as string."""

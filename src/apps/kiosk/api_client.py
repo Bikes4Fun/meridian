@@ -5,6 +5,7 @@ calendar, medications, emergency, and settings come from the server API.
 """
 
 import logging
+import os
 from datetime import datetime
 from typing import Any, Optional, Tuple
 
@@ -78,6 +79,9 @@ class LocalTimeService:
             return "Afternoon"
         return "Evening"
 
+    def get_date(self) -> str:
+        return datetime.now().strftime("%B %-d, %Y").replace(" 0", " ").lstrip()
+
     def get_month_day(self) -> str:
         return datetime.now().strftime("%B %-d").replace(" 0", " ").lstrip()
 
@@ -94,6 +98,7 @@ class RemoteCalendarService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
@@ -102,7 +107,7 @@ class RemoteCalendarService:
 
     def get_day_headers(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/calendar/headers",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/headers",
             headers=self._headers,
             session=self._session,
         )
@@ -113,7 +118,7 @@ class RemoteCalendarService:
     def get_current_month_data(self, reference_date=None) -> Any:
         today = self._today_param()
         ok, data, err = _get(
-            f"{self._base}/api/calendar/month?date={today}",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/month?date={today}",
             headers=self._headers,
             session=self._session,
         )
@@ -124,7 +129,7 @@ class RemoteCalendarService:
     def get_current_date(self) -> int:
         today = self._today_param()
         ok, data, err = _get(
-            f"{self._base}/api/calendar/date?date={today}",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/date?date={today}",
             headers=self._headers,
             session=self._session,
         )
@@ -136,7 +141,7 @@ class RemoteCalendarService:
 
     def get_events_for_date(self, date: str) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/calendar/events?date={date}",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/events?date={date}",
             headers=self._headers,
             session=self._session,
         )
@@ -154,54 +159,18 @@ class RemoteMedicationService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_medication_data(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/medications",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications",
             headers=self._headers,
             session=self._session,
         )
         if not ok:
             return ServiceResult.error_result(err or "medications request failed")
-        return ServiceResult.success_result(data)
-
-
-class RemoteEmergencyService:
-    def __init__(
-        self,
-        base_url: str,
-        user_id: Optional[str] = None,
-        family_circle_id: Optional[str] = None,
-        session: Optional["requests.Session"] = None,
-    ):
-        self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id, family_circle_id)
-        self._session = session
-
-    def format_contacts_for_display(self) -> Any:
-        ok, data, err = _get(
-            f"{self._base}/api/emergency/contacts",
-            headers=self._headers,
-            session=self._session,
-        )
-        if not ok:
-            return ServiceResult.error_result(
-                err or "emergency/contacts request failed"
-            )
-        return ServiceResult.success_result(data)
-
-    def get_medical_summary(self) -> Any:
-        ok, data, err = _get(
-            f"{self._base}/api/emergency/medical-summary",
-            headers=self._headers,
-            session=self._session,
-        )
-        if not ok:
-            return ServiceResult.error_result(
-                err or "emergency/medical-summary request failed"
-            )
         return ServiceResult.success_result(data)
 
 
@@ -219,7 +188,7 @@ class RemoteAlertService:
 
     def get_alert_status(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/alert/status",
+            f"{self._base}/api/emergency/alert/status",
             headers=self._headers,
             session=self._session,
         )
@@ -229,6 +198,8 @@ class RemoteAlertService:
 
 
 class RemoteICEProfileService:
+    """ICE profile, medical summary, and emergency contacts from the server."""
+
     def __init__(
         self,
         base_url: str,
@@ -237,17 +208,43 @@ class RemoteICEProfileService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_ice_profile(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/ice",
+            f"{self._base}/api/family_circles/{self._fc_id}/ice-profile",
             headers=self._headers,
             session=self._session,
         )
         if not ok:
             return ServiceResult.error_result(err or "ice request failed")
+        return ServiceResult.success_result(data)
+
+    def get_emergency_contacts(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/emergency-contacts",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(
+                err or "emergency-contacts request failed"
+            )
+        contacts = data if isinstance(data, list) else (data or [])
+        return ServiceResult.success_result(contacts)
+    
+    def get_medical_summary(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/medical-summary",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(
+                err or "medical-summary request failed"
+            )
         return ServiceResult.success_result(data)
 
 
@@ -260,12 +257,13 @@ class RemoteLocationService:
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
     def get_checkins(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/location/latest",
+            f"{self._base}/api/family_circles/{self._fc_id}/checkins",
             headers=self._headers,
             session=self._session,
         )
@@ -275,7 +273,7 @@ class RemoteLocationService:
 
     def get_named_places(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/location/places",
+            f"{self._base}/api/family_circles/{self._fc_id}/named-places",
             headers=self._headers,
             session=self._session,
         )
@@ -306,7 +304,7 @@ class RemoteLocationService:
 
             client = self._session if self._session else requests
             r = client.post(
-                f"{self._base}/api/location/checkin",
+                f"{self._base}/api/family_circles/{self._fc_id}/checkin",
                 json=payload,
                 headers=self._headers,
                 timeout=5,
@@ -320,28 +318,28 @@ class RemoteLocationService:
             logger.debug("Check-in request failed: %s", e)
             return ServiceResult.error_result(str(e))
 
-
-def get_display_settings(
-    server_url: str,
-    user_id: Optional[str] = None,
-    family_circle_id: Optional[str] = None,
-    session: Optional["requests.Session"] = None,
-):
-    """Fetch display settings from GET /api/settings. Uses display defaults if server has none."""
-    from .settings import DisplaySettings
-
-    base = server_url.rstrip("/")
-    ok, data, err = _get(
-        f"{base}/api/settings",
-        headers=_headers(user_id, family_circle_id),
-        session=session,
-    )
-    if not ok or not data or "display" not in data:
-        return DisplaySettings.default()
-    try:
-        return DisplaySettings.from_dict(data["display"])
-    except Exception:
-        return DisplaySettings.default()
+    def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
+        """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present."""
+        try:
+            import requests
+        except ImportError:
+            return None
+        photo_dir = os.path.join(cache_dir, "photos")
+        os.makedirs(photo_dir, exist_ok=True)
+        cached = os.path.join(photo_dir, user_id)
+        if os.path.exists(cached):
+            return cached
+        try:
+            url = f"{self._base}/api/users/{user_id}/photo"
+            client = self._session if self._session else requests
+            r = client.get(url, headers=self._headers, timeout=10)
+            r.raise_for_status()
+            with open(cached, "wb") as f:
+                f.write(r.content)
+            return cached
+        except Exception as e:
+            logger.debug("Photo fetch failed for %s: %s", user_id, e)
+            return None
 
 
 def create_remote(
@@ -366,9 +364,6 @@ def create_remote(
         "medication_service": RemoteMedicationService(
             server_url, user_id, family_circle_id, session
         ),
-        "emergency_service": RemoteEmergencyService(
-            server_url, user_id, family_circle_id, session
-        ),
         "ice_profile_service": RemoteICEProfileService(
             server_url, user_id, family_circle_id, session
         ),
@@ -379,5 +374,6 @@ def create_remote(
             server_url, user_id, family_circle_id, session
         ),
     }
+    services["emergency_service"] = services["ice_profile_service"]
     services["_alert_activated"] = [False]
     return services

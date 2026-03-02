@@ -108,15 +108,3 @@ class ContactService(DatabaseServiceMixin):
                 )
             )
         return ServiceResult.error_result(f"Contact with ID '{contact_id}' not found")
-
-    def format_emergency_contacts_for_display(self) -> ServiceResult:
-        result = self.get_emergency_contacts()
-        if not result.success:
-            return result
-        emergency_contacts = result.data
-        if not emergency_contacts:
-            return ServiceResult.success_result("No emergency contacts found")
-        lines = ["Emergency Contacts:"]
-        for contact in emergency_contacts:
-            lines.append(contact.to_display_text())
-        return ServiceResult.success_result("\n".join(lines))

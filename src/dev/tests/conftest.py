@@ -19,7 +19,7 @@ from apps.kiosk.api_client import LocalTimeService
 from apps.server.services.contact import ContactService
 from apps.server.services.calendar import CalendarService
 from apps.server.services.medication import MedicationService
-from apps.server.services.emergency import EmergencyService
+from apps.server.services.ice_profile import ICEProfileService
 
 
 @pytest.fixture
@@ -55,6 +55,12 @@ def test_db_manager(test_db_config):
 
 
 FAMILY_CIRCLE_ID = 'test_family'
+
+
+@pytest.fixture
+def family_circle_id():
+    return FAMILY_CIRCLE_ID
+
 
 @pytest.fixture
 def sample_contacts_data():
@@ -181,9 +187,9 @@ def medication_service(populated_test_db):
 
 
 @pytest.fixture
-def emergency_service(contact_service):
-    """Create an EmergencyService with contact service."""
-    return EmergencyService(contact_service)
+def ice_profile_service(populated_test_db):
+    """Create an ICEProfileService with test database."""
+    return ICEProfileService(populated_test_db)
 
 
 @pytest.fixture

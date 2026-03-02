@@ -40,18 +40,28 @@ class MedicationService(DatabaseServiceMixin):
         self.timed_medications: List[TimedMedication] = []
         self.prn_medications: List[PRNMedication] = []
 
+    def _get_care_recipient_user_id(self, family_circle_id: str) -> Optional[str]:
+        r = self.safe_query(
+            "SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?",
+            (family_circle_id,),
+        )
+        return r.data[0]["care_recipient_user_id"] if r.success and r.data else None
+
     def _load_medication_data(self, family_circle_id: str) -> None:
         self.timed_medications = []
         self.prn_medications = []
+        care_recipient_user_id = self._get_care_recipient_user_id(family_circle_id)
+        if not care_recipient_user_id:
+            return
         query = """
             SELECT m.name, m.dosage, m.taken_today, mt.name as time_name, mt.time as group_time
             FROM medications m
             LEFT JOIN medication_to_time mtt ON m.id = mtt.medication_id
             LEFT JOIN medication_times mt ON mtt.group_id = mt.id
-            WHERE m.family_circle_id = ?
+            WHERE m.care_recipient_user_id = ?
             ORDER BY m.name, mt.time
         """
-        result = self.safe_query(query, (family_circle_id,))
+        result = self.safe_query(query, (care_recipient_user_id,))
         if not result.success:
             self.logger.error("Failed to load medication data: %s", result.error)
             return

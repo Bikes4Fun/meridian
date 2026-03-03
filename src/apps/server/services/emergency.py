@@ -4,6 +4,8 @@ Emergency profile (first responder view), medical summary, and contacts.
 Composes from canonical sources: care_recipients, medications, allergies, conditions, contacts.
 """
 
+from dataclasses import asdict
+
 from ..database import DatabaseManager, DatabaseServiceMixin
 
 try:
@@ -91,6 +93,9 @@ class EmergencyService(DatabaseServiceMixin):
         if not care_row and not conditions_list and not allergies and not medications and not proxy_name and not poa_name:
             return ServiceResult.success_result(None)
 
+        ec_r = self.contact_service.c_service_get_emergency_contacts(family_circle_id)
+        emergency_contacts = [asdict(c) for c in (ec_r.data or [])] if ec_r.success else []
+
         data = {
             "family_circle_id": family_circle_id,
             "care_recipient_user_id": care_recipient_user_id,
@@ -110,10 +115,11 @@ class EmergencyService(DatabaseServiceMixin):
             "notes": care_row["notes"] if care_row else None,
             "last_updated": None,
             "last_updated_by": None,
+            "emergency_contacts": emergency_contacts,
         }
         return ServiceResult.success_result(data)
 
-    def get_medical_summary(self, family_circle_id: str) -> ServiceResult:
+    def e_service_get_medical_summary(self, family_circle_id: str) -> ServiceResult:
         """Formatted medical summary string for emergency display."""
         r = self.get_emergency_profile(family_circle_id)
         if not r.success or not r.data:
@@ -145,8 +151,8 @@ class EmergencyService(DatabaseServiceMixin):
                     lines.append(f"• {c}")
         return ServiceResult.success_result("\n".join(lines))
 
-    def get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
-        return self.contact_service.get_emergency_contacts(family_circle_id)
+    def e_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
+        return self.contact_service.c_service_get_emergency_contacts(family_circle_id)
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         return self.contact_service.get_all_contacts(family_circle_id)

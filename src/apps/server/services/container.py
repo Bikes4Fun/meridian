@@ -10,7 +10,7 @@ except ImportError:
 from ..database import DatabaseManager
 from .contact import ContactService
 from .calendar import CalendarService
-from .medication import MedicationService
+from .medical import MedicationService
 from .location import LocationService
 from .emergency import EmergencyService
 from .care_recipient import CareRecipientService

@@ -6,17 +6,15 @@ Handles the creation of different kiosk screens.
 import os
 import logging
 
-from shared.config import get_database_path
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.graphics import Color, Line
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
     KioskLabel,
-    KioskNavBar,
 )
-from .widgets import WidgetFactory, apply_debug_border
+from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
+
 from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)

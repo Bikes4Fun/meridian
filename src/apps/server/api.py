@@ -38,7 +38,7 @@ except ImportError:
         get_server_host,
         get_server_port,
     )
-from .database import DatabaseManager
+from .emergency_pdf import build_pdf
 from .services.container import create_service_container
 
 try:
@@ -203,7 +203,7 @@ def create_server_app(db_path=None):
     def api_emergency_contacts(family_circle_id):
         """Only emergency-priority contacts."""
         _require_family_access(family_circle_id)
-        r = contact_svc.get_emergency_contacts(family_circle_id)
+        r = contact_svc.c_service_get_emergency_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         contacts = [asdict(c) for c in (r.data or [])]
@@ -212,7 +212,7 @@ def create_server_app(db_path=None):
     @app.route("/api/family_circles/<family_circle_id>/medical-summary")
     def api_medical_summary(family_circle_id):
         _require_family_access(family_circle_id)
-        r = emergency_svc.get_medical_summary(family_circle_id)
+        r = emergency_svc.e_service_get_medical_summary(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})

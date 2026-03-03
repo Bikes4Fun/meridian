@@ -222,20 +222,7 @@ class RemoteEmergencyProfileService:
             return ServiceResult.error_result(err or "emergency-profile request failed")
         return ServiceResult.success_result(data)
 
-    def get_emergency_contacts(self) -> Any:
-        ok, data, err = _get(
-            f"{self._base}/api/family_circles/{self._fc_id}/emergency-contacts",
-            headers=self._headers,
-            session=self._session,
-        )
-        if not ok:
-            return ServiceResult.error_result(
-                err or "emergency-contacts request failed"
-            )
-        contacts = data if isinstance(data, list) else (data or [])
-        return ServiceResult.success_result(contacts)
-    
-    def get_medical_summary(self) -> Any:
+    def get_medical_summary_from_server(self) -> Any:
         ok, data, err = _get(
             f"{self._base}/api/family_circles/{self._fc_id}/medical-summary",
             headers=self._headers,
@@ -246,6 +233,10 @@ class RemoteEmergencyProfileService:
                 err or "medical-summary request failed"
             )
         return ServiceResult.success_result(data)
+
+    def get_pdf_url(self) -> str:
+        """URL for the printable PDF (GET emergency-profile returns PDF by default)."""
+        return f"{self._base}/api/family_circles/{self._fc_id}/emergency-profile"
 
 
 class RemoteLocationService:

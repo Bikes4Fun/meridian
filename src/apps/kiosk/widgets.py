@@ -12,30 +12,13 @@ from .modular_display import (
 
 # Top section: Day + Time of day (left) | Icon (right)
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
-from kivy.graphics import Color, Line, Rectangle
-from kivy.metrics import dp
-from kivy.clock import Clock
 from datetime import datetime
 import logging
 import os
 
 logger = logging.getLogger(__name__)
-
-
-def _format_contacts_for_display(contacts, include_header=True):
-    """Format contact dicts into display text. Used by widgets."""
-    if not contacts:
-        return "No emergency contacts found"
-    lines = ["Emergency Contacts:"] if include_header else []
-    for c in contacts:
-        phone = c.get("phone") or ""
-        rel = c.get("relationship") or ""
-        lines.append(f"• {c.get('display_name', '')} ({rel}) {phone}")
-    return "\n".join(lines)
-
 
 def apply_debug_border(widget, **kwargs):
     """Apply default border to widget."""
@@ -118,33 +101,6 @@ class KioskNavBar(KioskWidget):
                 f"ERROR: Cannot navigate to '{screen_name}' - screen_manager is None!"
             )
 
-    def add_button(self, text, screen_name, color="primary", font_size="large"):
-        """Add a button to the navigation bar dynamically."""
-        button_config = {
-            "text": text,
-            "screen": screen_name,
-            "color": color,
-            "font_size": font_size,
-        }
-        self.buttons.append(button_config)
-
-        # Recreate buttons
-        self.clear_widgets()
-        self._create_nav_buttons()
-
-    def remove_button(self, screen_name):
-        """Remove a button from the navigation bar."""
-        self.buttons = [
-            btn
-            for btn in self.buttons
-            if (isinstance(btn, dict) and btn.get("screen") != screen_name)
-            or (isinstance(btn, tuple) and len(btn) > 1 and btn[1] != screen_name)
-        ]
-
-        # Recreate buttons
-        self.clear_widgets()
-        self._create_nav_buttons()
-
 
 class WidgetFactory:
     """Factory for creating UI widgets based on user preferences."""
@@ -157,6 +113,7 @@ class WidgetFactory:
         self.medication_service = services.get("medication_service")
         self.location_service = services.get("location_service")
 
+    # TODO create_widget seem duplicated with specific widgets? Is is needed from a best practices + KISS perspective?
     def create_widget(self, widget_type, **kwargs):
         """Create a widget of the specified type."""
         widget_creators = {
@@ -172,52 +129,6 @@ class WidgetFactory:
 
         return widget_creators[widget_type](**kwargs)
 
-    def get_available_widgets(self):
-        """Get list of available widget types."""
-        return [
-            "clock",
-            "medication",
-            "events",
-            "emergency_profile",
-            "family_locations",
-        ]
-
-    def is_widget_enabled(self, widget_type):
-        """Check if a widget type is enabled for the user."""
-        # all widgets are enabled by default
-        # TODO: check user preferences from user_setting
-        return True
-
-    def get_user_widget_preferences(self):
-        """Get user's widget preferences."""
-        # For now, return default preferences
-        # TODO: load from user_settings
-        return {
-            "clock": True,
-            "medication": True,
-            "events": True,
-            "emergency_profile": True,
-            "family_locations": True,
-        }
-
-    def create_widgets_for_screen(self, screen_type):
-        """Create all widgets needed for a specific screen type."""
-        screen_widgets = {
-            "home": ["clock", "medication", "events"],
-            "emergency": ["emergency_profile"],
-            "more": [],
-        }
-
-        if screen_type not in screen_widgets:
-            return []
-
-        widgets = []
-        for widget_type in screen_widgets[screen_type]:
-            if self.is_widget_enabled(widget_type):
-                widget = self.create_widget(widget_type)
-                widgets.append((widget_type, widget))
-
-        return widgets
 
     def create_clock_widget(self):
         """Create clock widget using modular components - dementia clock style."""
@@ -409,106 +320,12 @@ class WidgetFactory:
             self.services,
         )
 
-    def _create_family_locations_title(self):
-        """Create Family Locations screen title block."""
-        title = KioskLabel(type="header", text="Family Locations")
-        title.size_hint_y = None
-        title.height = 70
-        apply_debug_border(title)
-        return title
-
-    def _create_family_possible_places_block(self):
-        """Create possible family locations block (debug)."""
-        prefix = "possible family locations:\n"
-        if self.location_service:
-            places_result = self.location_service.get_named_places()
-            if places_result.success and places_result.data:
-                lines = []
-                for p in places_result.data:
-                    lat, lon = p.get("gps_latitude"), p.get("gps_longitude")
-                    coords = (
-                        f"{lat:.6f},{lon:.6f}"
-                        if lat is not None and lon is not None
-                        else "—"
-                    )
-                    lines.append(f"• {p.get('location_name', 'Unknown')}:\n   {coords}")
-                suffix = "\n".join(lines)
-            else:
-                suffix = "(none)"
-        else:
-            suffix = "(unavailable)"
-        widget = KioskLabel(type="body", text=prefix + suffix, shorten=False)
-        widget.size_hint_x = 0.5  # for_columns
-
-        apply_debug_border(widget)
-        return widget
-
-    def _create_family_checkins_block(self):
-        """Create family check-ins block."""
-        line_h = 32 + 4
-        if self.location_service:
-            result = self.location_service.get_checkins()
-            if result.success and result.data:
-
-                checkins_text = []
-                for checkin in result.data:
-                    contact_name = checkin.get("contact_name", "Unknown")
-                    location = checkin.get("location_name", None)
-
-                    if not location:
-                        lat = checkin.get("latitude")
-                        lon = checkin.get("longitude")
-                        location = (
-                            f"{lat:.6f}, {lon:.6f}"
-                            if lat is not None and lon is not None
-                            else "Unknown location"
-                        )
-
-                    time_str = datetime.now().strftime("%H:%M")
-
-                    lines = [f"• {contact_name}", f"  {location} at {time_str}"]
-                    checkins_text.append("\n".join(lines))
-
-                n_lines = (
-                    sum(c.count("\n") + 1 for c in checkins_text)
-                    + (len(checkins_text) - 1) * 2
-                )
-                text = "\n\n".join(checkins_text)
-            else:
-                n_lines = 2
-                text = "No family check-ins yet"
-
-        else:
-            n_lines = 2
-            text = "Location service not available"
-
-        widget = KioskLabel(type="body", text=text, shorten=False)
-        widget.size_hint_x = 0.5  # for columns
-        widget.height = max(120, int(n_lines * line_h))
-        apply_debug_border(widget)
-        return widget
-
-    def _create_family_future_map_block(self):
-        """Create map container; MapView is added lazily on screen enter to avoid black screen in ScreenManager."""
-        map_lat = (37.0056 + 37.139) / 2
-        map_lon = (-113.503 + -113.599) / 2
-        container = BoxLayout(size_hint_y=0.72)
-        apply_debug_border(container)
-        container._map_params = {"lat": map_lat, "lon": map_lon, "zoom": 11}
-        return container
-
     def create_family_locations_widget(self):
         """Create family location check-in widget; arranges title, possible places, and check-ins."""
-        family = KioskWidget(orientation="vertical")
-        apply_debug_border(family)
-        family.add_widget(self._create_family_locations_title())
+        from .map_screen import build_map_screen
 
-        columns_row = BoxLayout(orientation="horizontal", size_hint_y=0.28)
-        columns_row.add_widget(self._create_family_possible_places_block())
-        columns_row.add_widget(self._create_family_checkins_block())
+        map_screen_widget = KioskWidget(orientation="vertical")
+        apply_debug_border(map_screen_widget)
 
-        family.add_widget(columns_row)
-        map_container = self._create_family_future_map_block()
-        family.map_container = map_container
-        family.add_widget(map_container)
-        return family
+        built_map_screen = build_map_screen(map_screen_widget, self.location_service)
+        return built_map_screen

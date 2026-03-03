@@ -18,7 +18,7 @@ from apps.server.database import DatabaseManager
 from apps.kiosk.api_client import LocalTimeService
 from apps.server.services.contact import ContactService
 from apps.server.services.calendar import CalendarService
-from apps.server.services.medication import MedicationService
+from apps.server.services.medical import MedicationService
 from apps.server.services.emergency import EmergencyService
 
 

@@ -7,6 +7,8 @@ isProject: false
 
 # ICE PDF and Print Button (Issue #22)
 
+**Status:** Print flow is implemented and appears to work; cannot be fully tested until home (with printer available).
+
 ## Scope in this repo
 
 - **Server**: Add `GET /api/family_circles/<family_circle_id>/ice/pdf` in [src/apps/server/api.py](src/apps/server/api.py) (the issue’s “server/app.py” refers to this Flask app).

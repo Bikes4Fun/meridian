@@ -67,6 +67,49 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
             os.close(fd)
 
 
+def _run_emergency_print(emergency_svc, status_label=None) -> None:
+    """Fetch PDF, print, update status_label if provided, schedule job polling when job_id and label."""
+    if status_label is not None:
+        status_label.text = "Printing..."
+    result = emergency_svc.get_emergency_profile_pdf()
+    if not result.success:
+        if status_label is not None:
+            status_label.text = "Print failed: could not get PDF"
+        logger.warning("Emergency print: could not get PDF")
+        return
+    if not result.data:
+        if status_label is not None:
+            status_label.text = "Print failed: no PDF data"
+        return
+    ok, msg, job_id = _print_pdf_bytes(result.data)
+    if status_label is not None:
+        status_label.text = msg if ok else f"Print failed: {msg}"
+    if ok:
+        logger.info("Emergency print: %s", msg)
+        if job_id and status_label is not None:
+            poll_ev = [None]
+
+            def _poll(dt):
+                if not _job_still_queued(job_id):
+                    status_label.text = "Print completed"
+                    if poll_ev[0] is not None:
+                        poll_ev[0].cancel()
+                        poll_ev[0] = None
+
+            poll_ev[0] = Clock.schedule_interval(_poll, 2.0)
+    else:
+        logger.warning("Emergency print failed: %s", msg)
+
+
+def trigger_emergency_print(services) -> None:
+    """Run emergency print (e.g. when alert activated). Uses same flow and status label as the button."""
+    emergency_svc = services.get("emergency_service")
+    if not emergency_svc or not getattr(emergency_svc, "get_emergency_profile_pdf", None):
+        return
+    status_label = services.get("_emergency_print_status_label")
+    _run_emergency_print(emergency_svc, status_label)
+
+
 def add_emergency_print_section(layout, services):
     """Add Print Emergency Document button and status label to layout. No-op if no emergency service."""
     emergency_svc = services.get("emergency_service")
@@ -74,33 +117,10 @@ def add_emergency_print_section(layout, services):
         return
 
     print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=dp(36))
-    poll_ev = [None]
-
-    def _poll_job(status_label, job_id, _dt):
-        if not _job_still_queued(job_id):
-            status_label.text = "Print completed"
-            if poll_ev[0] is not None:
-                poll_ev[0].cancel()
-                poll_ev[0] = None
-
-    def _do_print(status_label, _dt):
-        result = emergency_svc.get_emergency_profile_pdf()
-        if not result.success:
-            status_label.text = "Print failed: could not get PDF"
-            return
-        if not result.data:
-            status_label.text = "Print failed: no PDF data"
-            return
-        ok, msg, job_id = _print_pdf_bytes(result.data)
-        status_label.text = msg if ok else f"Print failed: {msg}"
-        if ok and job_id:
-            poll_ev[0] = Clock.schedule_interval(
-                lambda dt: _poll_job(status_label, job_id, dt), 2.0
-            )
+    services["_emergency_print_status_label"] = print_status
 
     def _on_print(*_):
-        print_status.text = "Printing..."
-        Clock.schedule_once(lambda dt: _do_print(print_status, dt), 0)
+        Clock.schedule_once(lambda dt: _run_emergency_print(emergency_svc, print_status), 0)
 
     print_btn = KioskButton(
         text="Print Emergency Document",

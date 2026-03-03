@@ -84,7 +84,7 @@ class MeridianKioskApp(App):
         return self.screen_manager
 
     def _check_alert_status(self, dt=None):
-        """Poll alert API; when activated, switch to emergency screen and enable flashing."""
+        """Poll alert API; when activated, switch to emergency screen, enable flashing, and auto-print."""
         alert_svc = self.services.get("alert_service")
         if not alert_svc:
             return
@@ -92,9 +92,14 @@ class MeridianKioskApp(App):
         if not result.success:
             return
         activated = result.data.get("activated", False) if result.data else False
+        was_activated = getattr(self, "_alert_was_activated", False)
         self.services["_alert_activated"][0] = activated
         if activated and self.screen_manager:
             self.screen_manager.current = "emergency"
+            if not was_activated:
+                from .emergency_print import trigger_emergency_print
+                Clock.schedule_once(lambda _dt: trigger_emergency_print(self.services), 0.5)
+        self._alert_was_activated = activated
 
     def _sync_photos_on_boot(self):
         """Fetch checkins and download photos to local cache for offline use."""

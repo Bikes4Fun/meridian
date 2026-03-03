@@ -121,31 +121,26 @@ def main():
     logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
-    if not use_local and is_railway_reachable():
-        api_url = get_railway_api_url()
-        logger.info("API/DB: %s", api_url)
-        logger.info("Webapp: %s/checkin (served by API)", api_url)
-    
-    elif not is_railway_reachable():
-            logger.warning(
-                "Railway API not reachable (%s), using local database.",
-                get_railway_api_url(),
-            )
-    elif use_local:
-        
-        # Build local DB if needed
+    if use_local:
         db_path = get_database_path()
-
         from dev.demo.seed import ensure_local_database
         ensure_local_database(db_path)
         logger.info("Local DB validated.")
-
         from dev.demo.seed import refresh_demo_checkins
         refresh_demo_checkins(db_path)
         logger.info("Database loaded")
-
         api_url = _start_local_api_server(logger)
         webapp_url = _start_local_webapp_server(api_url, logger)
+    elif is_railway_reachable():
+        api_url = get_railway_api_url()
+        logger.info("API/DB: %s", api_url)
+        logger.info("Webapp: %s/checkin (served by API)", api_url)
+    else:
+        logger.warning(
+            "Railway API not reachable (%s), using local database.",
+            get_railway_api_url(),
+        )
+        api_url = _start_local_api_server(logger)
 
     logger.info("Starting Meridian ...")
     try:

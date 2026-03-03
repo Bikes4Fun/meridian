@@ -18,8 +18,8 @@ from apps.server.database import DatabaseManager
 from apps.kiosk.api_client import LocalTimeService
 from apps.server.services.contact import ContactService
 from apps.server.services.calendar import CalendarService
-from apps.server.services.medication import MedicationService
-from apps.server.services.ice_profile import ICEProfileService
+from apps.server.services.medical import MedicationService
+from apps.server.services.emergency import EmergencyService
 
 
 @pytest.fixture
@@ -187,9 +187,9 @@ def medication_service(populated_test_db):
 
 
 @pytest.fixture
-def ice_profile_service(populated_test_db):
-    """Create an ICEProfileService with test database."""
-    return ICEProfileService(populated_test_db)
+def emergency_service(populated_test_db, contact_service):
+    """Create an EmergencyService with test database and contact service."""
+    return EmergencyService(populated_test_db, contact_service)
 
 
 @pytest.fixture

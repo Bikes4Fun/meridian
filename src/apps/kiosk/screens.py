@@ -6,17 +6,15 @@ Handles the creation of different kiosk screens.
 import os
 import logging
 
-from shared.config import get_database_path
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.graphics import Color, Line
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
     KioskLabel,
-    KioskNavBar,
 )
-from .widgets import WidgetFactory, apply_debug_border
+from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
+
 from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
@@ -97,17 +95,17 @@ class ScreenFactory:
         screen = Screen(name="home")
         main_layout = self.screen_template_boxlayout()
 
-        top_bottom_split = .35
+        home_screen_top_bottom_split = .35
         # TOP SECTION
         # Clock widget
         clock_widget = self.widget_factory.create_widget("clock")
-        clock_widget.size_hint = (1, top_bottom_split)
+        clock_widget.size_hint = (1, home_screen_top_bottom_split)
         main_layout.add_widget(clock_widget)
 
         # BOTTOM SECTION - medications and events side by side
         bottom_section = BoxLayout(
             orientation="horizontal",
-            size_hint = (1, 1-top_bottom_split)
+            size_hint = (1, 1-home_screen_top_bottom_split)
         )
 
         med_events_split = .5
@@ -218,8 +216,9 @@ class ScreenFactory:
             buttons=nav_buttons,
         )
 
-# -------------
 
+# -------------
+# DEMO SCREEN FOR TESTING DESIGN METHODS
 
     def _demo_header(self):
         header = BoxLayout(

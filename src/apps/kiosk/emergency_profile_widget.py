@@ -3,7 +3,10 @@ Emergency layout widget: form-style layout (PERSONAL INFORMATION, MEDICAL EMERGE
 Used by WidgetFactory.create_emergency_layout_widget().
 """
 
-import webbrowser
+import os
+import subprocess
+import sys
+import tempfile
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -12,6 +15,31 @@ from kivy.graphics import Color, Line, Rectangle
 from kivy.clock import Clock
 
 from .modular_display import KioskLabel, KioskButton
+
+
+def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str]:
+    """Write PDF to a temp file and trigger system print. Returns (success, message)."""
+    fd, path = tempfile.mkstemp(suffix=".pdf")
+    try:
+        os.write(fd, pdf_bytes)
+        os.close(fd)
+        fd = None
+        if sys.platform in ("darwin", "linux"):
+            r = subprocess.run(["lp", path], capture_output=True, text=True, timeout=10)
+            if r.returncode != 0:
+                return False, r.stderr or r.stdout or "Print command failed"
+        else:
+            r = subprocess.run(["start", "/p", path], capture_output=True, shell=True, timeout=10)
+            if r.returncode != 0:
+                return False, "Print command failed"
+        return True, "Sent to printer"
+    except subprocess.TimeoutExpired:
+        return False, "Print timed out"
+    except Exception as e:
+        return False, str(e)
+    finally:
+        if fd is not None:
+            os.close(fd)
 
 
 def _form_section_bar(title, bar_color=(1,1,1,1), height=dp(44)):
@@ -162,15 +190,32 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     layout.add_widget(bottom_box)
 
     emergency_svc = services.get("emergency_service")
-    if emergency_svc and getattr(emergency_svc, "get_pdf_url", None):
-        pdf_url = emergency_svc.get_pdf_url()
+    if emergency_svc and getattr(emergency_svc, "get_emergency_profile_pdf", None):
+        print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=dp(36))
+
+        def _do_print(status_label, _dt):
+            result = emergency_svc.get_emergency_profile_pdf()
+            if not result.success:
+                status_label.text = "Print failed: could not get PDF"
+                return
+            if not result.data:
+                status_label.text = "Print failed: no PDF data"
+                return
+            ok, msg = _print_pdf_bytes(result.data)
+            status_label.text = msg if ok else f"Print failed: {msg}"
+
+        def _on_print(*_):
+            print_status.text = "Printing..."
+            Clock.schedule_once(lambda dt: _do_print(print_status, dt), 0)
+
         print_btn = KioskButton(
             text="Print Emergency Document",
             size_hint_y=None,
             height=dp(56),
-            on_release=lambda *a: webbrowser.open(pdf_url),
+            on_release=_on_print,
         )
         layout.add_widget(print_btn)
+        layout.add_widget(print_status)
 
     attach_emergency_border(layout, services)
     return layout

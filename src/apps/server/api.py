@@ -6,9 +6,8 @@ WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
   - container/container.py         → create_service_container(db_path) used here
   - container/calendar_service.py → GET /api/family_circles/<id>/calendar/*
   - container/medication_service.py → GET /api/family_circles/<id>/medications
-  - container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary
+  - container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary, emergency-profile
   - container/contact_service.py  (used by emergency_service; no direct endpoint)
-  - container/ice_profile_service.py → GET/PUT /api/family_circles/<id>/ice-profile
 
 WHERE IT MOVED TO (client uses these instead of container on client):
   - client/remote.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
@@ -126,7 +125,7 @@ def create_server_app(db_path=None):
     medication_svc = container.get_medication_service()
     contact_svc = container.get_contact_service()
     location_svc = container.get_location_service()
-    ice_profile_svc = container.get_ice_profile_service()
+    emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
 
     def _parse_date_param():
@@ -213,7 +212,7 @@ def create_server_app(db_path=None):
     @app.route("/api/family_circles/<family_circle_id>/medical-summary")
     def api_medical_summary(family_circle_id):
         _require_family_access(family_circle_id)
-        r = ice_profile_svc.get_medical_summary(family_circle_id)
+        r = emergency_svc.get_medical_summary(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -229,18 +228,18 @@ def create_server_app(db_path=None):
         _alert_activated = bool(data.get("activated", False))
         return jsonify({"data": {"activated": _alert_activated}})
 
-    @app.route("/api/family_circles/<family_circle_id>/ice-profile", methods=["GET", "PUT"])
-    def api_ice_profile(family_circle_id):
+    @app.route("/api/family_circles/<family_circle_id>/emergency-profile", methods=["GET", "PUT"])
+    def api_emergency_profile(family_circle_id):
         _require_family_access(family_circle_id)
         if request.method == "GET":
-            r = ice_profile_svc.get_ice_profile(family_circle_id)
+            r = emergency_svc.get_emergency_profile(family_circle_id)
             if not r.success:
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
-        # TODO: why does ice profile need to ever PUT or update care recipient? 
+        # TODO: why does emergency profile need to ever PUT or update care recipient?
         care_recipient_svc = container.get_care_recipient_service()
         r = care_recipient_svc.update_care_recipient(family_circle_id, data)
         if not r.success:
@@ -303,6 +302,9 @@ def create_server_app(db_path=None):
     @app.route("/api/family_circles/<family_circle_id>/checkin", methods=["POST"])
     def api_create_checkin(family_circle_id):
         """Create a new location check-in."""
+        # TODO: use userid for this, not family circle. allowing the user to checkin to multiple families if needed? 
+        # TODO: rename something like 'create_checkin'
+        _require_family_access(family_circle_id)
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
@@ -323,7 +325,6 @@ def create_server_app(db_path=None):
         if user_id != g.user_id:
             return jsonify({"error": "cannot check in for another user"}), 403
 
-        _require_family_access(family_circle_id)
         r = location_svc.create_checkin(
             family_circle_id, user_id, latitude, longitude, notes=notes
         )
@@ -343,6 +344,7 @@ def create_server_app(db_path=None):
     def api_get_checkins(family_circle_id):
         """Get latest check-in per family member. Adds photo_url when user has a photo.
         Why: family map needs checkins and photos in one call."""
+        # TODO: rename something like 'get_checkins'
         _require_family_access(family_circle_id)
         r = location_svc.get_checkins(family_circle_id)
         if not r.success:

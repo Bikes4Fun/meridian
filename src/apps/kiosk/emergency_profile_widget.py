@@ -1,5 +1,5 @@
 """
-Emergency layout widget: form-style layout (IN CASE OF EMERGENCY, PERSONAL INFORMATION, MEDICAL EMERGENCY CONTACTS).
+Emergency layout widget: form-style layout (PERSONAL INFORMATION, MEDICAL EMERGENCY CONTACTS).
 Used by WidgetFactory.create_emergency_layout_widget().
 """
 

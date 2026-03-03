@@ -197,8 +197,8 @@ class RemoteAlertService:
         return ServiceResult.success_result(data or {"activated": False})
 
 
-class RemoteICEProfileService:
-    """ICE profile, medical summary, and emergency contacts from the server."""
+class RemoteEmergencyProfileService:
+    """Emergency profile (first responder view), medical summary, and emergency contacts from the server."""
 
     def __init__(
         self,
@@ -212,14 +212,14 @@ class RemoteICEProfileService:
         self._headers = _headers(user_id, family_circle_id)
         self._session = session
 
-    def get_ice_profile(self) -> Any:
+    def get_emergency_profile(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/family_circles/{self._fc_id}/ice-profile",
+            f"{self._base}/api/family_circles/{self._fc_id}/emergency-profile",
             headers=self._headers,
             session=self._session,
         )
         if not ok:
-            return ServiceResult.error_result(err or "ice request failed")
+            return ServiceResult.error_result(err or "emergency-profile request failed")
         return ServiceResult.success_result(data)
 
     def get_emergency_contacts(self) -> Any:
@@ -364,7 +364,7 @@ def create_remote(
         "medication_service": RemoteMedicationService(
             server_url, user_id, family_circle_id, session
         ),
-        "ice_profile_service": RemoteICEProfileService(
+        "emergency_service": RemoteEmergencyProfileService(
             server_url, user_id, family_circle_id, session
         ),
         "location_service": RemoteLocationService(
@@ -373,7 +373,6 @@ def create_remote(
         "alert_service": RemoteAlertService(
             server_url, user_id, family_circle_id, session
         ),
+        "_alert_activated": [False],
     }
-    services["emergency_service"] = services["ice_profile_service"]
-    services["_alert_activated"] = [False]
     return services

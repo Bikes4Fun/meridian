@@ -33,7 +33,7 @@ def _format_contacts_for_display(contacts, include_header=True):
     for c in contacts:
         phone = c.get("phone") or ""
         rel = c.get("relationship") or ""
-        lines.append(f"• {c.get('display_name', '')} - {phone}: {rel}")
+        lines.append(f"• {c.get('display_name', '')} ({rel}) {phone}")
     return "\n".join(lines)
 
 
@@ -155,7 +155,6 @@ class WidgetFactory:
         self.calendar_service = services.get("calendar_service")
         self.emergency_service = services.get("emergency_service")
         self.medication_service = services.get("medication_service")
-        self.ice_profile_service = services.get("ice_profile_service")
         self.location_service = services.get("location_service")
 
     def create_widget(self, widget_type, **kwargs):
@@ -375,27 +374,28 @@ class WidgetFactory:
     def create_emergency_screen_widget(self):
         """Create emergency profile in form style. Implemented in emergency_profile.py."""
         from .emergency_profile_widget import create_emergency_layout_widget as build_emergency_layout_widget
+        # TODO: why are we renaming a function to use as a new name? 
         emergency_widget = KioskWidget()
 
-        if not self.ice_profile_service:
+        if not self.emergency_service:
             err_label = KioskLabel(type="header", text="Emergency profile service not available")
             emergency_widget.add_widget(err_label)
             return emergency_widget
 
-        all_data = self.ice_profile_service.get_ice_profile()
+        all_data = self.emergency_service.get_emergency_profile()
         if not all_data.success or not all_data.data:
             err_label = KioskLabel(type="header", text="Emergency profile not found")
             emergency_widget.add_widget(err_label)
             return emergency_widget
 
-        ec_result = self.ice_profile_service.get_emergency_contacts()
+        ec_result = self.emergency_service.get_emergency_contacts()
         if not ec_result.success or not ec_result.data:
             # create error for emergency data
             return emergency_widget
 
         e_data = all_data.data
         e_contacts = {
-            "contacts": ec_result.data,
+            "contacts": ec_result.data, #TODO: don't need ALL contacts, only emergency designated contacts
             "poa_name": e_data.get("poa_name"),
             "poa_phone": e_data.get("poa_phone"),
             "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get("name"),

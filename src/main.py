@@ -154,7 +154,7 @@ def main():
             if use_local
             else {}
         )
-        app = create_app(config_manager, api_url=api_url, **auth)
+        app = create_app(api_url=api_url, **auth)
         logger.info("Meridian Kiosk, server, and webapp created successfully, starting...")
         app.run()
     except Exception as e:

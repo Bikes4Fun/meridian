@@ -63,7 +63,7 @@ class ContactService(DatabaseServiceMixin):
         ]
         return ServiceResult.success_result(contacts)
 
-    def get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
+    def c_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
             SELECT id, display_name, phone, email, birthday, relationship, priority
             FROM contacts

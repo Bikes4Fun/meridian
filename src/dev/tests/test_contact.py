@@ -2,8 +2,6 @@
 Unit and integration tests for ContactService and EmergencyService.
 """
 import pytest
-from apps.server.services.contact import ContactService
-from apps.server.services.emergency import EmergencyService
 from dev.tests.conftest import FAMILY_CIRCLE_ID
 
 

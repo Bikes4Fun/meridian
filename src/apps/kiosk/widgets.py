@@ -11,6 +11,7 @@ from .modular_display import (
 
 
 # Top section: Day + Time of day (left) | Icon (right)
+from kivy.graphics import Color, Line
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
@@ -299,14 +300,9 @@ class WidgetFactory:
             emergency_widget.add_widget(err_label)
             return emergency_widget
 
-        ec_result = self.emergency_service.get_emergency_contacts()
-        if not ec_result.success or not ec_result.data:
-            # create error for emergency data
-            return emergency_widget
-
         e_data = all_data.data
         e_contacts = {
-            "contacts": ec_result.data, #TODO: don't need ALL contacts, only emergency designated contacts
+            "contacts": e_data.get("emergency_contacts") or [], 
             "poa_name": e_data.get("poa_name"),
             "poa_phone": e_data.get("poa_phone"),
             "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get("name"),

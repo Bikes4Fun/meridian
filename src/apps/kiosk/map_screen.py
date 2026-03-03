@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from kivy.uix.boxlayout import BoxLayout
 
 from apps.kiosk.modular_display import KioskLabel
 from apps.kiosk.widgets import apply_debug_border

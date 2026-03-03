@@ -236,6 +236,9 @@ def create_server_app(db_path=None):
             if not r.success:
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
+        
+        if request.method != "PUT": # TODO: why are we allowing a PUT method in the route, and then 'defensive'ly failing it?
+            return  # defensive
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
@@ -245,6 +248,21 @@ def create_server_app(db_path=None):
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
+
+    @app.route("/api/family_circles/<family_circle_id>/emergency-profile/pdf")
+    def api_emergency_profile_pdf(family_circle_id):
+        _require_family_access(family_circle_id)
+        r = emergency_svc.get_emergency_profile(family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        if not r.data:
+            return jsonify({"error": "No emergency profile"}), 404
+        pdf_bytes = build_pdf(r.data)
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-Disposition": "inline; filename=emergency-profile.pdf"},
+        )
 
     _web_client_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")

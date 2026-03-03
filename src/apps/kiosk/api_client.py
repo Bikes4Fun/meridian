@@ -235,8 +235,8 @@ class RemoteEmergencyProfileService:
         return ServiceResult.success_result(data)
 
     def get_pdf_url(self) -> str:
-        """URL for the printable PDF (GET emergency-profile returns PDF by default)."""
-        return f"{self._base}/api/family_circles/{self._fc_id}/emergency-profile"
+        """URL for the printable PDF."""
+        return f"{self._base}/api/family_circles/{self._fc_id}/emergency-profile/pdf"
 
 
 class RemoteLocationService:

@@ -58,6 +58,27 @@ def _get(
         return False, None, str(e)
 
 
+def _get_raw(
+    url: str,
+    timeout: int = 10,
+    headers: Optional[dict] = None,
+    session: Optional["requests.Session"] = None,
+) -> Tuple[bool, Optional[bytes], Optional[str]]:
+    """GET URL and return response body as bytes (e.g. for PDF)."""
+    try:
+        import requests
+    except ImportError:
+        return False, None, "requests not installed"
+    try:
+        client = session if session else requests
+        r = client.get(url, timeout=timeout, headers=headers or {})
+        r.raise_for_status()
+        return True, r.content, None
+    except Exception as e:
+        logger.debug("Request failed %s: %s", url, e)
+        return False, None, str(e)
+
+
 class LocalTimeService:
     """Time from the device (no server call)."""
 
@@ -237,6 +258,17 @@ class RemoteEmergencyProfileService:
     def get_pdf_url(self) -> str:
         """URL for the printable PDF."""
         return f"{self._base}/api/family_circles/{self._fc_id}/emergency-profile/pdf"
+
+    def get_emergency_profile_pdf(self) -> Any:
+        """Fetch PDF bytes for the emergency profile (for printing)."""
+        ok, data, err = _get_raw(
+            self.get_pdf_url(),
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "emergency-profile PDF request failed")
+        return ServiceResult.success_result(data)
 
 
 class RemoteLocationService:

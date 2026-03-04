@@ -1,6 +1,11 @@
 """
 Tests for the client/server API (Flask server).
 Uses the Flask test client; no running server required.
+
+API auth (from apps.server.api set_user_id / _require_family_access):
+- No auth: GET /api/health, POST /api/login, GET /login
+- Session only (no headers): /checkin (redirect), /checkin.js (401), GET /api/session (401) — require session user_id + family_circle_id
+- Both X-User-Id and X-Family-Circle-Id (or session): all other API routes. Family-scoped routes also require URL family_circle_id == header family.
 """
 
 import sys
@@ -13,6 +18,7 @@ if str(src_dir) not in sys.path:
 import pytest
 from apps.server.api import create_server_app
 from dev.tests.conftest import (
+    CARE_RECIPIENT_USER_ID,
     FAMILY_CIRCLE_ID,
     TEST_USER_ID,
     OTHER_FAMILY_ID,
@@ -30,6 +36,32 @@ def api_client(populated_test_db):
 
 
 API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
+
+# Every protected API route that requires both X-User-Id and X-Family-Circle-Id (no auth → 401).
+# Family-scoped: URL family must match header family (wrong family → 403).
+PROTECTED_GET_ROUTES = [
+    ("/api/family_circles/%s/calendar/headers", True),
+    ("/api/family_circles/%s/calendar/month", True),
+    ("/api/family_circles/%s/calendar/date", True),
+    ("/api/family_circles/%s/calendar/events", True),
+    ("/api/family_circles/%s/medications", True),
+    ("/api/family_circles/%s/contacts", True),
+    ("/api/family_circles/%s/emergency-contacts", True),
+    ("/api/family_circles/%s/medical-summary", True),
+    ("/api/family_circles/%s/emergency-profile", True),
+    ("/api/family_circles/%s/emergency-profile/pdf", True),
+    ("/api/family_circles/%s/family-members", True),
+    ("/api/family_circles/%s/named-places", True),
+    ("/api/family_circles/%s/checkins", True),
+    ("/api/emergency/alert/status", False),
+]
+# (path_template, is_family_scoped): is_family_scoped means URL has family_circle_id and _require_family_access applies
+
+PROTECTED_POST_PUT_ROUTES = [
+    ("/api/emergency/alert", "POST", False, {"json": {"activated": False}}),
+    ("/api/family_circles/%s/emergency-profile", "PUT", True, {"json": {"user_id": CARE_RECIPIENT_USER_ID, "name": "x"}}),
+]
+# (path_template, method, is_family_scoped, kwargs for request)
 
 
 # --- Security: no secrets in client-facing responses ---
@@ -105,6 +137,42 @@ def test_unauthenticated_user_cannot_access_any_protected_endpoint(api_client):
     for path in paths_any_family:
         r = api_client.get(path)
         assert r.status_code == 401, "unauthenticated must not access %s" % path
+
+
+@pytest.mark.integration
+def test_every_protected_get_route_requires_both_headers_401(api_client):
+    """Every protected GET route returns 401 with no X-User-Id / X-Family-Circle-Id."""
+    for template, is_family_scoped in PROTECTED_GET_ROUTES:
+        if "%s" in template:
+            path = template % FAMILY_CIRCLE_ID
+        else:
+            path = template
+        if "calendar/events" in path:
+            path += "?date=2024-01-15"
+        r = api_client.get(path)
+        assert r.status_code == 401, "no auth must get 401: %s" % path
+
+
+@pytest.mark.integration
+def test_every_family_scoped_route_rejects_wrong_family_403(api_client):
+    """Every family-scoped route returns 403 when authenticated as fam_a but URL is fam_b."""
+    for template, is_family_scoped in PROTECTED_GET_ROUTES:
+        if not is_family_scoped:
+            continue
+        path = template % OTHER_FAMILY_ID
+        if "calendar/events" in path:
+            path += "?date=2024-01-15"
+        r = api_client.get(path, headers=API_HEADERS)
+        assert r.status_code == 403, "fam_a must not access fam_b: %s" % path
+
+
+@pytest.mark.integration
+def test_every_protected_post_put_route_requires_both_headers_401(api_client):
+    """Protected POST/PUT routes return 401 with no X-User-Id / X-Family-Circle-Id."""
+    for template, method, is_family_scoped, kwargs in PROTECTED_POST_PUT_ROUTES:
+        path = (template % FAMILY_CIRCLE_ID) if is_family_scoped and "%s" in template else template
+        r = api_client.open(path, method=method, **kwargs)
+        assert r.status_code == 401, "no auth must get 401: %s %s" % (method, path)
 
 
 @pytest.mark.integration

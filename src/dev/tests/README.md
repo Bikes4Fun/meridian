@@ -16,76 +16,72 @@ pip install pytest pytest-cov pytest-mock
 
 ## Running Tests
 
-### Run all tests
+**Canonical command (from repo root):**
 ```bash
-pytest
+PYTHONPATH=src pytest src/dev/tests
 ```
 
-### Run tests with verbose output
+### Run with verbose output
 ```bash
-pytest -v
+PYTHONPATH=src pytest src/dev/tests -v
 ```
 
 ### Run specific test file
 ```bash
-pytest tests/test_time_service.py
+PYTHONPATH=src pytest src/dev/tests/test_api.py
 ```
 
-### Run specific test class
+### Run only integration tests (uses database or API)
 ```bash
-pytest tests/test_time_service.py::TestTimeService
-```
-
-### Run specific test function
-```bash
-pytest tests/test_time_service.py::TestTimeService::test_get_dayof_week
-```
-
-### Run only unit tests (fast, no database)
-```bash
-pytest -m unit
-```
-
-### Run only integration tests (requires database)
-```bash
-pytest -m integration
+PYTHONPATH=src pytest src/dev/tests -m integration
 ```
 
 ### Run with coverage report
 ```bash
-pytest --cov=apps --cov=shared --cov-report=html
+PYTHONPATH=src pytest src/dev/tests --cov=apps --cov=shared --cov-report=html
 ```
 
-This will generate an HTML coverage report in `htmlcov/index.html`.
+## API security (auth requirements)
+
+All auth is enforced in `apps.server.api` (`set_user_id`, `_require_family_access`).
+
+**No auth (public):** GET `/api/health`, POST `/api/login`, GET `/login`
+
+**Session only** (no headers; session must have `user_id` + `family_circle_id`): GET `/checkin` (redirect to `/login` if no session), GET `/checkin.js` (401), GET `/api/session` (401)
+
+**Both X-User-Id and X-Family-Circle-Id** (or same from session) required for all other API routes. Family-scoped routes also require the URL `family_circle_id` to match the header (wrong family → 403):
+
+- GET `/api/family_circles/<id>/calendar/headers`, `calendar/month`, `calendar/date`, `calendar/events`
+- GET `/api/family_circles/<id>/medications`, `contacts`, `emergency-contacts`, `medical-summary`
+- GET `/api/family_circles/<id>/emergency-profile`, `emergency-profile/pdf`
+- GET `/api/family_circles/<id>/family-members`, `named-places`, `checkins`
+- GET `/api/emergency/alert/status` (no family in URL; still requires both headers)
+- POST `/api/emergency/alert`
+- GET/PUT `/api/family_circles/<id>/emergency-profile`
+- POST `/api/family_circles/<id>/checkin` (body `user_id` must equal `X-User-Id`)
+- GET `/api/users/<user_id>/photo` (user must be in same family as `X-Family-Circle-Id`)
+
+Tests in `test_api.py` use `PROTECTED_GET_ROUTES` and `PROTECTED_POST_PUT_ROUTES` to assert every protected route returns 401 without auth and every family-scoped route returns 403 when requesting another family.
 
 ## Test Structure
 
-- `conftest.py` - Shared fixtures and test utilities
-- `test_time_service.py` - Tests for TimeService (unit tests)
-- `test_database_manager.py` - Tests for DatabaseManager (unit + integration)
-- `test_calendar_service.py` - Tests for CalendarService (unit + integration)
-- `test_medication_service.py` - Tests for MedicationService (unit + integration)
-- `test_contact_service.py` - Tests for ContactService and EmergencyService (unit + integration)
+Security and infrastructure only (no feature-specific tests):
+
+- `conftest.py` - Shared fixtures; fixture data is source of truth (see schema alignment there)
+- `test_api.py` - Flask API: no secrets in responses, unauthenticated URL → 401, fam_a cannot access fam_b → 403, check-in identity, photo family check, one stack check (integration)
+- `test_database.py` - DatabaseManager: schema, persistence, invalid path (integration)
+
+Out of scope for this suite: `test_time_service.py` is empty (time formatting is not security/infrastructure).
 
 ## Test Markers
 
-Tests are marked with pytest markers:
-- `@pytest.mark.unit` - Fast unit tests that don't require database
-- `@pytest.mark.integration` - Tests that require database connection
-- `@pytest.mark.slow` - Tests that take a long time (not currently used)
+- `@pytest.mark.integration` - Uses database or API client (all current tests)
+- `@pytest.mark.unit` - Reserved; not used
+- `@pytest.mark.slow` - Not currently used
 
 ## Test Fixtures
 
-Common fixtures available in `conftest.py`:
-- `temp_db_path` - Temporary database file path
-- `test_db_config` - Database configuration for testing
-- `test_db_manager` - DatabaseManager instance with test database
-- `populated_test_db` - Database with sample data
-- `time_service` - TimeService instance
-- `contact_service` - ContactService with test database
-- `calendar_service` - CalendarService with test database
-- `medication_service` - MedicationService with test database
-- `emergency_service` - EmergencyService instance
+Fixtures used (in `conftest.py`): `temp_db_path`, `test_db_config`, `test_db_manager`, `populated_test_db`, `api_client` (in test_api.py)
 
 ## Writing New Tests
 

@@ -63,7 +63,7 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
     for contact in contacts:
         query = """
             INSERT OR REPLACE INTO contacts 
-            (id, family_circle_id, display_name, phone, email, birthday, relationship, priority, photo_filename, notes)
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
@@ -74,7 +74,7 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
             contact.get("email"),
             contact.get("birthday"),
             contact.get("relationship"),
-            contact.get("priority"),
+            contact.get("emergency_priority"),
             contact.get("photo_filename"),
             contact.get("notes"),
         )

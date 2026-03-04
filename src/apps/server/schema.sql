@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     email TEXT,
     birthday TEXT,
     relationship TEXT,
-    priority TEXT,
+    emergency_priority TEXT,
     photo_filename TEXT,
     notes TEXT,
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)

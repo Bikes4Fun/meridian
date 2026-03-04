@@ -3,8 +3,6 @@ Emergency layout widget: form-style layout (PERSONAL INFORMATION, MEDICAL EMERGE
 Used by WidgetFactory.create_emergency_layout_widget().
 """
 
-import webbrowser
-
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.anchorlayout import AnchorLayout
@@ -161,16 +159,8 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     # apply_debug_border(bottom_box)
     layout.add_widget(bottom_box)
 
-    emergency_svc = services.get("emergency_service")
-    if emergency_svc and getattr(emergency_svc, "get_pdf_url", None):
-        pdf_url = emergency_svc.get_pdf_url()
-        print_btn = KioskButton(
-            text="Print Emergency Document",
-            size_hint_y=None,
-            height=dp(56),
-            on_release=lambda *a: webbrowser.open(pdf_url),
-        )
-        layout.add_widget(print_btn)
+    from .emergency_print import add_emergency_print_section
+    add_emergency_print_section(layout, services)
 
     attach_emergency_border(layout, services)
     return layout

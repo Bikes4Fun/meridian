@@ -1,14 +1,14 @@
 """
-Unit and integration tests for DatabaseManager.
+Integration tests for DatabaseManager (DB required). Infrastructure: schema, persistence, invalid path.
 """
+import os
 import pytest
-import sqlite3
 from apps.server.database import DatabaseManager
 from shared.config import DatabaseConfig
 from shared.interfaces import ServiceResult
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 class TestDatabaseManager:
     """Test cases for DatabaseManager."""
     
@@ -104,25 +104,45 @@ class TestDatabaseManager:
             ()
         )
         assert query_result.data[0]['count'] == 3
-    
-    def test_get_table_info(self, test_db_manager):
-        """Test getting table schema information."""
-        result = test_db_manager.get_table_info('contacts')
-        
+
+    def test_db_persistence_write_then_read(self, test_db_manager):
+        """Write then read back in same test; proves writes stick."""
+        test_db_manager.execute_update(
+            "INSERT OR REPLACE INTO family_circles (id) VALUES (?)",
+            ("persist_test_fc",),
+        )
+        r = test_db_manager.execute_query(
+            "SELECT id FROM family_circles WHERE id = ?",
+            ("persist_test_fc",),
+        )
+        assert r.success is True
+        assert len(r.data) == 1
+        assert r.data[0]["id"] == "persist_test_fc"
+
+    def test_fresh_db_schema_queryable(self, test_db_config):
+        """Fresh DB (schema only, no seed): tables exist and are queryable."""
+        manager = DatabaseManager(test_db_config)
+        result = manager.create_database_schema()
         assert result.success is True
-        assert len(result.data) > 0
-        # Check that we have column information
-        column_names = [row['name'] for row in result.data]
-        assert 'id' in column_names
-        assert 'display_name' in column_names
-    
-    def test_get_table_count(self, test_db_manager):
-        """Test getting table row count."""
-        result = test_db_manager.get_table_count('contacts')
-        
-        assert result.success is True
-        assert isinstance(result.data, int)
-        assert result.data >= 0
+        r = manager.execute_query("SELECT id FROM family_circles LIMIT 1", ())
+        assert r.success is True
+        assert r.data is not None
+        r2 = manager.execute_query("SELECT id FROM contacts LIMIT 1", ())
+        assert r2.success is True
+
+    def test_invalid_db_path_fails(self, test_db_config):
+        """Invalid DB path: DatabaseManager.create_database_schema returns error with 'Schema creation failed'."""
+        config = DatabaseConfig(
+            path=os.path.join(os.path.sep, "nonexistent_dir_xyz", "db.db"),
+            create_if_missing=True,
+            backup_enabled=False,
+            connection_timeout=1,
+        )
+        manager = DatabaseManager(config)
+        result = manager.create_database_schema()
+        assert result.success is False
+        assert result.error
+        assert "Schema creation failed" in result.error
     
     def test_create_database_schema(self, test_db_config):
         """Test creating database schema."""
@@ -171,5 +191,5 @@ class TestDatabaseManagerIntegration:
         assert result.success is False
         
         # Verify the valid data is still there
-        count_result = test_db_manager.get_table_count('test_table')
-        assert count_result.data == 1
+        count_result = test_db_manager.execute_query("SELECT COUNT(*) as n FROM test_table", ())
+        assert count_result.success and count_result.data[0]["n"] == 1

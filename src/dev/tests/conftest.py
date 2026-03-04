@@ -4,7 +4,6 @@ Shared test fixtures and utilities for Meridian tests.
 import os
 import tempfile
 import pytest
-import sqlite3
 from pathlib import Path
 
 # Add src directory to path for new package layout
@@ -54,7 +53,14 @@ def test_db_manager(test_db_config):
     return manager
 
 
+# Single source of truth for API and integration tests. Align with apps.server.schema.
 FAMILY_CIRCLE_ID = 'test_family'
+TEST_USER_ID = 'test_user'
+CARE_RECIPIENT_USER_ID = 'care_recipient_user'
+OTHER_FAMILY_ID = 'other_family'
+OTHER_FAMILY_USER_ID = 'other_family_user'
+PATH_TRAVERSAL_USER_ID = 'path_traversal_user'
+REF_DATE = '2024-01-15'
 
 
 @pytest.fixture
@@ -64,7 +70,7 @@ def family_circle_id():
 
 @pytest.fixture
 def sample_contacts_data():
-    """Sample contact data for testing."""
+    """Sample contact data for testing. Use primary_emergency/secondary_emergency for emergency-contacts filter."""
     return [
         {
             'id': 'contact1',
@@ -73,7 +79,7 @@ def sample_contacts_data():
             'phone': '555-0100',
             'email': 'john@example.com',
             'relationship': 'Son',
-            'priority': 'emergency'
+            'emergency_priority': 'primary_emergency'
         },
         {
             'id': 'contact2',
@@ -82,7 +88,7 @@ def sample_contacts_data():
             'phone': '555-0101',
             'email': 'jane@example.com',
             'relationship': 'Daughter',
-            'priority': 'emergency'
+            'emergency_priority': 'secondary_emergency'
         },
         {
             'id': 'contact3',
@@ -90,35 +96,71 @@ def sample_contacts_data():
             'display_name': 'Dr. Smith',
             'phone': '555-0200',
             'relationship': 'Doctor',
-            'priority': 'normal'
+            'emergency_priority': 'normal'
         }
     ]
 
 
 @pytest.fixture
 def populated_test_db(test_db_manager, sample_contacts_data):
-    """Create a test database with sample data."""
-    test_db_manager.execute_update(
-        "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
-        (FAMILY_CIRCLE_ID,),
+    """Create a test database with sample data. Matches schema: users, user_family_circle, care_recipients, medications by care_recipient_user_id."""
+    db = test_db_manager
+    db.execute_update("INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (FAMILY_CIRCLE_ID,))
+    db.execute_update("INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (OTHER_FAMILY_ID,))
+
+    db.execute_update(
+        "INSERT OR REPLACE INTO users (id, display_name) VALUES (?, ?)",
+        (TEST_USER_ID, 'Test User'),
     )
-    # Insert sample contacts
+    db.execute_update(
+        "INSERT OR REPLACE INTO users (id, display_name) VALUES (?, ?)",
+        (CARE_RECIPIENT_USER_ID, 'Care Recipient'),
+    )
+    db.execute_update(
+        "INSERT OR REPLACE INTO users (id, display_name) VALUES (?, ?)",
+        (OTHER_FAMILY_USER_ID, 'Other User'),
+    )
+    db.execute_update(
+        "INSERT OR REPLACE INTO users (id, display_name, photo_filename) VALUES (?, ?, ?)",
+        (PATH_TRAVERSAL_USER_ID, 'Path Traversal Test', '../evil'),
+    )
+    db.execute_update(
+        "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+        (TEST_USER_ID, FAMILY_CIRCLE_ID),
+    )
+    db.execute_update(
+        "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+        (PATH_TRAVERSAL_USER_ID, FAMILY_CIRCLE_ID),
+    )
+    db.execute_update(
+        "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+        (CARE_RECIPIENT_USER_ID, FAMILY_CIRCLE_ID),
+    )
+    db.execute_update(
+        "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+        (OTHER_FAMILY_USER_ID, OTHER_FAMILY_ID),
+    )
+
+    db.execute_update(
+        "INSERT OR REPLACE INTO care_recipients (family_circle_id, care_recipient_user_id, name) VALUES (?, ?, ?)",
+        (FAMILY_CIRCLE_ID, CARE_RECIPIENT_USER_ID, 'Care Recipient'),
+    )
+
     for contact in sample_contacts_data:
-        query = """
-            INSERT INTO contacts (id, family_circle_id, display_name, phone, email, relationship, priority)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        test_db_manager.execute_update(query, (
-            contact['id'],
-            contact['user_id'],
-            contact['display_name'],
-            contact.get('phone'),
-            contact.get('email'),  # Use .get() to handle missing email
-            contact.get('relationship'),
-            contact.get('priority')
-        ))
-    
-    # Insert medication times (family-scoped)
+        db.execute_update(
+            """INSERT INTO contacts (id, family_circle_id, display_name, phone, email, relationship, emergency_priority)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                contact['id'],
+                contact['user_id'],
+                contact['display_name'],
+                contact.get('phone'),
+                contact.get('email'),
+                contact.get('relationship'),
+                contact.get('emergency_priority'),
+            ),
+        )
+
     times = [
         ('Morning', '06:00:00'),
         ('Afternoon', '12:00:00'),
@@ -126,39 +168,40 @@ def populated_test_db(test_db_manager, sample_contacts_data):
         ('prn', None),
     ]
     for name, time_val in times:
-        query = "INSERT INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)"
-        test_db_manager.execute_update(query, (FAMILY_CIRCLE_ID, name, time_val))
-    # Insert sample medications
-    meds = [
-        ('Lisinopril', '10 mg', 'daily', FAMILY_CIRCLE_ID),
-        ('Metformin', '500 mg', 'twice daily', FAMILY_CIRCLE_ID),
-    ]
-    for name, dosage, frequency, fc_id in meds:
-        query = """
-            INSERT INTO medications (name, dosage, frequency, family_circle_id, taken_today)
-            VALUES (?, ?, ?, ?, 0)
-        """
-        test_db_manager.execute_update(query, (name, dosage, frequency, fc_id))
-    # Link medications to times (Lisinopril->Morning, Metformin->Afternoon)
-    test_db_manager.execute_update(
-        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (1, 1)", ()
+        db.execute_update(
+            "INSERT INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
+            (FAMILY_CIRCLE_ID, name, time_val),
+        )
+    r = db.execute_query("SELECT id FROM medication_times WHERE family_circle_id = ? ORDER BY name", (FAMILY_CIRCLE_ID,))
+    time_ids = [row['id'] for row in r.data] if r.success and r.data else []
+    morning_id = time_ids[0] if len(time_ids) > 0 else 1
+    afternoon_id = time_ids[1] if len(time_ids) > 1 else 2
+
+    db.execute_update(
+        """INSERT INTO medications (care_recipient_user_id, name, dosage, frequency, taken_today)
+           VALUES (?, ?, ?, ?, 0)""",
+        (CARE_RECIPIENT_USER_ID, 'Lisinopril', '10 mg', 'daily'),
     )
-    test_db_manager.execute_update(
-        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (2, 2)", ()
+    db.execute_update(
+        """INSERT INTO medications (care_recipient_user_id, name, dosage, frequency, taken_today)
+           VALUES (?, ?, ?, ?, 0)""",
+        (CARE_RECIPIENT_USER_ID, 'Metformin', '500 mg', 'twice daily'),
     )
-    
-    # Insert sample calendar events
-    events = [
-        ('event1', FAMILY_CIRCLE_ID, 'Doctor Appointment', '2024-01-15 10:00:00', '2024-01-15 11:00:00', 'Clinic'),
-        ('event2', FAMILY_CIRCLE_ID, 'Family Visit', '2024-01-15 14:00:00', '2024-01-15 16:00:00', 'Home')
-    ]
-    for event_id, fc_id, title, start, end, location in events:
-        query = """
-            INSERT INTO calendar_events (id, family_circle_id, title, start_time, end_time, location)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """
-        test_db_manager.execute_update(query, (event_id, fc_id, title, start, end, location))
-    
+    med_r = db.execute_query("SELECT id FROM medications WHERE care_recipient_user_id = ? ORDER BY name", (CARE_RECIPIENT_USER_ID,))
+    med_ids = [row['id'] for row in med_r.data] if med_r.success and med_r.data else [1, 2]
+    db.execute_update("INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (?, ?)", (med_ids[0], morning_id))
+    db.execute_update("INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (?, ?)", (med_ids[1], afternoon_id))
+
+    for event_id, fc_id, title, start, end, location in [
+        ('event1', FAMILY_CIRCLE_ID, 'Doctor Appointment', REF_DATE + ' 10:00:00', REF_DATE + ' 11:00:00', 'Clinic'),
+        ('event2', FAMILY_CIRCLE_ID, 'Family Visit', REF_DATE + ' 14:00:00', REF_DATE + ' 16:00:00', 'Home'),
+    ]:
+        db.execute_update(
+            """INSERT INTO calendar_events (id, family_circle_id, title, start_time, end_time, location)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (event_id, fc_id, title, start, end, location),
+        )
+
     return test_db_manager
 
 

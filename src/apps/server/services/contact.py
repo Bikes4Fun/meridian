@@ -27,7 +27,7 @@ class Contact:
     email: Optional[str] = None
     birthday: Optional[str] = None
     relationship: Optional[str] = None
-    priority: Optional[str] = None
+    emergency_priority: Optional[str] = None
 
     def __str__(self):
         return f"{self.display_name} ({self.relationship}) - {self.phone}"
@@ -42,7 +42,7 @@ class ContactService(DatabaseServiceMixin):
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
-            SELECT id, display_name, phone, email, birthday, relationship, priority
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority
             FROM contacts
             WHERE family_circle_id = ?
         """
@@ -57,7 +57,7 @@ class ContactService(DatabaseServiceMixin):
                 email=row["email"],
                 birthday=row["birthday"],
                 relationship=row["relationship"],
-                priority=row["priority"],
+                emergency_priority=row["emergency_priority"],
             )
             for row in result.data
         ]
@@ -65,9 +65,9 @@ class ContactService(DatabaseServiceMixin):
 
     def c_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
-            SELECT id, display_name, phone, email, birthday, relationship, priority
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority
             FROM contacts
-            WHERE family_circle_id = ? AND priority IN ('primary_emergency', 'secondary_emergency')
+            WHERE family_circle_id = ? AND emergency_priority IN ('primary_emergency', 'secondary_emergency')
         """
         result = self.safe_query(query, (family_circle_id,))
         if not result.success:
@@ -80,7 +80,7 @@ class ContactService(DatabaseServiceMixin):
                 email=row["email"],
                 birthday=row["birthday"],
                 relationship=row["relationship"],
-                priority=row["priority"],
+                emergency_priority=row["emergency_priority"],
             )
             for row in result.data
         ]
@@ -88,7 +88,7 @@ class ContactService(DatabaseServiceMixin):
 
     def get_contact_by_id(self, contact_id: str) -> ServiceResult:
         query = """
-            SELECT id, display_name, phone, email, birthday, relationship, priority
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority
             FROM contacts WHERE id = ?
         """
         result = self.safe_query(query, (contact_id,))
@@ -104,7 +104,7 @@ class ContactService(DatabaseServiceMixin):
                     email=row["email"],
                     birthday=row["birthday"],
                     relationship=row["relationship"],
-                    priority=row["priority"],
+                    emergency_priority=row["emergency_priority"],
                 )
             )
         return ServiceResult.error_result(f"Contact with ID '{contact_id}' not found")

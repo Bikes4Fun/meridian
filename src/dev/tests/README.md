@@ -16,76 +16,50 @@ pip install pytest pytest-cov pytest-mock
 
 ## Running Tests
 
-### Run all tests
+**Canonical command (from repo root):**
 ```bash
-pytest
+PYTHONPATH=src pytest src/dev/tests
 ```
 
-### Run tests with verbose output
+### Run with verbose output
 ```bash
-pytest -v
+PYTHONPATH=src pytest src/dev/tests -v
 ```
 
 ### Run specific test file
 ```bash
-pytest tests/test_time_service.py
+PYTHONPATH=src pytest src/dev/tests/test_api.py
 ```
 
-### Run specific test class
+### Run only integration tests (uses database or API)
 ```bash
-pytest tests/test_time_service.py::TestTimeService
-```
-
-### Run specific test function
-```bash
-pytest tests/test_time_service.py::TestTimeService::test_get_dayof_week
-```
-
-### Run only unit tests (fast, no database)
-```bash
-pytest -m unit
-```
-
-### Run only integration tests (requires database)
-```bash
-pytest -m integration
+PYTHONPATH=src pytest src/dev/tests -m integration
 ```
 
 ### Run with coverage report
 ```bash
-pytest --cov=apps --cov=shared --cov-report=html
+PYTHONPATH=src pytest src/dev/tests --cov=apps --cov=shared --cov-report=html
 ```
-
-This will generate an HTML coverage report in `htmlcov/index.html`.
 
 ## Test Structure
 
-- `conftest.py` - Shared fixtures and test utilities
-- `test_time_service.py` - Tests for TimeService (unit tests)
-- `test_database_manager.py` - Tests for DatabaseManager (unit + integration)
-- `test_calendar_service.py` - Tests for CalendarService (unit + integration)
-- `test_medication_service.py` - Tests for MedicationService (unit + integration)
-- `test_contact_service.py` - Tests for ContactService and EmergencyService (unit + integration)
+Security and infrastructure only (no feature-specific tests):
+
+- `conftest.py` - Shared fixtures; fixture data is source of truth (see schema alignment there)
+- `test_api.py` - Flask API: no secrets in responses, unauthenticated URL → 401, fam_a cannot access fam_b → 403, check-in identity, photo family check, one stack check (integration)
+- `test_database.py` - DatabaseManager: schema, persistence, invalid path (integration)
+
+Out of scope for this suite: `test_time_service.py` is empty (time formatting is not security/infrastructure).
 
 ## Test Markers
 
-Tests are marked with pytest markers:
-- `@pytest.mark.unit` - Fast unit tests that don't require database
-- `@pytest.mark.integration` - Tests that require database connection
-- `@pytest.mark.slow` - Tests that take a long time (not currently used)
+- `@pytest.mark.integration` - Uses database or API client (all current tests)
+- `@pytest.mark.unit` - Reserved; not used
+- `@pytest.mark.slow` - Not currently used
 
 ## Test Fixtures
 
-Common fixtures available in `conftest.py`:
-- `temp_db_path` - Temporary database file path
-- `test_db_config` - Database configuration for testing
-- `test_db_manager` - DatabaseManager instance with test database
-- `populated_test_db` - Database with sample data
-- `time_service` - TimeService instance
-- `contact_service` - ContactService with test database
-- `calendar_service` - CalendarService with test database
-- `medication_service` - MedicationService with test database
-- `emergency_service` - EmergencyService instance
+Fixtures used (in `conftest.py`): `temp_db_path`, `test_db_config`, `test_db_manager`, `populated_test_db`, `api_client` (in test_api.py)
 
 ## Writing New Tests
 

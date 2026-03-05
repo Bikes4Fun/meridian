@@ -12,3 +12,6 @@ src/apps/kiosk/cache/
 # Environment
 .env
 *.env
+
+.cursor/*
+

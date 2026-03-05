@@ -17,7 +17,6 @@ client/, display/, app_factory.py, icons/, and the Kivy app are not needed on th
 they can be omitted or relocated to a client-only repo.
 """
 
-import json
 import os
 import datetime
 from dataclasses import asdict
@@ -26,14 +25,12 @@ from flask import Flask, abort, jsonify, request, g, send_from_directory, Respon
 # config from shared; server internals relative
 try:
     from ...shared.config import (
-        DatabaseConfig,
         get_database_path,
         get_server_host,
         get_server_port,
     )
 except ImportError:
     from shared.config import (
-        DatabaseConfig,
         get_database_path,
         get_server_host,
         get_server_port,

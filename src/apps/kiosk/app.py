@@ -62,10 +62,13 @@ class MeridianKioskApp(App):
         family_screen = self.screen_factory.create_family_screen()
         self.screen_manager.add_widget(family_screen)
 
+        call_screen = self.screen_factory.create_call_screen()
+        self.screen_manager.add_widget(call_screen)
+
         more_screen = self.screen_factory.create_demo_screen()
         self.screen_manager.add_widget(more_screen)
 
-        self.screen_manager.current = "family"
+        self.screen_manager.current = "call"
 
         # Store reference for updates
         self.home_screen = home_screen

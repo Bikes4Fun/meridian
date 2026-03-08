@@ -19,8 +19,14 @@ they can be omitted or relocated to a client-only repo.
 
 import os
 import datetime
+import time
+import uuid
 from dataclasses import asdict
 from flask import Flask, abort, jsonify, request, g, send_from_directory, Response, redirect, session
+
+# One-time join tokens for video: join_id -> {"auth_token": str, "expires_at": float}. No fallback.
+_video_join_store = {}
+_VIDEO_JOIN_TTL_SEC = 120
 
 # config from shared; server internals relative
 try:
@@ -89,12 +95,16 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Session-based (check-in page and its script)
-        if request.path in ("/checkin", "/checkin.js", "/api/session"):
+        if request.path == "/api/video/join" and request.method == "GET":
+            g.user_id = None
+            g.family_circle_id = None
+            return
+        # Session-based (check-in page and its script, video page)
+        if request.path in ("/checkin", "/checkin.js", "/video", "/video.js", "/api/session"):
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
-                if request.path == "/checkin":
+                if request.path in ("/checkin", "/video"):
                     return redirect("/login")
                 if request.path == "/api/session":
                     abort(401, "Not logged in")
@@ -306,13 +316,92 @@ def create_server_app(db_path=None):
     def serve_checkin_js():
         return _serve_with_api_url("checkin.js")
 
+    @app.route("/video")
+    def serve_video():
+        return _serve_with_api_url("video.html")
+
+    @app.route("/video.js")
+    def serve_video_js():
+        return _serve_with_api_url("video.js")
+
+    @app.route("/api/video/participant-token", methods=["POST"])
+    def api_video_participant_token():
+        """Create Dyte meeting, add participant, return one-time join URL. Requires auth (headers or session)."""
+        import base64
+        import requests as _requests
+        org_id = os.environ.get("DYTE_ORG_ID")
+        api_key = os.environ.get("DYTE_API_KEY")
+        preset_name = os.environ.get("DYTE_PRESET_NAME")
+        if not org_id or not api_key or not preset_name:
+            return jsonify({"error": "Video chat is not configured"}), 503
+        auth = base64.b64encode(f"{org_id}:{api_key}".encode()).decode()
+        headers = {"Authorization": f"Basic {auth}", "Content-Type": "application/json"}
+        create_resp = _requests.post(
+            "https://api.dyte.io/v2/meetings",
+            headers=headers,
+            json={"title": "Meridian Video", "preferred_region": "ap-south-1", "record_on_start": False},
+            timeout=10,
+        )
+        if not create_resp.ok:
+            return jsonify({"error": "Failed to create Dyte meeting"}), 502
+        meeting_data = create_resp.json().get("data")
+        if not meeting_data:
+            return jsonify({"error": "Invalid Dyte response"}), 502
+        meeting_id = meeting_data.get("id")
+        if not meeting_id:
+            return jsonify({"error": "No meeting id from Dyte"}), 502
+        participant_resp = _requests.post(
+            f"https://api.dyte.io/v2/meetings/{meeting_id}/participants",
+            headers=headers,
+            json={"name": g.user_id or "Kiosk User", "preset_name": preset_name},
+            timeout=10,
+        )
+        if not participant_resp.ok:
+            return jsonify({"error": "Failed to add Dyte participant"}), 502
+        part_data = participant_resp.json().get("data")
+        if not part_data:
+            return jsonify({"error": "Invalid Dyte participant response"}), 502
+        token = part_data.get("token")
+        if not token:
+            return jsonify({"error": "No token from Dyte"}), 502
+        now = time.time()
+        for k in list(_video_join_store.keys()):
+            if _video_join_store[k]["expires_at"] < now:
+                del _video_join_store[k]
+        join_id = str(uuid.uuid4())
+        _video_join_store[join_id] = {
+            "auth_token": token,
+            "expires_at": now + _VIDEO_JOIN_TTL_SEC,
+        }
+        base = request.url_root.rstrip("/")
+        join_url = f"{base}/video?join={join_id}"
+        return jsonify({"joinUrl": join_url})
+
+    @app.route("/api/video/join")
+    def api_video_join():
+        """Exchange one-time join id for Dyte authToken. No auth; one-time id is the secret."""
+        join_id = request.args.get("join")
+        if not join_id:
+            return jsonify({"error": "missing join"}), 400
+        entry = _video_join_store.pop(join_id, None)
+        if not entry:
+            return jsonify({"error": "invalid or expired join"}), 404
+        if time.time() > entry["expires_at"]:
+            return jsonify({"error": "expired join"}), 404
+        return jsonify({"authToken": entry["auth_token"]})
+
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):
         _require_family_access(family_circle_id)
         r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        data = r.data or []
+        base = request.url_root.rstrip("/")
+        for row in data:
+            if row.get("photo_filename") and row.get("id"):
+                row["photo_url"] = f"{base}/api/users/{row['id']}/photo"
+        return jsonify({"data": data})
 
     @app.route("/api/family_circles/<family_circle_id>/checkin", methods=["POST"])
     def api_create_checkin(family_circle_id):

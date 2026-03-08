@@ -365,6 +365,72 @@ class RemoteLocationService:
             return None
 
 
+class RemoteFamilyService:
+    """Family members from server API."""
+
+    def __init__(
+        self,
+        base_url: str,
+        user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
+        self._headers = _headers(user_id, family_circle_id)
+        self._session = session
+
+    def get_family_members(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/family-members",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "family-members request failed")
+        return ServiceResult.success_result(data if data is not None else [])
+
+
+class RemoteVideoService:
+    """Video join URL from server (one-time link for Dyte)."""
+
+    def __init__(
+        self,
+        base_url: str,
+        user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(user_id, family_circle_id)
+        self._session = session
+
+    def get_join_url(self) -> Any:
+        """POST for one-time join URL. Fails if Dyte not configured."""
+        try:
+            import requests
+        except ImportError:
+            return ServiceResult.error_result("requests not installed")
+        try:
+            client = self._session if self._session else requests
+            r = client.post(
+                f"{self._base}/api/video/participant-token",
+                headers=self._headers,
+                timeout=15,
+            )
+            r.raise_for_status()
+            j = r.json()
+            if "error" in j:
+                return ServiceResult.error_result(j["error"])
+            join_url = j.get("joinUrl")
+            if not join_url:
+                return ServiceResult.error_result("No joinUrl in response")
+            return ServiceResult.success_result(join_url)
+        except Exception as e:
+            logger.debug("Video join request failed: %s", e)
+            return ServiceResult.error_result(str(e))
+
+
 def create_remote(
     server_url: str,
     user_id: Optional[str] = None,
@@ -391,6 +457,12 @@ def create_remote(
             server_url, user_id, family_circle_id, session
         ),
         "location_service": RemoteLocationService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "family_service": RemoteFamilyService(
+            server_url, user_id, family_circle_id, session
+        ),
+        "video_service": RemoteVideoService(
             server_url, user_id, family_circle_id, session
         ),
         "alert_service": RemoteAlertService(

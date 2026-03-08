@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #1a1a1a; color: #eee; min-height: 100vh; }
+        #status { margin: 10px 0; }
+        #meeting-container { width: 100%; height: 80vh; min-height: 400px; }
+        dyte-meeting { width: 100%; height: 100%; display: block; }
+    </style>
+    <script>
+        var __API_URL__ = '__API_URL__';
+        var API_URL = (__API_URL__.startsWith('http') ? __API_URL__ : '');
+    </script>
+    <script type="module">
+        import { defineCustomElements } from 'https://cdn.jsdelivr.net/npm/@dytesdk/ui-kit/loader/index.es2017.js';
+        defineCustomElements();
+    </script>
+    <script src="https://cdn.dyte.in/core/dyte.js"></script>
+</head>
+<body>
+    <div id="status"></div>
+    <div id="meeting-container" style="display: none;">
+        <dyte-meeting id="dyte-meeting"></dyte-meeting>
+    </div>
+    <script src="video.js"></script>
+</body>
+</html>

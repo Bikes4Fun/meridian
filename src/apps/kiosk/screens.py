@@ -6,12 +6,16 @@ Handles the creation of different kiosk screens.
 import os
 import logging
 
+import webbrowser
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.scrollview import ScrollView
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
     KioskLabel,
+    KioskButton,
 )
 from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
 
@@ -203,12 +207,60 @@ class ScreenFactory:
 
         return screen
 
+    def create_call_screen(self):
+        """Create Call screen: family grid; tap opens video join URL in browser."""
+        screen = Screen(name="call")
+        main_layout = self.screen_template_boxlayout()
+        scroll = ScrollView(size_hint=(1, 1))
+        grid = GridLayout(cols=2, spacing=dp(16), padding=dp(16), size_hint_y=None)
+        grid.bind(minimum_height=grid.setter("height"))
+        scroll.add_widget(grid)
+        main_layout.add_widget(scroll)
+        screen.add_widget(main_layout)
+
+        def on_call_enter(instance):
+            grid.clear_widgets()
+            family_svc = self.services.get("family_service")
+            video_svc = self.services.get("video_service")
+            loc_svc = self.services.get("location_service")
+            if not family_svc or not video_svc:
+                grid.add_widget(KioskLabel(type="body", text="Video not available."))
+                return
+            result = family_svc.get_family_members()
+            if not result.success or not result.data:
+                grid.add_widget(KioskLabel(type="body", text="No family members."))
+                return
+            cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+            for member in result.data:
+                name = member.get("display_name") or member.get("id") or "?"
+                if loc_svc and member.get("id") and hasattr(loc_svc, "fetch_photo_to_cache"):
+                    loc_svc.fetch_photo_to_cache(member["id"], cache_dir)
+                btn = KioskButton(text=name, size_hint_y=None, height=dp(120))
+
+                def make_callback(_video_svc, _btn):
+                    def on_press(instance):
+                        _btn.disabled = True
+                        r = _video_svc.get_join_url()
+                        _btn.disabled = False
+                        if r.success and r.data:
+                            webbrowser.open(r.data)
+                        else:
+                            logger.warning("Video join failed: %s", r.error if r else "no result")
+                    return on_press
+
+                btn.bind(on_press=make_callback(video_svc, btn))
+                grid.add_widget(btn)
+
+        screen.bind(on_enter=on_call_enter)
+        return screen
+
     def _create_navigation(self):
         """Create navigation bar using modular components."""
         nav_buttons = [
             {"text": "Home", "screen": "home"},
             {"text": "Emergency", "screen": "emergency"},
             {"text": "Family", "screen": "family"},
+            {"text": "Call", "screen": "call"},
             {"text": "Demo", "screen": "demo"},
         ]
         return KioskNavBar(

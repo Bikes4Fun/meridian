@@ -6,22 +6,42 @@ Handles the creation of different kiosk screens.
 import os
 import logging
 
-import webbrowser
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.image import Image as KivyImage
+from kivy.uix.behaviors import ButtonBehavior
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
     KioskLabel,
-    KioskButton,
 )
 from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
 
 from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
+
+_DYTE_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dyte_meeting.html")
+
+
+def _dyte_html_with_token(auth_token):
+    """Return full HTML string for Dyte meeting with token embedded (for pywebview)."""
+    import json
+    with open(_DYTE_TEMPLATE_PATH, "r", encoding="utf-8") as f:
+        template = f.read()
+    return template.replace("__DYTE_AUTH_TOKEN__", json.dumps(auth_token))
+
+
+class ContactCard(ButtonBehavior, BoxLayout):
+    """Clickable card: photo (or placeholder) and display name. .member holds the family member dict."""
+
+    def __init__(self, **kwargs):
+        super().__init__(orientation="vertical", **kwargs)
+        self.size_hint_y = None
+        self.height = dp(220)
+        self.member = None
 
 
 def _crop_image_to_circle(src_path, size=200):
@@ -208,50 +228,74 @@ class ScreenFactory:
         return screen
 
     def create_call_screen(self):
-        """Create Call screen: family grid; tap opens video join URL in browser."""
+        """Call/contacts screen: family member photos; tap to start video call (Dyte in pywebview)."""
+        import threading
         screen = Screen(name="call")
         main_layout = self.screen_template_boxlayout()
+
         scroll = ScrollView(size_hint=(1, 1))
-        grid = GridLayout(cols=2, spacing=dp(16), padding=dp(16), size_hint_y=None)
+        grid = GridLayout(cols=2, size_hint_y=None, padding=dp(16), spacing=dp(16))
         grid.bind(minimum_height=grid.setter("height"))
+
+        family_svc = self.services.get("family_service")
+        video_svc = self.services.get("video_service")
+        loc_svc = self.services.get("location_service")
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+
+        members = []
+        if family_svc:
+            result = family_svc.get_family_members()
+            if result.success and result.data:
+                members = result.data
+
+        def on_member_press(instance):
+            """Start video call: get token, open Dyte in pywebview. instance is the ContactCard."""
+            if not video_svc:
+                logger.warning("Video service not available")
+                return
+            result = video_svc.get_participant_token()
+            if not result.success:
+                logger.warning("Video join failed: %s", result.error)
+                return
+            token = result.data.get("authToken")
+            if not token:
+                return
+            html = _dyte_html_with_token(token)
+            def run_webview():
+                try:
+                    import webview
+                    webview.create_window("Video call", html=html, width=900, height=700)
+                    webview.start()
+                except Exception as e:
+                    logger.warning("WebView failed: %s", e)
+
+            threading.Thread(target=run_webview, daemon=True).start()
+
+        for m in members:
+            card = ContactCard()
+            card.member = m
+            user_id = m.get("id") or ""
+            display_name = m.get("display_name") or user_id or "?"
+            photo_path = None
+            if loc_svc and user_id and hasattr(loc_svc, "fetch_photo_to_cache"):
+                photo_path = loc_svc.fetch_photo_to_cache(user_id, cache_dir)
+            img = KivyImage(
+                source=photo_path if photo_path else "",
+                size_hint_y=0.8,
+                allow_stretch=True,
+                keep_ratio=True,
+            )
+            card.add_widget(img)
+            label = KioskLabel(type="body", text=display_name)
+            label.size_hint_y = 0.2
+            label.halign = "center"
+            card.add_widget(label)
+            card.bind(on_press=on_member_press)
+            grid.add_widget(card)
+
         scroll.add_widget(grid)
         main_layout.add_widget(scroll)
         screen.add_widget(main_layout)
-
-        def on_call_enter(instance):
-            grid.clear_widgets()
-            family_svc = self.services.get("family_service")
-            video_svc = self.services.get("video_service")
-            loc_svc = self.services.get("location_service")
-            if not family_svc or not video_svc:
-                grid.add_widget(KioskLabel(type="body", text="Video not available."))
-                return
-            result = family_svc.get_family_members()
-            if not result.success or not result.data:
-                grid.add_widget(KioskLabel(type="body", text="No family members."))
-                return
-            cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-            for member in result.data:
-                name = member.get("display_name") or member.get("id") or "?"
-                if loc_svc and member.get("id") and hasattr(loc_svc, "fetch_photo_to_cache"):
-                    loc_svc.fetch_photo_to_cache(member["id"], cache_dir)
-                btn = KioskButton(text=name, size_hint_y=None, height=dp(120))
-
-                def make_callback(_video_svc, _btn):
-                    def on_press(instance):
-                        _btn.disabled = True
-                        r = _video_svc.get_join_url()
-                        _btn.disabled = False
-                        if r.success and r.data:
-                            webbrowser.open(r.data)
-                        else:
-                            logger.warning("Video join failed: %s", r.error if r else "no result")
-                    return on_press
-
-                btn.bind(on_press=make_callback(video_svc, btn))
-                grid.add_widget(btn)
-
-        screen.bind(on_enter=on_call_enter)
         return screen
 
     def _create_navigation(self):

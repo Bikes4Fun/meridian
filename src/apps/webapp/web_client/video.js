@@ -1,37 +1,37 @@
 (function () {
     'use strict';
-    var params = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
-    var joinId = params.get('join');
+    var API_URL = (typeof __API_URL__ !== 'undefined' && __API_URL__.indexOf('http') === 0) ? __API_URL__ : '';
     var statusEl = document.getElementById('status');
-    if (!joinId) {
-        if (statusEl) statusEl.textContent = 'Open from kiosk to start a call.';
-        return;
+    var meetingEl = document.getElementById('dyte-meeting');
+
+    function setStatus(msg) {
+        if (statusEl) statusEl.textContent = msg;
     }
-    if (statusEl) statusEl.textContent = 'Joining...';
-    var base = (typeof API_URL !== 'undefined' && API_URL) ? API_URL : '';
-    fetch(base + '/api/video/join?join=' + encodeURIComponent(joinId))
+
+    function showMeeting() {
+        if (statusEl) statusEl.style.display = 'none';
+        if (meetingEl) meetingEl.style.display = 'block';
+    }
+
+    fetch(API_URL + '/api/video/participant-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    })
         .then(function (r) {
-            if (!r.ok) throw new Error('Invalid or expired link');
+            if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.status); });
             return r.json();
         })
         .then(function (data) {
-            if (!data.authToken) throw new Error('No token');
-            return data.authToken;
-        })
-        .then(function (authToken) {
-            return window.DyteClient.init({
-                authToken: authToken,
-                defaults: { audio: true, video: true }
-            });
+            var token = data && data.authToken;
+            if (!token) throw new Error('No token');
+            return DyteClient.init({ authToken: token, defaults: { audio: true, video: true } });
         })
         .then(function (meeting) {
-            var el = document.getElementById('dyte-meeting');
-            var container = document.getElementById('meeting-container');
-            if (el) el.meeting = meeting;
-            if (container) container.style.display = 'block';
-            if (statusEl) statusEl.textContent = '';
+            if (meetingEl) meetingEl.meeting = meeting;
+            showMeeting();
         })
         .catch(function (e) {
-            if (statusEl) statusEl.textContent = 'Could not join: ' + (e.message || 'error');
+            setStatus('Video error: ' + (e.message || e));
         });
 })();

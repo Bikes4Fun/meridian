@@ -26,7 +26,7 @@ function showMeeting() {
   if (s) s.style.display = 'none';
   if (m) m.style.display = 'block';
 }
-window.addEventListener('DOMContentLoaded', function() {
+function joinMeeting() {
   var token = __DYTE_AUTH_TOKEN__;
   if (!token) { showStatus('No token.'); return; }
   if (typeof DyteClient === 'undefined') { showStatus('Dyte script not loaded. Check network.'); return; }
@@ -44,6 +44,25 @@ window.addEventListener('DOMContentLoaded', function() {
       });
     })
     .catch(function(e) { showStatus('Failed: ' + String(e)); });
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var useEmulator = __DYTE_EMULATOR__ || (new URLSearchParams(window.location.search)).get('emulator') === '1';
+  if (!useEmulator) {
+    joinMeeting();
+    return;
+  }
+  window.addEventListener('dyte.deviceEmulatorLoaded', function onLoaded() {
+    window.removeEventListener('dyte.deviceEmulatorLoaded', onLoaded);
+    if (navigator.mediaDevices.addEmulatedDevice) {
+      navigator.mediaDevices.addEmulatedDevice('videoinput');
+      navigator.mediaDevices.addEmulatedDevice('audioinput');
+    }
+    joinMeeting();
+  });
+  var script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@dytesdk/device-emulator/dist/index.iife.js';
+  document.head.appendChild(script);
 });
 </script>
 </body></html>

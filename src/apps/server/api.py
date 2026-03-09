@@ -45,6 +45,9 @@ except ImportError:
 
 _alert_activated = False
 
+import logging
+_log = logging.getLogger(__name__)
+
 
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
@@ -316,16 +319,23 @@ def create_server_app(db_path=None):
 
     @app.route("/api/video/participant-token", methods=["POST"])
     def api_video_participant_token():
-        """Return a Dyte participant auth token. Requires DYTE_ORG_ID, DYTE_API_KEY, DYTE_PRESET_NAME."""
+        """Return a Dyte participant auth token. Set either DYTE_AUTH_HEADER (Basic Z...) or DYTE_ORG_ID+DYTE_API_KEY, and DYTE_PRESET_NAME."""
         import base64
         import requests as _requests
-        org_id = os.environ.get("DYTE_ORG_ID")
-        api_key = os.environ.get("DYTE_API_KEY")
         preset_name = os.environ.get("DYTE_PRESET_NAME")
-        if not org_id or not api_key or not preset_name:
-            return jsonify({"error": "Video chat is not configured"}), 503
-        auth = base64.b64encode(f"{org_id}:{api_key}".encode()).decode()
-        headers = {"Authorization": f"Basic {auth}", "Content-Type": "application/json"}
+        if not preset_name:
+            return jsonify({"error": "Video chat is not configured (DYTE_PRESET_NAME required)"}), 503
+        auth_header = os.environ.get("DYTE_AUTH_HEADER", "").strip()
+        if auth_header:
+            if not auth_header.startswith("Basic "):
+                auth_header = "Basic " + auth_header
+        else:
+            org_id = os.environ.get("DYTE_ORG_ID")
+            api_key = os.environ.get("DYTE_API_KEY")
+            if not org_id or not api_key:
+                return jsonify({"error": "Video chat is not configured (set DYTE_AUTH_HEADER or DYTE_ORG_ID+DYTE_API_KEY)"}), 503
+            auth_header = "Basic " + base64.b64encode(f"{org_id}:{api_key}".encode()).decode()
+        headers = {"Authorization": auth_header, "Content-Type": "application/json"}
         create_resp = _requests.post(
             "https://api.dyte.io/v2/meetings",
             headers=headers,
@@ -333,7 +343,12 @@ def create_server_app(db_path=None):
             timeout=10,
         )
         if not create_resp.ok:
-            return jsonify({"error": "Failed to create Dyte meeting"}), 502
+            try:
+                body = create_resp.text
+            except Exception:
+                body = ""
+            _log.warning("Dyte create meeting failed: %s %s", create_resp.status_code, body)
+            return jsonify({"error": "Failed to create Dyte meeting", "detail": body[:200] if body else None}), 502
         meeting_data = create_resp.json().get("data")
         if not meeting_data:
             return jsonify({"error": "Invalid Dyte response"}), 502
@@ -347,7 +362,12 @@ def create_server_app(db_path=None):
             timeout=10,
         )
         if not participant_resp.ok:
-            return jsonify({"error": "Failed to add Dyte participant"}), 502
+            try:
+                body = participant_resp.text
+            except Exception:
+                body = ""
+            _log.warning("Dyte add participant failed: %s %s", participant_resp.status_code, body)
+            return jsonify({"error": "Failed to add Dyte participant", "detail": body[:200] if body else None}), 502
         part_data = participant_resp.json().get("data")
         if not part_data:
             return jsonify({"error": "Invalid Dyte participant response"}), 502

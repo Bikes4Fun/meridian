@@ -6,6 +6,14 @@ Starts the API server (DB + REST) in a background thread, then runs the Kivy TV 
 import os
 import sys
 
+# Load .env from project root so DYTE_* and other vars are set before server/kiosk start
+try:
+    from dotenv import load_dotenv
+    _root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    load_dotenv(os.path.join(_root, ".env"))
+except ImportError:
+    pass
+
 # Ensure src is on path for new package layout
 _src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 if _src_dir not in sys.path:

@@ -34,6 +34,16 @@ def _dyte_html_with_token(auth_token):
     return template.replace("__DYTE_AUTH_TOKEN__", json.dumps(auth_token))
 
 
+def _run_webview_subprocess(html):
+    """Run pywebview in this process (must be main thread). Used as multiprocessing.Process target."""
+    try:
+        import webview
+        webview.create_window("Video call", html=html, width=900, height=700)
+        webview.start()
+    except Exception as e:
+        logger.warning("WebView failed: %s", e)
+
+
 class ContactCard(ButtonBehavior, BoxLayout):
     """Clickable card: photo (or placeholder) and display name. .member holds the family member dict."""
 
@@ -229,7 +239,7 @@ class ScreenFactory:
 
     def create_call_screen(self):
         """Call/contacts screen: family member photos; tap to start video call (Dyte in pywebview)."""
-        import threading
+        import multiprocessing
         screen = Screen(name="call")
         main_layout = self.screen_template_boxlayout()
 
@@ -249,7 +259,7 @@ class ScreenFactory:
                 members = result.data
 
         def on_member_press(instance):
-            """Start video call: get token, open Dyte in pywebview. instance is the ContactCard."""
+            """Start video call: get token, open Dyte in pywebview (subprocess so it has main thread)."""
             if not video_svc:
                 logger.warning("Video service not available")
                 return
@@ -261,15 +271,8 @@ class ScreenFactory:
             if not token:
                 return
             html = _dyte_html_with_token(token)
-            def run_webview():
-                try:
-                    import webview
-                    webview.create_window("Video call", html=html, width=900, height=700)
-                    webview.start()
-                except Exception as e:
-                    logger.warning("WebView failed: %s", e)
-
-            threading.Thread(target=run_webview, daemon=True).start()
+            p = multiprocessing.Process(target=_run_webview_subprocess, args=(html,))
+            p.start()
 
         for m in members:
             card = ContactCard()

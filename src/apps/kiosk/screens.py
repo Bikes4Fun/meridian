@@ -65,10 +65,11 @@ class CustomMarker(MapMarker):
 class ScreenFactory:
     """Factory for creating kiosk screens."""
 
-    def __init__(self, services, screen_manager, user_id=None):
+    def __init__(self, services, screen_manager, user_id=None, chat_url=None):
         self.services = services
         self.screen_manager = screen_manager
         self.user_id = user_id
+        self.chat_url = chat_url
         self.widget_factory = WidgetFactory(services)
 
 
@@ -203,14 +204,52 @@ class ScreenFactory:
 
         return screen
 
+    def create_chat_screen(self):
+        """Chat screen: open web chat in browser to send and receive messages. See apps/chat/README.md."""
+        from kivy.uix.button import Button
+        from kivy.uix.label import Label
+        screen = Screen(name="chat")
+        main_layout = self.screen_template_boxlayout()
+        content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
+        content.add_widget(Label(
+            text="Family Chat",
+            font_size=dp(28),
+            size_hint_y=None,
+            height=dp(48),
+        ))
+        content.add_widget(Label(
+            text="Open chat in the browser to send and receive messages with family.",
+            font_size=dp(18),
+            size_hint_y=None,
+            height=dp(60),
+        ))
+        content.add_widget(Label(size_hint_y=None, height=dp(24)))
+        open_btn = Button(
+            text="Open Chat",
+            size_hint_y=None,
+            height=dp(72),
+            font_size=dp(22),
+        )
+        def _open_chat(_):
+            import webbrowser
+            webbrowser.open(self.chat_url)
+        open_btn.bind(on_press=_open_chat)
+        content.add_widget(open_btn)
+        main_layout.add_widget(content)
+        screen.add_widget(main_layout)
+        return screen
+
     def _create_navigation(self):
         """Create navigation bar using modular components."""
         nav_buttons = [
             {"text": "Home", "screen": "home"},
             {"text": "Emergency", "screen": "emergency"},
             {"text": "Family", "screen": "family"},
+            {"text": "Chat", "screen": "chat"},
             {"text": "Demo", "screen": "demo"},
         ]
+        if not self.chat_url:
+            nav_buttons = [b for b in nav_buttons if b["screen"] != "chat"]
         return KioskNavBar(
             screen_manager=self.screen_manager,
             buttons=nav_buttons,

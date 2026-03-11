@@ -39,6 +39,11 @@ from .emergency_pdf import build_pdf
 from .services.container import create_service_container
 
 try:
+    from apps.chat.routes import bp as chat_bp
+except ImportError:
+    chat_bp = None
+
+try:
     from ...shared.config import get_uploads_dir
 except ImportError:
     from shared.config import get_uploads_dir
@@ -89,12 +94,12 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Session-based (check-in page and its script)
-        if request.path in ("/checkin", "/checkin.js", "/api/session"):
+        # Session-based (check-in page and its script; chat page and API)
+        if request.path in ("/checkin", "/checkin.js", "/api/session", "/chat", "/chat.js") or request.path.startswith("/api/chat/"):
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
-                if request.path == "/checkin":
+                if request.path in ("/checkin", "/chat"):
                     return redirect("/login")
                 if request.path == "/api/session":
                     abort(401, "Not logged in")
@@ -117,6 +122,9 @@ def create_server_app(db_path=None):
             abort(401, "X-Family-Circle-Id header required")
         g.user_id = user_id
         g.family_circle_id = family_circle_id
+
+    if chat_bp is not None:
+        app.register_blueprint(chat_bp)
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
@@ -305,6 +313,14 @@ def create_server_app(db_path=None):
     @app.route("/checkin.js")
     def serve_checkin_js():
         return _serve_with_api_url("checkin.js")
+
+    @app.route("/chat")
+    def serve_chat():
+        return _serve_with_api_url("chat.html")
+
+    @app.route("/chat.js")
+    def serve_chat_js():
+        return _serve_with_api_url("chat.js")
 
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):

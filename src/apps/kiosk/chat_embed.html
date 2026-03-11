@@ -113,7 +113,6 @@
 
     var sb = null;
     var currentChannel = null;
-    var GroupChannelModule = null;
 
     Promise.all([loadConfig(), loadToken()])
         .then(function (results) {
@@ -129,7 +128,6 @@
             var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
             return import(sdkUrl).then(function (chatMod) {
                 return import(groupUrl).then(function (groupMod) {
-                    GroupChannelModule = groupMod;
                     sb = chatMod.default.init({
                         appId: config.app_id,
                         modules: [new groupMod.GroupChannelModule()]
@@ -147,46 +145,31 @@
                 name: 'Family'
             });
         })
-        .catch(function (err) {
-            if (err && err.code === 800220) {
-                log('Channel exists (800220), querying for existing channel', recipientSb);
-                var qt = GroupChannelModule && GroupChannelModule.QueryType ? GroupChannelModule.QueryType.AND : 'AND';
-                var query = sb.groupChannel.createMyGroupChannelListQuery({
-                    userIdsFilter: { userIds: [recipientSb], includeMode: true, queryType: qt },
-                    limit: 1,
-                });
-                return query.next().then(function (channels) {
-                    if (channels && channels.length > 0) {
-                        log('Found existing channel', channels[0].url || channels[0].channelUrl);
-                        return channels[0];
-                    }
-                    throw new Error('Could not find existing channel with ' + recipientSb);
-                });
-            }
-            throw err;
-        })
         .then(function (channel) {
             currentChannel = channel;
             log('Channel ready', channel.url || channel.channelUrl);
             setStatus('1:1 chat');
             inputRow.style.display = 'flex';
-            var fn = channel.getMessageList ? channel.getMessageList.bind(channel) : null;
-            var opts = { prevResultSize: 50, nextResultSize: 0 };
-            return fn ? channel.getMessageList(opts) : channel.getMessagesByTimestamp(0, opts);
-        })
-        .then(function (list) {
-            var msgs = (list && list.messages) ? list.messages : (list || []);
-            for (var i = 0; i < msgs.length; i++) {
-                var m = msgs[i];
-                var txt = (m.message || '').trim();
-                if (!txt) continue;
-                var sender = (m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?');
-                var isSelf = m.sender && m.sender.userId === sb.currentUser.userId;
-                var ts = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
-                appendBubble(txt, isSelf, ts);
-            }
             sendBtn.onclick = sendMessage;
             msgInput.onkeydown = function (e) { if (e.key === 'Enter') sendMessage(); };
+            var query = channel.createPreviousMessageListQuery ? channel.createPreviousMessageListQuery({ limit: 50 }) : null;
+            if (query && query.load) {
+                return query.load().then(function (list) {
+                    var msgs = Array.isArray(list) ? list : [];
+                    for (var i = 0; i < msgs.length; i++) {
+                        var m = msgs[i];
+                        var txt = (m.message || '').trim();
+                        if (!txt) continue;
+                        var isSelf = m.sender && m.sender.userId === sb.currentUser.userId;
+                        var ts = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+                        appendBubble(txt, isSelf, ts);
+                    }
+                }).catch(function (loadErr) {
+                    logErr('Load messages failed (send still works)', loadErr);
+                    setStatus('Loaded with errors. You can still send.');
+                });
+            }
+            return Promise.resolve();
         })
         .catch(function (err) {
             logErr('Channel error', err);

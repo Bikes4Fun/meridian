@@ -224,12 +224,10 @@
         var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
         var sb = null;
         var currentChannel = null;
-        var GroupChannelModule = null;
 
         return import(sdkUrl)
             .then(function (chatMod) {
                 return import(groupUrl).then(function (groupMod) {
-                    GroupChannelModule = groupMod;
                     var SendbirdChat = chatMod.default;
                     sb = SendbirdChat.init({
                         appId: appId,
@@ -247,44 +245,31 @@
                     name: 'Family'
                 });
             })
-            .catch(function (err) {
-                if (err && err.code === 800220) {
-                    log('Channel exists (800220), querying for existing channel', recipientSendbirdUserId);
-                    var qt = GroupChannelModule && GroupChannelModule.QueryType ? GroupChannelModule.QueryType.AND : 'AND';
-                    var query = sb.groupChannel.createMyGroupChannelListQuery({
-                        userIdsFilter: { userIds: [recipientSendbirdUserId], includeMode: true, queryType: qt },
-                        limit: 1,
-                    });
-                    return query.next().then(function (channels) {
-                        if (channels && channels.length > 0) {
-                            log('Found existing channel', channels[0].url || channels[0].channelUrl);
-                            return channels[0];
-                        }
-                        throw new Error('Could not find existing channel with ' + recipientSendbirdUserId);
-                    });
-                }
-                throw err;
-            })
             .then(function (channel) {
                 currentChannel = channel;
                 log('Channel ready', channel.url || channel.channelUrl);
                 if (sendRow) sendRow.style.display = 'flex';
-                return channel.getMessageList ? channel.getMessageList({ prevResultSize: 50, nextResultSize: 0 }) : channel.getMessagesByTimestamp(0, { prevResultSize: 50, nextResultSize: 0 });
-            })
-            .then(function (list) {
-                var messages = (list && list.messages) ? list.messages : (list || []);
-                for (var i = 0; i < messages.length; i++) {
-                    var m = messages[i];
-                    var txt = (m.message || '').trim();
-                    if (!txt) continue;
-                    var isSelf = m.sender && m.sender.userId === sb.currentUser.userId;
-                    var displayTxt = embedded ? txt : ((m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?')) + ': ' + txt;
-                    appendMessage(displayTxt, isSelf);
-                }
-                setStatus(embedded ? '1:1 chat' : '1:1 chat. You can send messages below.', 'success');
-
                 sendBtn.addEventListener('click', sendMessage);
                 msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMessage(); });
+                setStatus(embedded ? '1:1 chat' : '1:1 chat. You can send messages below.', 'success');
+                var query = channel.createPreviousMessageListQuery ? channel.createPreviousMessageListQuery({ limit: 50 }) : null;
+                if (query && query.load) {
+                    return query.load().then(function (list) {
+                        var messages = Array.isArray(list) ? list : [];
+                        for (var i = 0; i < messages.length; i++) {
+                            var m = messages[i];
+                            var txt = (m.message || '').trim();
+                            if (!txt) continue;
+                            var isSelf = m.sender && m.sender.userId === sb.currentUser.userId;
+                            var displayTxt = embedded ? txt : ((m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?')) + ': ' + txt;
+                            appendMessage(displayTxt, isSelf);
+                        }
+                    }).catch(function (loadErr) {
+                        logErr('Load messages failed (send still works)', loadErr);
+                        setStatus('Loaded with errors. You can still send.', 'info');
+                    });
+                }
+                return Promise.resolve();
             })
             .catch(function (err) {
                 logErr('Channel error', err);

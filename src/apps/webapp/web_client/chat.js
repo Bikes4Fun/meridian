@@ -231,8 +231,18 @@
                     var SendbirdChat = chatMod.default;
                     sb = SendbirdChat.init({
                         appId: appId,
-                        modules: [new groupMod.GroupChannelModule()]
+                        modules: [new groupMod.GroupChannelModule()],
+                        localCacheEnabled: false
                     });
+                    var connectionHandler = new chatMod.ConnectionHandler({
+                        onConnected: function (userId) { log('ConnectionHandler: connected', userId); },
+                        onDisconnected: function (userId) { log('ConnectionHandler: disconnected', userId); },
+                        onReconnectStarted: function () { log('ConnectionHandler: reconnect started'); },
+                        onReconnectSucceeded: function () { log('ConnectionHandler: reconnect succeeded'); },
+                        onReconnectFailed: function () { logErr('ConnectionHandler: reconnect failed'); },
+                        onConnectionLost: function () { logErr('ConnectionHandler: connection lost'); }
+                    });
+                    sb.addConnectionHandler('meridian-chat', connectionHandler);
                     return sb.connect(sendbirdUserId, sessionToken);
                 });
             })

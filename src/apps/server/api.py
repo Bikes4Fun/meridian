@@ -253,16 +253,12 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
-        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_url and sendbird_user_id."""
+        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_filename and sendbird_user_id."""
         _require_family_access(family_circle_id)
         r = contact_svc.get_all_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         contacts = [asdict(c) for c in (r.data or [])]
-        base = request.url_root.rstrip("/")
-        for c in contacts:
-            if c.get("photo_filename") and c.get("id"):
-                c["photo_url"] = "%s/api/photo/contact/%s" % (base, c["id"])
         return jsonify({"data": contacts})
 
     @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
@@ -434,49 +430,13 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/checkins")
     def api_get_checkins(family_circle_id):
-        """Get latest check-in per family member. Adds photo_url when user has a photo.
-        Why: family map needs checkins and photos in one call."""
+        """Get latest check-in per family member. Returns photo_filename for client to build photo URL."""
         # TODO: rename something like 'get_checkins'
         _require_family_access(family_circle_id)
         r = location_svc.get_checkins(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        data = r.data or []
-        base = request.url_root.rstrip("/")
-        for row in data:
-            if row.get("photo_filename") and row.get("user_id"):
-                row["photo_url"] = "%s/api/photo/user/%s" % (base, row["user_id"])
-        return jsonify({"data": data})
-
-    @app.route("/api/photo/<entity_type>/<entity_id>")
-    def api_serve_photo(entity_type, entity_id):
-        """Serve user or contact photo. entity_type: 'user' or 'contact'. Must be in current family. 404 if no photo."""
-        if entity_type not in ("user", "contact"):
-            abort(404)
-        db = container.get_database_manager()
-        if entity_type == "user":
-            r = db.execute_query(
-                "SELECT u.photo_filename FROM users u "
-                "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
-                "WHERE u.id = ? AND ufc.family_circle_id = ?",
-                (entity_id, g.family_circle_id),
-            )
-        else:
-            r = db.execute_query(
-                "SELECT photo_filename FROM contacts WHERE id = ? AND family_circle_id = ?",
-                (entity_id, g.family_circle_id),
-            )
-        if not r.success or not r.data or not r.data[0].get("photo_filename"):
-            abort(404)
-        fn = r.data[0]["photo_filename"]
-        if ".." in fn or fn.startswith("/"):
-            abort(404)
-        uploads_dir = get_uploads_dir()
-        if not os.path.exists(os.path.join(uploads_dir, fn)):
-            abort(404)
-        return send_from_directory(uploads_dir, fn, mimetype=None)
-
-    return app
+        return jsonify({"data": r.data or []})
 
 
 def run_server(host=None, port=None):

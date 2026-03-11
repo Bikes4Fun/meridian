@@ -17,12 +17,20 @@
         #msgInput { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
         #sendBtn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
         #sendBtn:disabled { background: #ccc; cursor: not-allowed; }
+        #contactsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin: 12px 0; }
+        #contactsGrid .contact-tile { padding: 12px; border: 1px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer; background: #fafafa; }
+        #contactsGrid .contact-tile:hover { background: #eee; }
+        #contactsGrid .contact-tile .name { font-size: 14px; font-weight: 500; }
     </style>
 </head>
 <body>
     <h1>Chat (Sendbird PoC)</h1>
     <p><span id="loggedInAs">You must be <a href="/login">logged in</a>.</span> Session user is used for Sendbird. <a href="/checkin">Back to Check-in</a>.</p>
     <div id="status" class="info">Loading…</div>
+    <div id="contactsSection">
+        <p><strong>Choose a contact to call</strong></p>
+        <div id="contactsGrid"></div>
+    </div>
     <div id="messages"></div>
     <div id="sendRow" style="display: none;">
         <input type="text" id="msgInput" placeholder="Type a message…">

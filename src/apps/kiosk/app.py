@@ -131,7 +131,7 @@ class MeridianKioskApp(App):
 
     def update_clock(self):
         """Update clock display."""
-        if hasattr(self, "home_screen"):
+        if getattr(self, "home_screen", None):
             # Find clock widget using recursive search
             clock_widget = self._find_widget_by_attribute(self.home_screen, "day_label")
             if clock_widget:
@@ -271,7 +271,7 @@ class MeridianKioskApp(App):
 
     def update_time(self, dt=1):
         """Update time display and check for time-of-day changes."""
-        if hasattr(self, "home_screen"):
+        if getattr(self, "home_screen", None):
             clock_widget = self._find_widget_by_attribute(
                 self.home_screen, "time_label"
             )

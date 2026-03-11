@@ -14,7 +14,6 @@ from .modular_display import (
     KioskLabel,
 )
 from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
-from .chat_screen import open_chat_window
 
 from PIL import Image, ImageDraw
 
@@ -206,27 +205,35 @@ class ScreenFactory:
         return screen
 
     def create_chat_screen(self, chat_user_id=None, chat_family_circle_id=None):
-        """Chat screen: in-app webview. Session set via entry URL (localhost-only). See apps/kiosk/chat_screen.py."""
+        """Chat screen: patient chats only with Dylan. Embedded webview or Open chat button."""
         import urllib.parse
-        from kivy.uix.button import Button
-        from kivy.uix.label import Label
+        # Patient (kiosk) chats only with Dylan (Sendbird dtzecha).
+        DYLAN_SENDBIRD_USER_ID = "dtzecha"
+        DYLAN_DISPLAY_NAME = "Dylan"
+        base = (self.chat_url or "").rstrip("/").replace("/chat", "")
+        entry_url = (
+            base + "/api/chat/entry?user_id=" + urllib.parse.quote(chat_user_id or "")
+            + "&family_circle_id=" + urllib.parse.quote(chat_family_circle_id or "")
+            + "&sendbird_user_id=" + urllib.parse.quote(DYLAN_SENDBIRD_USER_ID)
+            + "&display_name=" + urllib.parse.quote(DYLAN_DISPLAY_NAME)
+        )
+
         screen = Screen(name="chat")
         main_layout = self.screen_template_boxlayout()
-        content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
-        content.add_widget(Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48)))
-        content.add_widget(Label(
-            text="Open chat in the window below to send and receive messages.",
-            font_size=dp(18), size_hint_y=None, height=dp(60),
-        ))
-        content.add_widget(Label(size_hint_y=None, height=dp(24)))
-        open_btn = Button(text="Open Chat", size_hint_y=None, height=dp(72), font_size=dp(22))
-        if self.chat_url and chat_user_id and chat_family_circle_id:
-            base = self.chat_url.rstrip("/").replace("/chat", "")
-            url = base + "/api/chat/entry?user_id=" + urllib.parse.quote(chat_user_id) + "&family_circle_id=" + urllib.parse.quote(chat_family_circle_id)
-        else:
-            url = self.chat_url or ""
-        open_btn.bind(on_press=lambda _: open_chat_window(url))
-        content.add_widget(open_btn)
+        content = BoxLayout(orientation="vertical", size_hint=(1, 1))
+
+        try:
+            from kivy.garden.webview import WebView
+            wv = WebView(url=entry_url, size_hint=(1, 1))
+            content.add_widget(wv)
+        except Exception:
+            from kivy.uix.label import Label
+            content.add_widget(Label(
+                text="Chat requires WebView. Install: pip install kivy-garden.webview",
+                font_size=dp(18),
+                size_hint=(1, 1),
+            ))
+
         main_layout.add_widget(content)
         screen.add_widget(main_layout)
         return screen

@@ -14,6 +14,7 @@
     var sendRow = document.getElementById('sendRow');
     var msgInput = document.getElementById('msgInput');
     var sendBtn = document.getElementById('sendBtn');
+    var contactsGridEl = document.getElementById('contactsGrid');
 
     function setStatus(msg, className) {
         if (statusEl) {
@@ -57,34 +58,104 @@
         });
     }
 
-    function loadRecipient() {
-        return fetch(API_URL + '/api/chat/recipient', { credentials: 'include' })
+    function loadSession() {
+        return fetch(API_URL + '/api/session', { credentials: 'include' })
             .then(function (r) {
-                if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Recipient failed'); });
+                if (!r.ok) throw new Error('Session failed');
                 return r.json();
             });
     }
 
-    function run() {
-        setStatus('Fetching config, token and recipient…', 'info');
-        Promise.all([loadConfig(), loadToken(), loadRecipient()])
+    function loadContacts(familyCircleId) {
+        return fetch(API_URL + '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contacts', { credentials: 'include' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Contacts failed');
+                return r.json();
+            })
+            .then(function (data) { return data.data || []; });
+    }
+
+    function renderContactsGrid(contacts) {
+        if (!contactsGridEl) return;
+        contactsGridEl.innerHTML = '';
+        contacts.forEach(function (c) {
+            var tile = document.createElement('div');
+            tile.className = 'contact-tile';
+            tile.setAttribute('data-sendbird-user-id', c.sendbird_user_id || '');
+            tile.setAttribute('data-display-name', c.display_name || '');
+            var nameEl = document.createElement('span');
+            nameEl.className = 'name';
+            nameEl.textContent = c.display_name || c.id || 'Contact';
+            tile.appendChild(nameEl);
+            tile.addEventListener('click', function () { onContactClick(c); });
+            contactsGridEl.appendChild(tile);
+        });
+    }
+
+    function onContactClick(contact) {
+        var sendbirdUserId = (contact.sendbird_user_id || '').trim();
+        if (!sendbirdUserId) {
+            setStatus('Chat not available for ' + (contact.display_name || 'this contact') + '.', 'info');
+            return;
+        }
+        setStatus('Connecting…', 'info');
+        Promise.all([loadConfig(), loadToken()])
             .then(function (results) {
                 var config = results[0];
                 var tokenData = results[1];
-                var recipientData = results[2];
-                var sendbirdUserId = tokenData.sendbird_user_id;
-                if (!config.app_id || !sendbirdUserId || !tokenData.session_token) {
+                var loggedInEl = document.getElementById('loggedInAs');
+                if (loggedInEl) loggedInEl.textContent = 'Logged in as ' + (tokenData.display_name || tokenData.sendbird_user_id || 'You') + '. ';
+                if (!config.app_id || !tokenData.sendbird_user_id || !tokenData.session_token) {
                     setStatus('Missing app_id, sendbird_user_id or session_token.', 'error');
                     return;
                 }
-                if (!recipientData || !recipientData.sendbird_user_id) {
-                    setStatus('No recipient configured (SENDBIRD_DEFAULT_RECIPIENT_ID).', 'error');
+                setStatus('Opening chat with ' + (contact.display_name || sendbirdUserId) + '…', 'info');
+                return initSendbird(config.app_id, tokenData.sendbird_user_id, tokenData.session_token, sendbirdUserId);
+            })
+            .catch(function (err) {
+                setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
+            });
+    }
+
+    function getQueryParams() {
+        var params = {};
+        var q = (window.location.search || '').replace(/^\?/, '').split('&');
+        for (var i = 0; i < q.length; i++) {
+            var kv = q[i].split('=');
+            if (kv.length >= 2) params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1].replace(/\+/g, ' '));
+        }
+        return params;
+    }
+
+    function run() {
+        var q = getQueryParams();
+        var presetSb = (q.sendbird_user_id || '').trim();
+        var presetName = (q.display_name || '').trim();
+        if (presetSb) {
+            var contactsSection = document.getElementById('contactsSection');
+            if (contactsSection) contactsSection.style.display = 'none';
+            onContactClick({ sendbird_user_id: presetSb, display_name: presetName });
+            return;
+        }
+        setStatus('Loading…', 'info');
+        loadSession()
+            .then(function (session) {
+                var familyCircleId = session.family_circle_id;
+                if (!familyCircleId) {
+                    setStatus('Not in a family. Log in first.', 'error');
                     return;
                 }
-                var loggedInEl = document.getElementById('loggedInAs');
-                if (loggedInEl) loggedInEl.textContent = 'Logged in as ' + (tokenData.display_name || tokenData.sendbird_user_id || 'You') + '. ';
-                setStatus('Initializing Sendbird…', 'info');
-                return initSendbird(config.app_id, sendbirdUserId, tokenData.session_token, recipientData.sendbird_user_id);
+                // Webapp is logged in as Dylan (fm_005): open chat with patient (testpatient) directly.
+                if (session.user_id === 'fm_005') {
+                    var contactsSection = document.getElementById('contactsSection');
+                    if (contactsSection) contactsSection.style.display = 'none';
+                    onContactClick({ sendbird_user_id: 'testpatient', display_name: 'Marian Foster' });
+                    return;
+                }
+                return loadContacts(familyCircleId).then(function (contacts) {
+                    renderContactsGrid(contacts);
+                    setStatus('Choose a contact to call.', 'success');
+                });
             })
             .catch(function (err) {
                 setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
@@ -92,6 +163,7 @@
     }
 
     function initSendbird(appId, sendbirdUserId, sessionToken, recipientSendbirdUserId) {
+        if (messagesEl) messagesEl.innerHTML = '';
         // 1:1 chat: distinct group channel between sender and recipient. No open channel.
         var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/+esm';
         var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';

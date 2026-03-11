@@ -7,5 +7,5 @@
   {"id": "fm_003", "display_name": "Eleanor", "photo_filename": "eleanor gps tag.JPG", "family_circle_id": "F00000", "sendbird_user_id": "eleanor"},
   {"id": "fm_004", "display_name": "Indigo", "photo_filename": "indigo gps pin.jpeg", "family_circle_id": "F00000"},
   {"id": "fm_005", "display_name": "Dylan", "family_circle_id": "F0000", "sendbird_user_id": "dtzecha"},
-  {"id": "fm_care_001", "display_name": "Marian Foster", "photo_filename": null, "family_circle_id": "F00000"}
+  {"id": "fm_care_001", "display_name": "Marian Foster", "photo_filename": null, "family_circle_id": "F00000", "sendbird_user_id": "testpatient"}
 ]

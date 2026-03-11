@@ -15,6 +15,7 @@ from .location import LocationService
 from .emergency import EmergencyService
 from .care_recipient import CareRecipientService
 from .family import FamilyService
+from .sendbird import SendbirdService
 
 
 class ServiceContainer:
@@ -79,6 +80,13 @@ class ServiceContainer:
                 self.get_database_manager()
             )
         return self._services["family_service"]
+
+    def get_sendbird_service(self):
+        if "sendbird_service" not in self._services:
+            self._services["sendbird_service"] = SendbirdService(
+                self.get_database_manager()
+            )
+        return self._services["sendbird_service"]
 
 
 def create_service_container(db_path: str = "meridian_kiosk.db") -> ServiceContainer:

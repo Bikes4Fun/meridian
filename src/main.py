@@ -36,8 +36,9 @@ from apps.kiosk.app import create_app
 
 # TODO: from auth when not demo
 DEMO_MODE = True
-DEMO_USER_ID = "fm_001"
-DEMO_FAMILY_CIRCLE_ID = "F00000"
+# Kiosk runs as the patient (Marian Foster). Webapp user logs in as Dylan (fm_005) to chat with patient.
+PATIENT_USER_ID = "fm_care_001"
+PATIENT_FAMILY_CIRCLE_ID = "F00000"
 
 
 def _start_local_api_server(logger):
@@ -145,7 +146,7 @@ def main():
     logger.info("Starting Meridian ...")
     try:
         auth = (
-            {"user_id": DEMO_USER_ID, "family_circle_id": DEMO_FAMILY_CIRCLE_ID}
+            {"user_id": PATIENT_USER_ID, "family_circle_id": PATIENT_FAMILY_CIRCLE_ID}
             if use_local
             else {}
         )

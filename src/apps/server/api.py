@@ -19,6 +19,7 @@ they can be omitted or relocated to a client-only repo.
 
 import os
 import datetime
+import urllib.parse
 from dataclasses import asdict
 from flask import Flask, abort, jsonify, request, g, send_from_directory, Response, redirect, session
 
@@ -37,8 +38,6 @@ except ImportError:
     )
 from .emergency_pdf import build_pdf
 from .services.container import create_service_container
-
-from . import sendbird
 
 try:
     from ...shared.config import get_uploads_dir
@@ -139,30 +138,39 @@ def create_server_app(db_path=None):
             return jsonify({"error": "user_id and family_circle_id required"}), 400
         session["user_id"] = user_id
         session["family_circle_id"] = family_circle_id
-        return redirect("/chat")
+        to = "/chat"
+        sb = (request.args.get("sendbird_user_id") or "").strip()
+        dn = (request.args.get("display_name") or "").strip()
+        if sb:
+            to += "?sendbird_user_id=" + urllib.parse.quote(sb)
+            if dn:
+                to += "&display_name=" + urllib.parse.quote(dn)
+        return redirect(to)
 
     @app.route("/api/chat/config", methods=["GET"])
     def api_chat_config():
         """Return Sendbird app_id for the client SDK."""
-        if not sendbird.is_configured():
+        sendbird_svc = container.get_sendbird_service()
+        if not sendbird_svc.is_configured():
             return jsonify({"error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"}), 503
-        return jsonify({"app_id": sendbird.get_sendbird_app_id()})
+        return jsonify({"app_id": sendbird_svc.get_sendbird_app_id()})
 
     @app.route("/api/chat/token", methods=["POST"])
     def api_chat_token():
         """Issue session token for the Sendbird user mapped to this app user."""
-        if not sendbird.is_configured():
+        sendbird_svc = container.get_sendbird_service()
+        if not sendbird_svc.is_configured():
             return jsonify({"error": "Sendbird not configured"}), 503
         app_user_id = getattr(g, "user_id", None)
         if not app_user_id:
             return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird.get_sendbird_user_id_for_app_user(app_user_id) or sendbird.get_sendbird_user_id_from_env(app_user_id)
+        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(app_user_id) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
         if not sendbird_user_id:
             return jsonify({
                 "error": "No Sendbird user linked for this account",
                 "detail": "Add sendbird_user_id to this user in the DB (users table) or set SENDBIRD_USER_ID_MAP.",
             }), 400
-        ok, token_val, err = sendbird._issue_session_token(sendbird_user_id)
+        ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
         db = container.get_database_manager()
@@ -173,14 +181,15 @@ def create_server_app(db_path=None):
     @app.route("/api/chat/recipient", methods=["GET"])
     def api_chat_recipient():
         """Default 1:1 chat recipient (e.g. daughter) for the current user."""
-        if not sendbird.is_configured():
+        sendbird_svc = container.get_sendbird_service()
+        if not sendbird_svc.is_configured():
             return jsonify({"error": "Sendbird not configured"}), 503
         if not getattr(g, "user_id", None):
             return jsonify({"error": "Not logged in"}), 401
         family_circle_id = getattr(g, "family_circle_id", None) or ""
-        sendbird_recipient_id, recipient_name = sendbird.get_default_recipient(family_circle_id)
+        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(family_circle_id)
         if not sendbird_recipient_id:
-            sendbird_recipient_id = sendbird.get_sendbird_default_recipient_id_from_env()
+            sendbird_recipient_id = sendbird_svc.get_sendbird_default_recipient_id_from_env()
             recipient_name = "Family"
         if not sendbird_recipient_id:
             return jsonify({"error": "No default recipient configured", "detail": "Add sendbird_user_id to a contact (DB) or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
@@ -256,12 +265,15 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
-        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_filename and sendbird_user_id."""
+        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_url, photo_filename, sendbird_user_id."""
         _require_family_access(family_circle_id)
         r = contact_svc.get_all_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
+        base = request.url_root.rstrip("/")
         contacts = [asdict(c) for c in (r.data or [])]
+        for c in contacts:
+            c["photo_url"] = "%s/api/photo/contact/%s" % (base, c["id"])
         return jsonify({"data": contacts})
 
     @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
@@ -271,7 +283,10 @@ def create_server_app(db_path=None):
         r = contact_svc.c_service_get_emergency_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
+        base = request.url_root.rstrip("/")
         contacts = [asdict(c) for c in (r.data or [])]
+        for c in contacts:
+            c["photo_url"] = "%s/api/photo/contact/%s" % (base, c["id"])
         return jsonify({"data": contacts})
 
     @app.route("/api/family_circles/<family_circle_id>/medical-summary")
@@ -388,7 +403,11 @@ def create_server_app(db_path=None):
         r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        base = request.url_root.rstrip("/")
+        members = [dict(m) for m in (r.data or [])]
+        for m in members:
+            m["photo_url"] = "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
+        return jsonify({"data": members})
 
     @app.route("/api/family_circles/<family_circle_id>/checkin", methods=["POST"])
     def api_create_checkin(family_circle_id):
@@ -433,13 +452,18 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/checkins")
     def api_get_checkins(family_circle_id):
-        """Get latest check-in per family member. Returns photo_filename for client to build photo URL."""
+        """Get latest check-in per family member. Includes photo_url and photo_filename."""
         # TODO: rename something like 'get_checkins'
         _require_family_access(family_circle_id)
         r = location_svc.get_checkins(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data or []})
+        base = request.url_root.rstrip("/")
+        data = [dict(row) for row in (r.data or [])]
+        for row in data:
+            uid = row.get("user_id")
+            row["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
+        return jsonify({"data": data})
 
     return app
 

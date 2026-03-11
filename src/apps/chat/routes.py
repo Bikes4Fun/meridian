@@ -1,6 +1,6 @@
 """
 Sendbird Chat PoC: server-side routes only.
-Uses Platform API to issue session tokens only. Users must already exist in Sendbird; we do not create them.
+Uses Platform API (create user, issue session token). No Sendbird SDK dependency; requests only.
 """
 import time
 import urllib.parse
@@ -9,13 +9,7 @@ import requests
 from flask import Blueprint, jsonify, g, request, redirect, session
 
 # Config from this app only
-from apps.chat.config import (
-    get_sendbird_app_id,
-    get_sendbird_api_token,
-    is_configured,
-    get_sendbird_user_id,
-    get_sendbird_chat_with_user_id,
-)
+from apps.chat.config import get_sendbird_app_id, get_sendbird_api_token, is_configured
 
 bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
@@ -34,6 +28,33 @@ def _headers() -> dict:
         "Api-Token": get_sendbird_api_token(),
         "Content-Type": "application/json; charset=utf8",
     }
+
+
+def _ensure_user(user_id: str, nickname: str) -> tuple[bool, str]:
+    """
+    Create Sendbird user if not exists. Idempotent.
+    Returns (success, error_message). error_message empty on success.
+    """
+    base = _api_url()
+    if not base:
+        return False, "Sendbird not configured"
+    # Create user (Sendbird returns 400 with "unique constraint" if user_id already exists)
+    payload = {"user_id": user_id, "nickname": nickname or user_id}
+    r = requests.post(
+        base + "/users",
+        headers=_headers(),
+        json=payload,
+        timeout=10,
+    )
+    if r.status_code == 200:
+        return True, ""
+    if r.status_code == 400:
+        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        if "unique constraint" in str(body.get("message", "")).lower():
+            # User already exists; that's fine
+            return True, ""
+        return False, body.get("message", r.text)
+    return False, r.text or "Create user failed"
 
 
 def _issue_session_token(user_id: str) -> tuple[bool, str, str]:
@@ -95,26 +116,19 @@ def config():
 @bp.route("/token", methods=["POST"])
 def token():
     """
-    Issue session token for the current user's Sendbird identity. Users must already exist in Sendbird.
-    Requires existing session. Returns Sendbird user_id, session_token, and chat_with_user_id (the other party).
+    Ensure Sendbird user exists for g.user_id, issue session token.
+    Requires existing session (same as checkin). Optional JSON body: { "nickname": "Display Name" }.
     """
     if not is_configured():
         return jsonify({"error": "Sendbird not configured"}), 503
-    app_user_id = getattr(g, "user_id", None)
-    family_circle_id = getattr(g, "family_circle_id", None) or ""
-    if not app_user_id:
+    user_id = getattr(g, "user_id", None)
+    if not user_id:
         return jsonify({"error": "Not logged in"}), 401
-    sendbird_user_id = get_sendbird_user_id(app_user_id)
-    chat_with_user_id = get_sendbird_chat_with_user_id(app_user_id, family_circle_id)
-    if not sendbird_user_id:
-        return jsonify({"error": "Sendbird user mapping not configured for this user", "detail": "Set SENDBIRD_DEMO_APP_USER_ID and SENDBIRD_DEMO_SENDBIRD_USER_ID (or add DB mapping)"}), 400
-    if not chat_with_user_id:
-        return jsonify({"error": "Chat recipient not configured", "detail": "Set SENDBIRD_DEMO_CHAT_WITH_ID (Sendbird user id of the person they message, e.g. daughter)"}), 400
-    ok, token_val, err = _issue_session_token(sendbird_user_id)
+    nickname = (request.get_json(silent=True) or {}).get("nickname", "") or user_id
+    ok, err = _ensure_user(user_id, nickname)
     if not ok:
-        return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
-    return jsonify({
-        "user_id": sendbird_user_id,
-        "session_token": token_val,
-        "chat_with_user_id": chat_with_user_id,
-    })
+        return jsonify({"error": "Sendbird create user failed", "detail": err}), 502
+    ok2, token_val, err2 = _issue_session_token(user_id)
+    if not ok2:
+        return jsonify({"error": "Sendbird issue token failed", "detail": err2}), 502
+    return jsonify({"user_id": user_id, "session_token": token_val})

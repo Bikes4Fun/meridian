@@ -24,26 +24,22 @@ Format: one domain per line or comma-separated; include protocol (`http://` or `
 
 ## 2. Environment variables
 
+Set these so the server can call the Sendbird Platform API and the client can connect:
+
 - `SENDBIRD_APP_ID` – Application ID (Sendbird Dashboard → Settings → Application → General). Case-sensitive.
 - `SENDBIRD_API_TOKEN` – Master or secondary API token (Dashboard → Settings → Application → API tokens).
 
-**User mapping (demo):** Users must already exist in Sendbird; we do not create them. Map your app user to their Sendbird identity and to who they chat with:
+If either is missing, the `/api/chat/*` endpoints return an error and the chat UI will show a message.
 
-- `SENDBIRD_DEMO_APP_USER_ID` – Your app’s user_id for the kiosk/demo user (e.g. `fm_001`).
-- `SENDBIRD_DEMO_SENDBIRD_USER_ID` – That user’s Sendbird user id (must already exist in Sendbird).
-- `SENDBIRD_DEMO_CHAT_WITH_ID` – Sendbird user id of the person they message (e.g. daughter).
+## 3. Flow (PoC)
 
-Later you can replace this with a DB lookup (e.g. by phone/email) instead of demo env vars.
-
-## 3. Flow (1:1 chat)
-
-1. User logs in (session has `user_id` and `family_circle_id`).
+1. User logs in via existing webapp login (session has `user_id` and `family_circle_id`).
 2. Webapp opens `/chat`. The page requests:
-   - `GET /api/chat/config` → `{ "app_id": "..." }`.
-   - `POST /api/chat/token` → server looks up Sendbird user id and “chat with” id (from config/DB), issues a session token for the Sendbird user, returns `{ "user_id", "session_token", "chat_with_user_id" }`.
-3. The client connects to Sendbird as `user_id`, then gets or creates a **1:1 distinct group channel** with `chat_with_user_id` (e.g. patient ↔ daughter). Messages are only between those two.
+   - `GET /api/chat/config` → `{ "app_id": "..." }` (for the JS SDK).
+   - `POST /api/chat/token` → server ensures a Sendbird user exists for `g.user_id`, issues a session token, returns `{ "user_id", "session_token" }`.
+3. The browser initializes the Sendbird Chat SDK with `app_id`, connects with `user_id` + `session_token`, then lists/creates a group channel and shows messages.
 
-Server-side: no user creation; only issue session token. Logic in `apps/chat/routes.py` and `apps/chat/config.py`.
+Server-side logic lives in `apps/chat/routes.py` (Platform API: create user, issue session token). No Sendbird SDK dependency on the server; plain `requests` only.
 
 ## 4. References
 

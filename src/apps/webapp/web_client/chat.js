@@ -128,6 +128,8 @@
                 setStatus('Opening chat with ' + (contact.display_name || sendbirdUserId) + '…', 'info');
                 var chatLoggedIn = document.getElementById('chatLoggedIn');
                 if (chatLoggedIn) chatLoggedIn.textContent = 'Logged in messaging as ' + (tokenData.display_name || tokenData.sendbird_user_id || '…');
+                var chatMessagingWith = document.getElementById('chatMessagingWith');
+                if (chatMessagingWith) chatMessagingWith.textContent = 'Messaging with ' + (contact.display_name || sendbirdUserId || '…');
                 return initSendbird(config.app_id, tokenData.sendbird_user_id, tokenData.session_token, sendbirdUserId);
             })
             .catch(function (err) {
@@ -156,12 +158,19 @@
         }
         if (embedded) {
             setStatus('Loading…', 'info');
-            loadSession().then(function (s) {
-                var chatLoggedIn = document.getElementById('chatLoggedIn');
-                if (chatLoggedIn && s && s.user_id) chatLoggedIn.textContent = 'Logged in messaging as ' + s.user_id + ' (resolving recipient…)';
-            }).catch(function () {});
-            loadRecipient()
+            loadSession()
+                .then(function (s) {
+                    var chatLoggedIn = document.getElementById('chatLoggedIn');
+                    var chatMessagingWith = document.getElementById('chatMessagingWith');
+                    if (chatLoggedIn && s && s.user_id) chatLoggedIn.textContent = 'Logged in messaging as ' + s.user_id;
+                    if (s && s.user_id === 'fm_005') {
+                        onContactClick({ sendbird_user_id: 'testpatient', display_name: 'Marian Foster' });
+                        return;
+                    }
+                    return loadRecipient();
+                })
                 .then(function (contact) {
+                    if (!contact) return;
                     if (!contact.sendbird_user_id) {
                         setStatus('No chat recipient configured.', 'info');
                         return;

@@ -29,7 +29,7 @@
     <div class="header">
         <div class="avatar"></div>
         <div class="info">
-            <div class="name" id="recipientName">…</div>
+            <div class="name" id="recipientName">Messaging with …</div>
             <div class="status" id="status">Connecting…</div>
             <div id="loggedInAs" style="font-size: 12px; color: #888; margin-top: 4px;">Logged in messaging as …</div>
         </div>
@@ -62,12 +62,12 @@
     var recipientNameEl = document.getElementById('recipientName');
     var errorEl = document.getElementById('error');
 
-    document.getElementById('recipientName').textContent = recipientName;
+    document.getElementById('recipientName').textContent = 'Messaging with ' + recipientName;
 
     function showError(msg) {
         errorEl.textContent = msg || 'Error';
         errorEl.style.display = 'block';
-        inputRow.style.display = 'none';
+        inputRow.style.display = 'flex';
     }
 
     function appendBubble(text, isSelf, ts) {

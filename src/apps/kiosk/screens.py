@@ -7,13 +7,15 @@ import os
 import logging
 
 from kivy.metrics import dp
-from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.screenmanager import Screen
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
     KioskLabel,
 )
 from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
+from .chat_screen import open_chat_window
 
 from PIL import Image, ImageDraw
 
@@ -205,7 +207,7 @@ class ScreenFactory:
         return screen
 
     def create_chat_screen(self, chat_user_id=None, chat_family_circle_id=None):
-        """Chat screen: patient chats only with Dylan. Minimal bubble UI in WebView."""
+        """Chat screen: Open Chat button launches pywebview window with kiosk-chat."""
         import urllib.parse
         DYLAN_SENDBIRD_USER_ID = "dtzecha"
         DYLAN_DISPLAY_NAME = "Dylan"
@@ -221,18 +223,14 @@ class ScreenFactory:
         main_layout = self.screen_template_boxlayout()
         content = BoxLayout(orientation="vertical", size_hint=(1, 1))
 
-        try:
-            from kivy.garden.webview import WebView
-            wv = WebView(url=chat_url, size_hint=(1, 1))
-            content.add_widget(wv)
-        except Exception:
-            from kivy.uix.label import Label
-            who = (chat_user_id or "?")
-            content.add_widget(Label(
-                text="Logged in messaging as %s.\nChat requires WebView.\nInstall: pip install kivy_garden.webview" % who,
-                font_size=dp(18),
-                size_hint=(1, 1),
-            ))
+        btn = Button(
+            text="Open Chat",
+            size_hint=(0.4, None),
+            height=dp(60),
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+        )
+        btn.bind(on_press=lambda *_: open_chat_window(chat_url))
+        content.add_widget(btn)
 
         main_layout.add_widget(content)
         screen.add_widget(main_layout)

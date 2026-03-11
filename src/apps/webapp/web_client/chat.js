@@ -9,11 +9,12 @@
     var _u = '__API_URL__';
     var API_URL = (_u.startsWith('http') ? _u : '');
 
-    var statusEl = document.getElementById('status');
-    var messagesEl = document.getElementById('messages');
-    var sendRow = document.getElementById('sendRow');
-    var msgInput = document.getElementById('msgInput');
-    var sendBtn = document.getElementById('sendBtn');
+    var embedded = !!document.getElementById('chatMessages');
+    var statusEl = embedded ? document.getElementById('chatStatus') : document.getElementById('status');
+    var messagesEl = document.getElementById('chatMessages') || document.getElementById('messages');
+    var sendRow = document.getElementById('chatSendRow') || document.getElementById('sendRow');
+    var msgInput = document.getElementById('chatMsgInput') || document.getElementById('msgInput');
+    var sendBtn = document.getElementById('chatSendBtn') || document.getElementById('sendBtn');
     var contactsGridEl = document.getElementById('contactsGrid');
 
     function setStatus(msg, className) {
@@ -27,7 +28,11 @@
         if (!messagesEl) return;
         var p = document.createElement('p');
         p.textContent = text;
-        p.style.fontWeight = isSelf ? 'bold' : 'normal';
+        if (embedded) {
+            p.className = isSelf ? 'out' : 'in';
+        } else {
+            p.style.fontWeight = isSelf ? 'bold' : 'normal';
+        }
         messagesEl.appendChild(p);
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
@@ -75,6 +80,17 @@
             .then(function (data) { return data.data || []; });
     }
 
+    function loadRecipient() {
+        return fetch(API_URL + '/api/chat/recipient', { credentials: 'include' })
+            .then(function (r) {
+                if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Recipient failed'); });
+                return r.json();
+            })
+            .then(function (d) {
+                return { sendbird_user_id: (d.sendbird_user_id || '').trim(), display_name: (d.name || d.sendbird_user_id || 'Contact').trim() };
+            });
+    }
+
     function renderContactsGrid(contacts) {
         if (!contactsGridEl) return;
         contactsGridEl.innerHTML = '';
@@ -110,6 +126,8 @@
                     return;
                 }
                 setStatus('Opening chat with ' + (contact.display_name || sendbirdUserId) + '…', 'info');
+                var chatLoggedIn = document.getElementById('chatLoggedIn');
+                if (chatLoggedIn) chatLoggedIn.textContent = 'Logged in messaging as ' + (tokenData.display_name || tokenData.sendbird_user_id || '…');
                 return initSendbird(config.app_id, tokenData.sendbird_user_id, tokenData.session_token, sendbirdUserId);
             })
             .catch(function (err) {
@@ -128,13 +146,35 @@
     }
 
     function run() {
+        if (!messagesEl) return;
         var q = getQueryParams();
         var presetSb = (q.sendbird_user_id || '').trim();
         var presetName = (q.display_name || '').trim();
         if (presetSb) {
-            var contactsSection = document.getElementById('contactsSection');
-            if (contactsSection) contactsSection.style.display = 'none';
             onContactClick({ sendbird_user_id: presetSb, display_name: presetName });
+            return;
+        }
+        if (embedded) {
+            setStatus('Loading…', 'info');
+            loadSession().then(function (s) {
+                var chatLoggedIn = document.getElementById('chatLoggedIn');
+                if (chatLoggedIn && s && s.user_id) chatLoggedIn.textContent = 'Logged in messaging as ' + s.user_id + ' (resolving recipient…)';
+            }).catch(function () {});
+            loadRecipient()
+                .then(function (contact) {
+                    if (!contact.sendbird_user_id) {
+                        setStatus('No chat recipient configured.', 'info');
+                        return;
+                    }
+                    onContactClick(contact);
+                })
+                .catch(function (err) {
+                    setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
+                    loadSession().then(function (s) {
+                        var chatLoggedIn = document.getElementById('chatLoggedIn');
+                        if (chatLoggedIn && s && s.user_id) chatLoggedIn.textContent = 'Logged in messaging as ' + s.user_id;
+                    }).catch(function () {});
+                });
             return;
         }
         setStatus('Loading…', 'info');
@@ -197,17 +237,20 @@
             })
             .then(function (channel) {
                 currentChannel = channel;
-                sendRow.style.display = 'flex';
+                if (sendRow) sendRow.style.display = 'flex';
                 return channel.getMessageList ? channel.getMessageList({ prevResultSize: 50, nextResultSize: 0 }) : channel.getMessagesByTimestamp(0, { prevResultSize: 50, nextResultSize: 0 });
             })
             .then(function (list) {
                 var messages = (list && list.messages) ? list.messages : (list || []);
                 for (var i = 0; i < messages.length; i++) {
                     var m = messages[i];
-                    var sender = (m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?');
-                    appendMessage(sender + ': ' + (m.message || ''), m.sender && m.sender.userId === sb.currentUser.userId);
+                    var txt = (m.message || '').trim();
+                    if (!txt) continue;
+                    var isSelf = m.sender && m.sender.userId === sb.currentUser.userId;
+                    var displayTxt = embedded ? txt : ((m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?')) + ': ' + txt;
+                    appendMessage(displayTxt, isSelf);
                 }
-                setStatus('1:1 chat. You can send messages below.', 'success');
+                setStatus(embedded ? '1:1 chat' : '1:1 chat. You can send messages below.', 'success');
 
                 sendBtn.addEventListener('click', sendMessage);
                 msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMessage(); });
@@ -222,7 +265,7 @@
             sendBtn.disabled = true;
             currentChannel.sendUserMessage({ message: text })
                 .onSucceeded(function () {
-                    appendMessage('You: ' + text, true);
+                    appendMessage(embedded ? text : 'You: ' + text, true);
                     if (msgInput) msgInput.value = '';
                 })
                 .onFailed(function (err) {

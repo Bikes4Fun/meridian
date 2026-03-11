@@ -42,7 +42,7 @@
         <label for="userId">User ID</label>
         <input type="text" id="userId" value="fm_005" required placeholder="e.g. fm_005">
 
-        <button type="submit">Continue to Check-In</button>
+        <button type="submit">Continue</button>
     </form>
     <script>
         document.getElementById('loginForm').addEventListener('submit', function (e) {
@@ -63,7 +63,7 @@
             })
             .then(function () {
                 var base = (apiBase ? apiBase.replace(/\/$/, '') : '');
-                window.location.href = base ? base + '/chat' : '/chat';
+                window.location.href = base ? base + '/checkin' : '/checkin';
             })
             .catch(function (err) {
                 alert(err.message || 'Login failed');

@@ -92,7 +92,7 @@ def create_server_app(db_path=None):
             return
         # Chat entry: this endpoint *is* the login for the kiosk webview (sets session then redirects to /chat).
         # Security: allowed only from localhost; remote requests get 403. So we skip auth here on purpose.
-        if request.path == "/api/chat/entry":
+        if request.path in ("/api/chat/entry", "/kiosk-chat"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -391,7 +391,25 @@ def create_server_app(db_path=None):
 
     @app.route("/chat")
     def serve_chat():
-        return _serve_with_api_url("chat.html")
+        return redirect("/checkin")
+
+    _kiosk_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "kiosk"))
+
+    @app.route("/kiosk-chat")
+    def serve_kiosk_chat():
+        """Kiosk-only chat: set session from params, serve minimal bubble UI. Localhost only."""
+        if request.remote_addr not in ("127.0.0.1", "::1"):
+            return jsonify({"error": "Forbidden: kiosk-chat only from localhost"}), 403
+        user_id = (request.args.get("user_id") or "").strip()
+        family_circle_id = (request.args.get("family_circle_id") or "").strip()
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "user_id and family_circle_id required"}), 400
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        path = os.path.join(_kiosk_dir, "chat_embed.html")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read().replace("__API_URL__", request.url_root.rstrip("/"))
+        return Response(content, mimetype="text/html")
 
     @app.route("/chat.js")
     def serve_chat_js():

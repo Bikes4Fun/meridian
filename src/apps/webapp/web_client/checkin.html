@@ -33,6 +33,15 @@
             background: #ccc;
             cursor: not-allowed;
         }
+        #chatSection { text-align: left; margin-bottom: 24px; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
+        #chatSection h2 { font-size: 16px; color: #333; margin: 0 0 8px 0; }
+        #chatMessages { border: 1px solid #ddd; border-radius: 6px; height: 160px; overflow-y: auto; padding: 10px; margin: 8px 0; background: #fff; font-size: 14px; }
+        #chatMessages .out { color: #007AFF; font-weight: 500; }
+        #chatMessages .in { color: #333; }
+        #chatSendRow { display: flex; gap: 8px; }
+        #chatMsgInput { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        #chatSendBtn { padding: 10px 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        #chatStatus { font-size: 13px; color: #666; margin-top: 4px; }
         #status {
             margin-top: 20px;
         }
@@ -47,6 +56,17 @@
     </style>
 </head>
 <body>
+    <div id="chatSection">
+        <h2>Chat</h2>
+        <p id="chatLoggedIn" style="font-size: 13px; color: #666; margin: 0 0 8px 0;">Logged in messaging as …</p>
+        <div id="chatMessages"></div>
+        <div id="chatSendRow">
+            <input type="text" id="chatMsgInput" placeholder="Type a message…">
+            <button type="button" id="chatSendBtn">Send</button>
+        </div>
+        <div id="chatStatus" class="info">Loading…</div>
+    </div>
+
     <h1>📍 Family Check-In</h1>
     
     <select id="familyMemberSelect">
@@ -58,8 +78,6 @@
     <button id="checkinBtn" type="button">Check In Now</button>
 
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
-    <p style="margin: 10px 0;"><a href="/chat" style="font-size: 16px;">Open Chat</a> – send and receive messages with family.</p>
-    <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
     <h2 style="color: #333; font-size: 20px;">Alert TV</h2>
     <p style="color: #666; font-size: 14px;">Force the TV to show the emergency screen with flashing border.</p>
     <button id="alertBtn" type="button" style="background: #e74c3c;">Alert Mode</button>
@@ -67,6 +85,7 @@
 
     <div id="status"></div>
 
+    <script src="chat.js"></script>
     <script src="checkin.js"></script>
 </body>
 </html>

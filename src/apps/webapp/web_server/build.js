@@ -54,6 +54,11 @@ async function build() {
         const checkinJs = fs.readFileSync(checkinJsPath, 'utf8');
         fs.writeFileSync(path.join(dist, 'checkin.js'), checkinJs.replace(/__API_URL__/g, apiUrl));
     }
+    const chatJsPath = path.join(webClient, 'chat.js');
+    if (fs.existsSync(chatJsPath)) {
+        const chatJs = fs.readFileSync(chatJsPath, 'utf8');
+        fs.writeFileSync(path.join(dist, 'chat.js'), chatJs.replace(/__API_URL__/g, apiUrl));
+    }
 }
 
 build().catch((e) => { console.error(e); process.exit(1); });

@@ -205,14 +205,13 @@ class ScreenFactory:
         return screen
 
     def create_chat_screen(self, chat_user_id=None, chat_family_circle_id=None):
-        """Chat screen: patient chats only with Dylan. Embedded webview or Open chat button."""
+        """Chat screen: patient chats only with Dylan. Minimal bubble UI in WebView."""
         import urllib.parse
-        # Patient (kiosk) chats only with Dylan (Sendbird dtzecha).
         DYLAN_SENDBIRD_USER_ID = "dtzecha"
         DYLAN_DISPLAY_NAME = "Dylan"
         base = (self.chat_url or "").rstrip("/").replace("/chat", "")
-        entry_url = (
-            base + "/api/chat/entry?user_id=" + urllib.parse.quote(chat_user_id or "")
+        chat_url = (
+            base + "/kiosk-chat?user_id=" + urllib.parse.quote(chat_user_id or "")
             + "&family_circle_id=" + urllib.parse.quote(chat_family_circle_id or "")
             + "&sendbird_user_id=" + urllib.parse.quote(DYLAN_SENDBIRD_USER_ID)
             + "&display_name=" + urllib.parse.quote(DYLAN_DISPLAY_NAME)
@@ -224,12 +223,13 @@ class ScreenFactory:
 
         try:
             from kivy.garden.webview import WebView
-            wv = WebView(url=entry_url, size_hint=(1, 1))
+            wv = WebView(url=chat_url, size_hint=(1, 1))
             content.add_widget(wv)
         except Exception:
             from kivy.uix.label import Label
+            who = (chat_user_id or "?")
             content.add_widget(Label(
-                text="Chat requires WebView. Install: pip install kivy-garden.webview",
+                text="Logged in messaging as %s.\nChat requires WebView.\nInstall: pip install kivy_garden.webview" % who,
                 font_size=dp(18),
                 size_hint=(1, 1),
             ))

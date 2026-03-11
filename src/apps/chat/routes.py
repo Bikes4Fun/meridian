@@ -9,7 +9,13 @@ import requests
 from flask import Blueprint, jsonify, g, request, redirect, session
 
 # Config from this app only
-from apps.chat.config import get_sendbird_app_id, get_sendbird_api_token, is_configured
+from apps.chat.config import (
+    get_sendbird_app_id,
+    get_sendbird_api_token,
+    get_sendbird_user_id,
+    get_sendbird_default_recipient_id,
+    is_configured,
+)
 
 bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
@@ -28,33 +34,6 @@ def _headers() -> dict:
         "Api-Token": get_sendbird_api_token(),
         "Content-Type": "application/json; charset=utf8",
     }
-
-
-def _ensure_user(user_id: str, nickname: str) -> tuple[bool, str]:
-    """
-    Create Sendbird user if not exists. Idempotent.
-    Returns (success, error_message). error_message empty on success.
-    """
-    base = _api_url()
-    if not base:
-        return False, "Sendbird not configured"
-    # Create user (Sendbird returns 400 with "unique constraint" if user_id already exists)
-    payload = {"user_id": user_id, "nickname": nickname or user_id}
-    r = requests.post(
-        base + "/users",
-        headers=_headers(),
-        json=payload,
-        timeout=10,
-    )
-    if r.status_code == 200:
-        return True, ""
-    if r.status_code == 400:
-        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
-        if "unique constraint" in str(body.get("message", "")).lower():
-            # User already exists; that's fine
-            return True, ""
-        return False, body.get("message", r.text)
-    return False, r.text or "Create user failed"
 
 
 def _issue_session_token(user_id: str) -> tuple[bool, str, str]:
@@ -116,19 +95,37 @@ def config():
 @bp.route("/token", methods=["POST"])
 def token():
     """
-    Ensure Sendbird user exists for g.user_id, issue session token.
-    Requires existing session (same as checkin). Optional JSON body: { "nickname": "Display Name" }.
+    Issue session token for the existing Sendbird user mapped to this app user.
+    Requires existing session. Does not create users; app user must be mapped via SENDBIRD_USER_ID_MAP.
     """
     if not is_configured():
         return jsonify({"error": "Sendbird not configured"}), 503
-    user_id = getattr(g, "user_id", None)
-    if not user_id:
+    app_user_id = getattr(g, "user_id", None)
+    if not app_user_id:
         return jsonify({"error": "Not logged in"}), 401
-    nickname = (request.get_json(silent=True) or {}).get("nickname", "") or user_id
-    ok, err = _ensure_user(user_id, nickname)
+    sendbird_user_id = get_sendbird_user_id(app_user_id)
+    if not sendbird_user_id:
+        return jsonify({
+            "error": "No Sendbird user linked for this account",
+            "detail": "Set SENDBIRD_USER_ID_MAP so this app user maps to an existing Sendbird user_id.",
+        }), 400
+    ok, token_val, err = _issue_session_token(sendbird_user_id)
     if not ok:
-        return jsonify({"error": "Sendbird create user failed", "detail": err}), 502
-    ok2, token_val, err2 = _issue_session_token(user_id)
-    if not ok2:
-        return jsonify({"error": "Sendbird issue token failed", "detail": err2}), 502
-    return jsonify({"user_id": user_id, "session_token": token_val})
+        return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
+    return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val})
+
+
+@bp.route("/recipient", methods=["GET"])
+def recipient():
+    """
+    Return the default 1:1 chat recipient (e.g. daughter) for the current user.
+    Client uses this to open the distinct group channel between sender and recipient.
+    """
+    if not is_configured():
+        return jsonify({"error": "Sendbird not configured"}), 503
+    if not getattr(g, "user_id", None):
+        return jsonify({"error": "Not logged in"}), 401
+    sendbird_recipient_id = get_sendbird_default_recipient_id()
+    if not sendbird_recipient_id:
+        return jsonify({"error": "No default recipient configured", "detail": "Set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
+    return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": "Family"})

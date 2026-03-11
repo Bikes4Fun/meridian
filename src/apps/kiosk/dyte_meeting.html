@@ -1,25 +1,68 @@
 <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Video call</title>
+<style>
+body { margin: 0; background: #1a1a1a; color: #fff; font-family: Arial; padding: 20px; }
+#status { font-size: 18px; }
+#dyte-meeting { width: 100%; height: 100vh; display: none; }
+</style>
 <script type="module">
 import { defineCustomElements } from 'https://cdn.jsdelivr.net/npm/@dytesdk/ui-kit@latest/loader/index.es2017.js';
 defineCustomElements();
 </script>
 <script src="https://cdn.dyte.in/core/dyte.js"></script>
 </head>
-<body style="margin:0;background:#1a1a1a;color:#fff;font-family:Arial;">
-<div id="dyte-meeting" style="width:100%;height:100vh;"></div>
+<body>
+<div id="status">Starting call…</div>
+<div id="dyte-meeting"></div>
 <script>
-window.addEventListener('DOMContentLoaded', function() {
+function showStatus(msg) {
+  var s = document.getElementById('status');
+  if (s) { s.textContent = msg; s.style.display = 'block'; }
+}
+function showMeeting() {
+  var s = document.getElementById('status');
+  var m = document.getElementById('dyte-meeting');
+  if (s) s.style.display = 'none';
+  if (m) m.style.display = 'block';
+}
+function joinMeeting() {
   var token = __DYTE_AUTH_TOKEN__;
-  if (!token) { document.body.innerHTML = '<p>No token.</p>'; return; }
-  if (typeof DyteClient === 'undefined') { document.body.innerHTML = '<p>Dyte not loaded.</p>'; return; }
+  if (!token) { showStatus('No token.'); return; }
+  if (typeof DyteClient === 'undefined') { showStatus('Dyte script not loaded. Check network.'); return; }
+  showStatus('Joining meeting…');
   DyteClient.init({ authToken: token, defaults: { audio: true, video: true } })
     .then(function(meeting) {
       var el = document.getElementById('dyte-meeting');
-      if (el) el.meeting = meeting;
+      if (!el) { showStatus('Meeting element not found.'); return; }
+      customElements.whenDefined('dyte-meeting').then(function() {
+        el.meeting = meeting;
+        showMeeting();
+      }).catch(function() {
+        el.meeting = meeting;
+        showMeeting();
+      });
     })
-    .catch(function(e) { document.body.innerHTML = '<p>Failed: ' + String(e) + '</p>'; });
+    .catch(function(e) { showStatus('Failed: ' + String(e)); });
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var useEmulator = __DYTE_EMULATOR__ || (new URLSearchParams(window.location.search)).get('emulator') === '1';
+  if (!useEmulator) {
+    joinMeeting();
+    return;
+  }
+  window.addEventListener('dyte.deviceEmulatorLoaded', function onLoaded() {
+    window.removeEventListener('dyte.deviceEmulatorLoaded', onLoaded);
+    if (navigator.mediaDevices.addEmulatedDevice) {
+      navigator.mediaDevices.addEmulatedDevice('videoinput');
+      navigator.mediaDevices.addEmulatedDevice('audioinput');
+    }
+    joinMeeting();
+  });
+  var script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@dytesdk/device-emulator/dist/index.iife.js';
+  document.head.appendChild(script);
 });
 </script>
 </body></html>

@@ -6,6 +6,7 @@ Handles the creation of different kiosk screens.
 import os
 import logging
 
+from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -31,7 +32,20 @@ def _dyte_html_with_token(auth_token):
     import json
     with open(_DYTE_TEMPLATE_PATH, "r", encoding="utf-8") as f:
         template = f.read()
-    return template.replace("__DYTE_AUTH_TOKEN__", json.dumps(auth_token))
+    template = template.replace("__DYTE_AUTH_TOKEN__", json.dumps(auth_token))
+    use_emulator = os.environ.get("DYTE_DEVICE_EMULATOR") == "1"
+    template = template.replace("__DYTE_EMULATOR__", "true" if use_emulator else "false")
+    return template
+
+
+def _run_webview_subprocess(html):
+    """Run pywebview in this process (must be main thread). Used as multiprocessing.Process target."""
+    try:
+        import webview
+        webview.create_window("Video call", html=html, width=900, height=700)
+        webview.start()
+    except Exception as e:
+        logger.warning("WebView failed: %s", e)
 
 
 class ContactCard(ButtonBehavior, BoxLayout):
@@ -229,7 +243,7 @@ class ScreenFactory:
 
     def create_call_screen(self):
         """Call/contacts screen: family member photos; tap to start video call (Dyte in pywebview)."""
-        import threading
+        import multiprocessing
         screen = Screen(name="call")
         main_layout = self.screen_template_boxlayout()
 
@@ -248,8 +262,14 @@ class ScreenFactory:
             if result.success and result.data:
                 members = result.data
 
+        _call_launching = [False]  # list so closure can mutate
+
         def on_member_press(instance):
-            """Start video call: get token, open Dyte in pywebview. instance is the ContactCard."""
+            """Start video call: get token, open Dyte in pywebview (subprocess so it has main thread)."""
+            if _call_launching[0]:
+                return
+            _call_launching[0] = True
+            Clock.schedule_once(lambda _: _call_launching.__setitem__(0, False), 3)
             if not video_svc:
                 logger.warning("Video service not available")
                 return
@@ -261,15 +281,8 @@ class ScreenFactory:
             if not token:
                 return
             html = _dyte_html_with_token(token)
-            def run_webview():
-                try:
-                    import webview
-                    webview.create_window("Video call", html=html, width=900, height=700)
-                    webview.start()
-                except Exception as e:
-                    logger.warning("WebView failed: %s", e)
-
-            threading.Thread(target=run_webview, daemon=True).start()
+            p = multiprocessing.Process(target=_run_webview_subprocess, args=(html,))
+            p.start()
 
         for m in members:
             card = ContactCard()
@@ -282,8 +295,7 @@ class ScreenFactory:
             img = KivyImage(
                 source=photo_path if photo_path else "",
                 size_hint_y=0.8,
-                allow_stretch=True,
-                keep_ratio=True,
+                fit_mode="contain",
             )
             card.add_widget(img)
             label = KioskLabel(type="body", text=display_name)

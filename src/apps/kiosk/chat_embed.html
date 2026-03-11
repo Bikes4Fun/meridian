@@ -64,7 +64,14 @@
 
     document.getElementById('recipientName').textContent = 'Messaging with ' + recipientName;
 
+    function log(msg, data) {
+        console.log('[chat] ' + msg, data !== undefined ? data : '');
+    }
+    function logErr(msg, err) {
+        console.error('[chat] ' + msg, err !== undefined ? err : '');
+    }
     function showError(msg) {
+        logErr('showError', msg);
         errorEl.textContent = msg || 'Error';
         errorEl.style.display = 'block';
         inputRow.style.display = 'flex';
@@ -88,7 +95,7 @@
 
     function loadConfig() {
         return fetch(API_URL + '/api/chat/config', { credentials: 'include' }).then(function (r) {
-            if (!r.ok) throw new Error('Config failed');
+            if (!r.ok) { logErr('Config failed', r.status); throw new Error('Config failed'); }
             return r.json();
         });
     }
@@ -99,16 +106,18 @@
             credentials: 'include',
             body: JSON.stringify({})
         }).then(function (r) {
-            if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Token failed'); });
+            if (!r.ok) return r.json().then(function (d) { logErr('Token failed', d); throw new Error(d.error || 'Token failed'); });
             return r.json();
         });
     }
 
     var sb = null;
     var currentChannel = null;
+    var GroupChannelModule = null;
 
     Promise.all([loadConfig(), loadToken()])
         .then(function (results) {
+            log('config and token loaded');
             var config = results[0];
             var tokenData = results[1];
             var loggedInEl = document.getElementById('loggedInAs');
@@ -120,6 +129,7 @@
             var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
             return import(sdkUrl).then(function (chatMod) {
                 return import(groupUrl).then(function (groupMod) {
+                    GroupChannelModule = groupMod;
                     sb = chatMod.default.init({
                         appId: config.app_id,
                         modules: [new groupMod.GroupChannelModule()]
@@ -129,6 +139,7 @@
             });
         })
         .then(function () {
+            log('Sendbird connected');
             setStatus('Opening chat…');
             return sb.groupChannel.createChannel({
                 invitedUserIds: [recipientSb],
@@ -138,12 +149,25 @@
         })
         .catch(function (err) {
             if (err && err.code === 800220) {
-                return sb.groupChannel.getChannel(recipientSb);
+                log('Channel exists (800220), querying for existing channel', recipientSb);
+                var qt = GroupChannelModule && GroupChannelModule.QueryType ? GroupChannelModule.QueryType.AND : 'AND';
+                var query = sb.groupChannel.createMyGroupChannelListQuery({
+                    userIdsFilter: { userIds: [recipientSb], includeMode: true, queryType: qt },
+                    limit: 1,
+                });
+                return query.next().then(function (channels) {
+                    if (channels && channels.length > 0) {
+                        log('Found existing channel', channels[0].url || channels[0].channelUrl);
+                        return channels[0];
+                    }
+                    throw new Error('Could not find existing channel with ' + recipientSb);
+                });
             }
             throw err;
         })
         .then(function (channel) {
             currentChannel = channel;
+            log('Channel ready', channel.url || channel.channelUrl);
             setStatus('1:1 chat');
             inputRow.style.display = 'flex';
             var fn = channel.getMessageList ? channel.getMessageList.bind(channel) : null;
@@ -165,6 +189,7 @@
             msgInput.onkeydown = function (e) { if (e.key === 'Enter') sendMessage(); };
         })
         .catch(function (err) {
+            logErr('Channel error', err);
             showError('Channel error: ' + (err && err.message ? err.message : String(err)));
             setStatus('Error');
         });
@@ -175,11 +200,13 @@
         sendBtn.disabled = true;
         currentChannel.sendUserMessage({ message: text })
             .onSucceeded(function (m) {
+                log('Message sent');
                 var ts = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
                 appendBubble(text, true, ts);
                 if (msgInput) msgInput.value = '';
             })
             .onFailed(function (err) {
+                logErr('Send failed', err);
                 showError('Send failed: ' + (err && err.message ? err.message : err));
             })
             .finally(function () { sendBtn.disabled = false; });

@@ -23,6 +23,12 @@
             statusEl.className = className || 'info';
         }
     }
+    function log(msg, data) {
+        console.log('[chat] ' + msg, data !== undefined ? data : '');
+    }
+    function logErr(msg, err) {
+        console.error('[chat] ' + msg, err !== undefined ? err : '');
+    }
 
     function appendMessage(text, isSelf) {
         if (!messagesEl) return;
@@ -133,6 +139,7 @@
                 return initSendbird(config.app_id, tokenData.sendbird_user_id, tokenData.session_token, sendbirdUserId);
             })
             .catch(function (err) {
+                logErr('onContactClick error', err);
                 setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
             });
     }
@@ -213,15 +220,16 @@
 
     function initSendbird(appId, sendbirdUserId, sessionToken, recipientSendbirdUserId) {
         if (messagesEl) messagesEl.innerHTML = '';
-        // 1:1 chat: distinct group channel between sender and recipient. No open channel.
         var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/+esm';
         var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
         var sb = null;
         var currentChannel = null;
+        var GroupChannelModule = null;
 
         return import(sdkUrl)
             .then(function (chatMod) {
                 return import(groupUrl).then(function (groupMod) {
+                    GroupChannelModule = groupMod;
                     var SendbirdChat = chatMod.default;
                     sb = SendbirdChat.init({
                         appId: appId,
@@ -231,6 +239,7 @@
                 });
             })
             .then(function () {
+                log('Sendbird connected');
                 setStatus((sendbirdUserId || 'You') + ' is opening conversation with ' + (recipientSendbirdUserId || 'recipient') + '…', 'success');
                 return sb.groupChannel.createChannel({
                     invitedUserIds: [recipientSendbirdUserId],
@@ -240,12 +249,25 @@
             })
             .catch(function (err) {
                 if (err && err.code === 800220) {
-                    return sb.groupChannel.getChannel(recipientSendbirdUserId);
+                    log('Channel exists (800220), querying for existing channel', recipientSendbirdUserId);
+                    var qt = GroupChannelModule && GroupChannelModule.QueryType ? GroupChannelModule.QueryType.AND : 'AND';
+                    var query = sb.groupChannel.createMyGroupChannelListQuery({
+                        userIdsFilter: { userIds: [recipientSendbirdUserId], includeMode: true, queryType: qt },
+                        limit: 1,
+                    });
+                    return query.next().then(function (channels) {
+                        if (channels && channels.length > 0) {
+                            log('Found existing channel', channels[0].url || channels[0].channelUrl);
+                            return channels[0];
+                        }
+                        throw new Error('Could not find existing channel with ' + recipientSendbirdUserId);
+                    });
                 }
                 throw err;
             })
             .then(function (channel) {
                 currentChannel = channel;
+                log('Channel ready', channel.url || channel.channelUrl);
                 if (sendRow) sendRow.style.display = 'flex';
                 return channel.getMessageList ? channel.getMessageList({ prevResultSize: 50, nextResultSize: 0 }) : channel.getMessagesByTimestamp(0, { prevResultSize: 50, nextResultSize: 0 });
             })
@@ -265,6 +287,7 @@
                 msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMessage(); });
             })
             .catch(function (err) {
+                logErr('Channel error', err);
                 setStatus('Channel error: ' + (err && err.message ? err.message : String(err)), 'error');
             });
 
@@ -274,10 +297,12 @@
             sendBtn.disabled = true;
             currentChannel.sendUserMessage({ message: text })
                 .onSucceeded(function () {
+                    log('Message sent');
                     appendMessage(embedded ? text : 'You: ' + text, true);
                     if (msgInput) msgInput.value = '';
                 })
                 .onFailed(function (err) {
+                    logErr('Send failed', err);
                     setStatus('Send failed: ' + (err && err.message || err), 'error');
                 })
                 .finally(function () { sendBtn.disabled = false; });

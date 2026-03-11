@@ -38,10 +38,7 @@ except ImportError:
 from .emergency_pdf import build_pdf
 from .services.container import create_service_container
 
-try:
-    from apps.chat.routes import bp as chat_bp
-except ImportError:
-    chat_bp = None
+from . import sendbird
 
 try:
     from ...shared.config import get_uploads_dir
@@ -129,8 +126,62 @@ def create_server_app(db_path=None):
         g.user_id = user_id
         g.family_circle_id = family_circle_id
 
-    if chat_bp is not None:
-        app.register_blueprint(chat_bp)
+    app.config["container"] = container
+
+    @app.route("/api/chat/entry", methods=["GET"])
+    def api_chat_entry():
+        """Set session from query params and redirect to /chat. Localhost only (kiosk webview)."""
+        if request.remote_addr not in ("127.0.0.1", "::1"):
+            return jsonify({"error": "Forbidden: entry only from localhost"}), 403
+        user_id = (request.args.get("user_id") or "").strip()
+        family_circle_id = (request.args.get("family_circle_id") or "").strip()
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "user_id and family_circle_id required"}), 400
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        return redirect("/chat")
+
+    @app.route("/api/chat/config", methods=["GET"])
+    def api_chat_config():
+        """Return Sendbird app_id for the client SDK."""
+        if not sendbird.is_configured():
+            return jsonify({"error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"}), 503
+        return jsonify({"app_id": sendbird.get_sendbird_app_id()})
+
+    @app.route("/api/chat/token", methods=["POST"])
+    def api_chat_token():
+        """Issue session token for the Sendbird user mapped to this app user."""
+        if not sendbird.is_configured():
+            return jsonify({"error": "Sendbird not configured"}), 503
+        app_user_id = getattr(g, "user_id", None)
+        if not app_user_id:
+            return jsonify({"error": "Not logged in"}), 401
+        sendbird_user_id = sendbird.get_sendbird_user_id_for_app_user(app_user_id) or sendbird.get_sendbird_user_id_from_env(app_user_id)
+        if not sendbird_user_id:
+            return jsonify({
+                "error": "No Sendbird user linked for this account",
+                "detail": "Add sendbird_user_id to this user in the DB (users table) or set SENDBIRD_USER_ID_MAP.",
+            }), 400
+        ok, token_val, err = sendbird._issue_session_token(sendbird_user_id)
+        if not ok:
+            return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
+        return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val})
+
+    @app.route("/api/chat/recipient", methods=["GET"])
+    def api_chat_recipient():
+        """Default 1:1 chat recipient (e.g. daughter) for the current user."""
+        if not sendbird.is_configured():
+            return jsonify({"error": "Sendbird not configured"}), 503
+        if not getattr(g, "user_id", None):
+            return jsonify({"error": "Not logged in"}), 401
+        family_circle_id = getattr(g, "family_circle_id", None) or ""
+        sendbird_recipient_id, recipient_name = sendbird.get_default_recipient(family_circle_id)
+        if not sendbird_recipient_id:
+            sendbird_recipient_id = sendbird.get_sendbird_default_recipient_id_from_env()
+            recipient_name = "Family"
+        if not sendbird_recipient_id:
+            return jsonify({"error": "No default recipient configured", "detail": "Add sendbird_user_id to a contact (DB) or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
+        return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": recipient_name})
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
@@ -202,12 +253,16 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
-        """All contacts for the family."""
+        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_url and sendbird_user_id."""
         _require_family_access(family_circle_id)
         r = contact_svc.get_all_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         contacts = [asdict(c) for c in (r.data or [])]
+        base = request.url_root.rstrip("/")
+        for c in contacts:
+            if c.get("photo_filename") and c.get("id"):
+                c["photo_url"] = "%s/api/photo/contact/%s" % (base, c["id"])
         return jsonify({"data": contacts})
 
     @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
@@ -390,27 +445,34 @@ def create_server_app(db_path=None):
         base = request.url_root.rstrip("/")
         for row in data:
             if row.get("photo_filename") and row.get("user_id"):
-                row["photo_url"] = "%s/api/users/%s/photo" % (base, row["user_id"])
+                row["photo_url"] = "%s/api/photo/user/%s" % (base, row["user_id"])
         return jsonify({"data": data})
 
-    @app.route("/api/users/<user_id>/photo")
-    def api_serve_photo(user_id):
-        """Serve user photo. User must be in same family. Returns 404 if no photo."""
+    @app.route("/api/photo/<entity_type>/<entity_id>")
+    def api_serve_photo(entity_type, entity_id):
+        """Serve user or contact photo. entity_type: 'user' or 'contact'. Must be in current family. 404 if no photo."""
+        if entity_type not in ("user", "contact"):
+            abort(404)
         db = container.get_database_manager()
-        r = db.execute_query(
-            "SELECT u.photo_filename FROM users u "
-            "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
-            "WHERE u.id = ? AND ufc.family_circle_id = ?",
-            (user_id, g.family_circle_id),
-        )
+        if entity_type == "user":
+            r = db.execute_query(
+                "SELECT u.photo_filename FROM users u "
+                "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
+                "WHERE u.id = ? AND ufc.family_circle_id = ?",
+                (entity_id, g.family_circle_id),
+            )
+        else:
+            r = db.execute_query(
+                "SELECT photo_filename FROM contacts WHERE id = ? AND family_circle_id = ?",
+                (entity_id, g.family_circle_id),
+            )
         if not r.success or not r.data or not r.data[0].get("photo_filename"):
             abort(404)
         fn = r.data[0]["photo_filename"]
         if ".." in fn or fn.startswith("/"):
             abort(404)
         uploads_dir = get_uploads_dir()
-        path = os.path.join(uploads_dir, fn)
-        if not os.path.exists(path):
+        if not os.path.exists(os.path.join(uploads_dir, fn)):
             abort(404)
         return send_from_directory(uploads_dir, fn, mimetype=None)
 

@@ -20,7 +20,7 @@
       "relationship": "child",
       "emergency_priority": "secondary_emergency",
       "photo_filename": "deanna gps pin.jpeg",
-      "notes": "Picks up kids from school"
+      "sendbird_user_id": "deanna"
     },
     {
       "id": "contact_dr_chen",

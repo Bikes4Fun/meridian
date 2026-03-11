@@ -85,7 +85,7 @@
                 return initSendbird(config.app_id, sendbirdUserId, tokenData.session_token, recipientData.sendbird_user_id);
             })
             .then(function () {
-                setStatus('Connected. Loading or creating channel…', 'success');
+                setStatus('Connected. Opening conversation…', 'success');
             })
             .catch(function (err) {
                 setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');

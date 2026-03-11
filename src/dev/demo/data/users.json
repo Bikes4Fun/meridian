@@ -2,9 +2,10 @@
   {"id": "u_solo_001", "display_name": "Alex Chen", "photo_filename": null},
   {"id": "u_solo_002", "display_name": "Jordan Rivera", "photo_filename": null},
   {"id": "u_solo_003", "display_name": "Riley Morgan", "photo_filename": null},
-  {"id": "fm_001", "display_name": "Dean", "photo_filename": "dean gps pin.jpg", "family_circle_id": "F00000"},
-  {"id": "fm_002", "display_name": "Deanna", "photo_filename": "deanna gps pin.jpeg", "family_circle_id": "F00000"},
-  {"id": "fm_003", "display_name": "Eleanor", "photo_filename": "eleanor gps tag.JPG", "family_circle_id": "F00000"},
+  {"id": "fm_001", "display_name": "Dean", "photo_filename": "dean gps pin.jpg", "family_circle_id": "F00000", "sendbird_user_id": "testpatient"},
+  {"id": "fm_002", "display_name": "Deanna", "photo_filename": "deanna gps pin.jpeg", "family_circle_id": "F00000", "sendbird_user_id": "deanna"},
+  {"id": "fm_003", "display_name": "Eleanor", "photo_filename": "eleanor gps tag.JPG", "family_circle_id": "F00000", "sendbird_user_id": "eleanor"},
   {"id": "fm_004", "display_name": "Indigo", "photo_filename": "indigo gps pin.jpeg", "family_circle_id": "F00000"},
+  {"id": "fm_005", "display_name": "Dylan", "family_circle_id": "F0000", "sendbird_user_id": "dtzecha"},
   {"id": "fm_care_001", "display_name": "Marian Foster", "photo_filename": null, "family_circle_id": "F00000"}
 ]

@@ -56,15 +56,15 @@ def load_json_file(filename: str) -> Dict[str, Any]:
 
 
 def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
-    """Load contacts from JSON. Can have photo_filename and notes for contact card."""
+    """Load contacts from JSON. Can have photo_filename, notes, sendbird_user_id for contact card and chat."""
     contacts_data = load_json_file("contacts.json")
     contacts = contacts_data.get("contacts", [])
 
     for contact in contacts:
         query = """
             INSERT OR REPLACE INTO contacts 
-            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes, sendbird_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             contact.get("id"),
@@ -77,6 +77,7 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
             contact.get("emergency_priority"),
             contact.get("photo_filename"),
             contact.get("notes"),
+            contact.get("sendbird_user_id"),
         )
         db_manager.execute_update(query, params)
     logger.debug("  Loaded %d contacts" % len(contacts))
@@ -113,18 +114,19 @@ def _link_users_to_family_circles(db_manager, users):
 
 
 def load_demo_users_from_json_into_db(db_manager):
-    """Load all users from users.json."""
+    """Load all users from users.json. sendbird_user_id is used for chat (maps app user to Sendbird user)."""
     users = load_json_file("users.json")
 
     for user in users:
         uid = user.get("id")
         photo_filename = user.get("photo_filename")
+        sendbird_user_id = user.get("sendbird_user_id")
         db_manager.execute_update(
             """
-            INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (uid, user.get("display_name"), photo_filename, user.get("family_circle_id")),
+            (uid, user.get("display_name"), photo_filename, user.get("family_circle_id"), sendbird_user_id),
         )
 
     _link_users_to_family_circles(db_manager, users)

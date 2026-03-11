@@ -26,8 +26,24 @@ Format: one domain per line or comma-separated; include protocol (`http://` or `
 
 - `SENDBIRD_APP_ID` – Application ID (Sendbird Dashboard → Settings → Application → General). Case-sensitive.
 - `SENDBIRD_API_TOKEN` – Master or secondary API token (Dashboard → API tokens). Server uses this to issue session tokens only; we do not create users.
-- `SENDBIRD_USER_ID_MAP` – JSON mapping app user_id → existing Sendbird user_id, e.g. `{"fm_001":"patient_sendbird_id"}`. Users must already exist in Sendbird (no auto-create).
-- `SENDBIRD_DEFAULT_RECIPIENT_ID` – Sendbird user_id of the default 1:1 chat recipient (e.g. daughter). The patient sends messages to this user.
+- `SENDBIRD_USER_ID_MAP` – (Optional if using DB.) JSON mapping app user_id → Sendbird user_id, e.g. `{"fm_001":"testpatient"}`. Fallback when users.sendbird_user_id is not set.
+- `SENDBIRD_DEFAULT_RECIPIENT_ID` – (Optional if using DB.) Sendbird user_id of the default 1:1 recipient. Fallback when no contact has sendbird_user_id for this family.
+
+**DB:** Prefer storing Sendbird ids in the database. `users.sendbird_user_id` = who this app user is in Sendbird. `contacts.sendbird_user_id` = this contact can be messaged; the first such contact for the family is the default recipient. Demo data (users.json, contacts.json) and seed load these; env vars are fallback.
+
+**Demo Sendbird user_ids (for reference):**
+
+| Sendbird user_id | Role        |
+|------------------|-------------|
+| testpatient      | Test patient (kiosk) |
+| dtzecha          | Dylan       |
+| deanna           | Deanna      |
+| eleanor          | Eleanor     |
+
+Example env for kiosk patient chatting with one family member:
+
+- `SENDBIRD_USER_ID_MAP='{"fm_001":"testpatient"}'`  (app user fm_001 → Sendbird testpatient)
+- `SENDBIRD_DEFAULT_RECIPIENT_ID=deanna`  (or dtzecha / eleanor – whoever the patient should message by default)
 
 ## 3. Flow (1:1 chat)
 

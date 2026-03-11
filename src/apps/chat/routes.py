@@ -16,6 +16,7 @@ from apps.chat.config import (
     get_sendbird_default_recipient_id,
     is_configured,
 )
+from apps.chat.service import get_sendbird_user_id_for_app_user, get_default_recipient
 
 bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
@@ -103,11 +104,11 @@ def token():
     app_user_id = getattr(g, "user_id", None)
     if not app_user_id:
         return jsonify({"error": "Not logged in"}), 401
-    sendbird_user_id = get_sendbird_user_id(app_user_id)
+    sendbird_user_id = get_sendbird_user_id_for_app_user(app_user_id) or get_sendbird_user_id(app_user_id)
     if not sendbird_user_id:
         return jsonify({
             "error": "No Sendbird user linked for this account",
-            "detail": "Set SENDBIRD_USER_ID_MAP so this app user maps to an existing Sendbird user_id.",
+            "detail": "Add sendbird_user_id to this user in the DB (users table) or set SENDBIRD_USER_ID_MAP.",
         }), 400
     ok, token_val, err = _issue_session_token(sendbird_user_id)
     if not ok:
@@ -125,7 +126,11 @@ def recipient():
         return jsonify({"error": "Sendbird not configured"}), 503
     if not getattr(g, "user_id", None):
         return jsonify({"error": "Not logged in"}), 401
-    sendbird_recipient_id = get_sendbird_default_recipient_id()
+    family_circle_id = getattr(g, "family_circle_id", None) or ""
+    sendbird_recipient_id, recipient_name = get_default_recipient(family_circle_id)
     if not sendbird_recipient_id:
-        return jsonify({"error": "No default recipient configured", "detail": "Set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
-    return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": "Family"})
+        sendbird_recipient_id = get_sendbird_default_recipient_id()
+        recipient_name = "Family"
+    if not sendbird_recipient_id:
+        return jsonify({"error": "No default recipient configured", "detail": "Add sendbird_user_id to a contact (DB) or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
+    return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": recipient_name})

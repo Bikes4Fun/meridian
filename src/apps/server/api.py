@@ -358,11 +358,7 @@ def create_server_app(db_path=None):
         participant_resp = _requests.post(
             f"https://api.dyte.io/v2/meetings/{meeting_id}/participants",
             headers=headers,
-            json={
-                "name": g.user_id or "Kiosk User",
-                "preset_name": preset_name,
-                "client_specific_id": g.user_id or "kiosk-user",
-            },
+            json={"name": g.user_id or "Kiosk User", "preset_name": preset_name},
             timeout=10,
         )
         if not participant_resp.ok:

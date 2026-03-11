@@ -46,7 +46,13 @@
             credentials: 'include',
             body: JSON.stringify({})
         }).then(function (r) {
-            if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Token failed'); });
+            if (!r.ok) {
+                return r.json().then(function (d) {
+                    var msg = d.error || 'Token failed';
+                    if (d.detail) msg += ' (' + d.detail + ')';
+                    throw new Error(msg);
+                });
+            }
             return r.json();
         });
     }
@@ -57,12 +63,12 @@
             .then(function (results) {
                 var config = results[0];
                 var tokenData = results[1];
-                if (!config.app_id || !tokenData.user_id || !tokenData.session_token) {
-                    setStatus('Missing app_id, user_id or session_token.', 'error');
+                if (!config.app_id || !tokenData.user_id || !tokenData.session_token || !tokenData.chat_with_user_id) {
+                    setStatus('Missing app_id, user_id, session_token or chat_with_user_id.', 'error');
                     return;
                 }
                 setStatus('Initializing Sendbird…', 'info');
-                return initSendbird(config.app_id, tokenData.user_id, tokenData.session_token);
+                return initSendbird(config.app_id, tokenData.user_id, tokenData.session_token, tokenData.chat_with_user_id);
             })
             .then(function () {
                 setStatus('Connected. Loading or creating channel…', 'success');
@@ -72,48 +78,37 @@
             });
     }
 
-    function initSendbird(appId, userId, sessionToken) {
-        // Load Sendbird SDK from CDN (ESM). Need base + groupChannel + openChannel for open channel.
+    function initSendbird(appId, userId, sessionToken, chatWithUserId) {
+        // 1:1 chat: group channel with exactly two users (patient and e.g. daughter). No open channel.
         var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/+esm';
         var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
-        var openUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/openChannel/+esm';
         var sb = null;
         var currentChannel = null;
-        var OPEN_CHANNEL_URL = 'meridian-poc-open';
 
         return import(sdkUrl)
             .then(function (chatMod) {
-                return Promise.all([import(groupUrl), import(openUrl)]).then(function (mods) {
-                    var GroupChannelModule = mods[0].GroupChannelModule;
-                    var OpenChannelModule = mods[1].OpenChannelModule;
+                return import(groupUrl).then(function (groupMod) {
                     var SendbirdChat = chatMod.default;
+                    var GroupChannelModule = groupMod.GroupChannelModule;
                     sb = SendbirdChat.init({
                         appId: appId,
-                        modules: [new GroupChannelModule(), new OpenChannelModule()]
+                        modules: [new GroupChannelModule()]
                     });
                     return sb.connect(userId, sessionToken);
                 });
             })
             .then(function () {
-                setStatus('Connected as ' + userId + '. Opening channel…', 'success');
-                return sb.openChannel.getChannel(OPEN_CHANNEL_URL);
-            })
-            .catch(function (err) {
-                if (err && (err.code === 800220 || (err.message && err.message.indexOf('channel') !== -1))) {
-                    return sb.openChannel.createChannel({
-                        name: 'Meridian PoC',
-                        channelUrl: OPEN_CHANNEL_URL
-                    });
-                }
-                throw err;
+                setStatus('Connected. Opening 1:1 chat with ' + chatWithUserId + '…', 'success');
+                return sb.groupChannel.createChannel({
+                    invitedUserIds: [chatWithUserId],
+                    isDistinct: true,
+                    name: 'Family'
+                });
             })
             .then(function (channel) {
                 currentChannel = channel;
-                return channel.enter();
-            })
-            .then(function () {
                 sendRow.style.display = 'flex';
-                return currentChannel.getMessageList({ prevResultSize: 50, nextResultSize: 0 });
+                return channel.getMessageList({ prevResultSize: 50, nextResultSize: 0 });
             })
             .then(function (list) {
                 var messages = list.messages || [];
@@ -122,13 +117,13 @@
                     var sender = (m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?');
                     appendMessage(sender + ': ' + (m.message || ''), m.sender && m.sender.userId === sb.currentUser.userId);
                 }
-                setStatus('In channel. You can send messages below.', 'success');
+                setStatus('Chat with family. You can send messages below.', 'success');
 
                 sendBtn.addEventListener('click', sendMessage);
                 msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMessage(); });
             })
             .catch(function (err) {
-                setStatus('Channel error: ' + (err && err.message ? err.message : String(err)), 'error');
+                setStatus('Chat error: ' + (err && err.message ? err.message : String(err)), 'error');
             });
 
         function sendMessage() {

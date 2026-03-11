@@ -47,9 +47,10 @@ class MeridianKioskApp(App):
         self.screen_manager = ScreenManager()
 
         # Create factories
-        chat_url = getattr(self, "chat_url", None)
         self.screen_factory = ScreenFactory(
-            self.services, self.screen_manager, chat_url=chat_url
+            self.services,
+            self.screen_manager,
+            chat_url=getattr(self, "chat_url", None),
         )
         self.widget_factory = WidgetFactory(self.services)
 
@@ -64,7 +65,10 @@ class MeridianKioskApp(App):
         self.screen_manager.add_widget(family_screen)
 
         if getattr(self, "chat_url", None):
-            chat_screen = self.screen_factory.create_chat_screen()
+            chat_screen = self.screen_factory.create_chat_screen(
+                getattr(self, "chat_user_id", None),
+                getattr(self, "chat_family_circle_id", None),
+            )
             self.screen_manager.add_widget(chat_screen)
 
         more_screen = self.screen_factory.create_demo_screen()
@@ -310,4 +314,6 @@ def create_app(
     )
     app = MeridianKioskApp(services=remote_services)
     app.chat_url = api_url.rstrip("/") + "/chat"
+    app.chat_user_id = user_id
+    app.chat_family_circle_id = family_circle_id
     return app

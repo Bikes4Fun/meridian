@@ -94,6 +94,12 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
+        # Chat entry: this endpoint *is* the login for the kiosk webview (sets session then redirects to /chat).
+        # Security: allowed only from localhost; remote requests get 403. So we skip auth here on purpose.
+        if request.path == "/api/chat/entry":
+            g.user_id = None
+            g.family_circle_id = None
+            return
         # Session-based (check-in page and its script; chat page and API)
         if request.path in ("/checkin", "/checkin.js", "/api/session", "/chat", "/chat.js") or request.path.startswith("/api/chat/"):
             uid = session.get("user_id")

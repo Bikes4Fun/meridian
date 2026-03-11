@@ -14,6 +14,7 @@ from .modular_display import (
     KioskLabel,
 )
 from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
+from .chat_screen import open_chat_window
 
 from PIL import Image, ImageDraw
 
@@ -204,36 +205,27 @@ class ScreenFactory:
 
         return screen
 
-    def create_chat_screen(self):
-        """Chat screen: open web chat in browser to send and receive messages. See apps/chat/README.md."""
+    def create_chat_screen(self, chat_user_id=None, chat_family_circle_id=None):
+        """Chat screen: in-app webview. Session set via entry URL (localhost-only). See apps/kiosk/chat_screen.py."""
+        import urllib.parse
         from kivy.uix.button import Button
         from kivy.uix.label import Label
         screen = Screen(name="chat")
         main_layout = self.screen_template_boxlayout()
         content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
+        content.add_widget(Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48)))
         content.add_widget(Label(
-            text="Family Chat",
-            font_size=dp(28),
-            size_hint_y=None,
-            height=dp(48),
-        ))
-        content.add_widget(Label(
-            text="Open chat in the browser to send and receive messages with family.",
-            font_size=dp(18),
-            size_hint_y=None,
-            height=dp(60),
+            text="Open chat in the window below to send and receive messages.",
+            font_size=dp(18), size_hint_y=None, height=dp(60),
         ))
         content.add_widget(Label(size_hint_y=None, height=dp(24)))
-        open_btn = Button(
-            text="Open Chat",
-            size_hint_y=None,
-            height=dp(72),
-            font_size=dp(22),
-        )
-        def _open_chat(_):
-            import webbrowser
-            webbrowser.open(self.chat_url)
-        open_btn.bind(on_press=_open_chat)
+        open_btn = Button(text="Open Chat", size_hint_y=None, height=dp(72), font_size=dp(22))
+        if self.chat_url and chat_user_id and chat_family_circle_id:
+            base = self.chat_url.rstrip("/").replace("/chat", "")
+            url = base + "/api/chat/entry?user_id=" + urllib.parse.quote(chat_user_id) + "&family_circle_id=" + urllib.parse.quote(chat_family_circle_id)
+        else:
+            url = self.chat_url or ""
+        open_btn.bind(on_press=lambda _: open_chat_window(url))
         content.add_widget(open_btn)
         main_layout.add_widget(content)
         screen.add_widget(main_layout)

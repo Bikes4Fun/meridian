@@ -63,6 +63,8 @@ class ContactService(DatabaseServiceMixin):
                 photo_filename=row.get("photo_filename"),
                 sendbird_user_id=row.get("sendbird_user_id"),
             )
+            for row in result.data
+        ]
         return ServiceResult.success_result(contacts)
 
     def c_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:

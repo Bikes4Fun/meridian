@@ -81,11 +81,10 @@
                     setStatus('No recipient configured (SENDBIRD_DEFAULT_RECIPIENT_ID).', 'error');
                     return;
                 }
+                var loggedInEl = document.getElementById('loggedInAs');
+                if (loggedInEl) loggedInEl.textContent = 'Logged in as ' + (tokenData.display_name || tokenData.sendbird_user_id || 'You') + '. ';
                 setStatus('Initializing Sendbird…', 'info');
                 return initSendbird(config.app_id, sendbirdUserId, tokenData.session_token, recipientData.sendbird_user_id);
-            })
-            .then(function () {
-                setStatus('Connected. Opening conversation…', 'success');
             })
             .catch(function (err) {
                 setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
@@ -111,7 +110,7 @@
                 });
             })
             .then(function () {
-                setStatus('Connected. Opening 1:1 with ' + (recipientSendbirdUserId || 'recipient') + '…', 'success');
+                setStatus((sendbirdUserId || 'You') + ' is opening conversation with ' + (recipientSendbirdUserId || 'recipient') + '…', 'success');
                 return sb.groupChannel.createChannel({
                     invitedUserIds: [recipientSendbirdUserId],
                     isDistinct: true,

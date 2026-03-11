@@ -165,7 +165,10 @@ def create_server_app(db_path=None):
         ok, token_val, err = sendbird._issue_session_token(sendbird_user_id)
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
-        return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val})
+        db = container.get_database_manager()
+        r = db.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
+        display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
+        return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val, "display_name": display_name})
 
     @app.route("/api/chat/recipient", methods=["GET"])
     def api_chat_recipient():
@@ -438,10 +441,14 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data or []})
 
+    return app
+
 
 def run_server(host=None, port=None):
     """Create and run the server. Host/port from config (get_server_host, get_server_port) when not passed."""
     app = create_server_app()
+    if app is None:
+        raise RuntimeError("create_server_app() returned None")
     host = host if host is not None else get_server_host()
     port = port if port is not None else get_server_port()
     app.run(host=host, port=port, debug=False)

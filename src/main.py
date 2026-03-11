@@ -56,7 +56,7 @@ def _start_local_api_server(logger):
     os.environ["PORT"] = str(port)
 
     logger.info("Starting API server...")
-    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread = threading.Thread(target=run_server, kwargs={"port": port}, daemon=True)
     server_thread.start()
     time.sleep(0.5)
 

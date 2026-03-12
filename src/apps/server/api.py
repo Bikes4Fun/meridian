@@ -6,7 +6,7 @@ WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
   - container/container.py         → create_service_container(db_path) used here
   - container/calendar_service.py → GET /api/family_circles/<id>/calendar/*
   - container/medication_service.py → GET /api/family_circles/<id>/medications
-  - container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary, emergency-profile
+- container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary, emergency-profile
   - container/contact_service.py  (used by emergency_service; no direct endpoint)
 
 WHERE IT MOVED TO (client uses these instead of container on client):

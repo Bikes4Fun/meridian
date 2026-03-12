@@ -1,38 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-
-function loadApiConfig() {
-    const cfgPath = path.join(__dirname, '..', '..', '..', 'shared', 'api_config.json');
-    try {
-        return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    } catch (e) {
-        return {};
-    }
-}
-
-function getRailwayUrl() {
-    if (process.env.RAILWAY_API_URL) return process.env.RAILWAY_API_URL.trim();
-    const cfg = loadApiConfig();
-    const url = (cfg.railway_api_url || '').trim();
-    if (!url) {
-        console.log('Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json');
-        throw new Error('Railway API URL not configured.');
-    }
-    return url;
-}
-
-async function resolveApiUrl() {
-    if (process.env.API_URL) return process.env.API_URL.trim();
-    const railwayUrl = getRailwayUrl();
-    try {
-        const res = await fetch(railwayUrl.replace(/\/$/, '') + '/api/health', { signal: AbortSignal.timeout(3000) });
-        if (res.ok) return railwayUrl;
-        console.log('Railway API health check failed:', res.status);
-    } catch (e) {
-        console.log('Railway API not reachable, using localhost:', e.message);
-    }
-    return 'http://localhost:8080';
-}
+const { resolveApiUrl } = require('../../../shared/resolve_api_url');
 
 async function build() {
     const apiUrl = await resolveApiUrl();
@@ -42,18 +10,17 @@ async function build() {
     const dist = path.join(root, 'dist');
     if (!fs.existsSync(dist)) fs.mkdirSync(dist, { recursive: true });
 
+    const replaceApi = (s) => s.replace(/__API_URL__/g, apiUrl);
+
     const loginHtml = fs.readFileSync(path.join(webClient, 'login.html'), 'utf8');
-    fs.writeFileSync(path.join(dist, 'index.html'), loginHtml.replace(/__API_URL__/g, apiUrl));
-    fs.writeFileSync(path.join(dist, 'login.html'), loginHtml.replace(/__API_URL__/g, apiUrl));
+    fs.writeFileSync(path.join(dist, 'index.html'), replaceApi(loginHtml));
+    fs.writeFileSync(path.join(dist, 'login.html'), replaceApi(loginHtml));
 
-    const checkinHtml = fs.readFileSync(path.join(webClient, 'checkin.html'), 'utf8');
-    fs.writeFileSync(path.join(dist, 'checkin.html'), checkinHtml);
+    const indexHtml = fs.readFileSync(path.join(webClient, 'index.html'), 'utf8');
+    fs.writeFileSync(path.join(dist, 'checkin.html'), replaceApi(indexHtml));
 
-    const checkinJsPath = path.join(webClient, 'checkin.js');
-    if (fs.existsSync(checkinJsPath)) {
-        const checkinJs = fs.readFileSync(checkinJsPath, 'utf8');
-        fs.writeFileSync(path.join(dist, 'checkin.js'), checkinJs.replace(/__API_URL__/g, apiUrl));
-    }
+    const appJs = fs.readFileSync(path.join(webClient, 'app.js'), 'utf8');
+    fs.writeFileSync(path.join(dist, 'app.js'), replaceApi(appJs));
 }
 
 build().catch((e) => { console.error(e); process.exit(1); });

@@ -14,6 +14,7 @@ def _create_family_locations_title():
     apply_debug_border(title)
     return title
 
+
 def _create_family_possible_places_block(location_service):
     """Create possible family locations block (debug)."""
     prefix = "possible family locations:\n"
@@ -39,6 +40,7 @@ def _create_family_possible_places_block(location_service):
 
     apply_debug_border(widget)
     return widget
+
 
 def _create_family_checkins_block(location_service):
     """Create family check-ins block."""
@@ -85,6 +87,7 @@ def _create_family_checkins_block(location_service):
     apply_debug_border(widget)
     return widget
 
+
 def _create_family_future_map_block():
     """Create map container; MapView is added lazily on screen enter to avoid black screen in ScreenManager."""
     map_lat = (37.0056 + 37.139) / 2
@@ -93,6 +96,7 @@ def _create_family_future_map_block():
     apply_debug_border(container)
     container._map_params = {"lat": map_lat, "lon": map_lon, "zoom": 11}
     return container
+
 
 def build_map_screen(map_screen_widget, location_service):
 
@@ -106,5 +110,5 @@ def build_map_screen(map_screen_widget, location_service):
     map_container = _create_family_future_map_block()
     map_screen_widget.map_container = map_container
     map_screen_widget.add_widget(map_container)
-    
+
     return map_screen_widget

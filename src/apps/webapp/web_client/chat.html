@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat (Sendbird PoC)</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 16px; }
+        h1 { font-size: 20px; color: #333; }
+        #status { margin: 12px 0; padding: 10px; border-radius: 8px; font-size: 14px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .success { background: #d4edda; color: #155724; }
+        #messages { border: 1px solid #ddd; border-radius: 8px; height: 280px; overflow-y: auto; padding: 12px; margin: 12px 0; background: #fafafa; }
+        #messages p { margin: 6px 0; font-size: 14px; }
+        #sendRow { display: flex; gap: 8px; margin-top: 8px; }
+        #msgInput { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        #sendBtn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        #sendBtn:disabled { background: #ccc; cursor: not-allowed; }
+        #contactsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin: 12px 0; }
+        #contactsGrid .contact-tile { padding: 12px; border: 1px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer; background: #fafafa; }
+        #contactsGrid .contact-tile:hover { background: #eee; }
+        #contactsGrid .contact-tile .name { font-size: 14px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <h1>Chat (Sendbird PoC)</h1>
+    <p><span id="loggedInAs">You must be <a href="/login">logged in</a>.</span> Session user is used for Sendbird. <a href="/checkin">Back to Check-in</a>.</p>
+    <div id="status" class="info">Loading…</div>
+    <div id="contactsSection">
+        <p><strong>Choose a contact to call</strong></p>
+        <div id="contactsGrid"></div>
+    </div>
+    <div id="messages"></div>
+    <div id="sendRow" style="display: none;">
+        <input type="text" id="msgInput" placeholder="Type a message…">
+        <button type="button" id="sendBtn">Send</button>
+    </div>
+    <script src="/app.js"></script>
+</body>
+</html>

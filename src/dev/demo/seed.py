@@ -56,15 +56,15 @@ def load_json_file(filename: str) -> Dict[str, Any]:
 
 
 def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
-    """Load contacts from JSON. Can have photo_filename and notes for contact card."""
+    """Load contacts from JSON. Can have photo_filename, notes, sendbird_user_id for contact card and chat."""
     contacts_data = load_json_file("contacts.json")
     contacts = contacts_data.get("contacts", [])
 
     for contact in contacts:
         query = """
             INSERT OR REPLACE INTO contacts 
-            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes, sendbird_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             contact.get("id"),
@@ -77,6 +77,7 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
             contact.get("emergency_priority"),
             contact.get("photo_filename"),
             contact.get("notes"),
+            contact.get("sendbird_user_id"),
         )
         db_manager.execute_update(query, params)
     logger.debug("  Loaded %d contacts" % len(contacts))
@@ -113,18 +114,19 @@ def _link_users_to_family_circles(db_manager, users):
 
 
 def load_demo_users_from_json_into_db(db_manager):
-    """Load all users from users.json."""
+    """Load all users from users.json. sendbird_user_id is used for chat (maps app user to Sendbird user)."""
     users = load_json_file("users.json")
 
     for user in users:
         uid = user.get("id")
         photo_filename = user.get("photo_filename")
+        sendbird_user_id = user.get("sendbird_user_id")
         db_manager.execute_update(
             """
-            INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (uid, user.get("display_name"), photo_filename, user.get("family_circle_id")),
+            (uid, user.get("display_name"), photo_filename, user.get("family_circle_id"), sendbird_user_id),
         )
 
     _link_users_to_family_circles(db_manager, users)
@@ -215,15 +217,9 @@ def load_demo_care_recipient_data(db_manager, family_circle_id: str):
 
     profile = cr_data.get("profile") or {}
     medical = cr_data.get("medical") or {}
-    emergency = cr_data.get("emergency") or {}
-    proxy = emergency.get("proxy") or {}
     name = profile.get("name")
     dob = profile.get("dob")
     medical_dnr = 1 if medical.get("dnr") else 0
-    proxy_name = proxy.get("name")
-    medical_proxy_phone = cr_data.get("medical_proxy_phone")
-    poa_name = cr_data.get("poa_name")
-    poa_phone = cr_data.get("poa_phone")
     notes = cr_data.get("notes")
 
     db_manager.execute_update(
@@ -234,25 +230,18 @@ def load_demo_care_recipient_data(db_manager, family_circle_id: str):
         (family_circle_id, care_recipient_user_id, name, dob, None, medical_dnr, None, notes),
     )
 
-    if proxy_name or medical_proxy_phone:
-        cid = f"proxy_{family_circle_id}"
-        db_manager.execute_update(
-            "INSERT OR REPLACE INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
-            (cid, family_circle_id, proxy_name or "", medical_proxy_phone or ""),
-        )
+    # Assign proxy/POA roles to existing contacts (contacts must be in contacts.json).
+    proxy_contact_id = cr_data.get("proxy_contact_id")
+    poa_contact_id = cr_data.get("poa_contact_id")
+    if proxy_contact_id:
         db_manager.execute_update(
             "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
-            (family_circle_id, "medical_proxy", cid),
+            (family_circle_id, "medical_proxy", proxy_contact_id),
         )
-    if poa_name or poa_phone:
-        cid = f"poa_{family_circle_id}"
-        db_manager.execute_update(
-            "INSERT OR REPLACE INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
-            (cid, family_circle_id, poa_name or "", poa_phone or ""),
-        )
+    if poa_contact_id:
         db_manager.execute_update(
             "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
-            (family_circle_id, "poa", cid),
+            (family_circle_id, "poa", poa_contact_id),
         )
     logger.debug("  Loaded care recipient and contact roles")
 

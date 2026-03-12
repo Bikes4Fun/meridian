@@ -1,0 +1,24 @@
+Here's how the kiosk uses the webapp chat code:
+
+Kiosk uses the webapp via URL, not embedding
+The kiosk opens a browser window, it doesn’t host or embed chat HTML itself.
+Flow: User taps a contact in the kiosk → pywebview opens
+http://localhost:8080/api/chat/entry?user_id=...&family_circle_id=...&sendbird_user_id=...&display_name=...
+Server behavior: /api/chat/entry sets the session and redirects to /chat?sendbird_user_id=...&display_name=....
+/chat is served by the same server as the webapp and returns chat.html + chat.js from the webapp.
+So the kiosk uses the chat by loading the server’s /chat page in a webview. The server is shared between webapp and kiosk; the kiosk just navigates to URLs on that server.
+
+Who uses which mode
+Standalone (messages, status, etc.):
+
+Direct visits to /chat
+Kiosk opening /chat in pywebview
+Embedded (chatMessages, chatStatus, etc.):
+
+Only in checkin.html, where chat is shown inline on the check-in page.
+chatMessages appears only on checkin.html, so embedded mode exists for that page. The kiosk never sees those IDs; it loads the standalone chat.html, which uses messages, status, etc.
+
+About chat_embed.html
+chat_embed.html in the kiosk folder is a separate, self-contained implementation and is not referenced by any route. The live flow uses the server’s /chat → chat.html + chat.js from the webapp.
+
+Summary: The kiosk uses the webapp chat by opening /chat in a webview. The server serves chat.html and chat.js for that URL. Embedded mode is only for the check-in page; the kiosk uses standalone mode.

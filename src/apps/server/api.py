@@ -50,7 +50,7 @@ _alert_activated = False
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
     Functionality is provided by container (via create_service_container).
-    Clients use client/remote.create_remote() to call this API."""
+    Kiosk uses api_client.create_kiosk_remote() to call this API."""
     db_path = db_path or get_database_path()
     container = create_service_container(db_path)
 
@@ -92,12 +92,13 @@ def create_server_app(db_path=None):
             return
         # Chat entry: this endpoint *is* the login for the kiosk webview (sets session then redirects to /chat).
         # Security: allowed only from localhost; remote requests get 403. So we skip auth here on purpose.
-        if request.path in ("/api/chat/entry", "/kiosk-chat"):
+        if request.path == "/api/chat/entry":
             g.user_id = None
             g.family_circle_id = None
             return
-        # Session-based (check-in page and its script; chat page and API)
-        if request.path in ("/checkin", "/checkin.js", "/api/session", "/chat", "/chat.js") or request.path.startswith("/api/chat/"):
+        # Session-based: check-in, chat, and chat API (no client-type branching)
+        _need_session = request.path in ("/checkin", "/app.js", "/api/session", "/chat") or request.path.startswith("/api/chat/")
+        if _need_session:
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
@@ -129,20 +130,23 @@ def create_server_app(db_path=None):
 
     @app.route("/api/chat/entry", methods=["GET"])
     def api_chat_entry():
-        """Set session from query params and redirect to /chat. Localhost only (kiosk webview)."""
+        """Set session from query params and redirect to /chat. Localhost only (kiosk webview). user_id = sender (person initiating chat)."""
         if request.remote_addr not in ("127.0.0.1", "::1"):
             return jsonify({"error": "Forbidden: entry only from localhost"}), 403
-        user_id = (request.args.get("user_id") or "").strip()
+        sender_user_id = (request.args.get("user_id") or "").strip()
         family_circle_id = (request.args.get("family_circle_id") or "").strip()
-        if not user_id or not family_circle_id:
+        if not sender_user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = user_id
+        session["user_id"] = sender_user_id
         session["family_circle_id"] = family_circle_id
-        to = "/chat"
+        to = (request.args.get("redirect") or "/chat").strip()
+        if not to.startswith("/"):
+            to = "/" + to
         sb = (request.args.get("sendbird_user_id") or "").strip()
         dn = (request.args.get("display_name") or "").strip()
         if sb:
-            to += "?sendbird_user_id=" + urllib.parse.quote(sb)
+            sep = "&" if "?" in to else "?"
+            to += sep + "sendbird_user_id=" + urllib.parse.quote(sb)
             if dn:
                 to += "&display_name=" + urllib.parse.quote(dn)
         return redirect(to)
@@ -347,7 +351,6 @@ def create_server_app(db_path=None):
     _web_client_dir = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")
     )
-
     def _serve_with_api_url(filename, api_url=""):
         """Serve static file with __API_URL__ replaced. Use '' when API and webapp share origin."""
         path = os.path.join(_web_client_dir, filename)
@@ -385,35 +388,13 @@ def create_server_app(db_path=None):
     def serve_checkin():
         return _serve_with_api_url("checkin.html")
 
-    @app.route("/checkin.js")
-    def serve_checkin_js():
-        return _serve_with_api_url("checkin.js")
+    @app.route("/app.js")
+    def serve_app_js():
+        return _serve_with_api_url("app.js")
 
     @app.route("/chat")
     def serve_chat():
-        return redirect("/checkin")
-
-    _kiosk_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "kiosk"))
-
-    @app.route("/kiosk-chat")
-    def serve_kiosk_chat():
-        """Kiosk-only chat: set session from params, serve minimal bubble UI. Localhost only."""
-        if request.remote_addr not in ("127.0.0.1", "::1"):
-            return jsonify({"error": "Forbidden: kiosk-chat only from localhost"}), 403
-        user_id = (request.args.get("user_id") or "").strip()
-        family_circle_id = (request.args.get("family_circle_id") or "").strip()
-        if not user_id or not family_circle_id:
-            return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = user_id
-        session["family_circle_id"] = family_circle_id
-        path = os.path.join(_kiosk_dir, "chat_embed.html")
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read().replace("__API_URL__", request.url_root.rstrip("/"))
-        return Response(content, mimetype="text/html")
-
-    @app.route("/chat.js")
-    def serve_chat_js():
-        return _serve_with_api_url("chat.js")
+        return _serve_with_api_url("chat.html")
 
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):

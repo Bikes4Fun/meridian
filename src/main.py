@@ -34,10 +34,8 @@ from shared.config import (
 )
 from apps.kiosk.app import create_app
 
-# TODO: from auth when not demo
-DEMO_MODE = True
-# Kiosk runs as the patient (Marian Foster). Webapp user logs in as Dylan (fm_005) to chat with patient.
-PATIENT_USER_ID = "fm_care_001"
+# Kiosk runs as the kiosk user (often care recipient). Webapp user logs in as Dylan (fm_005) to chat with kiosk user.
+KIOSK_USER_ID = "fm_care_001"
 PATIENT_FAMILY_CIRCLE_ID = "F00000"
 
 
@@ -145,12 +143,11 @@ def main():
 
     logger.info("Starting Meridian ...")
     try:
-        auth = (
-            {"user_id": PATIENT_USER_ID, "family_circle_id": PATIENT_FAMILY_CIRCLE_ID}
-            if use_local
-            else {}
+        app = create_app(
+            api_url=api_url,
+            kiosk_user_id=KIOSK_USER_ID,
+            family_circle_id=PATIENT_FAMILY_CIRCLE_ID,
         )
-        app = create_app(api_url=api_url, **auth)
         logger.info("Meridian Kiosk, server, and webapp created successfully, starting...")
         app.run()
     except Exception as e:

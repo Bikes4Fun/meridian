@@ -44,31 +44,6 @@
 
         <button type="submit">Continue</button>
     </form>
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            var familyCircleId = document.getElementById('familyCircleId').value.trim();
-            var userId = document.getElementById('userId').value.trim();
-            if (!familyCircleId || !userId) return;
-            var apiBase = '__API_URL__' || '';
-            fetch((apiBase ? apiBase.replace(/\/$/, '') : '') + '/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ user_id: userId, family_circle_id: familyCircleId })
-            })
-            .then(function (r) {
-                if (r.ok) return r.json();
-                return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
-            })
-            .then(function () {
-                var base = (apiBase ? apiBase.replace(/\/$/, '') : '');
-                window.location.href = base ? base + '/checkin' : '/checkin';
-            })
-            .catch(function (err) {
-                alert(err.message || 'Login failed');
-            });
-        });
-    </script>
+    <script src="/app.js"></script>
 </body>
 </html>

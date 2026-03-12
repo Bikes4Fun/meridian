@@ -4,7 +4,7 @@ Creates and configures the application with proper dependency injection.
 
 CLIENT vs SERVER:
 - This module is used only by the client (Kivy UI). api_url (from main entry) determines where
-  services come from via client/remote.create_remote(); container is not used.
+  services come from via api_client.create_kiosk_remote(); container is not used.
 
 SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses server/app.py only.
 """
@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Optional
 from shared.config import ConfigManager
-from .api_client import create_remote
+from .api_client import create_kiosk_remote
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
@@ -50,37 +50,28 @@ class MeridianKioskApp(App):
         self.screen_factory = ScreenFactory(
             self.services,
             self.screen_manager,
-            chat_url=getattr(self, "chat_url", None),
+            kiosk_user_id=self.kiosk_user_id,
+            family_circle_id=self.family_circle_id,
+            chat_url=self.chat_url,
         )
         self.widget_factory = WidgetFactory(self.services)
 
-        # Create screens
         home_screen = self.screen_factory.create_home_screen()
         self.screen_manager.add_widget(home_screen)
 
         emergency_screen = self.screen_factory.create_emergency_screen()
         self.screen_manager.add_widget(emergency_screen)
 
-        family_screen = self.screen_factory.create_family_screen()
-        self.screen_manager.add_widget(family_screen)
+        checkin_screen = self.screen_factory.create_checkin_screen()
+        self.screen_manager.add_widget(checkin_screen)
 
-        if getattr(self, "chat_url", None):
-            chat_screen = self.screen_factory.create_chat_screen(
-                getattr(self, "chat_user_id", None),
-                getattr(self, "chat_family_circle_id", None),
-            )
-            self.screen_manager.add_widget(chat_screen)
+        chat_screen = self.screen_factory.create_chat_screen(
+            kiosk_user_id=self.kiosk_user_id,
+            family_circle_id=self.family_circle_id,
+        )
+        self.screen_manager.add_widget(chat_screen)
 
-        more_screen = self.screen_factory.create_demo_screen()
-        self.screen_manager.add_widget(more_screen)
-
-        self.screen_manager.current = "family"
-
-        # Store reference for updates
-        self.home_screen = home_screen
-
-        # Initial update
-        self.update_all()
+        self.screen_manager.current = "chat"
 
         # Sync photos on boot: fetch from server and cache locally for offline use
         Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)
@@ -131,7 +122,7 @@ class MeridianKioskApp(App):
 
     def update_clock(self):
         """Update clock display."""
-        if getattr(self, "home_screen", None):
+        if hasattr(self, "home_screen"):
             # Find clock widget using recursive search
             clock_widget = self._find_widget_by_attribute(self.home_screen, "day_label")
             if clock_widget:
@@ -271,7 +262,7 @@ class MeridianKioskApp(App):
 
     def update_time(self, dt=1):
         """Update time display and check for time-of-day changes."""
-        if getattr(self, "home_screen", None):
+        if hasattr(self, "home_screen"):
             clock_widget = self._find_widget_by_attribute(
                 self.home_screen, "time_label"
             )
@@ -293,27 +284,25 @@ class MeridianKioskApp(App):
                         clock_widget.time_of_day_icon.source = icon_path
 
 
-def create_app(
-    user_id=None,
-    family_circle_id=None,
-    api_url: str = None,
-) -> MeridianKioskApp:
-    """Create the Meridian Kiosk. api_url from main entry configuration."""
+def create_app(kiosk_user_id: str, family_circle_id: str, api_url: str = None) -> MeridianKioskApp:
+    """Create the Meridian Kiosk. kiosk_user_id and family_circle_id required. api_url from main entry."""
     if not api_url:
         raise ValueError("api_url required. Pass from main entry (e.g. create_app(..., api_url=...)).")
+    if not kiosk_user_id or not family_circle_id:
+        raise ValueError("kiosk_user_id and family_circle_id required.")
     try:
         import requests
         session = requests.Session()
     except ImportError:
         session = None
-    remote_services = create_remote(
+    remote_services = create_kiosk_remote(
         api_url,
-        user_id=user_id,
+        kiosk_user_id=kiosk_user_id,
         family_circle_id=family_circle_id,
         session=session,
     )
     app = MeridianKioskApp(services=remote_services)
     app.chat_url = api_url.rstrip("/") + "/chat"
-    app.chat_user_id = user_id
-    app.chat_family_circle_id = family_circle_id
+    app.kiosk_user_id = kiosk_user_id
+    app.family_circle_id = family_circle_id
     return app

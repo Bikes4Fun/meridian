@@ -217,15 +217,9 @@ def load_demo_care_recipient_data(db_manager, family_circle_id: str):
 
     profile = cr_data.get("profile") or {}
     medical = cr_data.get("medical") or {}
-    emergency = cr_data.get("emergency") or {}
-    proxy = emergency.get("proxy") or {}
     name = profile.get("name")
     dob = profile.get("dob")
     medical_dnr = 1 if medical.get("dnr") else 0
-    proxy_name = proxy.get("name")
-    medical_proxy_phone = cr_data.get("medical_proxy_phone")
-    poa_name = cr_data.get("poa_name")
-    poa_phone = cr_data.get("poa_phone")
     notes = cr_data.get("notes")
 
     db_manager.execute_update(
@@ -236,25 +230,18 @@ def load_demo_care_recipient_data(db_manager, family_circle_id: str):
         (family_circle_id, care_recipient_user_id, name, dob, None, medical_dnr, None, notes),
     )
 
-    if proxy_name or medical_proxy_phone:
-        cid = f"proxy_{family_circle_id}"
-        db_manager.execute_update(
-            "INSERT OR REPLACE INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
-            (cid, family_circle_id, proxy_name or "", medical_proxy_phone or ""),
-        )
+    # Assign proxy/POA roles to existing contacts (contacts must be in contacts.json).
+    proxy_contact_id = cr_data.get("proxy_contact_id")
+    poa_contact_id = cr_data.get("poa_contact_id")
+    if proxy_contact_id:
         db_manager.execute_update(
             "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
-            (family_circle_id, "medical_proxy", cid),
+            (family_circle_id, "medical_proxy", proxy_contact_id),
         )
-    if poa_name or poa_phone:
-        cid = f"poa_{family_circle_id}"
-        db_manager.execute_update(
-            "INSERT OR REPLACE INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
-            (cid, family_circle_id, poa_name or "", poa_phone or ""),
-        )
+    if poa_contact_id:
         db_manager.execute_update(
             "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
-            (family_circle_id, "poa", cid),
+            (family_circle_id, "poa", poa_contact_id),
         )
     logger.debug("  Loaded care recipient and contact roles")
 

@@ -1,6 +1,6 @@
 """
 Simplified service container for Meridian.
-Used only by server/app.py. Client uses client/remote.create_remote() instead.
+Used only by server/app.py. Kiosk uses api_client.create_kiosk_remote() instead.
 """
 
 try:

@@ -8,7 +8,6 @@ import logging
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.screenmanager import Screen
 from kivy_garden.mapview import MapView, MapMarker
 from .modular_display import (
@@ -67,10 +66,11 @@ class CustomMarker(MapMarker):
 class ScreenFactory:
     """Factory for creating kiosk screens."""
 
-    def __init__(self, services, screen_manager, user_id=None, chat_url=None):
+    def __init__(self, services, screen_manager, kiosk_user_id: str, family_circle_id: str, chat_url=None):
         self.services = services
         self.screen_manager = screen_manager
-        self.user_id = user_id
+        self.kiosk_user_id = kiosk_user_id
+        self.family_circle_id = family_circle_id
         self.chat_url = chat_url
         self.widget_factory = WidgetFactory(services)
 
@@ -141,7 +141,7 @@ class ScreenFactory:
         return screen
 
 
-    def create_family_screen(self):
+    def create_checkin_screen(self):
         """Create family location check-in screen using modular components."""
         screen = Screen(name="family")
         main_layout = self.screen_template_boxlayout()
@@ -183,6 +183,7 @@ class ScreenFactory:
                                     elif "/" in photo_fn or os.path.sep in photo_fn:
                                         src = os.path.join(base, photo_fn)
                                     else:
+                                        # TODO: once main calls create kiosk, it should have nothing to do with/not know anything about the demo modes or data. 
                                         src = os.path.join(base, "dev", "demo", "data", "family_img", photo_fn)
                                     if not os.path.exists(src) and "demo/demo_data" in photo_fn:
                                         src = os.path.join(base, photo_fn.replace("demo/demo_data", "dev/demo/data"))
@@ -206,34 +207,56 @@ class ScreenFactory:
 
         return screen
 
-    def create_chat_screen(self, chat_user_id=None, chat_family_circle_id=None):
-        """Chat screen: Open Chat button launches pywebview window with kiosk-chat."""
+    def create_chat_screen(self, kiosk_user_id: str, family_circle_id: str):
+        """Chat screen: Open Chat button launches pywebview window with kiosk-chat. kiosk_user_id = sender (person using kiosk)."""
         import urllib.parse
-        DYLAN_SENDBIRD_USER_ID = "dtzecha"
-        DYLAN_DISPLAY_NAME = "Dylan"
-        base = (self.chat_url or "").rstrip("/").replace("/chat", "")
-        chat_url = (
-            base + "/kiosk-chat?user_id=" + urllib.parse.quote(chat_user_id or "")
-            + "&family_circle_id=" + urllib.parse.quote(chat_family_circle_id or "")
-            + "&sendbird_user_id=" + urllib.parse.quote(DYLAN_SENDBIRD_USER_ID)
-            + "&display_name=" + urllib.parse.quote(DYLAN_DISPLAY_NAME)
-        )
-
+        from kivy.uix.button import Button
+        from kivy.uix.label import Label
+        from kivy.uix.scrollview import ScrollView
+        from kivy.uix.gridlayout import GridLayout
         screen = Screen(name="chat")
         main_layout = self.screen_template_boxlayout()
-        content = BoxLayout(orientation="vertical", size_hint=(1, 1))
-
-        btn = Button(
-            text="Open Chat",
-            size_hint=(0.4, None),
-            height=dp(60),
-            pos_hint={"center_x": 0.5, "center_y": 0.5},
-        )
-        btn.bind(on_press=lambda *_: open_chat_window(chat_url))
-        content.add_widget(btn)
-
+        content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
+        content.add_widget(Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48)))
+        content.add_widget(Label(
+            text="Choose a contact to call.",
+            font_size=dp(18), size_hint_y=None, height=dp(40),
+        ))
+        contacts_grid = GridLayout(cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8))
+        contacts_grid.bind(minimum_height=contacts_grid.setter("height"))
+        scroll = ScrollView(size_hint=(1, 1))
+        scroll.add_widget(contacts_grid)
+        content.add_widget(scroll)
         main_layout.add_widget(content)
         screen.add_widget(main_layout)
+
+        def _load_contacts():
+            contacts_grid.clear_widgets()
+            contact_svc = self.services.get("contact_service") if self.services else None
+            if not contact_svc or not family_circle_id:
+                contacts_grid.add_widget(Label(text="No contacts (check server).", size_hint_y=None, height=dp(48)))
+                return
+            r = contact_svc.get_contacts()
+            if not r.success or not r.data:
+                contacts_grid.add_widget(Label(text="No contacts.", size_hint_y=None, height=dp(48)))
+                return
+            # Only show contacts who have sendbird_user_id (chat-able)
+            chat_contacts = [c for c in r.data if (c.get("sendbird_user_id") or "").strip()]
+            if not chat_contacts:
+                contacts_grid.add_widget(Label(text="No contacts with chat.", size_hint_y=None, height=dp(48)))
+                return
+            base = (self.chat_url or "").rstrip("/").replace("/chat", "")
+            entry_base = base + "/api/chat/entry?user_id=" + urllib.parse.quote(kiosk_user_id or "") + "&family_circle_id=" + urllib.parse.quote(family_circle_id or "")
+            for c in chat_contacts:
+                name = (c.get("display_name") or c.get("id") or "Contact")
+                sb_uid = (c.get("sendbird_user_id") or "").strip()
+                btn = Button(text=name, size_hint_y=None, height=dp(64), font_size=dp(18))
+                if base and kiosk_user_id and family_circle_id:
+                    url = entry_base + ("&sendbird_user_id=" + urllib.parse.quote(sb_uid) + "&display_name=" + urllib.parse.quote(name)) if sb_uid else entry_base
+                    btn.bind(on_press=lambda *_a, _url=url: open_chat_window(_url))
+                contacts_grid.add_widget(btn)
+
+        screen.bind(on_enter=lambda *_a: _load_contacts())
         return screen
 
     def _create_navigation(self):
@@ -243,7 +266,6 @@ class ScreenFactory:
             {"text": "Emergency", "screen": "emergency"},
             {"text": "Family", "screen": "family"},
             {"text": "Chat", "screen": "chat"},
-            {"text": "Demo", "screen": "demo"},
         ]
         if not self.chat_url:
             nav_buttons = [b for b in nav_buttons if b["screen"] != "chat"]
@@ -251,72 +273,3 @@ class ScreenFactory:
             screen_manager=self.screen_manager,
             buttons=nav_buttons,
         )
-
-
-# -------------
-# DEMO SCREEN FOR TESTING DESIGN METHODS
-
-    def _demo_header(self):
-        header = BoxLayout(
-            orientation="horizontal",
-            size_hint_y=None,
-            height=dp(80),
-            spacing=dp(8),
-            padding=dp(8),
-        )
-
-
-        apply_debug_border(header, color=(0.8, 0.2, 0.2, 1))
-        
-        left_box = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(120), spacing=dp(8))
-        left_label = KioskLabel(type="caption", text="LEFT")
-        left_box.add_widget(left_label)
-        apply_debug_border(left_box, color=(0.2, 0.2, 0.2, 1))
-        header.add_widget(left_box)
-        
-        right_box = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(120), spacing=dp(8))
-        right_label = KioskLabel(type="caption", text="RIGHT")
-        right_box.add_widget(right_label)
-        apply_debug_border(right_box, color=(0.2, 0.2, 0.2, 1))
-        header.add_widget(right_box)
-        
-        return header
-
-    def _demo_content(self):
-        content = BoxLayout(orientation="horizontal", size_hint=(1, 1), spacing=dp(8))
-        sidebar = BoxLayout(orientation="vertical", size_hint_x=0.25)
-        
-        # Sidebar
-        sidebar_label = KioskLabel(type="caption", text="SIDEBAR")
-        sidebar.add_widget(sidebar_label)
-        apply_debug_border(sidebar, color=(0.2, 0.7, 0.3, 1))
-        content.add_widget(sidebar)
-
-        # Main
-        main_area = BoxLayout(orientation="vertical", size_hint_x=0.75)
-        main_label = KioskLabel(type="caption", text="MAIN")
-        main_area.add_widget(main_label)
-        apply_debug_border(main_area, color=(0.2, 0.4, 0.8, 1))
-        content.add_widget(main_area)
-        
-        return content
-
-    def _demo_footer(self):
-        footer = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(60))
-        footer_label = KioskLabel(type="caption", text="FOOTER")
-        footer.add_widget(footer_label)
-        apply_debug_border(footer, color=(0.9, 0.6, 0.1, 1))
-        return footer
-
-    def create_demo_screen(self):
-        """Demo screen: blank boxes with labeled regions to visualize layout behavior."""
-        screen = Screen(name="demo")
-        main_layout = self.screen_template_boxlayout()
-
-        main_layout.add_widget(self._demo_header())
-        main_layout.add_widget(self._demo_content())
-        main_layout.add_widget(self._demo_footer())
-
-        screen.add_widget(main_layout)
-        return screen
-

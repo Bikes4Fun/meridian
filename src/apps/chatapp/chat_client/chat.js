@@ -52,6 +52,20 @@
             });
     }
 
+    function createChannel(recipientSendbirdUserId) {
+        var body = {};
+        if (recipientSendbirdUserId) body.recipient_sendbird_user_id = recipientSendbirdUserId;
+        return fetch((API_URL || '').replace(/\/$/, '') + '/api/chat/channel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body)
+        }).then(function (r) {
+            if (!r.ok) return r.json().then(function (d) { throw new Error((d && d.error) || (d && d.detail) || 'Create channel failed'); });
+            return r.json();
+        });
+    }
+
     function getRecipientFromUrl() {
         var params = new URLSearchParams(window.location.search);
         var sb = (params.get('sendbird_user_id') || '').trim();
@@ -93,16 +107,14 @@
             .catch(function (err) { err._step = 'connect'; throw err; })
             .then(function () {
                 setStatus((sendbirdUserId || 'You') + ' is opening conversation with ' + (recipientSendbirdUserId || 'recipient') + '…', 'success');
-                return sb.groupChannel.createChannel({
-                    invitedUserIds: [recipientSendbirdUserId],
-                    isDistinct: true,
-                    name: 'Family'
-                });
+                return createChannel(recipientSendbirdUserId);
+            })
+            .then(function (data) {
+                var channelUrl = (data && data.channel_url) || '';
+                if (!channelUrl) throw new Error('No channel_url in response');
+                return sb.groupChannel.getChannel(channelUrl);
             })
             .catch(function (err) {
-                if (err && err.code === 800220) {
-                    return sb.groupChannel.getChannel(recipientSendbirdUserId);
-                }
                 if (err) err._step = 'createChannel';
                 throw err;
             })

@@ -11,6 +11,7 @@ import os
 import time
 import urllib.parse
 
+import requests
 from flask import Flask, abort, jsonify, request, g, session, redirect, send_from_directory
 
 try:
@@ -162,6 +163,50 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         if not sendbird_recipient_id:
             return jsonify({"error": "No default recipient", "detail": "Add sendbird_user_id to contact or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
         return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": recipient_name})
+
+    @app.route("/api/chat/channel", methods=["POST"])
+    def api_chat_channel():
+        """Create 1:1 group channel via Platform API. Returns channel_url for client getChannel."""
+        if not sendbird_svc.is_configured():
+            return jsonify({"error": "Sendbird not configured"}), 503
+        app_user_id = getattr(g, "user_id", None)
+        if not app_user_id:
+            return jsonify({"error": "Not logged in"}), 401
+        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(app_user_id) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
+        if not sendbird_user_id:
+            return jsonify({"error": "No Sendbird user linked"}), 400
+        data = request.get_json(silent=True) or {}
+        recipient_id = (data.get("recipient_sendbird_user_id") or "").strip()
+        if not recipient_id:
+            family_circle_id = getattr(g, "family_circle_id", None) or ""
+            recipient_id, _ = sendbird_svc.get_default_recipient(family_circle_id)
+        if not recipient_id:
+            recipient_id = sendbird_svc.get_sendbird_default_recipient_id_from_env()
+        if not recipient_id:
+            return jsonify({"error": "No default recipient"}), 503
+        base = sendbird_svc._api_url()
+        if not base:
+            return jsonify({"error": "Sendbird not configured"}), 503
+        payload = {"user_ids": [sendbird_user_id, recipient_id], "is_distinct": True, "name": "Family"}
+        r = requests.post(base + "/group_channels", headers=sendbird_svc._headers(), json=payload, timeout=10)
+        if r.status_code != 200:
+            body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            msg = body.get("message", r.text)
+            return jsonify({"error": "Create channel failed", "detail": msg}), 502
+        data = r.json()
+        channel_url = (data.get("channel_url") or "").strip()
+        if not channel_url:
+            return jsonify({"error": "Create channel failed", "detail": "No channel_url in response"}), 502
+        r = db_manager.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
+        display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
+        msg_body = {"message_type": "MESG", "user_id": sendbird_user_id, "message": (display_name or "Someone") + " wants to chat."}
+        try:
+            r2 = requests.post(base + "/group_channels/" + channel_url + "/messages", headers=sendbird_svc._headers(), json=msg_body, timeout=10)
+            if r2.status_code != 200:
+                print("[chatapp] send wants-to-chat message failed: %s" % (r2.text or r2.status_code))
+        except Exception as e:
+            print("[chatapp] send wants-to-chat message error: %s" % e)
+        return jsonify({"channel_url": channel_url})
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")

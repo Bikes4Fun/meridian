@@ -63,7 +63,19 @@ def verify_api(api_url, logger=None):
     except Exception as e:
         steps.append(("recipient", query, "ERR", str(e)))
 
-    # 5–7. Sendbird Platform API
+    # 5. create channel (our API)
+    query = "POST %s/api/chat/channel\n  body: {}" % base
+    channel_url_from_api = None
+    try:
+        r = session.post(base + "/api/chat/channel", json={}, timeout=5)
+        resp = r.json() if r.headers.get("content-type", "").startswith("application/json") else r.text
+        if r.ok and isinstance(resp, dict):
+            channel_url_from_api = resp.get("channel_url", "").strip()
+        steps.append(("create channel (API)", query, r.status_code, resp))
+    except Exception as e:
+        steps.append(("create channel (API)", query, "ERR", str(e)))
+
+    # 6–8. Sendbird Platform API (optional, if env set)
     app_id = os.environ.get("SENDBIRD_APP_ID", "").strip()
     api_token = os.environ.get("SENDBIRD_API_TOKEN", "").strip()
     sender = token_data.get("sendbird_user_id", "").strip() if token_data else ""
@@ -72,7 +84,7 @@ def verify_api(api_url, logger=None):
     channel_url = None
 
     if app_id and api_token and sender:
-        # 5. create channel
+        # 6. create channel (Platform API directly)
         body = {"user_ids": [sender, recipient], "is_distinct": True, "name": "Family"}
         query = "POST %s/group_channels\n  body: %s" % (sb_base, json.dumps(body))
         try:
@@ -84,7 +96,7 @@ def verify_api(api_url, logger=None):
             steps.append(("create channel", query, "ERR", str(e)))
 
         if channel_url:
-            # 6. send message
+            # 7. send message
             body = {"message_type": "MESG", "user_id": sender, "message": "Hello, can you hear me?"}
             query = "POST %s/group_channels/%s/messages\n  body: %s" % (sb_base, channel_url, json.dumps(body))
             try:
@@ -94,7 +106,7 @@ def verify_api(api_url, logger=None):
             except Exception as e:
                 steps.append(("send message", query, "ERR", str(e)))
 
-            # 7. list messages
+            # 8. list messages
             url = "%s/group_channels/%s/messages?message_ts=99999999999999&prev_limit=10" % (sb_base, channel_url)
             query = "GET %s" % url
             try:

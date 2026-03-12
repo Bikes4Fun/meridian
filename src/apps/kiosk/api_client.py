@@ -6,6 +6,7 @@ calendar, medications, emergency, and settings come from the server API.
 
 import logging
 import os
+import urllib.parse
 from datetime import datetime
 from typing import Any, Optional, Tuple
 
@@ -249,9 +250,7 @@ class RemoteEmergencyProfileService:
             session=self._session,
         )
         if not ok:
-            return ServiceResult.error_result(
-                err or "medical-summary request failed"
-            )
+            return ServiceResult.error_result(err or "medical-summary request failed")
         return ServiceResult.success_result(data)
 
     def get_pdf_url(self) -> str:
@@ -266,8 +265,42 @@ class RemoteEmergencyProfileService:
             session=self._session,
         )
         if not ok:
-            return ServiceResult.error_result(err or "emergency-profile PDF request failed")
+            return ServiceResult.error_result(
+                err or "emergency-profile PDF request failed"
+            )
         return ServiceResult.success_result(data)
+
+
+class RemoteChatEntryService:
+    """Get signed chat entry URL for kiosk webview. Uses same API auth as other kiosk calls."""
+
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def get_entry_url(self, sendbird_user_id: str = "", display_name: str = "") -> Any:
+        """Fetch signed entry URL. Returns ServiceResult with url in data, or error."""
+        params = []
+        if sendbird_user_id:
+            params.append(f"sendbird_user_id={urllib.parse.quote(sendbird_user_id)}")
+        if display_name:
+            params.append(f"display_name={urllib.parse.quote(display_name)}")
+        qs = "&".join(params)
+        url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
+        ok, data, err = _get(url, headers=self._headers, session=self._session)
+        if not ok:
+            return ServiceResult.error_result(err or "entry-url request failed")
+        url_val = data.get("url") if isinstance(data, dict) else None
+        if not url_val:
+            return ServiceResult.error_result("entry-url returned no url")
+        return ServiceResult.success_result(url_val)
 
 
 class RemoteContactService:
@@ -419,6 +452,9 @@ def create_kiosk_remote(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "contact_service": RemoteContactService(
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "chat_entry_service": RemoteChatEntryService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "alert_service": RemoteAlertService(

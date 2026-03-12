@@ -52,7 +52,6 @@ class MeridianKioskApp(App):
             self.screen_manager,
             kiosk_user_id=self.kiosk_user_id,
             family_circle_id=self.family_circle_id,
-            chat_url=self.chat_url,
         )
         self.widget_factory = WidgetFactory(self.services)
 
@@ -98,7 +97,10 @@ class MeridianKioskApp(App):
             self.screen_manager.current = "emergency"
             if not was_activated:
                 from .emergency_print import trigger_emergency_print
-                Clock.schedule_once(lambda _dt: trigger_emergency_print(self.services), 0.5)
+
+                Clock.schedule_once(
+                    lambda _dt: trigger_emergency_print(self.services), 0.5
+                )
         self._alert_was_activated = activated
 
     def _sync_photos_on_boot(self):
@@ -284,14 +286,19 @@ class MeridianKioskApp(App):
                         clock_widget.time_of_day_icon.source = icon_path
 
 
-def create_app(kiosk_user_id: str, family_circle_id: str, api_url: str = None) -> MeridianKioskApp:
+def create_app(
+    kiosk_user_id: str, family_circle_id: str, api_url: str = None
+) -> MeridianKioskApp:
     """Create the Meridian Kiosk. kiosk_user_id and family_circle_id required. api_url from main entry."""
     if not api_url:
-        raise ValueError("api_url required. Pass from main entry (e.g. create_app(..., api_url=...)).")
+        raise ValueError(
+            "api_url required. Pass from main entry (e.g. create_app(..., api_url=...))."
+        )
     if not kiosk_user_id or not family_circle_id:
         raise ValueError("kiosk_user_id and family_circle_id required.")
     try:
         import requests
+
         session = requests.Session()
     except ImportError:
         session = None
@@ -302,7 +309,6 @@ def create_app(kiosk_user_id: str, family_circle_id: str, api_url: str = None) -
         session=session,
     )
     app = MeridianKioskApp(services=remote_services)
-    app.chat_url = api_url.rstrip("/") + "/chat"
     app.kiosk_user_id = kiosk_user_id
     app.family_circle_id = family_circle_id
     return app

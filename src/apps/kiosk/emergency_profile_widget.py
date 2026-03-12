@@ -12,13 +12,18 @@ from kivy.clock import Clock
 from .modular_display import KioskLabel, KioskButton
 
 
-def _form_section_bar(title, bar_color=(1,1,1,1), height=dp(44)):
+def _form_section_bar(title, bar_color=(1, 1, 1, 1), height=dp(44)):
     """Form-style section header: colored bar with white text."""
-    bar = BoxLayout(orientation="horizontal", size_hint_y=None, height=height, padding=[dp(12), 0])
+    bar = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=height, padding=[dp(12), 0]
+    )
     with bar.canvas.before:
         Color(*bar_color)
         bar._bg = Rectangle(pos=bar.pos, size=bar.size)
-    bar.bind(pos=lambda w, v: setattr(w._bg, "pos", w.pos), size=lambda w, v: setattr(w._bg, "size", w.size))
+    bar.bind(
+        pos=lambda w, v: setattr(w._bg, "pos", w.pos),
+        size=lambda w, v: setattr(w._bg, "size", w.size),
+    )
     lbl = KioskLabel(type="header", text=title, font_size=dp(36))
     lbl.color = (1, 1, 1, 1)
     bar.add_widget(lbl)
@@ -27,7 +32,9 @@ def _form_section_bar(title, bar_color=(1,1,1,1), height=dp(44)):
 
 def _form_row(label_text, value_text, dark_text=(0.1, 0.1, 0.1, 1)):
     """One labeled row: LABEL  value."""
-    row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
+    row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8)
+    )
     lbl = KioskLabel(type="caption", text=label_text + ":", font_size=dp(28))
     lbl.color = dark_text
     lbl.size_hint_x = None
@@ -37,6 +44,7 @@ def _form_row(label_text, value_text, dark_text=(0.1, 0.1, 0.1, 1)):
     val.color = dark_text
     row.add_widget(val)
     return row
+
 
 def attach_emergency_border(widget, services):
     """Draw an orange border on the widget; flash when alert is activated. Call once after layout is built."""
@@ -75,7 +83,6 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     patient_data = e_data.get("profile") or {}
     medical_data = e_data.get("medical") or {}
 
-
     # BOTTOM: AnchorLayout centers the two section boxes on y
     red_bar = (0.75, 0.2, 0.2, 1)
     # PERSONAL section height: red bar (40dp) + 7 form rows (40dp each)
@@ -88,14 +95,18 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
         size_hint_y=None,
         height=personal_height,
     )
-    personal.add_widget(_form_section_bar("PERSONAL INFORMATION", red_bar, height=dp(40)))
+    personal.add_widget(
+        _form_section_bar("PERSONAL INFORMATION", red_bar, height=dp(40))
+    )
     name = patient_data.get("name") or "Patient"
     personal.add_widget(_form_row("FULL NAME", name))
     personal.add_widget(_form_row("DOB", patient_data.get("dob")))
     dnr = medical_data.get("dnr", False)
     personal.add_widget(_form_row("CODE STATUS", "DNR" if dnr else "FULL CODE"))
     allergies = medical_data.get("allergies") or []
-    personal.add_widget(_form_row("ALLERGIES", ", ".join(allergies) if allergies else None))
+    personal.add_widget(
+        _form_row("ALLERGIES", ", ".join(allergies) if allergies else None)
+    )
     meds = medical_data.get("medications") or []
     med_strs = []
     for m in meds:
@@ -105,7 +116,9 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
         if dosage or freq:
             n += " " + " ".join([dosage, freq]).strip()
         med_strs.append(n)
-    personal.add_widget(_form_row("MEDICATIONS", ", ".join(med_strs) if med_strs else None))
+    personal.add_widget(
+        _form_row("MEDICATIONS", ", ".join(med_strs) if med_strs else None)
+    )
     cond = medical_data.get("conditions")
     personal.add_widget(_form_row("CURRENT HEALTH CONDITIONS", cond))
     apply_debug_border(personal)
@@ -126,14 +139,18 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
         height=contacts_height,
     )
 
-    contacts_section.add_widget(_form_section_bar("EMERGENCY CONTACTS", red_bar, height=dp(40)))
+    contacts_section.add_widget(
+        _form_section_bar("EMERGENCY CONTACTS", red_bar, height=dp(40))
+    )
 
     for i, line in enumerate(ec_list):
         contacts_section.add_widget(_form_row("CONTACT " + str(i + 1), line))
 
     proxy_name = e_contacts.get("medical_proxy_name") or ""
     proxy_phone = e_contacts.get("medical_proxy_phone") or ""
-    contacts_section.add_widget(_form_row("MEDICAL PROXY", f"{proxy_name} {proxy_phone}".strip()))
+    contacts_section.add_widget(
+        _form_row("MEDICAL PROXY", f"{proxy_name} {proxy_phone}".strip())
+    )
 
     poa_name = e_contacts.get("poa_name") or ""
     poa_phone = e_contacts.get("poa_phone") or ""
@@ -160,6 +177,7 @@ def create_emergency_layout_widget(layout, e_data, e_contacts, services):
     layout.add_widget(bottom_box)
 
     from .emergency_print import add_emergency_print_section
+
     add_emergency_print_section(layout, services)
 
     attach_emergency_border(layout, services)

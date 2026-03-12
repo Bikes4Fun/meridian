@@ -56,7 +56,9 @@ class SendbirdService(DatabaseServiceMixin):
 
     def get_sendbird_user_id_for_app_user(self, app_user_id: str) -> str:
         """Look up Sendbird user_id from users.sendbird_user_id. Returns empty if not in DB or no container."""
-        r = self.db_manager.execute_query("SELECT sendbird_user_id FROM users WHERE id = ?", (app_user_id,))
+        r = self.db_manager.execute_query(
+            "SELECT sendbird_user_id FROM users WHERE id = ?", (app_user_id,)
+        )
         if not r.success or not r.data:
             return ""
         return (r.data[0].get("sendbird_user_id") or "").strip()
@@ -70,7 +72,9 @@ class SendbirdService(DatabaseServiceMixin):
         if not r.success or not r.data:
             return "", ""
         row = r.data[0]
-        return (row.get("sendbird_user_id") or "").strip(), (row.get("display_name") or "Family").strip()
+        return (row.get("sendbird_user_id") or "").strip(), (
+            row.get("display_name") or "Family"
+        ).strip()
 
     # --- Platform API helpers ---
 
@@ -106,7 +110,11 @@ class SendbirdService(DatabaseServiceMixin):
             timeout=10,
         )
         if r.status_code != 200:
-            body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            body = (
+                r.json()
+                if r.headers.get("content-type", "").startswith("application/json")
+                else {}
+            )
             msg = body.get("message", r.text)
             return False, "", msg
         data = r.json()

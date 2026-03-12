@@ -3,6 +3,7 @@ Sendbird Chat: config, DB lookups, and Platform API helpers.
 Routes live in api.py; this module has no routes.
 Uses Platform API (issue session token). No Sendbird SDK dependency; requests only.
 """
+
 import json
 import os
 import time
@@ -11,8 +12,8 @@ import urllib.parse
 import requests
 from flask import current_app
 
-
 # --- Config (env) ---
+
 
 def get_sendbird_app_id() -> str:
     """Application ID from Sendbird Dashboard (Settings → Application → General). Case-sensitive."""
@@ -51,13 +52,16 @@ def get_sendbird_default_recipient_id_from_env() -> str:
 
 # --- DB lookups ---
 
+
 def get_sendbird_user_id_for_app_user(app_user_id: str) -> str:
     """Look up Sendbird user_id from users.sendbird_user_id. Returns empty if not in DB or no container."""
     container = current_app.config.get("container")
     if not container:
         return ""
     db = container.get_database_manager()
-    r = db.execute_query("SELECT sendbird_user_id FROM users WHERE id = ?", (app_user_id,))
+    r = db.execute_query(
+        "SELECT sendbird_user_id FROM users WHERE id = ?", (app_user_id,)
+    )
     if not r.success or not r.data:
         return ""
     return (r.data[0].get("sendbird_user_id") or "").strip()
@@ -76,10 +80,13 @@ def get_default_recipient(family_circle_id: str) -> tuple:
     if not r.success or not r.data:
         return "", ""
     row = r.data[0]
-    return (row.get("sendbird_user_id") or "").strip(), (row.get("display_name") or "Family").strip()
+    return (row.get("sendbird_user_id") or "").strip(), (
+        row.get("display_name") or "Family"
+    ).strip()
 
 
 # --- Platform API helpers ---
+
 
 def _api_url() -> str:
     """Base URL for Sendbird Platform API: https://{app_id}.sendbird.com/v3"""
@@ -115,7 +122,11 @@ def _issue_session_token(user_id: str) -> tuple[bool, str, str]:
         timeout=10,
     )
     if r.status_code != 200:
-        body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        body = (
+            r.json()
+            if r.headers.get("content-type", "").startswith("application/json")
+            else {}
+        )
         msg = body.get("message", r.text)
         return False, "", msg
     data = r.json()

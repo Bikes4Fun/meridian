@@ -9,7 +9,6 @@ from .modular_display import (
     KioskButton,
 )
 
-
 # Top section: Day + Time of day (left) | Icon (right)
 from kivy.graphics import Color, Line
 from kivy.uix.boxlayout import BoxLayout
@@ -21,11 +20,12 @@ import os
 
 logger = logging.getLogger(__name__)
 
+
 def apply_debug_border(widget, **kwargs):
     """Apply default border to widget."""
     b = {"color": [0, 0, 0, 1], "width": 1}
     b.update(kwargs)
-    
+
     def make_updater(color, width):
         def update(instance, value):
             instance.canvas.after.clear()
@@ -129,7 +129,6 @@ class WidgetFactory:
             raise ValueError(f"Unknown widget type: {widget_type}")
 
         return widget_creators[widget_type](**kwargs)
-
 
     def create_clock_widget(self):
         """Create clock widget using modular components - dementia clock style."""
@@ -242,7 +241,9 @@ class WidgetFactory:
         icon_map = {
             "Morning": os.path.join(_kiosk_dir, "icons", "sunrise.png"),
             "Noon": os.path.join(_kiosk_dir, "icons", "noon.png"),
-            "Afternoon": os.path.join(_kiosk_dir, "icons", "noon.png"),  # Use noon for afternoon
+            "Afternoon": os.path.join(
+                _kiosk_dir, "icons", "noon.png"
+            ),  # Use noon for afternoon
             "Evening": os.path.join(_kiosk_dir, "icons", "evening.png"),
             "Night": os.path.join(_kiosk_dir, "icons", "night.png"),
         }
@@ -251,11 +252,12 @@ class WidgetFactory:
             return path
         return ""
 
-
     def create_medication_widget(self):
         """Create medication widget using modular components."""
         light_blue = (0.94, 0.96, 0.98, 1)
-        med = KioskWidget(background_color=light_blue,)
+        med = KioskWidget(
+            background_color=light_blue,
+        )
 
         title = KioskLabel(type="header", text="Medications")
         med.add_widget(title)
@@ -285,12 +287,17 @@ class WidgetFactory:
 
     def create_emergency_screen_widget(self):
         """Create emergency profile in form style. Implemented in emergency_profile.py."""
-        from .emergency_profile_widget import create_emergency_layout_widget as build_emergency_layout_widget
-        # TODO: why are we renaming a function to use as a new name? 
+        from .emergency_profile_widget import (
+            create_emergency_layout_widget as build_emergency_layout_widget,
+        )
+
+        # TODO: why are we renaming a function to use as a new name?
         emergency_widget = KioskWidget()
 
         if not self.emergency_service:
-            err_label = KioskLabel(type="header", text="Emergency profile service not available")
+            err_label = KioskLabel(
+                type="header", text="Emergency profile service not available"
+            )
             emergency_widget.add_widget(err_label)
             return emergency_widget
 
@@ -302,10 +309,12 @@ class WidgetFactory:
 
         e_data = all_data.data
         e_contacts = {
-            "contacts": e_data.get("emergency_contacts") or [], 
+            "contacts": e_data.get("emergency_contacts") or [],
             "poa_name": e_data.get("poa_name"),
             "poa_phone": e_data.get("poa_phone"),
-            "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get("name"),
+            "medical_proxy_name": (
+                (e_data.get("emergency") or {}).get("proxy") or {}
+            ).get("name"),
             "medical_proxy_phone": e_data.get("medical_proxy_phone"),
         }
 

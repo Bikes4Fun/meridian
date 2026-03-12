@@ -33,17 +33,8 @@
             background: #ccc;
             cursor: not-allowed;
         }
-        #chatSection { text-align: left; margin-bottom: 24px; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
+        #chatSection { text-align: left; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
         #chatSection h2 { font-size: 16px; color: #333; margin: 0 0 8px 0; }
-        #chatMessages { border: 1px solid #ddd; border-radius: 6px; height: 160px; overflow-y: auto; padding: 10px; margin: 8px 0; background: #fff; font-size: 14px; }
-        #chatMessages .out { color: #007AFF; font-weight: 500; }
-        #chatMessages .in { color: #333; }
-        #chatSendRow { display: flex; gap: 8px; align-items: center; }
-        #chatSendRow input, #chatSendRow button { width: auto; margin: 0; }
-        #chatMsgInput { flex: 1; min-width: 120px; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; }
-        #chatMsgInput::placeholder { color: #999; }
-        #chatSendBtn { flex-shrink: 0; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        #chatStatus { font-size: 13px; color: #666; margin-top: 4px; }
         #status {
             margin-top: 20px;
         }
@@ -58,16 +49,11 @@
     </style>
 </head>
 <body>
-    <div id="chatSection">
+    <div id="chatSection" style="margin-bottom: 24px;">
         <h2>Chat</h2>
-        <p id="chatLoggedIn" style="font-size: 13px; color: #666; margin: 0 0 4px 0;">Logged in messaging as …</p>
-        <p id="chatMessagingWith" style="font-size: 13px; color: #666; margin: 0 0 8px 0;">Messaging with …</p>
-        <div id="chatMessages"></div>
-        <div id="chatSendRow">
-            <input type="text" id="chatMsgInput" placeholder="Type a message…">
-            <button type="button" id="chatSendBtn">Send</button>
-        </div>
-        <div id="chatStatus" class="info">Loading…</div>
+        <p style="font-size: 14px; color: #666;">Open chat in a separate window (chatapp).</p>
+        <button type="button" id="openChatBtn" style="padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">Open Chat</button>
+        <p id="openChatStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></p>
     </div>
 
     <h1>📍 Family Check-In</h1>

@@ -17,11 +17,26 @@ client/, display/, app_factory.py, icons/, and the Kivy app are not needed on th
 they can be omitted or relocated to a client-only repo.
 """
 
+import base64
+import hashlib
+import hmac
+import json
 import os
+import time
 import datetime
 import urllib.parse
 from dataclasses import asdict
-from flask import Flask, abort, jsonify, request, g, send_from_directory, Response, redirect, session
+from flask import (
+    Flask,
+    abort,
+    jsonify,
+    request,
+    g,
+    send_from_directory,
+    Response,
+    redirect,
+    session,
+)
 
 # config from shared; server internals relative
 try:
@@ -46,6 +61,53 @@ except ImportError:
 
 _alert_activated = False
 
+_ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
+
+
+def _create_chat_entry_token(
+    secret: str,
+    user_id: str,
+    family_circle_id: str,
+    sendbird_user_id: str = "",
+    display_name: str = "",
+) -> str:
+    """Create a signed token for chat entry. Valid for _ENTRY_TOKEN_TTL_SEC."""
+    payload = {
+        "user_id": user_id,
+        "family_circle_id": family_circle_id,
+        "sendbird_user_id": sendbird_user_id,
+        "display_name": display_name,
+        "exp": int(time.time()) + _ENTRY_TOKEN_TTL_SEC,
+    }
+    payload_b64 = (
+        base64.urlsafe_b64encode(json.dumps(payload, sort_keys=True).encode())
+        .rstrip(b"=")
+        .decode()
+    )
+    sig = hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
+    return payload_b64 + "." + sig
+
+
+def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
+    """Verify token, return payload dict or None if invalid/expired."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 2:
+            return None
+        payload_b64, sig = parts[0], parts[1]
+        payload_b64_padded = payload_b64 + "=" * (4 - len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
+        if payload.get("exp", 0) < time.time():
+            return None
+        expected = hmac.new(
+            secret.encode(), payload_b64.encode(), hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            return None
+        return payload
+    except Exception:
+        return None
+
 
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
@@ -58,7 +120,10 @@ def create_server_app(db_path=None):
     _secret = os.environ.get("SECRET_KEY")
     if not _secret:
         import logging
-        logging.getLogger(__name__).warning("SECRET_KEY not set; using dev default. Set SECRET_KEY in production.")
+
+        logging.getLogger(__name__).warning(
+            "SECRET_KEY not set; using dev default. Set SECRET_KEY in production."
+        )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
 
@@ -71,7 +136,9 @@ def create_server_app(db_path=None):
         else:
             resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-User-Id, X-Family-Circle-Id"
+        resp.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, X-User-Id, X-Family-Circle-Id"
+        )
         return resp
 
     @app.before_request
@@ -86,24 +153,22 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        if request.path == "/login":
+        # chat-session-bootstrap: new webview (kiosk, mobile) opens URL from chat-session-url; no prior cookie. Token verified in handler.
+        if request.path == "/api/chat/chat-session-bootstrap":
             g.user_id = None
             g.family_circle_id = None
             return
-        # Chat entry: this endpoint *is* the login for the kiosk webview (sets session then redirects to /chat).
-        # Security: allowed only from localhost; remote requests get 403. So we skip auth here on purpose.
-        if request.path == "/api/chat/entry":
-            g.user_id = None
-            g.family_circle_id = None
-            return
-        # Session-based: check-in, chat, and chat API (no client-type branching)
-        _need_session = request.path in ("/checkin", "/app.js", "/api/session", "/chat") or request.path.startswith("/api/chat/")
+        # Session-based: /api/session and chat API. chat-session-url uses headers or session.
+        _need_session = request.path in (
+            "/api/session",
+            "/api/chat/config",
+            "/api/chat/token",
+            "/api/chat/recipient",
+        )
         if _need_session:
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
-                if request.path in ("/checkin", "/chat"):
-                    return redirect("/login")
                 if request.path == "/api/session":
                     abort(401, "Not logged in")
                 abort(401, "Log in at /login first")
@@ -128,35 +193,58 @@ def create_server_app(db_path=None):
 
     app.config["container"] = container
 
-    @app.route("/api/chat/entry", methods=["GET"])
-    def api_chat_entry():
-        """Set session from query params and redirect to /chat. Localhost only (kiosk webview). user_id = sender (person initiating chat)."""
-        if request.remote_addr not in ("127.0.0.1", "::1"):
-            return jsonify({"error": "Forbidden: entry only from localhost"}), 403
-        sender_user_id = (request.args.get("user_id") or "").strip()
-        family_circle_id = (request.args.get("family_circle_id") or "").strip()
-        if not sender_user_id or not family_circle_id:
-            return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = sender_user_id
-        session["family_circle_id"] = family_circle_id
-        to = (request.args.get("redirect") or "/chat").strip()
-        if not to.startswith("/"):
-            to = "/" + to
-        sb = (request.args.get("sendbird_user_id") or "").strip()
-        dn = (request.args.get("display_name") or "").strip()
+    @app.route("/api/chat/chat-session-url", methods=["GET"])
+    def api_chat_session_url():
+        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id."""
+        sendbird_user_id = (request.args.get("sendbird_user_id") or "").strip()
+        display_name = (request.args.get("display_name") or "").strip()
+        token = _create_chat_entry_token(
+            app.secret_key,
+            g.user_id,
+            g.family_circle_id,
+            sendbird_user_id,
+            display_name,
+        )
+        base_url = request.url_root.rstrip("/")
+        bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
+        return jsonify({"url": bootstrap_url})
+
+    @app.route("/api/chat/chat-session-bootstrap", methods=["GET"])
+    def api_chat_session_bootstrap():
+        """URL target. Verifies token, sets session cookie, redirects to chatapp. For webapp/kiosk/mobile opening chat in a fresh webview."""
+        token = (request.args.get("token") or "").strip()
+        if not token:
+            return jsonify({"error": "token required"}), 400
+        payload = _verify_chat_entry_token(app.secret_key, token)
+        if not payload:
+            return jsonify({"error": "Invalid or expired token"}), 403
+        session["user_id"] = payload["user_id"]
+        session["family_circle_id"] = payload["family_circle_id"]
+        redirect_path = "/"
+        sb = (payload.get("sendbird_user_id") or "").strip()
+        dn = (payload.get("display_name") or "").strip()
         if sb:
-            sep = "&" if "?" in to else "?"
-            to += sep + "sendbird_user_id=" + urllib.parse.quote(sb)
+            redirect_path += "?sendbird_user_id=" + urllib.parse.quote(sb)
             if dn:
-                to += "&display_name=" + urllib.parse.quote(dn)
-        return redirect(to)
+                redirect_path += "&display_name=" + urllib.parse.quote(dn)
+        chatapp_url = (os.environ.get("CHATAPP_URL") or "").rstrip("/")
+        if not chatapp_url:
+            return jsonify({"error": "CHATAPP_URL not configured; cannot redirect to chat"}), 503
+        return redirect(chatapp_url + redirect_path)
 
     @app.route("/api/chat/config", methods=["GET"])
     def api_chat_config():
         """Return Sendbird app_id for the client SDK."""
         sendbird_svc = container.get_sendbird_service()
         if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"}), 503
+            return (
+                jsonify(
+                    {
+                        "error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"
+                    }
+                ),
+                503,
+            )
         return jsonify({"app_id": sendbird_svc.get_sendbird_app_id()})
 
     @app.route("/api/chat/token", methods=["POST"])
@@ -168,19 +256,38 @@ def create_server_app(db_path=None):
         app_user_id = getattr(g, "user_id", None)
         if not app_user_id:
             return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(app_user_id) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
+        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
+            app_user_id
+        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
         if not sendbird_user_id:
-            return jsonify({
-                "error": "No Sendbird user linked for this account",
-                "detail": "Add sendbird_user_id to this user in the DB (users table) or set SENDBIRD_USER_ID_MAP.",
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": "No Sendbird user linked for this account",
+                        "detail": "Add sendbird_user_id to this user in the DB (users table) or set SENDBIRD_USER_ID_MAP.",
+                    }
+                ),
+                400,
+            )
         ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
         db = container.get_database_manager()
-        r = db.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
-        display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
-        return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val, "display_name": display_name})
+        r = db.execute_query(
+            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
+        )
+        display_name = (
+            (r.data[0].get("display_name") or app_user_id).strip()
+            if r.success and r.data
+            else app_user_id
+        )
+        return jsonify(
+            {
+                "sendbird_user_id": sendbird_user_id,
+                "session_token": token_val,
+                "display_name": display_name,
+            }
+        )
 
     @app.route("/api/chat/recipient", methods=["GET"])
     def api_chat_recipient():
@@ -191,13 +298,27 @@ def create_server_app(db_path=None):
         if not getattr(g, "user_id", None):
             return jsonify({"error": "Not logged in"}), 401
         family_circle_id = getattr(g, "family_circle_id", None) or ""
-        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(family_circle_id)
+        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(
+            family_circle_id
+        )
         if not sendbird_recipient_id:
-            sendbird_recipient_id = sendbird_svc.get_sendbird_default_recipient_id_from_env()
+            sendbird_recipient_id = (
+                sendbird_svc.get_sendbird_default_recipient_id_from_env()
+            )
             recipient_name = "Family"
         if not sendbird_recipient_id:
-            return jsonify({"error": "No default recipient configured", "detail": "Add sendbird_user_id to a contact (DB) or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
-        return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": recipient_name})
+            return (
+                jsonify(
+                    {
+                        "error": "No default recipient configured",
+                        "detail": "Add sendbird_user_id to a contact (DB) or set SENDBIRD_DEFAULT_RECIPIENT_ID.",
+                    }
+                ),
+                503,
+            )
+        return jsonify(
+            {"sendbird_user_id": sendbird_recipient_id, "name": recipient_name}
+        )
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
@@ -312,7 +433,10 @@ def create_server_app(db_path=None):
         _alert_activated = bool(data.get("activated", False))
         return jsonify({"data": {"activated": _alert_activated}})
 
-    @app.route("/api/family_circles/<family_circle_id>/emergency-profile", methods=["GET", "PUT"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/emergency-profile",
+        methods=["GET", "PUT"],
+    )
     def api_emergency_profile(family_circle_id):
         _require_family_access(family_circle_id)
         if request.method == "GET":
@@ -320,8 +444,10 @@ def create_server_app(db_path=None):
             if not r.success:
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
-        
-        if request.method != "PUT": # TODO: why are we allowing a PUT method in the route, and then 'defensive'ly failing it?
+
+        if (
+            request.method != "PUT"
+        ):  # TODO: why are we allowing a PUT method in the route, and then 'defensive'ly failing it?
             return  # defensive
         data = request.get_json()
         if not data:
@@ -348,27 +474,15 @@ def create_server_app(db_path=None):
             headers={"Content-Disposition": "inline; filename=emergency-profile.pdf"},
         )
 
-    _web_client_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "webapp", "web_client")
-    )
-    def _serve_with_api_url(filename, api_url=""):
-        """Serve static file with __API_URL__ replaced. Use '' when API and webapp share origin."""
-        path = os.path.join(_web_client_dir, filename)
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read().replace("__API_URL__", api_url)
-        return Response(content, mimetype="text/html" if filename.endswith(".html") else "application/javascript")
-
-    @app.route("/login")
-    def serve_login():
-        return _serve_with_api_url("login.html")
-
     @app.route("/api/session")
     def api_session():
         """Return current session user_id and family_circle_id."""
-        return jsonify({
-            "user_id": g.user_id,
-            "family_circle_id": g.family_circle_id,
-        })
+        return jsonify(
+            {
+                "user_id": g.user_id,
+                "family_circle_id": g.family_circle_id,
+            }
+        )
 
     @app.route("/api/login", methods=["POST"])
     def api_login():
@@ -384,18 +498,6 @@ def create_server_app(db_path=None):
         session["family_circle_id"] = family_circle_id
         return jsonify({"ok": True})
 
-    @app.route("/checkin")
-    def serve_checkin():
-        return _serve_with_api_url("checkin.html")
-
-    @app.route("/app.js")
-    def serve_app_js():
-        return _serve_with_api_url("app.js")
-
-    @app.route("/chat")
-    def serve_chat():
-        return _serve_with_api_url("chat.html")
-
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):
         _require_family_access(family_circle_id)
@@ -405,13 +507,15 @@ def create_server_app(db_path=None):
         base = request.url_root.rstrip("/")
         members = [dict(m) for m in (r.data or [])]
         for m in members:
-            m["photo_url"] = "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
+            m["photo_url"] = (
+                "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
+            )
         return jsonify({"data": members})
 
     @app.route("/api/family_circles/<family_circle_id>/checkin", methods=["POST"])
     def api_create_checkin(family_circle_id):
         """Create a new location check-in."""
-        # TODO: use userid for this, not family circle. allowing the user to checkin to multiple families if needed? 
+        # TODO: use userid for this, not family circle. allowing the user to checkin to multiple families if needed?
         # TODO: rename something like 'create_checkin'
         _require_family_access(family_circle_id)
         data = request.get_json()
@@ -426,9 +530,7 @@ def create_server_app(db_path=None):
 
         if not user_id or latitude is None or longitude is None:
             return (
-                jsonify(
-                    {"error": "user_id, latitude, and longitude are required"}
-                ),
+                jsonify({"error": "user_id, latitude, and longitude are required"}),
                 400,
             )
         if user_id != g.user_id:

@@ -12,7 +12,7 @@
     function init() {
         if (document.getElementById('loginForm')) initLogin();
         if (document.getElementById('checkinBtn')) initCheckin();
-        if (document.getElementById('messages') || document.getElementById('chatMessages')) initChat();
+        if (document.getElementById('openChatBtn')) initOpenChat();
     }
 
     function initLogin() {
@@ -187,6 +187,32 @@
         var cancelBtn = document.getElementById('cancelAlertBtn');
         if (cancelBtn) cancelBtn.addEventListener('click', cancelAlert);
         loadFamilyMembers();
+    }
+
+    function initOpenChat() {
+        var btn = document.getElementById('openChatBtn');
+        var statusEl = document.getElementById('openChatStatus');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            btn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Opening chat…';
+            var base = (API_URL || '').replace(/\/$/, '');
+            fetch(base + '/api/chat/chat-session-url', { credentials: 'include' })
+                .then(function (r) {
+                    if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed to get chat URL'); });
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data && data.url) {
+                        window.open(data.url, 'chat', 'width=800,height=600');
+                        if (statusEl) statusEl.textContent = '';
+                    } else throw new Error('No URL returned');
+                })
+                .catch(function (err) {
+                    if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not open chat');
+                })
+                .finally(function () { btn.disabled = false; });
+        });
     }
 
     function initChat() {

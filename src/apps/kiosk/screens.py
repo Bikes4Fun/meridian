@@ -14,7 +14,7 @@ from .modular_display import (
     KioskLabel,
 )
 from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
-from .chat_screen import open_chat_window
+from .webview import open_chat_window
 
 from PIL import Image, ImageDraw
 
@@ -46,7 +46,9 @@ def _crop_image_to_circle(src_path, size=200):
         out_img.save(out)
         return os.path.abspath(out)
     except Exception as e:
-        logger.warning("[family map] Failed to crop photo to circle: %s - %s", src_path, e)
+        logger.warning(
+            "[family map] Failed to crop photo to circle: %s - %s", src_path, e
+        )
         return None
 
 
@@ -66,14 +68,14 @@ class CustomMarker(MapMarker):
 class ScreenFactory:
     """Factory for creating kiosk screens."""
 
-    def __init__(self, services, screen_manager, kiosk_user_id: str, family_circle_id: str, chat_url=None):
+    def __init__(
+        self, services, screen_manager, kiosk_user_id: str, family_circle_id: str
+    ):
         self.services = services
         self.screen_manager = screen_manager
         self.kiosk_user_id = kiosk_user_id
         self.family_circle_id = family_circle_id
-        self.chat_url = chat_url
         self.widget_factory = WidgetFactory(services)
-
 
     def screen_template_boxlayout(self):
         template_settings = {
@@ -82,23 +84,22 @@ class ScreenFactory:
             "padding": 24,
             "spacing": 24,
         }
-        
+
         # Main layout
         main_layout = BoxLayout(**template_settings)
 
         # Navigation bar
         nav_widget = self._create_navigation()
         main_layout.add_widget(nav_widget)
-        
-        return main_layout
 
+        return main_layout
 
     def create_home_screen(self):
         """Create home screen using modular components."""
         screen = Screen(name="home")
         main_layout = self.screen_template_boxlayout()
 
-        home_screen_top_bottom_split = .35
+        home_screen_top_bottom_split = 0.35
         # TOP SECTION
         # Clock widget
         clock_widget = self.widget_factory.create_widget("clock")
@@ -107,11 +108,10 @@ class ScreenFactory:
 
         # BOTTOM SECTION - medications and events side by side
         bottom_section = BoxLayout(
-            orientation="horizontal",
-            size_hint = (1, 1-home_screen_top_bottom_split)
+            orientation="horizontal", size_hint=(1, 1 - home_screen_top_bottom_split)
         )
 
-        med_events_split = .5
+        med_events_split = 0.5
         # Medications (left side)
         med_widget = self.widget_factory.create_widget("medication")
         med_widget.size_hint = (med_events_split, 1)
@@ -123,10 +123,9 @@ class ScreenFactory:
         bottom_section.add_widget(events_widget)
 
         main_layout.add_widget(bottom_section)
-        
+
         screen.add_widget(main_layout)
         return screen
-
 
     def create_emergency_screen(self):
         """Create emergency screen: critical patient info for EMS (name, DNR, contacts, meds, allergies)."""
@@ -139,7 +138,6 @@ class ScreenFactory:
 
         screen.add_widget(main_layout)
         return screen
-
 
     def create_checkin_screen(self):
         """Create family location check-in screen using modular components."""
@@ -156,11 +154,21 @@ class ScreenFactory:
         # Lazy-load MapView on screen enter (avoids black screen when nested in ScreenManager)
         def on_family_enter(instance):
             container = getattr(family_widget, "map_container", None)
-            if container and not container.children and hasattr(container, "_map_params"):
+            if (
+                container
+                and not container.children
+                and hasattr(container, "_map_params")
+            ):
                 p = container._map_params
-                cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-                map_view = MapView(lat=p["lat"], lon=p["lon"], zoom=p["zoom"], cache_dir=cache_dir)
-                base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+                cache_dir = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "cache"
+                )
+                map_view = MapView(
+                    lat=p["lat"], lon=p["lon"], zoom=p["zoom"], cache_dir=cache_dir
+                )
+                base = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "..", ".."
+                )
                 loc_svc = self.services.get("location_service")
                 if loc_svc:
                     result = loc_svc.get_checkins()
@@ -173,7 +181,11 @@ class ScreenFactory:
                             src = None
                             photo_url = checkin.get("photo_url")
                             user_id = checkin.get("user_id")
-                            if photo_url and user_id and hasattr(loc_svc, "fetch_photo_to_cache"):
+                            if (
+                                photo_url
+                                and user_id
+                                and hasattr(loc_svc, "fetch_photo_to_cache")
+                            ):
                                 src = loc_svc.fetch_photo_to_cache(user_id, cache_dir)
                             if not src:
                                 photo_fn = checkin.get("photo_filename")
@@ -183,19 +195,40 @@ class ScreenFactory:
                                     elif "/" in photo_fn or os.path.sep in photo_fn:
                                         src = os.path.join(base, photo_fn)
                                     else:
-                                        # TODO: once main calls create kiosk, it should have nothing to do with/not know anything about the demo modes or data. 
-                                        src = os.path.join(base, "dev", "demo", "data", "family_img", photo_fn)
-                                    if not os.path.exists(src) and "demo/demo_data" in photo_fn:
-                                        src = os.path.join(base, photo_fn.replace("demo/demo_data", "dev/demo/data"))
-                                        logger.info("[family map] Using fallback path for old DB: %s", src)
+                                        # TODO: once main calls create kiosk, it should have nothing to do with/not know anything about the demo modes or data.
+                                        src = os.path.join(
+                                            base,
+                                            "dev",
+                                            "demo",
+                                            "data",
+                                            "family_img",
+                                            photo_fn,
+                                        )
+                                    if (
+                                        not os.path.exists(src)
+                                        and "demo/demo_data" in photo_fn
+                                    ):
+                                        src = os.path.join(
+                                            base,
+                                            photo_fn.replace(
+                                                "demo/demo_data", "dev/demo/data"
+                                            ),
+                                        )
+                                        logger.info(
+                                            "[family map] Using fallback path for old DB: %s",
+                                            src,
+                                        )
                             if src:
                                 circle_img = _crop_image_to_circle(src)
                                 if circle_img:
-                                    marker = CustomMarker(lat=lat, lon=lon, source=circle_img)
+                                    marker = CustomMarker(
+                                        lat=lat, lon=lon, source=circle_img
+                                    )
                                 else:
                                     logger.warning(
                                         "[family map] Using default marker (no photo) for checkin at %s,%s",
-                                        lat, lon
+                                        lat,
+                                        lon,
                                     )
                                     marker = MapMarker(lat=lat, lon=lon)
                             else:
@@ -208,21 +241,29 @@ class ScreenFactory:
         return screen
 
     def create_chat_screen(self, kiosk_user_id: str, family_circle_id: str):
-        """Chat screen: Open Chat button launches pywebview window with kiosk-chat. kiosk_user_id = sender (person using kiosk)."""
-        import urllib.parse
+        """Chat screen: Open Chat button launches webview. Fetches signed entry URL via API (same auth as other kiosk calls)."""
         from kivy.uix.button import Button
         from kivy.uix.label import Label
         from kivy.uix.scrollview import ScrollView
         from kivy.uix.gridlayout import GridLayout
+
         screen = Screen(name="chat")
         main_layout = self.screen_template_boxlayout()
         content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
-        content.add_widget(Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48)))
-        content.add_widget(Label(
-            text="Choose a contact to call.",
-            font_size=dp(18), size_hint_y=None, height=dp(40),
-        ))
-        contacts_grid = GridLayout(cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8))
+        content.add_widget(
+            Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48))
+        )
+        content.add_widget(
+            Label(
+                text="Choose a contact to call.",
+                font_size=dp(18),
+                size_hint_y=None,
+                height=dp(40),
+            )
+        )
+        contacts_grid = GridLayout(
+            cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8)
+        )
         contacts_grid.bind(minimum_height=contacts_grid.setter("height"))
         scroll = ScrollView(size_hint=(1, 1))
         scroll.add_widget(contacts_grid)
@@ -232,28 +273,54 @@ class ScreenFactory:
 
         def _load_contacts():
             contacts_grid.clear_widgets()
-            contact_svc = self.services.get("contact_service") if self.services else None
+            contact_svc = (
+                self.services.get("contact_service") if self.services else None
+            )
             if not contact_svc or not family_circle_id:
-                contacts_grid.add_widget(Label(text="No contacts (check server).", size_hint_y=None, height=dp(48)))
+                contacts_grid.add_widget(
+                    Label(
+                        text="No contacts (check server).",
+                        size_hint_y=None,
+                        height=dp(48),
+                    )
+                )
                 return
             r = contact_svc.get_contacts()
             if not r.success or not r.data:
-                contacts_grid.add_widget(Label(text="No contacts.", size_hint_y=None, height=dp(48)))
+                contacts_grid.add_widget(
+                    Label(text="No contacts.", size_hint_y=None, height=dp(48))
+                )
                 return
             # Only show contacts who have sendbird_user_id (chat-able)
-            chat_contacts = [c for c in r.data if (c.get("sendbird_user_id") or "").strip()]
+            chat_contacts = [
+                c for c in r.data if (c.get("sendbird_user_id") or "").strip()
+            ]
             if not chat_contacts:
-                contacts_grid.add_widget(Label(text="No contacts with chat.", size_hint_y=None, height=dp(48)))
+                contacts_grid.add_widget(
+                    Label(
+                        text="No contacts with chat.", size_hint_y=None, height=dp(48)
+                    )
+                )
                 return
-            base = (self.chat_url or "").rstrip("/").replace("/chat", "")
-            entry_base = base + "/api/chat/entry?user_id=" + urllib.parse.quote(kiosk_user_id or "") + "&family_circle_id=" + urllib.parse.quote(family_circle_id or "")
+            entry_svc = self.services.get("chat_entry_service")
             for c in chat_contacts:
-                name = (c.get("display_name") or c.get("id") or "Contact")
+                name = c.get("display_name") or c.get("id") or "Contact"
                 sb_uid = (c.get("sendbird_user_id") or "").strip()
-                btn = Button(text=name, size_hint_y=None, height=dp(64), font_size=dp(18))
-                if base and kiosk_user_id and family_circle_id:
-                    url = entry_base + ("&sendbird_user_id=" + urllib.parse.quote(sb_uid) + "&display_name=" + urllib.parse.quote(name)) if sb_uid else entry_base
-                    btn.bind(on_press=lambda *_a, _url=url: open_chat_window(_url))
+                btn = Button(
+                    text=name, size_hint_y=None, height=dp(64), font_size=dp(18)
+                )
+                if entry_svc and kiosk_user_id and family_circle_id:
+
+                    def _on_contact_click(sb, nm):
+                        r = entry_svc.get_entry_url(sb, nm)
+                        if r.success and r.data:
+                            open_chat_window(r.data)
+
+                    btn.bind(
+                        on_press=lambda *_a, sb=sb_uid, nm=name: _on_contact_click(
+                            sb, nm
+                        )
+                    )
                 contacts_grid.add_widget(btn)
 
         screen.bind(on_enter=lambda *_a: _load_contacts())
@@ -267,7 +334,7 @@ class ScreenFactory:
             {"text": "Family", "screen": "family"},
             {"text": "Chat", "screen": "chat"},
         ]
-        if not self.chat_url:
+        if not self.services.get("chat_entry_service"):
             nav_buttons = [b for b in nav_buttons if b["screen"] != "chat"]
         return KioskNavBar(
             screen_manager=self.screen_manager,

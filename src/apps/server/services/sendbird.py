@@ -75,11 +75,11 @@ class SendbirdService(DatabaseServiceMixin):
     # --- Platform API helpers ---
 
     def _api_url(self) -> str:
-        """Base URL for Sendbird Platform API: https://api-{app_id}.sendbird.com/v3"""
+        """Base URL for Sendbird Platform API: https://{app_id}.sendbird.com/v3"""
         app_id = self.get_sendbird_app_id()
         if not app_id:
             return ""
-        return "https://api-{}.sendbird.com/v3".format(app_id)
+        return "https://{}.sendbird.com/v3".format(app_id)
 
     def _headers(self) -> dict:
         """Headers for Platform API: Api-Token and Content-Type."""

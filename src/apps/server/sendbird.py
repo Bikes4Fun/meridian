@@ -82,11 +82,11 @@ def get_default_recipient(family_circle_id: str) -> tuple:
 # --- Platform API helpers ---
 
 def _api_url() -> str:
-    """Base URL for Sendbird Platform API: https://api-{app_id}.sendbird.com/v3"""
+    """Base URL for Sendbird Platform API: https://{app_id}.sendbird.com/v3"""
     app_id = get_sendbird_app_id()
     if not app_id:
         return ""
-    return "https://api-{}.sendbird.com/v3".format(app_id)
+    return "https://{}.sendbird.com/v3".format(app_id)
 
 
 def _headers() -> dict:

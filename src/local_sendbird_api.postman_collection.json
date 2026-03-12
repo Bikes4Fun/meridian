@@ -1,0 +1,292 @@
+{
+  "info": {
+    "_postman_id": "e41a4bce-bd82-472f-a666-c6f1e775b52f",
+    "name": "local_sendbird_api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "27989951",
+    "_collection_link": "https://go.postman.co/collection/27989951-e41a4bce-bd82-472f-a666-c6f1e775b52f?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Api-token",
+            "value": "{{SENDBIRD_API_TOKEN}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"user_id\": \"fm_care_001\", \"family_circle_id\": \"F00000\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/login",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "config_app_if",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/chat/config",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "chat",
+            "config"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var data = pm.response.json();",
+              "pm.environment.set(\"session_token\", data.session_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Api-token",
+            "value": "{{SENDBIRD_API_TOKEN}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/chat/token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "chat",
+            "token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "1:1 group channels",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var response = pm.response.json();",
+              "pm.environment.set(\"CHANNEL_URL\", response.channel_url);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Api-token",
+            "value": "{{SENDBIRD_API_TOKEN}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_ids\": [\"testpatient\", \"the_recipient_sendbird_user_id\"],\n  \"is_distinct\": true,\n  \"name\": \"Family\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{SENDBIRD_APP_ID}}.sendbird.com/v3/group_channels",
+          "protocol": "https",
+          "host": [
+            "{{SENDBIRD_APP_ID}}",
+            "sendbird",
+            "com"
+          ],
+          "path": [
+            "v3",
+            "group_channels"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "channel message",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Api-token",
+            "value": "{{SENDBIRD_API_TOKEN}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"message_type\": \"MESG\",\n    \"user_id\": \"testpatient\",\n    \"message\": \"Hello, can you hear me?\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{SENDBIRD_APP_ID}}.sendbird.com/v3/group_channels/{{CHANNEL_URL}}/messages",
+          "protocol": "https",
+          "host": [
+            "{{SENDBIRD_APP_ID}}",
+            "sendbird",
+            "com"
+          ],
+          "path": [
+            "v3",
+            "group_channels",
+            "{{CHANNEL_URL}}",
+            "messages"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Api-Token",
+            "value": "{{SENDBIRD_API_TOKEN}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://{{SENDBIRD_APP_ID}}.sendbird.com/v3/group_channels/{{CHANNEL_URL}}/messages?message_ts=99999999999999&prev_limit=10",
+          "protocol": "https",
+          "host": [
+            "{{SENDBIRD_APP_ID}}",
+            "sendbird",
+            "com"
+          ],
+          "path": [
+            "v3",
+            "group_channels",
+            "{{CHANNEL_URL}}",
+            "messages"
+          ],
+          "query": [
+            {
+              "key": "message_ts",
+              "value": "99999999999999"
+            },
+            {
+              "key": "prev_limit",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "session_token",
+      "value": ""
+    }
+  ]
+}

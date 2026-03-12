@@ -1,0 +1,180 @@
+"""
+Chatapp API server. Owns Sendbird: config, token, recipient.
+Main server only directs clients here (chat-session-url, chat-session-bootstrap).
+"""
+
+import base64
+import hashlib
+import hmac
+import json
+import os
+import time
+import urllib.parse
+
+from flask import Flask, abort, jsonify, request, g, session, redirect, send_from_directory
+
+try:
+    from ...shared.config import get_database_path, DatabaseConfig
+except ImportError:
+    from shared.config import get_database_path, DatabaseConfig
+
+from ..server.database import DatabaseManager
+from ..server.services.sendbird import SendbirdService
+
+
+def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
+    """Verify token from main server; return payload or None."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 2:
+            return None
+        payload_b64, sig = parts[0], parts[1]
+        payload_b64_padded = payload_b64 + "=" * (4 - len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
+        if payload.get("exp", 0) < time.time():
+            return None
+        expected = hmac.new(
+            secret.encode(), payload_b64.encode(), hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def create_chatapp_app(static_dir: str, secret_key: str = None):
+    """Create Flask app for chatapp API and static serving."""
+    app = Flask(__name__, static_folder=None)
+    app.secret_key = secret_key or os.environ.get("SECRET_KEY") or "dev-secret-change-in-production"
+
+    db_path = get_database_path()
+    db_config = DatabaseConfig(path=db_path, create_if_missing=True)
+    db_manager = DatabaseManager(db_config)
+    sendbird_svc = SendbirdService(db_manager)
+
+    @app.route("/auth")
+    def auth():
+        """Verify token from main server, set session, redirect to chat."""
+        token = (request.args.get("token") or "").strip()
+        if not token:
+            return jsonify({"error": "token required"}), 400
+        payload = _verify_chat_entry_token(app.secret_key, token)
+        if not payload:
+            return jsonify({"error": "Invalid or expired token"}), 403
+        session["user_id"] = payload["user_id"]
+        session["family_circle_id"] = payload["family_circle_id"]
+        path = "/"
+        sb = (payload.get("sendbird_user_id") or "").strip()
+        dn = (payload.get("display_name") or "").strip()
+        if sb:
+            path += "?sendbird_user_id=" + urllib.parse.quote(sb)
+            if dn:
+                path += "&display_name=" + urllib.parse.quote(dn)
+        return redirect(path)
+
+    @app.route("/api/login", methods=["POST"])
+    def api_login():
+        """Login for dev/testing. Sets session from user_id, family_circle_id."""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "no data provided"}), 400
+        user_id = data.get("user_id")
+        family_circle_id = data.get("family_circle_id")
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "user_id and family_circle_id required"}), 400
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        return jsonify({"ok": True})
+
+    def _require_session():
+        if request.path in ("/api/login", "/auth"):
+            return
+        if not request.path.startswith("/api/"):
+            return
+        uid = session.get("user_id")
+        fid = session.get("family_circle_id")
+        if not uid or not fid:
+            abort(401, "Log in at /auth or /api/login first")
+        g.user_id = uid
+        g.family_circle_id = fid
+
+    @app.before_request
+    def before():
+        _require_session()
+
+    @app.after_request
+    def _log_request_response(resp):
+        """Print full query and response for chat API requests only."""
+        if not (request.path.startswith("/api/chat/") or request.path == "/auth" or request.path == "/api/login"):
+            return resp
+        try:
+            query = "%s %s" % (request.method, request.url)
+            body = request.get_json(silent=True) if request.method in ("POST", "PUT", "PATCH") else None
+            if body is not None:
+                query += "\n  body: %s" % json.dumps(body)
+            resp_body = resp.get_data(as_text=True)
+            if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
+                try:
+                    resp_body = json.dumps(json.loads(resp_body), indent=2)
+                except (ValueError, TypeError):
+                    pass
+            print("[chatapp] query:\n  %s\n[chatapp] response: %s\n%s" % (query, resp.status_code, resp_body))
+        except Exception:
+            pass
+        return resp
+
+    @app.route("/api/chat/config", methods=["GET"])
+    def api_chat_config():
+        """Return Sendbird app_id for client SDK."""
+        if not sendbird_svc.is_configured():
+            return jsonify({"error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"}), 503
+        return jsonify({"app_id": sendbird_svc.get_sendbird_app_id()})
+
+    @app.route("/api/chat/token", methods=["POST"])
+    def api_chat_token():
+        """Issue session token for Sendbird user mapped to app user."""
+        if not sendbird_svc.is_configured():
+            return jsonify({"error": "Sendbird not configured"}), 503
+        app_user_id = getattr(g, "user_id", None)
+        if not app_user_id:
+            return jsonify({"error": "Not logged in"}), 401
+        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(app_user_id) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
+        if not sendbird_user_id:
+            return jsonify({"error": "No Sendbird user linked", "detail": "Add sendbird_user_id to user or set SENDBIRD_USER_ID_MAP."}), 400
+        ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
+        if not ok:
+            return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
+        r = db_manager.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
+        display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
+        return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val, "display_name": display_name})
+
+    @app.route("/api/chat/recipient", methods=["GET"])
+    def api_chat_recipient():
+        """Default 1:1 recipient for current user."""
+        if not sendbird_svc.is_configured():
+            return jsonify({"error": "Sendbird not configured"}), 503
+        family_circle_id = getattr(g, "family_circle_id", None) or ""
+        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(family_circle_id)
+        if not sendbird_recipient_id:
+            sendbird_recipient_id = sendbird_svc.get_sendbird_default_recipient_id_from_env()
+            recipient_name = "Family"
+        if not sendbird_recipient_id:
+            return jsonify({"error": "No default recipient", "detail": "Add sendbird_user_id to contact or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
+        return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": recipient_name})
+
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def serve_static(path):
+        """Serve static files from dist."""
+        if not path:
+            path = "index.html"
+        return send_from_directory(static_dir, path)
+
+    return app
+
+
+def run_chatapp_server(port: int, static_dir: str, secret_key: str = None):
+    """Run chatapp Flask server."""
+    app = create_chatapp_app(static_dir, secret_key)
+    app.run(host="127.0.0.1", port=port, debug=False)

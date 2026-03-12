@@ -13,11 +13,10 @@ async function build() {
     const replaceApi = (s) => s.replace(/__API_URL__/g, apiUrl);
 
     const loginHtml = fs.readFileSync(path.join(webClient, 'login.html'), 'utf8');
-    fs.writeFileSync(path.join(dist, 'index.html'), replaceApi(loginHtml));
     fs.writeFileSync(path.join(dist, 'login.html'), replaceApi(loginHtml));
 
     const indexHtml = fs.readFileSync(path.join(webClient, 'index.html'), 'utf8');
-    fs.writeFileSync(path.join(dist, 'checkin.html'), replaceApi(indexHtml));
+    fs.writeFileSync(path.join(dist, 'index.html'), replaceApi(indexHtml));
 
     const appJs = fs.readFileSync(path.join(webClient, 'app.js'), 'utf8');
     fs.writeFileSync(path.join(dist, 'app.js'), replaceApi(appJs));

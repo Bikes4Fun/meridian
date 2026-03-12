@@ -62,12 +62,8 @@ def get_server_host() -> str:
 
 
 def get_server_port() -> int:
-    """Port the API server binds to. Override with PORT. Default from api_config.local_api_port or 5000."""
-    port = os.getenv("PORT")
-    if port:
-        return int(port)
-    cfg = _load_api_config()
-    return int(cfg.get("local_api_port") or 5000)
+    """Port the API server binds to. Default 8000. Override with PORT."""
+    return int(os.getenv("PORT", "8000"))
 
 
 def get_webapp_port() -> int:

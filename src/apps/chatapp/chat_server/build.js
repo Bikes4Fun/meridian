@@ -3,9 +3,9 @@ const path = require('path');
 const { resolveApiUrl } = require('../../../shared/resolve_api_url');
 
 async function build() {
-    const apiUrl = await resolveApiUrl();
+    const apiUrl = typeof process.env.API_URL === 'string' ? process.env.API_URL : await resolveApiUrl();
     const root = __dirname;
-    const client = path.join(root, '..', 'client');
+    const client = path.join(root, '..', 'chat_client');
 
     const dist = path.join(root, 'dist');
     if (!fs.existsSync(dist)) fs.mkdirSync(dist, { recursive: true });

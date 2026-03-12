@@ -34,7 +34,7 @@
             })
             .then(function () {
                 var base = (apiBase ? apiBase.replace(/\/$/, '') : '');
-                window.location.href = base ? base + '/checkin' : '/checkin';
+                window.location.href = base ? base + '/' : '/';
             })
             .catch(function (err) {
                 alert(err.message || 'Login failed');
@@ -124,8 +124,15 @@
     }
 
     function loadFamilyMembers() {
-        fetch(API_URL + '/api/session', { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
+        var apiBase = (API_URL || '').replace(/\/$/, '');
+        fetch(apiBase + '/api/session', { credentials: 'include' })
+            .then(function (r) {
+                if (r.status === 401) {
+                    window.location.href = apiBase ? apiBase + '/login.html' : '/login.html';
+                    return null;
+                }
+                return r.ok ? r.json() : null;
+            })
             .then(function (session) {
                 if (!session || !session.family_circle_id) return;
                 _familyCircleId = session.family_circle_id;

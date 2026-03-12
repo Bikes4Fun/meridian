@@ -253,14 +253,6 @@ class ScreenFactory:
         content.add_widget(
             Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48))
         )
-        content.add_widget(
-            Label(
-                text="Choose a contact to call.",
-                font_size=dp(18),
-                size_hint_y=None,
-                height=dp(40),
-            )
-        )
         contacts_grid = GridLayout(
             cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8)
         )
@@ -312,7 +304,7 @@ class ScreenFactory:
                 if entry_svc and kiosk_user_id and family_circle_id:
 
                     def _on_contact_click(sb, nm):
-                        r = entry_svc.get_entry_url(sb, nm)
+                        r = entry_svc.get_entry_url(recipient_sendbird_user_id=sb, recipient_display_name=nm)
                         if r.success and r.data:
                             open_chat_window(r.data)
 

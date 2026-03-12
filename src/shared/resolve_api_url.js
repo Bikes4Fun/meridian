@@ -1,6 +1,6 @@
 /**
  * Resolve API URL for build scripts. Tries: 1) API_URL env, 2) Railway, 3) probe localhost ports.
- * Aligns with Python config (get_server_port, find_available_port). Default port 5000.
+ * Aligns with Python config.get_server_port (default 8000, tries 20 ports).
  */
 function loadApiConfig() {
     const path = require('path');
@@ -42,11 +42,10 @@ async function resolveApiUrl() {
         });
         if (res.ok) return railwayUrl;
     } catch (e) {}
-    const defaultPort = (loadApiConfig().local_api_port ?? 5000);
-    const startPort = parseInt(process.env.PORT || String(defaultPort), 10);
+    const startPort = parseInt(process.env.PORT || '8000', 10);
     const local = await probeLocalApi(startPort);
     if (local) return local;
-    console.log('No API reachable. Tried Railway and localhost:' + startPort + '..' + (startPort + 19) + '. Set API_URL or run main.py --local.');
+    console.log('No API reachable. Tried Railway and localhost ports. Set API_URL or run main.py --local.');
     return `http://127.0.0.1:${startPort}`;
 }
 

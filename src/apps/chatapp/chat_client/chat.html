@@ -20,14 +20,14 @@
     </style>
 </head>
 <body>
-    <h1>Family Chat</h1>
-    <p><span id="loggedInAs">Loading…</span></p>
+    <h1 id="chatHeader">Family Chat</h1>
+    <p id="chatParticipants"><span id="youLabel">You</span>: <span id="youName">…</span> · <span id="themLabel">Chatting with</span>: <span id="themName">…</span></p>
     <div id="status" class="info">Loading…</div>
     <div id="messages"></div>
     <div id="sendRow" style="display: none;">
         <input type="text" id="msgInput" placeholder="Type a message…">
         <button type="button" id="sendBtn">Send</button>
     </div>
-    <script src="/kiosk-chat.js"></script>
+    <script src="chat.js"></script>
 </body>
 </html>

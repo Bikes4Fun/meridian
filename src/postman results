@@ -1,0 +1,234 @@
+results examples of running server / api in postman: 
+
+POST http://localhost:8080/api/login:
+{
+    "ok": true
+}
+
+GET http://localhost:8080/api/chat/config:
+{
+    "app_id": "api-BA79A889-A2E4-4E5E-A2BD-D3B6783F3AFF"
+}
+
+POST http://localhost:8080/api/chat/token:
+{
+    "display_name": "Marian Foster",
+    "sendbird_user_id": "testpatient",
+    "session_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1Ijo1MjI3NTU3NDQsInYiOjEsImUiOjE3NzM5NDEzNDd9.fBY0bZM9XaQlgVg9btqdeUsgD-P2YGwfQ029v0EjDrA"
+}
+
+POST https://{{SENDBIRD_APP_ID}}.sendbird.com/v3/group_channels:
+{
+    "channel_url": "sendbird_group_channel_522755744_054dd3300a426559cac22187ad2248b387012f28",
+    "name": "Family",
+    "cover_url": "https://static.sendbird.com/sample/cover/cover_13.jpg",
+    "data": "",
+    "member_count": 1,
+    "joined_member_count": 1,
+    "max_length_message": 5000,
+    "created_at": 1773287069,
+    "custom_type": "",
+    "is_distinct": true,
+    "is_super": false,
+    "is_broadcast": false,
+    "is_public": false,
+    "is_discoverable": false,
+    "freeze": false,
+    "is_ephemeral": false,
+    "unread_message_count": 0,
+    "unread_mention_count": 0,
+    "ignore_profanity_filter": false,
+    "has_ai_bot": false,
+    "has_bot": false,
+    "is_desk_channel": false,
+    "is_ai_agent_channel": false,
+    "id": 1018043201,
+    "channel": {
+        "channel_url": "sendbird_group_channel_522755744_054dd3300a426559cac22187ad2248b387012f28",
+        "name": "Family",
+        "cover_url": "https://static.sendbird.com/sample/cover/cover_13.jpg",
+        "data": "",
+        "created_at": 1773287069,
+        "custom_type": "",
+        "max_length_message": 5000,
+        "member_count": 1
+    },
+    "created_by": null,
+    "disappearing_message": {
+        "is_triggered_by_message_read": false,
+        "message_survival_seconds": -1
+    },
+    "is_access_code_required": false,
+    "is_created": false,
+    "message_survival_seconds": -1,
+    "sms_fallback": {
+        "wait_seconds": -1,
+        "exclude_user_ids": []
+    },
+    "last_message": {
+        "type": "MESG",
+        "message_id": 5377593689,
+        "message": "Hello, can you hear me?",
+        "data": "",
+        "custom_type": "",
+        "file": {},
+        "created_at": 1773287581006,
+        "user": {
+            "user_id": "testpatient",
+            "profile_url": "",
+            "require_auth_for_profile_image": false,
+            "nickname": "patient",
+            "metadata": {},
+            "role": "",
+            "is_active": true
+        },
+        "channel_url": "sendbird_group_channel_522755744_054dd3300a426559cac22187ad2248b387012f28",
+        "updated_at": 0,
+        "message_survival_seconds": -1,
+        "mentioned_users": [],
+        "mention_type": "users",
+        "silent": false,
+        "message_retention_hour": -1,
+        "channel_type": "group",
+        "translations": {},
+        "is_removed": false,
+        "is_op_msg": false,
+        "message_events": {
+            "send_push_notification": "receivers",
+            "update_unread_count": true,
+            "update_mention_count": true,
+            "update_last_message": true
+        }
+    },
+    "members": [
+        {
+            "user_id": "testpatient",
+            "nickname": "patient",
+            "profile_url": "",
+            "require_auth_for_profile_image": false,
+            "metadata": {},
+            "is_online": false,
+            "last_seen_at": -1,
+            "state": "joined",
+            "is_active": true,
+            "role": "",
+            "is_muted": false,
+            "muted_end_at": -1,
+            "muted_description": ""
+        }
+    ],
+    "operators": []
+}
+
+POST https://{{SENDBIRD_APP_ID}}.sendbird.com/v3/group_channels/{{CHANNEL_URL}}/messages:
+{
+    "type": "MESG",
+    "message_id": 5379409182,
+    "message": "Hello, can you hear me?",
+    "data": "",
+    "custom_type": "",
+    "file": {},
+    "created_at": 1773336598221,
+    "user": {
+        "user_id": "testpatient",
+        "profile_url": "",
+        "require_auth_for_profile_image": false,
+        "nickname": "patient",
+        "metadata": {},
+        "role": "",
+        "is_active": true
+    },
+    "channel_url": "sendbird_group_channel_522755744_054dd3300a426559cac22187ad2248b387012f28",
+    "updated_at": 0,
+    "message_survival_seconds": -1,
+    "mentioned_users": [],
+    "mention_type": "users",
+    "silent": false,
+    "message_retention_hour": -1,
+    "channel_type": "group",
+    "translations": {},
+    "is_removed": false,
+    "is_op_msg": false,
+    "message_events": {
+        "send_push_notification": "receivers",
+        "update_unread_count": true,
+        "update_mention_count": true,
+        "update_last_message": true
+    }
+}
+
+GET https://{{SENDBIRD_APP_ID}}.sendbird.com/v3/group_channels/{{CHANNEL_URL}}/messages?message_ts=99999999999999&prev_limit=10
+{
+    "messages": [
+        {
+            "type": "MESG",
+            "message_id": 5377593689,
+            "message": "Hello, can you hear me?",
+            "data": "",
+            "custom_type": "",
+            "file": {},
+            "created_at": 1773287581006,
+            "user": {
+                "user_id": "testpatient",
+                "profile_url": "",
+                "require_auth_for_profile_image": false,
+                "nickname": "patient",
+                "metadata": {},
+                "role": "",
+                "is_active": true
+            },
+            "channel_url": "sendbird_group_channel_522755744_054dd3300a426559cac22187ad2248b387012f28",
+            "updated_at": 0,
+            "message_survival_seconds": -1,
+            "mentioned_users": [],
+            "mention_type": "users",
+            "silent": false,
+            "message_retention_hour": -1,
+            "channel_type": "group",
+            "translations": {},
+            "is_removed": false,
+            "is_op_msg": false,
+            "message_events": {
+                "send_push_notification": "receivers",
+                "update_unread_count": true,
+                "update_mention_count": true,
+                "update_last_message": true
+            }
+        },
+        {
+            "type": "MESG",
+            "message_id": 5379409182,
+            "message": "Hello, can you hear me?",
+            "data": "",
+            "custom_type": "",
+            "file": {},
+            "created_at": 1773336598221,
+            "user": {
+                "user_id": "testpatient",
+                "profile_url": "",
+                "require_auth_for_profile_image": false,
+                "nickname": "patient",
+                "metadata": {},
+                "role": "",
+                "is_active": true
+            },
+            "channel_url": "sendbird_group_channel_522755744_054dd3300a426559cac22187ad2248b387012f28",
+            "updated_at": 0,
+            "message_survival_seconds": -1,
+            "mentioned_users": [],
+            "mention_type": "users",
+            "silent": false,
+            "message_retention_hour": -1,
+            "channel_type": "group",
+            "translations": {},
+            "is_removed": false,
+            "is_op_msg": false,
+            "message_events": {
+                "send_push_notification": "receivers",
+                "update_unread_count": true,
+                "update_mention_count": true,
+                "update_last_message": true
+            }
+        }
+    ]
+}

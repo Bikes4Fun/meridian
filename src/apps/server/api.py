@@ -131,6 +131,12 @@ def create_server_app(db_path=None):
         )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
+    app.config["SESSION_SERVER_ID"] = str(time.time())
+
+    def _session_valid():
+        """Session is valid only if it matches current server instance (invalidates on restart)."""
+        sid = session.get("_sid")
+        return sid and sid == app.config.get("SESSION_SERVER_ID")
 
     @app.after_request
     def add_cors(resp):
@@ -204,7 +210,7 @@ def create_server_app(db_path=None):
     @app.before_request
     def set_user_id():
         """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
-        if request.path in ("/api/health", "/api/login", "/auth"):
+        if request.path in ("/api/health", "/api/login", "/api/logout", "/auth"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -215,6 +221,9 @@ def create_server_app(db_path=None):
             return
         # / and /index.html: require session, redirect to login if missing
         if request.path in ("/", "/index.html"):
+            if not _session_valid():
+                session.clear()
+                return redirect("/login.html")
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
@@ -224,8 +233,13 @@ def create_server_app(db_path=None):
             return
         # /checkin, /checkin.js: session-only; route handles redirect/401
         if request.path in ("/checkin", "/checkin.js"):
-            g.user_id = session.get("user_id")
-            g.family_circle_id = session.get("family_circle_id")
+            if not _session_valid():
+                session.clear()
+                g.user_id = None
+                g.family_circle_id = None
+            else:
+                g.user_id = session.get("user_id")
+                g.family_circle_id = session.get("family_circle_id")
             return
         # chat-session-bootstrap: new webview (kiosk, mobile) opens URL from chat-session-url; no prior cookie. Token verified in handler.
         if request.path == "/api/chat/chat-session-bootstrap":
@@ -235,6 +249,9 @@ def create_server_app(db_path=None):
 
         # /api/session: session only.
         if request.path == "/api/session":
+            if not _session_valid():
+                session.clear()
+                abort(401, "Not logged in")
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
@@ -245,10 +262,13 @@ def create_server_app(db_path=None):
 
         # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
         if request.path == "/api/chat/chat-session-url":
-            uid = session.get("user_id") or request.headers.get("X-User-Id")
-            fid = session.get("family_circle_id") or request.headers.get(
-                "X-Family-Circle-Id"
-            )
+            uid = request.headers.get("X-User-Id")
+            fid = request.headers.get("X-Family-Circle-Id")
+            if (not uid or not fid) and _session_valid():
+                uid = uid or session.get("user_id")
+                fid = fid or session.get("family_circle_id")
+            elif not uid or not fid:
+                session.clear()
             if not uid or not fid:
                 abort(
                     401,
@@ -261,11 +281,14 @@ def create_server_app(db_path=None):
         user_id = request.headers.get("X-User-Id")
         family_circle_id = request.headers.get("X-Family-Circle-Id")
         if not user_id or not family_circle_id:
-            uid = session.get("user_id")
-            fid = session.get("family_circle_id")
-            if uid and fid:
-                user_id = uid
-                family_circle_id = fid
+            if _session_valid():
+                uid = session.get("user_id")
+                fid = session.get("family_circle_id")
+                if uid and fid:
+                    user_id = uid
+                    family_circle_id = fid
+            else:
+                session.clear()
         if not user_id:
             abort(401, "X-User-Id header required")
         if not family_circle_id:
@@ -506,6 +529,13 @@ def create_server_app(db_path=None):
             return jsonify({"error": "user_id and family_circle_id required"}), 400
         session["user_id"] = user_id
         session["family_circle_id"] = family_circle_id
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        return jsonify({"ok": True})
+
+    @app.route("/api/logout", methods=["POST"])
+    def api_logout():
+        """Clear session. For switching users."""
+        session.clear()
         return jsonify({"ok": True})
 
     @app.route("/checkin")

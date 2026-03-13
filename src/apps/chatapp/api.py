@@ -111,6 +111,11 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         g.user_id = uid
         g.family_circle_id = fid
 
+    @app.errorhandler(401)
+    def _json_401(err):
+        """Return JSON for 401 so fetch().json() works; Flask default is HTML."""
+        return jsonify({"error": "Not logged in", "detail": str(err.description or "Log in at /auth or /api/login first")}), 401
+
     @app.before_request
     def before():
         _require_session()
@@ -195,7 +200,16 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                 ),
                 400,
             )
-        ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
+        try:
+            ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
+        except Exception as e:
+            err_msg = str(e)
+            if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
+                return jsonify({
+                    "error": "Cannot reach Sendbird",
+                    "detail": "Check internet connection and that SENDBIRD_APP_ID is a valid Sendbird app ID.",
+                }), 502
+            return jsonify({"error": "Sendbird issue token failed", "detail": err_msg}), 502
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
         r = db_manager.execute_query(
@@ -272,12 +286,21 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
             "is_distinct": True,
             "name": "Family",
         }
-        r = requests.post(
-            base + "/group_channels",
-            headers=sendbird_svc._headers(),
-            json=payload,
-            timeout=10,
-        )
+        try:
+            r = requests.post(
+                base + "/group_channels",
+                headers=sendbird_svc._headers(),
+                json=payload,
+                timeout=10,
+            )
+        except Exception as e:
+            err_msg = str(e)
+            if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
+                return jsonify({
+                    "error": "Cannot reach Sendbird",
+                    "detail": "Check internet connection and SENDBIRD_APP_ID.",
+                }), 502
+            return jsonify({"error": "Create channel failed", "detail": err_msg}), 502
         if r.status_code != 200:
             body = (
                 r.json()
@@ -288,12 +311,12 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
             return jsonify({"error": "Create channel failed", "detail": msg}), 502
         data = r.json()
         channel_url = (data.get("channel_url") or "").strip()
-        if not channel_url:
+        if not channel_url or not channel_url.startswith("sendbird_group_channel_"):
             return (
                 jsonify(
                     {
                         "error": "Create channel failed",
-                        "detail": "No channel_url in response",
+                        "detail": "Invalid channel_url from Sendbird" if channel_url else "No channel_url in response",
                     }
                 ),
                 502,

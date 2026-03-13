@@ -148,8 +148,11 @@ window.doLogin = function doLogin() {
     var tokenData = results[1];
     var recipient = results[2];
 
-    if (!config.app_id) throw new Error('No app_id from /api/chat/config');
-    if (!tokenData.session_token) throw new Error('No session_token: ' + (tokenData.error || JSON.stringify(tokenData)));
+    if (!config.app_id) { var e = new Error('No app_id from /api/chat/config'); e._step = 'config'; throw e; }
+    if (!tokenData.session_token) {
+      var msg = tokenData.error ? (tokenData.detail ? tokenData.error + ': ' + tokenData.detail : tokenData.error) : 'No session_token';
+      var e2 = new Error(msg); e2._step = 'token'; throw e2;
+    }
     if (!recipient.sendbird_user_id) throw new Error('No recipient: ' + (recipient.error || JSON.stringify(recipient)));
 
     currentRecipient = recipient;
@@ -181,8 +184,14 @@ window.doLogin = function doLogin() {
       credentials: 'include',
       body: channelBody
     }).then(function(r) {
-      return r.json().then(function(data) {
-        if (!r.ok) throw new Error((data && data.error) || 'Channel failed (' + r.status + ')');
+      return r.text().then(function(txt) {
+        var data;
+        try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = null; }
+        if (!r.ok) {
+          var msg = (data && data.error) ? data.error : (txt || 'Channel failed (' + r.status + ')').slice(0, 200);
+          if (r.status === 401) msg = 'Not logged in. Please log in again.';
+          throw new Error(msg);
+        }
         return data;
       });
     }).catch(function(e) { e._step = e._step || 'channel API'; throw e; })

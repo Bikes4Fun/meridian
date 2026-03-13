@@ -23,8 +23,12 @@ class SendbirdService(DatabaseServiceMixin):
     # --- Config (env) ---
 
     def get_sendbird_app_id(self) -> str:
-        """Application ID from Sendbird Dashboard (Settings → Application → General). Case-sensitive."""
-        return (os.getenv("SENDBIRD_APP_ID") or "").strip()
+        """Application ID from Sendbird Dashboard (Settings → Application → General). Case-sensitive.
+        Strips api- prefix if present (Sendbird expects raw UUID, not api-UUID)."""
+        raw = (os.getenv("SENDBIRD_APP_ID") or "").strip()
+        if raw.startswith("api-"):
+            raw = raw[4:]
+        return raw
 
     def get_sendbird_api_token(self) -> str:
         """Master or secondary API token for Platform API (Dashboard → API tokens)."""

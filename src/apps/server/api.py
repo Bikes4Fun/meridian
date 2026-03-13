@@ -208,6 +208,20 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
+        # Public routes: no auth required (login page, chatapp POC)
+        if request.path in ("/login.html", "/app.js") or request.path.startswith("/chatapp/"):
+            g.user_id = None
+            g.family_circle_id = None
+            return
+        # / and /index.html: require session, redirect to login if missing
+        if request.path in ("/", "/index.html"):
+            uid = session.get("user_id")
+            fid = session.get("family_circle_id")
+            if not uid or not fid:
+                return redirect("/login.html")
+            g.user_id = uid
+            g.family_circle_id = fid
+            return
         # /checkin, /checkin.js: session-only; route handles redirect/401
         if request.path in ("/checkin", "/checkin.js"):
             g.user_id = session.get("user_id")
@@ -583,9 +597,10 @@ def create_server_app(db_path=None):
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         sendbird_svc = container.get_sendbird_service()
         db_manager = container.get_database_manager()
-        register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix="/chat")
+        register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix="/chatapp")
 
         @app.route("/")
+        @app.route("/index.html")
         def serve_index():
             return send_from_directory(_webapp_dist, "index.html")
 
@@ -597,8 +612,8 @@ def create_server_app(db_path=None):
         def serve_app_js():
             return send_from_directory(_webapp_dist, "app.js")
 
-        @app.route("/chat/")
-        @app.route("/chat/<path:path>")
+        @app.route("/chatapp/")
+        @app.route("/chatapp/<path:path>")
         def serve_chat(path=""):
             if not path:
                 path = "poc_chat.html"

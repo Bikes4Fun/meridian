@@ -111,11 +111,11 @@ def verify_api(api_url, logger=None):
     app_id = os.environ.get("SENDBIRD_APP_ID", "").strip()
     api_token = os.environ.get("SENDBIRD_API_TOKEN", "").strip()
     sender = token_data.get("sendbird_user_id", "").strip() if token_data else ""
-    recipient = (recipient_data or {}).get("sendbird_user_id", "").strip() or "deanna"
+    recipient = (recipient_data or {}).get("sendbird_user_id", "").strip() or None
     sb_base = "https://%s.sendbird.com/v3" % app_id if app_id else ""
     channel_url = None
 
-    if app_id and api_token and sender:
+    if app_id and api_token and sender and recipient:
         # 6. create channel (Platform API directly)
         body = {"user_ids": [sender, recipient], "is_distinct": True, "name": "Family"}
         query = "POST %s/group_channels\n  body: %s" % (sb_base, json.dumps(body))

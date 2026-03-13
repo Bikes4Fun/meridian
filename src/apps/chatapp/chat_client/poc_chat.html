@@ -45,7 +45,7 @@
   <label>Family Circle ID</label>
   <input type="text" id="familyId" placeholder="e.g. F00000">
 
-  <label>Recipient Sendbird ID (optional; if empty, uses default Deanna)</label>
+  <label>Recipient Sendbird ID (required)</label>
   <input type="text" id="recipientId" placeholder="e.g. dtzecha or testpatient">
 
   <label>Recipient name (optional; for display only)</label>
@@ -98,7 +98,11 @@ window.doLogin = function doLogin() {
   var familyId = $id('familyId').value.trim();
 
   if (!apiUrl || !userId || !familyId) {
-    alert('Please fill in all three fields.');
+    alert('Please fill in API URL, User ID, and Family Circle ID.');
+    return;
+  }
+  if (!$id('recipientId').value.trim()) {
+    alert('Recipient Sendbird ID required.');
     return;
   }
 
@@ -122,9 +126,14 @@ window.doLogin = function doLogin() {
 
     var recipientId = $id('recipientId').value.trim();
     var recipientName = $id('recipientName').value.trim();
-    var recipientPromise = recipientId
-      ? Promise.resolve({ sendbird_user_id: recipientId, name: recipientName || recipientId })
-      : fetch(apiUrl + '/api/chat/recipient', { credentials: 'include' }).then(function(r){ return r.json(); });
+    if (!recipientId) {
+      $id('loginBtn').disabled = false;
+      $id('loginBtn').textContent = 'Log In & Connect';
+      $id('loginSection').style.display = 'block';
+      $id('chatSection').style.display = 'none';
+      throw new Error('Recipient Sendbird ID required. Enter the other user\'s sendbird_user_id (e.g. dtzecha or testpatient).');
+    }
+    var recipientPromise = Promise.resolve({ sendbird_user_id: recipientId, name: recipientName || recipientId });
 
     return Promise.all([
       fetch(apiUrl + '/api/chat/config', { credentials: 'include' }).then(function(r){ return r.json(); }),

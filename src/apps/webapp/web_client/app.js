@@ -10,9 +10,33 @@
     var _familyCircleId = null;
 
     function init() {
-        if (document.getElementById('loginForm')) initLogin();
-        if (document.getElementById('checkinBtn')) initCheckin();
-        if (document.getElementById('openChatBtn')) initOpenChat();
+        if (document.getElementById('loginForm')) {
+            initLogin();
+            return;
+        }
+        if (document.getElementById('checkinBtn')) {
+            var apiBase = (API_URL || '').replace(/\/$/, '');
+            fetch(apiBase + '/api/session', { credentials: 'include' })
+                .then(function (r) {
+                    if (r.status === 401) {
+                        window.location.href = '/login.html';
+                        return null;
+                    }
+                    return r.ok ? r.json() : null;
+                })
+                .then(function (session) {
+                    if (!session || !session.family_circle_id) {
+                        window.location.href = '/login.html';
+                        return;
+                    }
+                    document.body.classList.remove('pending');
+                    initCheckin();
+                    initLogoutLink();
+                })
+                .catch(function () { window.location.href = '/login.html'; });
+            return;
+        }
+        initLogoutLink();
     }
 
     function initLogin() {
@@ -135,6 +159,8 @@
             .then(function (session) {
                 if (!session || !session.family_circle_id) return;
                 _familyCircleId = session.family_circle_id;
+                if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = '';
+                if (document.getElementById('contactsGrid')) initChatContacts();
                 return fetch(API_URL + '/api/family_circles/' + session.family_circle_id + '/family-members', {
                     credentials: 'include'
                 });
@@ -195,29 +221,60 @@
         loadFamilyMembers();
     }
 
-    function initOpenChat() {
-        var btn = document.getElementById('openChatBtn');
+    function initChatContacts() {
+        var grid = document.getElementById('contactsGrid');
         var statusEl = document.getElementById('openChatStatus');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-            btn.disabled = true;
-            if (statusEl) statusEl.textContent = 'Opening chat…';
-            var base = (API_URL || '').replace(/\/$/, '');
-            fetch(base + '/api/chat/chat-session-url', { credentials: 'include' })
-                .then(function (r) {
-                    if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed to get chat URL'); });
-                    return r.json();
-                })
-                .then(function (data) {
-                    if (data && data.url) {
-                        window.open(data.url, 'chat', 'width=800,height=600');
-                        if (statusEl) statusEl.textContent = '';
-                    } else throw new Error('No URL returned');
-                })
-                .catch(function (err) {
-                    if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not open chat');
-                })
-                .finally(function () { btn.disabled = false; });
+        if (!grid || !_familyCircleId) return;
+        var apiBase = (API_URL || '').replace(/\/$/, '');
+        fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/contacts', { credentials: 'include' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (!data || !data.data) return;
+                var chatContacts = data.data.filter(function (c) { return (c.sendbird_user_id || '').trim(); });
+                if (chatContacts.length === 0) {
+                    grid.innerHTML = '<p style="font-size: 13px; color: #666;">No contacts with chat.</p>';
+                    return;
+                }
+                grid.innerHTML = '';
+                chatContacts.forEach(function (c) {
+                    var name = c.display_name || c.id || 'Contact';
+                    var sb = (c.sendbird_user_id || '').trim();
+                    var tile = document.createElement('div');
+                    tile.className = 'contact-tile';
+                    tile.textContent = name;
+                    tile.addEventListener('click', function () {
+                        if (statusEl) statusEl.textContent = 'Opening chat…';
+                        var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);
+                        fetch(apiBase + '/api/chat/chat-session-url' + qs, { credentials: 'include' })
+                            .then(function (r) {
+                                if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed to get chat URL'); });
+                                return r.json();
+                            })
+                            .then(function (res) {
+                                if (res && res.url) {
+                                    window.open(res.url, 'chat_' + sb, 'width=800,height=600');
+                                    if (statusEl) statusEl.textContent = '';
+                                } else throw new Error('No URL returned');
+                            })
+                            .catch(function (err) {
+                                if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not open chat');
+                            });
+                    });
+                    grid.appendChild(tile);
+                });
+            })
+            .catch(function () {});
+    }
+
+    function initLogoutLink() {
+        var link = document.getElementById('logoutLink');
+        if (!link) return;
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            var apiBase = (API_URL || '').replace(/\/$/, '');
+            fetch(apiBase + '/api/logout', { method: 'POST', credentials: 'include' })
+                .then(function () { window.location.href = '/login.html'; })
+                .catch(function () { window.location.href = '/login.html'; });
         });
     }
 

@@ -67,6 +67,13 @@
       "relationship": "son",
       "emergency_priority": "primary_emergency",
       "notes": "Primary caregiver. Medical proxy and POA."
+    },
+    {
+      "id": "contact_patient",
+      "display_name": "Marian Foster",
+      "relationship": "care recipient",
+      "emergency_priority": "not_emergency",
+      "sendbird_user_id": "testpatient"
     }
   ]
 }

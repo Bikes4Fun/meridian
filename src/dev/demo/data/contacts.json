@@ -6,7 +6,7 @@
       "phone": "(555) 123-4567",
       "email": "dad@family.email",
       "birthday": "1960-05-12",
-      "relationship": "parent",
+      "relationship": "husband",
       "emergency_priority": "primary_emergency",
       "photo_filename": "dean gps pin.jpg",
       "notes": "Primary caregiver"
@@ -20,7 +20,7 @@
       "relationship": "child",
       "emergency_priority": "secondary_emergency",
       "photo_filename": "deanna gps pin.jpeg",
-      "notes": "Picks up kids from school"
+      "sendbird_user_id": "deanna"
     },
     {
       "id": "contact_dr_chen",
@@ -43,6 +43,37 @@
       "emergency_priority": "not_emergency",
       "photo_filename": null,
       "notes": "Weekly sessions"
+    },
+    {
+      "id": "contact_003",
+      "display_name": "Eleanor",
+      "phone": null,
+      "relationship": "grandchild",
+      "emergency_priority": "not_emergency",
+      "sendbird_user_id": "eleanor"
+    },
+    {
+      "id": "contact_005",
+      "display_name": "Dylan",
+      "phone": null,
+      "relationship": "son in law",
+      "emergency_priority": "secondary_emergency",
+      "sendbird_user_id": "dtzecha"
+    },
+    {
+      "id": "contact_james_foster",
+      "display_name": "James Foster",
+      "phone": "(555) 234-5678",
+      "relationship": "son",
+      "emergency_priority": "primary_emergency",
+      "notes": "Primary caregiver. Medical proxy and POA."
+    },
+    {
+      "id": "contact_patient",
+      "display_name": "Marian Foster",
+      "relationship": "care recipient",
+      "emergency_priority": "not_emergency",
+      "sendbird_user_id": "testpatient"
     }
   ]
 }

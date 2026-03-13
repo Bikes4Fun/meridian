@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     display_name TEXT,
     photo_filename TEXT,
     family_circle_id TEXT,
+    sendbird_user_id TEXT,
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     emergency_priority TEXT,
     photo_filename TEXT,
     notes TEXT,
+    sendbird_user_id TEXT,
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 

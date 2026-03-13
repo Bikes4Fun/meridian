@@ -272,8 +272,6 @@ def create_server_app(db_path=None):
             g.family_circle_id,
             recipient_sb,
             recipient_name,
-            recipient_sb,
-            recipient_name,
         )
         base_url = request.url_root.rstrip("/")
         bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
@@ -296,7 +294,6 @@ def create_server_app(db_path=None):
                 ),
                 503,
             )
-        return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
         return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
 
     calendar_svc = container.get_calendar_service()

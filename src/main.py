@@ -210,6 +210,17 @@ def main():
         logger.info(
             "Meridian Kiosk, server, and webapp created successfully, starting..."
         )
+        if use_local and chatapp_url:
+            print(f"")
+            print(f"POC Chat — Window 1 (Marian):")
+            print("  Chatapp URL:", chatapp_url)
+            print(f"  F00000")
+            print(f"  fm_care_001")
+            print(f"  dtzecha")
+            print(f"\nWindow 2 (Dylan):")
+            print(f"  fm_005")
+            print(f"  testpatient")
+            print(f"")
         app.run()
     except Exception as e:
         logger.error("Meridian startup failed: %s", e)

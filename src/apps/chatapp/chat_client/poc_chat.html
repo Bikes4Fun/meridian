@@ -37,7 +37,7 @@
   </p>
 
   <label>Chatapp URL (where this page is served from)</label>
-  <input type="text" id="apiUrl" value="http://localhost:3001" placeholder="http://localhost:3001">
+  <input type="text" id="apiUrl" placeholder="e.g. http://127.0.0.1:3001">
 
   <label>User ID</label>
   <input type="text" id="userId" placeholder="e.g. fm_care_001">
@@ -93,7 +93,7 @@ var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/+esm';
 var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
 
 window.doLogin = function doLogin() {
-  var apiUrl   = $id('apiUrl').value.trim().replace(/\/$/, '');
+  var apiUrl   = ($id('apiUrl').value.trim() || window.location.origin).replace(/\/$/, '');
   var userId   = $id('userId').value.trim();
   var familyId = $id('familyId').value.trim();
 
@@ -121,7 +121,9 @@ window.doLogin = function doLogin() {
   })
   .then(function() {
     $id('loginSection').style.display = 'none';
-    $id('chatSection').style.display  = 'block';
+    var chatEl = $id('chatSection');
+    chatEl.style.display = 'block';
+    chatEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setStatus('Fetching Sendbird config…', 'info');
 
     var recipientId = $id('recipientId').value.trim();
@@ -165,7 +167,7 @@ window.doLogin = function doLogin() {
         });
         return sb.connect(mySendbirdUserId, tokenData.session_token);
       });
-    });
+    }).catch(function(e) { e._step = 'Sendbird connect'; throw e; })
   })
   .then(function() {
     setStatus('Creating / joining channel…', 'info');
@@ -178,13 +180,18 @@ window.doLogin = function doLogin() {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: channelBody
-    }).then(function(r) { return r.json(); });
+    }).then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) throw new Error((data && data.error) || 'Channel failed (' + r.status + ')');
+        return data;
+      });
+    }).catch(function(e) { e._step = e._step || 'channel API'; throw e; })
   })
   .then(function(channelData) {
     if (!channelData.channel_url) throw new Error('No channel_url: ' + JSON.stringify(channelData));
 
     return sb.groupChannel.getChannel(channelData.channel_url);
-  })
+  }).catch(function(e) { e._step = e._step || 'getChannel'; throw e; })
   .then(function(channel) {
     currentChannel = channel;
 
@@ -229,7 +236,10 @@ window.doLogin = function doLogin() {
     });
   })
   .catch(function(err) {
-    setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
+    var step = err && err._step ? err._step + ': ' : '';
+    var msg = (err && err.message ? err.message : String(err));
+    if (err && err.code) msg += ' (code: ' + err.code + ')';
+    setStatus('Error: ' + step + msg, 'error');
     console.error('Chat POC error:', err);
     $id('loginBtn').disabled = false;
     $id('loginBtn').textContent = 'Log In & Connect';

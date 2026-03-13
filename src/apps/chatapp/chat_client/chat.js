@@ -23,9 +23,14 @@
         el.scrollTop = el.scrollHeight;
     }
 
+    function errForStatus(r) {
+        if (r.status === 401) return new Error('Not logged in. Open /poc_chat.html to log in.');
+        return new Error('Request failed: ' + r.status);
+    }
+
     function loadConfig() {
         return fetch((API_URL || '').replace(/\/$/, '') + '/api/chat/config', { credentials: 'include' })
-            .then(function (r) { if (!r.ok) throw new Error('Config failed: ' + r.status); return r.json(); });
+            .then(function (r) { if (!r.ok) throw errForStatus(r); return r.json(); });
     }
 
     function loadToken() {
@@ -35,11 +40,7 @@
             credentials: 'include',
             body: JSON.stringify({})
         }).then(function (r) {
-            if (!r.ok) return r.json().then(function (d) {
-                var msg = (d && d.error) || 'Token failed';
-                if (d && d.detail) msg += ' (' + d.detail + ')';
-                throw new Error(msg);
-            });
+            if (!r.ok) throw errForStatus(r);
             return r.json();
         });
     }
@@ -47,7 +48,7 @@
     function loadRecipient() {
         return fetch((API_URL || '').replace(/\/$/, '') + '/api/chat/recipient', { credentials: 'include' })
             .then(function (r) {
-                if (!r.ok) return r.json().then(function (d) { throw new Error((d && d.error) || 'Recipient failed'); });
+                if (!r.ok) throw errForStatus(r);
                 return r.json();
             });
     }

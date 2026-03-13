@@ -118,6 +118,8 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
     @app.after_request
     def _log_request_response(resp):
         """Print chat API requests in a compact format."""
+        if request.method == "OPTIONS":
+            return resp
         if not (
             request.path.startswith("/api/chat/")
             or request.path == "/auth"
@@ -346,6 +348,8 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
     def serve_static(path):
         """Serve static files from dist."""
         if not path:
+            if not session.get("user_id") or not session.get("family_circle_id"):
+                return redirect("/poc_chat.html")
             path = "index.html"
         return send_from_directory(static_dir, path)
 

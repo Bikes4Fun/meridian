@@ -6,7 +6,7 @@ WHERE FUNCTIONALITY CAME FROM (required on server; do not remove):
   - container/container.py         → create_service_container(db_path) used here
   - container/calendar_service.py → GET /api/family_circles/<id>/calendar/*
   - container/medication_service.py → GET /api/family_circles/<id>/medications
-  - container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary, emergency-profile
+- container/emergency_service.py → GET /api/family_circles/<id>/contacts, medical-summary, emergency-profile
   - container/contact_service.py  (used by emergency_service; no direct endpoint)
 
 WHERE IT MOVED TO (client uses these instead of container on client):
@@ -129,9 +129,13 @@ def create_server_app(db_path=None):
 
     @app.after_request
     def add_cors(resp):
-        origin = os.environ.get("CORS_ORIGIN", "").strip()
-        if origin:
-            resp.headers["Access-Control-Allow-Origin"] = origin
+        origins = [o.strip() for o in (os.environ.get("CORS_ORIGIN") or "").split(",") if o.strip()]
+        req_origin = request.headers.get("Origin", "").strip()
+        if origins and req_origin and req_origin in origins:
+            resp.headers["Access-Control-Allow-Origin"] = req_origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        elif origins:
+            resp.headers["Access-Control-Allow-Origin"] = origins[0]
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         else:
             resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -139,6 +143,27 @@ def create_server_app(db_path=None):
         resp.headers["Access-Control-Allow-Headers"] = (
             "Content-Type, X-User-Id, X-Family-Circle-Id"
         )
+        return resp
+
+    @app.after_request
+    def _log_request_response(resp):
+        """Print full query and response for chat, login, auth API requests only."""
+        if not (request.path.startswith("/api/chat/") or request.path == "/api/login"):
+            return resp
+        try:
+            query = "%s %s" % (request.method, request.url)
+            body = request.get_json(silent=True) if request.method in ("POST", "PUT", "PATCH") else None
+            if body is not None:
+                query += "\n  body: %s" % json.dumps(body)
+            resp_body = resp.get_data(as_text=True)
+            if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
+                try:
+                    resp_body = json.dumps(json.loads(resp_body), indent=2)
+                except (ValueError, TypeError):
+                    pass
+            print("[main server] query:\n  %s\n[main server] response: %s\n%s" % (query, resp.status_code, resp_body))
+        except Exception:
+            pass
         return resp
 
     @app.before_request
@@ -158,20 +183,21 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Session-based: /api/session and chat API. chat-session-url uses headers or session.
-        _need_session = request.path in (
-            "/api/session",
-            "/api/chat/config",
-            "/api/chat/token",
-            "/api/chat/recipient",
-        )
-        if _need_session:
+        # /api/session: session only.
+        if request.path == "/api/session":
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
-                if request.path == "/api/session":
-                    abort(401, "Not logged in")
-                abort(401, "Log in at /login first")
+                abort(401, "Not logged in")
+            g.user_id = uid
+            g.family_circle_id = fid
+            return
+        # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
+        if request.path == "/api/chat/chat-session-url":
+            uid = session.get("user_id") or request.headers.get("X-User-Id")
+            fid = session.get("family_circle_id") or request.headers.get("X-Family-Circle-Id")
+            if not uid or not fid:
+                abort(401, "Log in at /login first or provide X-User-Id and X-Family-Circle-Id")
             g.user_id = uid
             g.family_circle_id = fid
             return
@@ -195,15 +221,16 @@ def create_server_app(db_path=None):
 
     @app.route("/api/chat/chat-session-url", methods=["GET"])
     def api_chat_session_url():
-        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id."""
-        sendbird_user_id = (request.args.get("sendbird_user_id") or "").strip()
-        display_name = (request.args.get("display_name") or "").strip()
+        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id.
+        recipient_sendbird_user_id, recipient_display_name = who the kiosk user will chat WITH (from headers)."""
+        recipient_sb = (request.args.get("recipient_sendbird_user_id") or request.args.get("sendbird_user_id") or "").strip()
+        recipient_name = (request.args.get("recipient_display_name") or request.args.get("display_name") or "").strip()
         token = _create_chat_entry_token(
             app.secret_key,
             g.user_id,
             g.family_circle_id,
-            sendbird_user_id,
-            display_name,
+            recipient_sb,
+            recipient_name,
         )
         base_url = request.url_root.rstrip("/")
         bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
@@ -218,107 +245,10 @@ def create_server_app(db_path=None):
         payload = _verify_chat_entry_token(app.secret_key, token)
         if not payload:
             return jsonify({"error": "Invalid or expired token"}), 403
-        session["user_id"] = payload["user_id"]
-        session["family_circle_id"] = payload["family_circle_id"]
-        redirect_path = "/"
-        sb = (payload.get("sendbird_user_id") or "").strip()
-        dn = (payload.get("display_name") or "").strip()
-        if sb:
-            redirect_path += "?sendbird_user_id=" + urllib.parse.quote(sb)
-            if dn:
-                redirect_path += "&display_name=" + urllib.parse.quote(dn)
         chatapp_url = (os.environ.get("CHATAPP_URL") or "").rstrip("/")
         if not chatapp_url:
             return jsonify({"error": "CHATAPP_URL not configured; cannot redirect to chat"}), 503
-        return redirect(chatapp_url + redirect_path)
-
-    @app.route("/api/chat/config", methods=["GET"])
-    def api_chat_config():
-        """Return Sendbird app_id for the client SDK."""
-        sendbird_svc = container.get_sendbird_service()
-        if not sendbird_svc.is_configured():
-            return (
-                jsonify(
-                    {
-                        "error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"
-                    }
-                ),
-                503,
-            )
-        return jsonify({"app_id": sendbird_svc.get_sendbird_app_id()})
-
-    @app.route("/api/chat/token", methods=["POST"])
-    def api_chat_token():
-        """Issue session token for the Sendbird user mapped to this app user."""
-        sendbird_svc = container.get_sendbird_service()
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        app_user_id = getattr(g, "user_id", None)
-        if not app_user_id:
-            return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
-            app_user_id
-        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
-        if not sendbird_user_id:
-            return (
-                jsonify(
-                    {
-                        "error": "No Sendbird user linked for this account",
-                        "detail": "Add sendbird_user_id to this user in the DB (users table) or set SENDBIRD_USER_ID_MAP.",
-                    }
-                ),
-                400,
-            )
-        ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
-        if not ok:
-            return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
-        db = container.get_database_manager()
-        r = db.execute_query(
-            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
-        )
-        display_name = (
-            (r.data[0].get("display_name") or app_user_id).strip()
-            if r.success and r.data
-            else app_user_id
-        )
-        return jsonify(
-            {
-                "sendbird_user_id": sendbird_user_id,
-                "session_token": token_val,
-                "display_name": display_name,
-            }
-        )
-
-    @app.route("/api/chat/recipient", methods=["GET"])
-    def api_chat_recipient():
-        """Default 1:1 chat recipient (e.g. daughter) for the current user."""
-        sendbird_svc = container.get_sendbird_service()
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        if not getattr(g, "user_id", None):
-            return jsonify({"error": "Not logged in"}), 401
-        family_circle_id = getattr(g, "family_circle_id", None) or ""
-        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(
-            family_circle_id
-        )
-        if not sendbird_recipient_id:
-            sendbird_recipient_id = (
-                sendbird_svc.get_sendbird_default_recipient_id_from_env()
-            )
-            recipient_name = "Family"
-        if not sendbird_recipient_id:
-            return (
-                jsonify(
-                    {
-                        "error": "No default recipient configured",
-                        "detail": "Add sendbird_user_id to a contact (DB) or set SENDBIRD_DEFAULT_RECIPIENT_ID.",
-                    }
-                ),
-                503,
-            )
-        return jsonify(
-            {"sendbird_user_id": sendbird_recipient_id, "name": recipient_name}
-        )
+        return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
 
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()

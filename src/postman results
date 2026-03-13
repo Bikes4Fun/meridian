@@ -1,4 +1,4 @@
-results of running server / api in postman: 
+results examples of running server / api in postman: 
 
 POST http://localhost:8080/api/login:
 {

@@ -18,6 +18,7 @@ os.environ["KCFG_KIVY_LOG_LEVEL"] = "warning"
 if "--local" in sys.argv:
     os.environ["KIVY_NO_ARGS"] = "1"
 
+import json
 import logging
 import subprocess
 import threading
@@ -70,7 +71,6 @@ def _start_local_webapp_server(api_url, logger):
     host = get_server_host()
     webapp_port = find_available_port(host, get_webapp_port())
     webapp_url = "http://127.0.0.1:%s" % webapp_port
-    os.environ["CORS_ORIGIN"] = webapp_url
     os.environ["WEBAPP_URL"] = webapp_url
 
     src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -105,40 +105,42 @@ def _start_local_webapp_server(api_url, logger):
 
 
 def _start_local_chatapp_server(api_url, logger):
-    """Build and serve chatapp. Used by kiosk, webapp, mobile for chat. Abort if build fails."""
+    """Build and run chatapp API server (Flask). Serves UI + chat API (config, token, recipient)."""
     host = get_server_host()
     chatapp_port = find_available_port(host, get_chatapp_port())
     chatapp_url = "http://127.0.0.1:%s" % chatapp_port
     os.environ["CHATAPP_URL"] = chatapp_url
 
     src_dir = os.path.dirname(os.path.abspath(__file__))
-    chatapp_dist = os.path.join(src_dir, "apps", "chatapp", "web_server", "dist")
-    chatapp_server_dir = os.path.join(src_dir, "apps", "chatapp", "web_server")
+    chatapp_server_dir = os.path.join(src_dir, "apps", "chatapp", "chat_server")
+    chatapp_dist = os.path.join(chatapp_server_dir, "dist")
 
     try:
         subprocess.run(
             ["node", "build.js"],
             cwd=chatapp_server_dir,
-            env={**os.environ, "API_URL": api_url},
+            env={**os.environ, "API_URL": ""},
             check=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error("Chatapp build failed (%s). Run 'node build.js' in apps/chatapp/web_server.", e)
+        logger.error("Chatapp build failed (%s). Run 'node build.js' in apps/chatapp/chat_server.", e)
         sys.exit(1)
 
     if not os.path.exists(chatapp_dist):
         logger.error("Chatapp dist/ missing after build. Aborting.")
         sys.exit(1)
 
-    from http.server import HTTPServer, SimpleHTTPRequestHandler
+    from apps.chatapp.api import run_chatapp_server
 
-    class ChatappHandler(SimpleHTTPRequestHandler):
-        def __init__(self, request, client_address, server):
-            super().__init__(request, client_address, server, directory=chatapp_dist)
-
-    chatapp_server = HTTPServer(("127.0.0.1", chatapp_port), ChatappHandler)
-    threading.Thread(target=chatapp_server.serve_forever, daemon=True).start()
+    threading.Thread(
+        target=run_chatapp_server,
+        kwargs={"port": chatapp_port, "static_dir": chatapp_dist},
+        daemon=True,
+    ).start()
     logger.info("Chatapp: %s", chatapp_url)
+    time.sleep(0.3)
+    from apps.chatapp.verify_api import verify_api
+    verify_api(chatapp_url, logger)
     return chatapp_url
 
 
@@ -171,6 +173,7 @@ def main():
         api_url = _start_local_api_server(logger)
         webapp_url = _start_local_webapp_server(api_url, logger)
         chatapp_url = _start_local_chatapp_server(api_url, logger)
+        os.environ["CORS_ORIGIN"] = ",".join([webapp_url, chatapp_url])
     elif is_railway_reachable():
         api_url = get_railway_api_url()
         logger.info("API/DB: %s", api_url)

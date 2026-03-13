@@ -212,7 +212,12 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         try:
             r2 = requests.post(msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10)
             if r2.status_code == 200:
-                print("[chatapp] wants-to-chat → sent")
+                resp_data = r2.json() if r2.headers.get("content-type", "").startswith("application/json") else {}
+                msg_id = resp_data.get("message_id") or resp_data.get("id")
+                if msg_id is not None:
+                    print("[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)" % msg_id)
+                else:
+                    print("[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)")
             else:
                 print("[chatapp] wants-to-chat → %s %s" % (r2.status_code, r2.text[:100] if r2.text else ""))
         except Exception as e:

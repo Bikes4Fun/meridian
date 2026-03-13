@@ -1,68 +1,12 @@
 """
 Screen creation logic for Meridian Kiosk.
-Handles the creation of different kiosk screens.
+Thin registry: each create_x_screen follows the same 4-line pattern.
 """
 
-import os
-import logging
-
-from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
-from kivy_garden.mapview import MapView, MapMarker
-from .modular_display import (
-    KioskLabel,
-)
-from .widgets import WidgetFactory, apply_debug_border, KioskNavBar
-from .webview import open_chat_window
 
-from PIL import Image, ImageDraw
-
-logger = logging.getLogger(__name__)
-
-
-def _crop_image_to_circle(src_path, size=200):
-    """Crop image to circle; save as PNG. Returns absolute path to output file, or None if source missing."""
-    if not src_path or not os.path.exists(src_path):
-        logger.warning(
-            "[family map] Could not load photo for marker: %s",
-            "no path provided" if not src_path else "file not found: %s" % src_path,
-        )
-        return None
-    src_abs = os.path.abspath(src_path)
-    out = src_abs.rsplit(".", 1)[0] + "_circle.png"
-    if os.path.exists(out):
-        return os.path.abspath(out)
-    try:
-        img = (
-            Image.open(src_abs)
-            .convert("RGBA")
-            .resize((size, size), Image.Resampling.LANCZOS)
-        )
-        mask = Image.new("L", (size, size), 0)
-        ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
-        out_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        out_img.paste(img, mask=mask)
-        out_img.save(out)
-        return os.path.abspath(out)
-    except Exception as e:
-        logger.warning(
-            "[family map] Failed to crop photo to circle: %s - %s", src_path, e
-        )
-        return None
-
-
-class CustomMarker(MapMarker):
-    """MapMarker with fixed size for Life360-style profile photo display."""
-
-    def __init__(self, **kwargs):
-        defaults = {}
-        defaults.update(kwargs)
-        super().__init__(**defaults)
-        self.size_hint = (None, None)
-        self.size = (dp(50), dp(50))
-        self.anchor_x = 0.5
-        self.anchor_y = 0
+from .screen_primitives import KioskNavBar
 
 
 class ScreenFactory:
@@ -75,7 +19,23 @@ class ScreenFactory:
         self.screen_manager = screen_manager
         self.kiosk_user_id = kiosk_user_id
         self.family_circle_id = family_circle_id
-        self.widget_factory = WidgetFactory(services)
+
+    def add_all_screens(self):
+        self.screen_manager.add_widget(
+            self.create_home_screen()
+        )
+        self.screen_manager.add_widget(
+            self.create_emergency_screen()
+        )
+        self.screen_manager.add_widget(
+            self.create_checkin_screen()
+        )
+        self.screen_manager.add_widget(
+            self.create_chat_screen()
+        )
+        self.screen_manager.current = "chat"
+
+
 
     def screen_template_boxlayout(self):
         template_settings = {
@@ -85,54 +45,36 @@ class ScreenFactory:
             "spacing": 24,
         }
 
-        # Main layout
         main_layout = BoxLayout(**template_settings)
-
-        # Navigation bar
         nav_widget = self._create_navigation()
         main_layout.add_widget(nav_widget)
 
         return main_layout
 
     def create_home_screen(self):
-        """Create home screen using modular components."""
+        """Create home screen: clock, medications, events."""
+        from .home_screen import build_home_screen
+
         screen = Screen(name="home")
         main_layout = self.screen_template_boxlayout()
 
-        home_screen_top_bottom_split = 0.35
-        # TOP SECTION
-        # Clock widget
-        clock_widget = self.widget_factory.create_widget("clock")
-        clock_widget.size_hint = (1, home_screen_top_bottom_split)
-        main_layout.add_widget(clock_widget)
-
-        # BOTTOM SECTION - medications and events side by side
-        bottom_section = BoxLayout(
-            orientation="horizontal", size_hint=(1, 1 - home_screen_top_bottom_split)
+        content, clock_widget, med_widget, events_widget = build_home_screen(
+            self.services
         )
-
-        med_events_split = 0.5
-        # Medications (left side)
-        med_widget = self.widget_factory.create_widget("medication")
-        med_widget.size_hint = (med_events_split, 1)
-        bottom_section.add_widget(med_widget)
-
-        # Events (right side)
-        events_widget = self.widget_factory.create_widget("events")
-        events_widget.size_hint = (1 - med_events_split, 1)
-        bottom_section.add_widget(events_widget)
-
-        main_layout.add_widget(bottom_section)
+        content.size_hint = (1, 1)
+        main_layout.add_widget(content)
 
         screen.add_widget(main_layout)
         return screen
 
     def create_emergency_screen(self):
-        """Create emergency screen: critical patient info for EMS (name, DNR, contacts, meds, allergies)."""
+        """Create emergency screen: critical patient info for EMS."""
+        from .emergency_screen import build_emergency_screen
+
         screen = Screen(name="emergency")
         main_layout = self.screen_template_boxlayout()
 
-        emergency_profile = self.widget_factory.create_widget("emergency_profile")
+        emergency_profile = build_emergency_screen(self.services)
         emergency_profile.size_hint = (1, 1)
         main_layout.add_widget(emergency_profile)
 
@@ -140,182 +82,32 @@ class ScreenFactory:
         return screen
 
     def create_checkin_screen(self):
-        """Create family location check-in screen using modular components."""
+        """Create family location check-in screen."""
+        from .checkin_screen import build_checkin_screen
+
         screen = Screen(name="family")
         main_layout = self.screen_template_boxlayout()
 
-        # Family location widget
-        family_widget = self.widget_factory.create_widget("family_locations")
+        family_widget = build_checkin_screen(self.services, screen)
         family_widget.size_hint = (1, 1)
         main_layout.add_widget(family_widget)
 
         screen.add_widget(main_layout)
-
-        # Lazy-load MapView on screen enter (avoids black screen when nested in ScreenManager)
-        def on_family_enter(instance):
-            container = getattr(family_widget, "map_container", None)
-            if (
-                container
-                and not container.children
-                and hasattr(container, "_map_params")
-            ):
-                p = container._map_params
-                cache_dir = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "cache"
-                )
-                map_view = MapView(
-                    lat=p["lat"], lon=p["lon"], zoom=p["zoom"], cache_dir=cache_dir
-                )
-                base = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "..", ".."
-                )
-                loc_svc = self.services.get("location_service")
-                if loc_svc:
-                    result = loc_svc.get_checkins()
-                    if result.success and result.data:
-                        for checkin in result.data:
-                            lat = checkin.get("latitude")
-                            lon = checkin.get("longitude")
-                            if lat is None or lon is None:
-                                continue
-                            src = None
-                            photo_url = checkin.get("photo_url")
-                            user_id = checkin.get("user_id")
-                            if (
-                                photo_url
-                                and user_id
-                                and hasattr(loc_svc, "fetch_photo_to_cache")
-                            ):
-                                src = loc_svc.fetch_photo_to_cache(user_id, cache_dir)
-                            if not src:
-                                photo_fn = checkin.get("photo_filename")
-                                if photo_fn:
-                                    if os.path.isabs(photo_fn):
-                                        src = photo_fn
-                                    elif "/" in photo_fn or os.path.sep in photo_fn:
-                                        src = os.path.join(base, photo_fn)
-                                    else:
-                                        # TODO: once main calls create kiosk, it should have nothing to do with/not know anything about the demo modes or data.
-                                        src = os.path.join(
-                                            base,
-                                            "dev",
-                                            "demo",
-                                            "data",
-                                            "family_img",
-                                            photo_fn,
-                                        )
-                                    if (
-                                        not os.path.exists(src)
-                                        and "demo/demo_data" in photo_fn
-                                    ):
-                                        src = os.path.join(
-                                            base,
-                                            photo_fn.replace(
-                                                "demo/demo_data", "dev/demo/data"
-                                            ),
-                                        )
-                                        logger.info(
-                                            "[family map] Using fallback path for old DB: %s",
-                                            src,
-                                        )
-                            if src:
-                                circle_img = _crop_image_to_circle(src)
-                                if circle_img:
-                                    marker = CustomMarker(
-                                        lat=lat, lon=lon, source=circle_img
-                                    )
-                                else:
-                                    logger.warning(
-                                        "[family map] Using default marker (no photo) for checkin at %s,%s",
-                                        lat,
-                                        lon,
-                                    )
-                                    marker = MapMarker(lat=lat, lon=lon)
-                            else:
-                                marker = MapMarker(lat=lat, lon=lon)
-                            map_view.add_marker(marker)
-                container.add_widget(map_view)
-
-        screen.bind(on_enter=on_family_enter)
-
         return screen
 
-    def create_chat_screen(self, kiosk_user_id: str, family_circle_id: str):
-        """Chat screen: Open Chat button launches webview. Fetches signed entry URL via API (same auth as other kiosk calls)."""
-        from kivy.uix.button import Button
-        from kivy.uix.label import Label
-        from kivy.uix.scrollview import ScrollView
-        from kivy.uix.gridlayout import GridLayout
+    def create_chat_screen(self):
+        """Create chat screen: contact grid with chat entry."""
+        from .chat_screen import build_chat_screen
 
         screen = Screen(name="chat")
         main_layout = self.screen_template_boxlayout()
-        content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
-        content.add_widget(
-            Label(text="Family Chat", font_size=dp(28), size_hint_y=None, height=dp(48))
+
+        content = build_chat_screen(
+            self.services, self.kiosk_user_id, self.family_circle_id, screen
         )
-        contacts_grid = GridLayout(
-            cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8)
-        )
-        contacts_grid.bind(minimum_height=contacts_grid.setter("height"))
-        scroll = ScrollView(size_hint=(1, 1))
-        scroll.add_widget(contacts_grid)
-        content.add_widget(scroll)
         main_layout.add_widget(content)
         screen.add_widget(main_layout)
 
-        def _load_contacts():
-            contacts_grid.clear_widgets()
-            contact_svc = (
-                self.services.get("contact_service") if self.services else None
-            )
-            if not contact_svc or not family_circle_id:
-                contacts_grid.add_widget(
-                    Label(
-                        text="No contacts (check server).",
-                        size_hint_y=None,
-                        height=dp(48),
-                    )
-                )
-                return
-            r = contact_svc.get_contacts()
-            if not r.success or not r.data:
-                contacts_grid.add_widget(
-                    Label(text="No contacts.", size_hint_y=None, height=dp(48))
-                )
-                return
-            # Only show contacts who have sendbird_user_id (chat-able)
-            chat_contacts = [
-                c for c in r.data if (c.get("sendbird_user_id") or "").strip()
-            ]
-            if not chat_contacts:
-                contacts_grid.add_widget(
-                    Label(
-                        text="No contacts with chat.", size_hint_y=None, height=dp(48)
-                    )
-                )
-                return
-            entry_svc = self.services.get("chat_entry_service")
-            for c in chat_contacts:
-                name = c.get("display_name") or c.get("id") or "Contact"
-                sb_uid = (c.get("sendbird_user_id") or "").strip()
-                btn = Button(
-                    text=name, size_hint_y=None, height=dp(64), font_size=dp(18)
-                )
-                if entry_svc and kiosk_user_id and family_circle_id:
-
-                    def _on_contact_click(sb, nm):
-                        r = entry_svc.get_entry_url(recipient_sendbird_user_id=sb, recipient_display_name=nm)
-                        if r.success and r.data:
-                            open_chat_window(r.data)
-
-                    btn.bind(
-                        on_press=lambda *_a, sb=sb_uid, nm=name: _on_contact_click(
-                            sb, nm
-                        )
-                    )
-                contacts_grid.add_widget(btn)
-
-        screen.bind(on_enter=lambda *_a: _load_contacts())
         return screen
 
     def _create_navigation(self):

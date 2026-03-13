@@ -10,7 +10,7 @@ import tempfile
 from kivy.clock import Clock
 from kivy.metrics import dp
 
-from .modular_display import KioskLabel, KioskButton
+from .kiosk_primitives import KioskLabel, KioskButton
 
 logger = logging.getLogger(__name__)
 

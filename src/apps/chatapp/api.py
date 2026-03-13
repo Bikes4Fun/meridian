@@ -11,6 +11,7 @@ import os
 import time
 import urllib.parse
 
+import logging
 import requests
 from flask import (
     Flask,
@@ -300,7 +301,11 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                     "error": "Cannot reach Sendbird",
                     "detail": "Check network and SENDBIRD_APP_ID.",
                 }), 502
-            return jsonify({"error": "Create channel failed", "detail": err_msg}), 502
+            logging.exception("Create channel failed due to unexpected error")
+            return jsonify({
+                "error": "Create channel failed",
+                "detail": "An internal error occurred while creating the channel.",
+            }), 502
         if r.status_code != 200:
             body = (
                 r.json()

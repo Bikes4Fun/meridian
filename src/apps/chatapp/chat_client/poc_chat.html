@@ -45,6 +45,12 @@
   <label>Family Circle ID</label>
   <input type="text" id="familyId" placeholder="e.g. F00000">
 
+  <label>Recipient Sendbird ID (optional; if empty, uses default Deanna)</label>
+  <input type="text" id="recipientId" placeholder="e.g. dtzecha or testpatient">
+
+  <label>Recipient name (optional; for display only)</label>
+  <input type="text" id="recipientName" placeholder="e.g. Dylan or Marian">
+
   <button id="loginBtn" onclick="doLogin()">Log In &amp; Connect</button>
 </div>
 
@@ -64,6 +70,7 @@
 var sb = null;
 var currentChannel = null;
 var mySendbirdUserId = null;
+var currentRecipient = null;
 
 function $id(id) { return document.getElementById(id); }
 
@@ -113,10 +120,16 @@ window.doLogin = function doLogin() {
     $id('chatSection').style.display  = 'block';
     setStatus('Fetching Sendbird config…', 'info');
 
+    var recipientId = $id('recipientId').value.trim();
+    var recipientName = $id('recipientName').value.trim();
+    var recipientPromise = recipientId
+      ? Promise.resolve({ sendbird_user_id: recipientId, name: recipientName || recipientId })
+      : fetch(apiUrl + '/api/chat/recipient', { credentials: 'include' }).then(function(r){ return r.json(); });
+
     return Promise.all([
       fetch(apiUrl + '/api/chat/config', { credentials: 'include' }).then(function(r){ return r.json(); }),
       fetch(apiUrl + '/api/chat/token',  { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: '{}' }).then(function(r){ return r.json(); }),
-      fetch(apiUrl + '/api/chat/recipient', { credentials: 'include' }).then(function(r){ return r.json(); })
+      recipientPromise
     ]);
   })
   .then(function(results) {
@@ -128,6 +141,7 @@ window.doLogin = function doLogin() {
     if (!tokenData.session_token) throw new Error('No session_token: ' + (tokenData.error || JSON.stringify(tokenData)));
     if (!recipient.sendbird_user_id) throw new Error('No recipient: ' + (recipient.error || JSON.stringify(recipient)));
 
+    currentRecipient = recipient;
     mySendbirdUserId = tokenData.sendbird_user_id;
     $id('chatTitle').textContent = 'You: ' + (tokenData.display_name || mySendbirdUserId) + '  →  ' + (recipient.name || recipient.sendbird_user_id);
 
@@ -147,11 +161,14 @@ window.doLogin = function doLogin() {
   .then(function() {
     setStatus('Creating / joining channel…', 'info');
 
+    var channelBody = currentRecipient && currentRecipient.sendbird_user_id
+      ? JSON.stringify({ recipient_sendbird_user_id: currentRecipient.sendbird_user_id })
+      : '{}';
     return fetch(apiUrl + '/api/chat/channel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: '{}'
+      body: channelBody
     }).then(function(r) { return r.json(); });
   })
   .then(function(channelData) {

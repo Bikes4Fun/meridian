@@ -12,11 +12,12 @@ API_FAMILY_CIRCLE_ID = "F00000"
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.metrics import dp
 
 
-def _post_alert(activated):
+def _post_alert(activated, on_result):
     try:
         req = urllib.request.Request(
             API_URL.rstrip("/") + "/api/emergency/alert",
@@ -29,9 +30,12 @@ def _post_alert(activated):
             method="POST",
         )
         ctx = ssl.create_default_context()
-        urllib.request.urlopen(req, timeout=5, context=ctx)
-    except Exception:
-        pass
+        with urllib.request.urlopen(req, timeout=5, context=ctx) as resp:
+            body = resp.read().decode()
+            data = json.loads(body)
+            on_result(f"Success: {data}")
+    except Exception as e:
+        on_result(f"Error: {e}")
 
 
 class MeridianAlertApp(App):
@@ -39,6 +43,9 @@ class MeridianAlertApp(App):
         Window.clearcolor = (0.98, 0.98, 0.96, 1)
         root = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(16))
 
+        root.add_widget(BoxLayout(size_hint_y=1))
+
+        btn_box = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(16))
         start_btn = Button(
             text="Start Alert",
             font_size="28sp",
@@ -48,8 +55,6 @@ class MeridianAlertApp(App):
             background_normal="",
             background_down="",
         )
-        start_btn.bind(on_press=lambda _: _post_alert(True))
-
         end_btn = Button(
             text="End Alert",
             font_size="28sp",
@@ -59,10 +64,24 @@ class MeridianAlertApp(App):
             background_normal="",
             background_down="",
         )
-        end_btn.bind(on_press=lambda _: _post_alert(False))
+        response_label = Label(
+            text="",
+            size_hint_y=None,
+            height=dp(60),
+            halign="center",
+        )
+        response_label.bind(size=lambda w, sz: setattr(w, "text_size", sz))
 
-        root.add_widget(start_btn)
-        root.add_widget(end_btn)
+        def on_result(msg):
+            response_label.text = msg
+
+        start_btn.bind(on_press=lambda _: _post_alert(True, on_result))
+        end_btn.bind(on_press=lambda _: _post_alert(False, on_result))
+
+        btn_box.add_widget(start_btn)
+        btn_box.add_widget(end_btn)
+        btn_box.add_widget(response_label)
+        root.add_widget(btn_box)
 
         root.add_widget(BoxLayout(size_hint_y=1))
 

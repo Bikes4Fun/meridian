@@ -50,7 +50,9 @@ class LocationService(DatabaseServiceMixin):
         # angular dist (radians) × Earth radius → arc length in metres
         return r * ang_dist
 
-    def resolve_place_name(self, lat: float, lon: float, family_circle_id: str) -> Optional[str]:
+    def resolve_place_name(
+        self, lat: float, lon: float, family_circle_id: str
+    ) -> Optional[str]:
         """Return the name of the nearest named place whose radius contains the point, or None. Nearest wins when places overlap."""
         result = self.get_named_places(family_circle_id)
         if not result.success or not result.data:

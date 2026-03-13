@@ -28,37 +28,55 @@ class EmergencyService(DatabaseServiceMixin):
         )
         care_row = care.data[0] if care.success and care.data else None
 
-        care_recipient_user_id = care_row["care_recipient_user_id"] if care_row else None
-        conditions_result = self.safe_query(
-            "SELECT condition_name FROM conditions WHERE care_recipient_user_id = ? ORDER BY condition_name",
-                        (care_recipient_user_id,),
-        ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
+        care_recipient_user_id = (
+            care_row["care_recipient_user_id"] if care_row else None
+        )
+        conditions_result = (
+            self.safe_query(
+                "SELECT condition_name FROM conditions WHERE care_recipient_user_id = ? ORDER BY condition_name",
+                (care_recipient_user_id,),
+            )
+            if care_recipient_user_id
+            else self.safe_query("SELECT 1 WHERE 0", ())
+        )
         conditions_list = (
-            [r["condition_name"] for r in conditions_result.data if r.get("condition_name")]
+            [
+                r["condition_name"]
+                for r in conditions_result.data
+                if r.get("condition_name")
+            ]
             if conditions_result.success and conditions_result.data
             else []
         )
         medical_conditions = ", ".join(conditions_list) if conditions_list else None
 
-        allergies_result = self.safe_query(
-            "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
-            (care_recipient_user_id,),
-        ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
+        allergies_result = (
+            self.safe_query(
+                "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
+                (care_recipient_user_id,),
+            )
+            if care_recipient_user_id
+            else self.safe_query("SELECT 1 WHERE 0", ())
+        )
         allergies = (
             [a["allergen"] for a in allergies_result.data]
             if allergies_result.success and allergies_result.data
             else []
         )
 
-        meds_result = self.safe_query(
-            """
+        meds_result = (
+            self.safe_query(
+                """
             SELECT m.name, m.dosage, m.frequency
             FROM medications m
             WHERE m.care_recipient_user_id = ?
             ORDER BY m.name
             """,
-            (care_recipient_user_id,),
-        ) if care_recipient_user_id else self.safe_query("SELECT 1 WHERE 0", ())
+                (care_recipient_user_id,),
+            )
+            if care_recipient_user_id
+            else self.safe_query("SELECT 1 WHERE 0", ())
+        )
         medications = (
             [
                 {"name": m["name"], "dosage": m["dosage"], "frequency": m["frequency"]}
@@ -81,25 +99,43 @@ class EmergencyService(DatabaseServiceMixin):
                     f"SELECT id, display_name, phone FROM contacts WHERE id IN ({placeholders})",
                     tuple(contact_ids),
                 )
-                contacts_by_id = {c["id"]: c for c in (contacts_result.data or [])} if contacts_result.success else {}
+                contacts_by_id = (
+                    {c["id"]: c for c in (contacts_result.data or [])}
+                    if contacts_result.success
+                    else {}
+                )
                 for r in roles_result.data:
                     c = contacts_by_id.get(r["contact_id"])
                     if c:
                         if r["role"] == "medical_proxy":
-                            proxy_name, proxy_phone = c.get("display_name"), c.get("phone")
+                            proxy_name, proxy_phone = c.get("display_name"), c.get(
+                                "phone"
+                            )
                         elif r["role"] == "poa":
                             poa_name, poa_phone = c.get("display_name"), c.get("phone")
 
-        if not care_row and not conditions_list and not allergies and not medications and not proxy_name and not poa_name:
+        if (
+            not care_row
+            and not conditions_list
+            and not allergies
+            and not medications
+            and not proxy_name
+            and not poa_name
+        ):
             return ServiceResult.success_result(None)
 
         ec_r = self.contact_service.c_service_get_emergency_contacts(family_circle_id)
-        emergency_contacts = [asdict(c) for c in (ec_r.data or [])] if ec_r.success else []
+        emergency_contacts = (
+            [asdict(c) for c in (ec_r.data or [])] if ec_r.success else []
+        )
 
         data = {
             "family_circle_id": family_circle_id,
             "care_recipient_user_id": care_recipient_user_id,
-            "profile": {"name": care_row["name"] if care_row else None, "dob": care_row["dob"] if care_row else None},
+            "profile": {
+                "name": care_row["name"] if care_row else None,
+                "dob": care_row["dob"] if care_row else None,
+            },
             "medical": {
                 "conditions": medical_conditions,
                 "dnr": bool(care_row["medical_dnr"]) if care_row else False,
@@ -115,7 +151,7 @@ class EmergencyService(DatabaseServiceMixin):
             "notes": care_row["notes"] if care_row else None,
             "last_updated": None,
             "last_updated_by": None,
-            "emergency_contacts": emergency_contacts, #TODO: include POA and proxy in e_contacts and simply seperate them by 'econtacts','poa','proxy' ? 
+            "emergency_contacts": emergency_contacts,  # TODO: include POA and proxy in e_contacts and simply seperate them by 'econtacts','poa','proxy' ?
         }
         return ServiceResult.success_result(data)
 

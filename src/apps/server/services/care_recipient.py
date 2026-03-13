@@ -14,11 +14,11 @@ class CareRecipientService(DatabaseServiceMixin):
     def __init__(self, db_manager: DatabaseManager):
         DatabaseServiceMixin.__init__(self, db_manager)
 
-    def update_care_recipient(
-        self, family_circle_id: str, data: dict
-    ) -> ServiceResult:
+    def update_care_recipient(self, family_circle_id: str, data: dict) -> ServiceResult:
         """Update care_recipients and contact roles (proxy, POA). Data is care recipient, not session user."""
-        care_recipient_user_id = data.get("user_id") or data.get("care_recipient_user_id")
+        care_recipient_user_id = data.get("user_id") or data.get(
+            "care_recipient_user_id"
+        )
         profile = data.get("profile") or {}
         medical = data.get("medical") or {}
         emergency = data.get("emergency") or {}
@@ -34,9 +34,7 @@ class CareRecipientService(DatabaseServiceMixin):
         notes = data.get("notes")
 
         if not care_recipient_user_id:
-            return ServiceResult.error_result(
-                "care_recipient_user_id required"
-            )
+            return ServiceResult.error_result("care_recipient_user_id required")
 
         result = self.safe_update(
             """
@@ -63,12 +61,10 @@ class CareRecipientService(DatabaseServiceMixin):
                 (cid, family_circle_id),
             )
             if r.success and r.data:
-                return (
-                    self.safe_update(
-                        "UPDATE contacts SET display_name=?, phone=? WHERE id=? AND family_circle_id=?",
-                        (name, phone or "", cid, family_circle_id),
-                    ).success
-                )
+                return self.safe_update(
+                    "UPDATE contacts SET display_name=?, phone=? WHERE id=? AND family_circle_id=?",
+                    (name, phone or "", cid, family_circle_id),
+                ).success
             return self.safe_update(
                 "INSERT INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
                 (cid, family_circle_id, name, phone or ""),
@@ -89,4 +85,3 @@ class CareRecipientService(DatabaseServiceMixin):
             cid = f"poa_{family_circle_id}"
             if _ensure_contact(cid, poa_name or "", poa_phone):
                 _set_role("poa", cid)
-

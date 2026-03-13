@@ -6,11 +6,8 @@
       "conditions": "Dementia, Type 2 Diabetes, Hypertension",
       "dnr": false
     },
-    "emergency": { "proxy": { "name": "James Foster" } },
-    "medical_proxy_phone": "(555) 234-5678",
-    "poa_name": "James Foster",
-    "poa_phone": "(555) 234-5678",
-    "notes": "Primary caregiver James has medical proxy and POA."
+    "proxy_contact_id": "contact_james_foster",
+    "poa_contact_id": "contact_james_foster"
   },
 
   "medication_times": {

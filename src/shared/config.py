@@ -1,5 +1,3 @@
-
-
 import logging
 import os
 import socket
@@ -62,13 +60,18 @@ def get_server_host() -> str:
 
 
 def get_server_port() -> int:
-    """Port the API server binds to. Default 8080. Override with PORT."""
-    return int(os.getenv("PORT", "8080"))
+    """Port the API server binds to. Default 8000. Override with PORT."""
+    return int(os.getenv("PORT", "8000"))
 
 
 def get_webapp_port() -> int:
     """Port the webapp static server binds to. Default 3000. Override with WEBAPP_PORT."""
     return int(os.getenv("WEBAPP_PORT", "3000"))
+
+
+def get_chatapp_port() -> int:
+    """Port the chatapp static server binds to. Default 3001. Override with CHATAPP_PORT."""
+    return int(os.getenv("CHATAPP_PORT", "3001"))
 
 
 def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:

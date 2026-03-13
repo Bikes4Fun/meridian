@@ -4,22 +4,20 @@ Creates and configures the application with proper dependency injection.
 
 CLIENT vs SERVER:
 - This module is used only by the client (Kivy UI). api_url (from main entry) determines where
-  services come from via client/remote.create_remote(); container is not used.
+  services come from via api_client.create_kiosk_remote(); container is not used.
 
 SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses server/app.py only.
 """
 
 import logging
 import os
-from typing import Optional
-from shared.config import ConfigManager
-from .api_client import create_remote
+from .api_client import create_kiosk_remote
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock
 from kivy.core.window import Window
 from .screens import ScreenFactory
-from .widgets import WidgetFactory
+from .home_screen import get_time_of_day_icon
 import datetime
 
 
@@ -27,13 +25,9 @@ class MeridianKioskApp(App):
     """Main Kivy application for Meridian Kiosk using modular components."""
 
     def __init__(self, services, **kwargs):
-        defaults = {}
-        defaults.update(kwargs)
-        super().__init__(**defaults)
+        super().__init__(**kwargs)
         self.services = services
         self.screen_manager = None
-        self.screen_factory = None
-        self.widget_factory = None
 
     def build(self):
         """Build the application UI using modular components."""
@@ -43,43 +37,37 @@ class MeridianKioskApp(App):
         Window.top = 120
         Window.borderless = True  # Remove macOS title bar for TV display
 
-        # Create screen manager
+        # Create a Kivy screen manager
         self.screen_manager = ScreenManager()
 
-        # Create factories
-        self.screen_factory = ScreenFactory(
-            self.services, self.screen_manager
+        screen_factory = ScreenFactory(
+            self.services,
+            self.screen_manager,
+            kiosk_user_id=self.kiosk_user_id,
+            family_circle_id=self.family_circle_id,
         )
-        self.widget_factory = WidgetFactory(self.services)
 
-        # Create screens
-        home_screen = self.screen_factory.create_home_screen()
-        self.screen_manager.add_widget(home_screen)
-
-        emergency_screen = self.screen_factory.create_emergency_screen()
-        self.screen_manager.add_widget(emergency_screen)
-
-        family_screen = self.screen_factory.create_family_screen()
-        self.screen_manager.add_widget(family_screen)
-
-        more_screen = self.screen_factory.create_demo_screen()
-        self.screen_manager.add_widget(more_screen)
-
-        self.screen_manager.current = "family"
-
-        # Store reference for updates
-        self.home_screen = home_screen
-
-        # Initial update
-        self.update_all()
+        self.screen_manager.add_widget(screen_factory.create_emergency_screen())
+        self.screen_manager.add_widget(screen_factory.create_checkin_screen())
+        self.screen_manager.add_widget(screen_factory.create_chat_screen())
+        self.home_screen, self._clock_widget, self._med_widget, self._events_widget = (
+            screen_factory.create_home_screen()
+        )
+        self.screen_manager.add_widget(self.home_screen)
+        self.screen_manager.current = "chat"
 
         # Sync photos on boot: fetch from server and cache locally for offline use
         Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)
-
-        # Schedule periodic updates (every second)
-        Clock.schedule_interval(self.update_time, 1.0)
+        # Full clock refresh on boot (day, date, year)
+        Clock.schedule_once(lambda dt: self.refresh_clock(), 1.0)
+        # Per-second tick: time digits + time-of-day when period changes
+        Clock.schedule_interval(self._tick_clock, 1.0)
         # Poll alert status: when activated, switch TV to emergency screen and enable flashing
         Clock.schedule_interval(self._check_alert_status, 2.0)
+
+        # Load medications and events on boot
+        Clock.schedule_once(lambda dt: self._load_medications(), 1.5)
+        Clock.schedule_once(lambda dt: self._load_events(), 1.5)
 
         return self.screen_manager
 
@@ -98,7 +86,10 @@ class MeridianKioskApp(App):
             self.screen_manager.current = "emergency"
             if not was_activated:
                 from .emergency_print import trigger_emergency_print
-                Clock.schedule_once(lambda _dt: trigger_emergency_print(self.services), 0.5)
+
+                Clock.schedule_once(
+                    lambda _dt: trigger_emergency_print(self.services), 0.5
+                )
         self._alert_was_activated = activated
 
     def _sync_photos_on_boot(self):
@@ -116,41 +107,43 @@ class MeridianKioskApp(App):
 
     def update_all(self):
         """Update all display elements."""
-        self.update_clock()
+        self.refresh_clock()
         self._load_medications()
         self._load_events()
 
-    def update_clock(self):
-        """Update clock display."""
-        if hasattr(self, "home_screen"):
-            # Find clock widget using recursive search
-            clock_widget = self._find_widget_by_attribute(self.home_screen, "day_label")
-            if clock_widget:
-                # Day of week (uppercase)
-                clock_widget.day_label.text = (
-                    self.services["time_service"].get_dayof_week().upper()
-                )
+    def _tick_clock(self, dt=1):
+        """Per-second clock tick: time digits + time-of-day label/icon when period changes."""
+        if not hasattr(self, "_clock_widget") or not self._clock_widget:
+            return
+        cw = self._clock_widget
+        time_svc = self.services.get("time_service")
+        if not time_svc:
+            return
 
-                # Time of day text and icon
-                time_of_day = self.services["time_service"].get_am_pm()
-                clock_widget.time_of_day_label.text = time_of_day.upper()
-                self._last_time_of_day = time_of_day  # Store for change detection
+        cw.time_label.text = time_svc.get_time()
+        current_time_of_day = time_svc.get_am_pm()
+        if not hasattr(self, "_last_time_of_day"):
+            self._last_time_of_day = current_time_of_day
+        if current_time_of_day != self._last_time_of_day:
+            self._last_time_of_day = current_time_of_day
+            cw.time_of_day_label.text = current_time_of_day.upper()
+            if hasattr(cw, "time_of_day_icon"):
+                cw.time_of_day_icon.source = get_time_of_day_icon(current_time_of_day)
 
-                if hasattr(clock_widget, "time_of_day_icon"):
-                    icon_path = self.widget_factory._get_time_of_day_icon(time_of_day)
-                    clock_widget.time_of_day_icon.source = icon_path
+    def refresh_clock(self):
+        """Full clock refresh: day, date, year, then per-second tick."""
+        if not hasattr(self, "_clock_widget") or not self._clock_widget:
+            return
+        cw = self._clock_widget
+        time_svc = self.services.get("time_service")
+        if not time_svc:
+            return
 
-                # Time
-                clock_widget.time_label.text = self.services["time_service"].get_time()
-
-                # Date split: month+day on left, year on right
-                clock_widget.date_label.text = self.services[
-                    "time_service"
-                ].get_month_day()
-                if hasattr(clock_widget, "year_label"):
-                    clock_widget.year_label.text = self.services[
-                        "time_service"
-                    ].get_year()
+        cw.day_label.text = time_svc.get_dayof_week().upper()
+        cw.date_label.text = time_svc.get_month_day()
+        if hasattr(cw, "year_label"):
+            cw.year_label.text = time_svc.get_year()
+        self._tick_clock()
 
     def _load_medications(self):
         """Load medication data."""
@@ -236,18 +229,6 @@ class MeridianKioskApp(App):
                     self.home_screen, "events_content", "No events today"
                 )
 
-    def _find_widget_by_attribute(self, parent, attribute_name):
-        """Recursively find widget with specific attribute."""
-        for child in parent.children:
-            if hasattr(child, attribute_name):
-                return child
-            # Recursively search in child widgets
-            if hasattr(child, "children"):
-                result = self._find_widget_by_attribute(child, attribute_name)
-                if result:
-                    return result
-        return None
-
     def _find_and_update_widget(self, parent, attribute_name, text):
         """Recursively find widget with specific attribute and update its text."""
         for child in parent.children:
@@ -260,47 +241,30 @@ class MeridianKioskApp(App):
                     return True
         return False
 
-    def update_time(self, dt=1):
-        """Update time display and check for time-of-day changes."""
-        if hasattr(self, "home_screen"):
-            clock_widget = self._find_widget_by_attribute(
-                self.home_screen, "time_label"
-            )
-            if clock_widget:
-                clock_widget.time_label.text = self.services["time_service"].get_time()
-
-                # Check if time-of-day changed (morning->afternoon->evening->night)
-                current_time_of_day = self.services["time_service"].get_am_pm()
-                if not hasattr(self, "_last_time_of_day"):
-                    self._last_time_of_day = current_time_of_day
-
-                if current_time_of_day != self._last_time_of_day:
-                    self._last_time_of_day = current_time_of_day
-                    clock_widget.time_of_day_label.text = current_time_of_day.upper()
-                    if hasattr(clock_widget, "time_of_day_icon"):
-                        icon_path = self.widget_factory._get_time_of_day_icon(
-                            current_time_of_day
-                        )
-                        clock_widget.time_of_day_icon.source = icon_path
-
 
 def create_app(
-    user_id=None,
-    family_circle_id=None,
-    api_url: str = None,
+    kiosk_user_id: str, family_circle_id: str, api_url: str = None
 ) -> MeridianKioskApp:
-    """Create the Meridian Kiosk. api_url from main entry configuration."""
+    """Create the Meridian Kiosk. kiosk_user_id and family_circle_id required. api_url from main entry."""
     if not api_url:
-        raise ValueError("api_url required. Pass from main entry (e.g. create_app(..., api_url=...)).")
+        raise ValueError(
+            "api_url required. Pass from main entry (e.g. create_app(..., api_url=...))."
+        )
+    if not kiosk_user_id or not family_circle_id:
+        raise ValueError("kiosk_user_id and family_circle_id required.")
     try:
         import requests
+
         session = requests.Session()
     except ImportError:
         session = None
-    remote_services = create_remote(
+    remote_services = create_kiosk_remote(
         api_url,
-        user_id=user_id,
+        kiosk_user_id=kiosk_user_id,
         family_circle_id=family_circle_id,
         session=session,
     )
-    return MeridianKioskApp(services=remote_services)
+    app = MeridianKioskApp(services=remote_services)
+    app.kiosk_user_id = kiosk_user_id
+    app.family_circle_id = family_circle_id
+    return app

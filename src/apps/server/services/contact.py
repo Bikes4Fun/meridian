@@ -28,6 +28,8 @@ class Contact:
     birthday: Optional[str] = None
     relationship: Optional[str] = None
     emergency_priority: Optional[str] = None
+    photo_filename: Optional[str] = None
+    sendbird_user_id: Optional[str] = None
 
     def __str__(self):
         return f"{self.display_name} ({self.relationship}) - {self.phone}"
@@ -42,7 +44,7 @@ class ContactService(DatabaseServiceMixin):
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
-            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts
             WHERE family_circle_id = ?
         """
@@ -58,6 +60,8 @@ class ContactService(DatabaseServiceMixin):
                 birthday=row["birthday"],
                 relationship=row["relationship"],
                 emergency_priority=row["emergency_priority"],
+                photo_filename=row.get("photo_filename"),
+                sendbird_user_id=row.get("sendbird_user_id"),
             )
             for row in result.data
         ]
@@ -65,7 +69,7 @@ class ContactService(DatabaseServiceMixin):
 
     def c_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
-            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts
             WHERE family_circle_id = ? AND emergency_priority IN ('primary_emergency', 'secondary_emergency')
         """
@@ -81,6 +85,8 @@ class ContactService(DatabaseServiceMixin):
                 birthday=row["birthday"],
                 relationship=row["relationship"],
                 emergency_priority=row["emergency_priority"],
+                photo_filename=row.get("photo_filename"),
+                sendbird_user_id=row.get("sendbird_user_id"),
             )
             for row in result.data
         ]
@@ -88,7 +94,7 @@ class ContactService(DatabaseServiceMixin):
 
     def get_contact_by_id(self, contact_id: str) -> ServiceResult:
         query = """
-            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts WHERE id = ?
         """
         result = self.safe_query(query, (contact_id,))
@@ -105,6 +111,8 @@ class ContactService(DatabaseServiceMixin):
                     birthday=row["birthday"],
                     relationship=row["relationship"],
                     emergency_priority=row["emergency_priority"],
+                    photo_filename=row.get("photo_filename"),
+                    sendbird_user_id=row.get("sendbird_user_id"),
                 )
             )
         return ServiceResult.error_result(f"Contact with ID '{contact_id}' not found")

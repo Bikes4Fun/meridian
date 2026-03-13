@@ -6,6 +6,7 @@ calendar, medications, emergency, and settings come from the server API.
 
 import logging
 import os
+import urllib.parse
 from datetime import datetime
 from typing import Any, Optional, Tuple
 
@@ -22,12 +23,12 @@ class RemoteServiceError(Exception):
 
 
 def _headers(
-    user_id: Optional[str] = None,
+    kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
 ) -> dict:
     out = {}
-    if user_id:
-        out["X-User-Id"] = user_id
+    if kiosk_user_id:
+        out["X-User-Id"] = kiosk_user_id
     if family_circle_id:
         out["X-Family-Circle-Id"] = family_circle_id
     return out
@@ -82,9 +83,8 @@ def _get_raw(
 class LocalTimeService:
     """Time from the device (no server call)."""
 
-    def __init__(self, base_url: str, user_id: Optional[str] = None):
+    def __init__(self, base_url: str):
         self._base = base_url.rstrip("/")
-        self._user_id = user_id
 
     def get_time(self) -> str:
         return datetime.now().strftime("%-I:%M %p").replace(" 0", " ").lstrip()
@@ -114,13 +114,13 @@ class RemoteCalendarService:
     def __init__(
         self,
         base_url: str,
-        user_id: Optional[str] = None,
+        kiosk_user_id: Optional[str] = None,
         family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
         self._fc_id = family_circle_id or ""
-        self._headers = _headers(user_id, family_circle_id)
+        self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
 
     def _today_param(self) -> str:
@@ -175,13 +175,13 @@ class RemoteMedicationService:
     def __init__(
         self,
         base_url: str,
-        user_id: Optional[str] = None,
+        kiosk_user_id: Optional[str] = None,
         family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
         self._fc_id = family_circle_id or ""
-        self._headers = _headers(user_id, family_circle_id)
+        self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
 
     def get_medication_data(self) -> Any:
@@ -199,12 +199,12 @@ class RemoteAlertService:
     def __init__(
         self,
         base_url: str,
-        user_id: Optional[str] = None,
+        kiosk_user_id: Optional[str] = None,
         family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
-        self._headers = _headers(user_id, family_circle_id)
+        self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
 
     def get_alert_status(self) -> Any:
@@ -224,13 +224,13 @@ class RemoteEmergencyProfileService:
     def __init__(
         self,
         base_url: str,
-        user_id: Optional[str] = None,
+        kiosk_user_id: Optional[str] = None,
         family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
         self._fc_id = family_circle_id or ""
-        self._headers = _headers(user_id, family_circle_id)
+        self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
 
     def get_emergency_profile(self) -> Any:
@@ -250,9 +250,7 @@ class RemoteEmergencyProfileService:
             session=self._session,
         )
         if not ok:
-            return ServiceResult.error_result(
-                err or "medical-summary request failed"
-            )
+            return ServiceResult.error_result(err or "medical-summary request failed")
         return ServiceResult.success_result(data)
 
     def get_pdf_url(self) -> str:
@@ -267,21 +265,87 @@ class RemoteEmergencyProfileService:
             session=self._session,
         )
         if not ok:
-            return ServiceResult.error_result(err or "emergency-profile PDF request failed")
+            return ServiceResult.error_result(
+                err or "emergency-profile PDF request failed"
+            )
         return ServiceResult.success_result(data)
+
+
+class RemoteChatEntryService:
+    """Get signed chat entry URL for kiosk webview. Uses same API auth as other kiosk calls."""
+
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def get_entry_url(
+        self, recipient_sendbird_user_id: str = "", recipient_display_name: str = ""
+    ) -> Any:
+        """Fetch signed entry URL. recipient = who the kiosk user will chat WITH. Returns ServiceResult with url in data."""
+        params = []
+        if recipient_sendbird_user_id:
+            params.append(
+                f"recipient_sendbird_user_id={urllib.parse.quote(recipient_sendbird_user_id)}"
+            )
+        if recipient_display_name:
+            params.append(
+                f"recipient_display_name={urllib.parse.quote(recipient_display_name)}"
+            )
+        qs = "&".join(params)
+        url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
+        ok, data, err = _get(url, headers=self._headers, session=self._session)
+        if not ok:
+            return ServiceResult.error_result(err or "entry-url request failed")
+        url_val = data.get("url") if isinstance(data, dict) else None
+        if not url_val:
+            return ServiceResult.error_result("entry-url returned no url")
+        return ServiceResult.success_result(url_val)
+
+
+class RemoteContactService:
+    """All contacts for the family (e.g. chat grid)."""
+
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._fc_id = family_circle_id or ""
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def get_contacts(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/contacts",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "contacts request failed")
+        return ServiceResult.success_result(data if data is not None else [])
 
 
 class RemoteLocationService:
     def __init__(
         self,
         base_url: str,
-        user_id: Optional[str] = None,
+        kiosk_user_id: Optional[str] = None,
         family_circle_id: Optional[str] = None,
         session: Optional["requests.Session"] = None,
     ):
         self._base = base_url.rstrip("/")
         self._fc_id = family_circle_id or ""
-        self._headers = _headers(user_id, family_circle_id)
+        self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
 
     def get_checkins(self) -> Any:
@@ -342,7 +406,7 @@ class RemoteLocationService:
             return ServiceResult.error_result(str(e))
 
     def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
-        """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present."""
+        """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present. user_id = whose photo (any family member)."""
         try:
             import requests
         except ImportError:
@@ -365,13 +429,13 @@ class RemoteLocationService:
             return None
 
 
-def create_remote(
+def create_kiosk_remote(
     server_url: str,
-    user_id: Optional[str] = None,
+    kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
     session: Optional["requests.Session"] = None,
 ) -> dict:
-    """Return services dict: time from device, rest from server API."""
+    """Return services dict for kiosk client: time from device, rest from server API."""
     try:
         import requests
 
@@ -380,21 +444,27 @@ def create_remote(
     except ImportError:
         session = None
     services = {
-        "time_service": LocalTimeService(server_url, user_id),
+        "time_service": LocalTimeService(server_url),
         "calendar_service": RemoteCalendarService(
-            server_url, user_id, family_circle_id, session
+            server_url, kiosk_user_id, family_circle_id, session
         ),
         "medication_service": RemoteMedicationService(
-            server_url, user_id, family_circle_id, session
+            server_url, kiosk_user_id, family_circle_id, session
         ),
         "emergency_service": RemoteEmergencyProfileService(
-            server_url, user_id, family_circle_id, session
+            server_url, kiosk_user_id, family_circle_id, session
         ),
         "location_service": RemoteLocationService(
-            server_url, user_id, family_circle_id, session
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "contact_service": RemoteContactService(
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "chat_entry_service": RemoteChatEntryService(
+            server_url, kiosk_user_id, family_circle_id, session
         ),
         "alert_service": RemoteAlertService(
-            server_url, user_id, family_circle_id, session
+            server_url, kiosk_user_id, family_circle_id, session
         ),
         "_alert_activated": [False],
     }

@@ -10,7 +10,7 @@ import tempfile
 from kivy.clock import Clock
 from kivy.metrics import dp
 
-from .modular_display import KioskLabel, KioskButton
+from .screen_primitives import KioskLabel, KioskButton
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,9 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
             if job_id:
                 logger.info("Print job id: %s", job_id)
         else:
-            r = subprocess.run(["start", "/p", path], capture_output=True, shell=True, timeout=10)
+            r = subprocess.run(
+                ["start", "/p", path], capture_output=True, shell=True, timeout=10
+            )
             if r.returncode != 0:
                 return False, "Print command failed", None
         msg = f"Sent to printer (job {job_id})" if job_id else "Sent to printer"
@@ -104,7 +106,9 @@ def _run_emergency_print(emergency_svc, status_label=None) -> None:
 def trigger_emergency_print(services) -> None:
     """Run emergency print (e.g. when alert activated). Uses same flow and status label as the button."""
     emergency_svc = services.get("emergency_service")
-    if not emergency_svc or not getattr(emergency_svc, "get_emergency_profile_pdf", None):
+    if not emergency_svc or not getattr(
+        emergency_svc, "get_emergency_profile_pdf", None
+    ):
         return
     status_label = services.get("_emergency_print_status_label")
     _run_emergency_print(emergency_svc, status_label)
@@ -113,14 +117,18 @@ def trigger_emergency_print(services) -> None:
 def add_emergency_print_section(layout, services):
     """Add Print Emergency Document button and status label to layout. No-op if no emergency service."""
     emergency_svc = services.get("emergency_service")
-    if not emergency_svc or not getattr(emergency_svc, "get_emergency_profile_pdf", None):
+    if not emergency_svc or not getattr(
+        emergency_svc, "get_emergency_profile_pdf", None
+    ):
         return
 
     print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=dp(36))
     services["_emergency_print_status_label"] = print_status
 
     def _on_print(*_):
-        Clock.schedule_once(lambda dt: _run_emergency_print(emergency_svc, print_status), 0)
+        Clock.schedule_once(
+            lambda dt: _run_emergency_print(emergency_svc, print_status), 0
+        )
 
     print_btn = KioskButton(
         text="Print Emergency Document",

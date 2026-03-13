@@ -40,7 +40,7 @@ def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
         if len(parts) != 2:
             return None
         payload_b64, sig = parts[0], parts[1]
-        payload_b64_padded = payload_b64 + "=" * (4 - len(payload_b64) % 4)
+        payload_b64_padded = payload_b64 + "=" * (-len(payload_b64) % 4)
         payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
         if payload.get("exp", 0) < time.time():
             return None

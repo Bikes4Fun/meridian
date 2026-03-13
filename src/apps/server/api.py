@@ -151,17 +151,6 @@ def create_server_app(db_path=None):
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         elif origins:
             resp.headers["Access-Control-Allow-Origin"] = origins[0]
-        origins = [
-            o.strip()
-            for o in (os.environ.get("CORS_ORIGIN") or "").split(",")
-            if o.strip()
-        ]
-        req_origin = request.headers.get("Origin", "").strip()
-        if origins and req_origin and req_origin in origins:
-            resp.headers["Access-Control-Allow-Origin"] = req_origin
-            resp.headers["Access-Control-Allow-Credentials"] = "true"
-        elif origins:
-            resp.headers["Access-Control-Allow-Origin"] = origins[0]
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         else:
             resp.headers["Access-Control-Allow-Origin"] = "*"

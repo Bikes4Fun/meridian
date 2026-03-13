@@ -122,7 +122,7 @@
         );
     }
 
-    function loadFamilyMembers() {oka
+    function loadFamilyMembers() {
         var apiBase = (API_URL || '').replace(/\/$/, '');
         fetch(apiBase + '/api/session', { credentials: 'include' })
             .then(function (r) {

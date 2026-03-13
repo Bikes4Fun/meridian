@@ -108,7 +108,7 @@
             .catch(function (err) { err._step = 'connect'; throw err; })
             .then(function () {
                 setStatus((recipientName || 'Opening conversation') + '…', 'success');
-                return sb.groupChannel.getChannel(channelUrl);
+                return sb.groupChannel.getChannelWithoutCache(channelUrl);
             })
             .catch(function (err) { if (!err._step) err._step = 'getChannel'; throw err; })
             .then(function (channel) {

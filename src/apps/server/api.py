@@ -147,21 +147,27 @@ def create_server_app(db_path=None):
 
     @app.after_request
     def _log_request_response(resp):
-        """Print full query and response for chat, login, auth API requests only."""
+        """Print chat API requests in a compact format."""
         if not (request.path.startswith("/api/chat/") or request.path == "/api/login"):
             return resp
         try:
-            query = "%s %s" % (request.method, request.url)
             body = request.get_json(silent=True) if request.method in ("POST", "PUT", "PATCH") else None
-            if body is not None:
-                query += "\n  body: %s" % json.dumps(body)
-            resp_body = resp.get_data(as_text=True)
-            if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
-                try:
-                    resp_body = json.dumps(json.loads(resp_body), indent=2)
-                except (ValueError, TypeError):
-                    pass
-            print("[main server] query:\n  %s\n[main server] response: %s\n%s" % (query, resp.status_code, resp_body))
+            req = "%s %s" % (request.method, request.path)
+            if body:
+                req += " " + json.dumps(body)
+            if resp.status_code in (301, 302, 303, 307, 308):
+                print("[main] %s → %s redirect" % (req, resp.status_code))
+            else:
+                resp_body = resp.get_data(as_text=True)
+                if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
+                    try:
+                        formatted = json.dumps(json.loads(resp_body), separators=(",", ":"))
+                        formatted = formatted[:300] + "…" if len(formatted) > 300 else formatted
+                    except (ValueError, TypeError):
+                        formatted = resp_body[:200]
+                    print("[main] %s → %s  %s" % (req, resp.status_code, formatted))
+                else:
+                    print("[main] %s → %s" % (req, resp.status_code))
         except Exception:
             pass
         return resp

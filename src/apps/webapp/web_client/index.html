@@ -46,6 +46,15 @@
         .success { background: #d4edda; color: #155724; }
         .error { background: #f8d7da; color: #721c24; }
         .info { background: #d1ecf1; color: #0c5460; }
+        #chatSection #messages { border: 1px solid #ddd; border-radius: 8px; height: 200px; overflow-y: auto; padding: 12px; margin: 12px 0; background: #fafafa; }
+        #chatSection #messages p { margin: 6px 0; font-size: 14px; }
+        #chatSection #chatSendRow { display: flex; gap: 8px; margin-top: 8px; }
+        #chatSection #chatMsgInput { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        #chatSection #chatSendBtn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        #chatSection #chatSendBtn:disabled { background: #ccc; cursor: not-allowed; }
+        #chatSection #contactsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin: 12px 0; }
+        #chatSection #contactsGrid .contact-tile { padding: 12px; border: 1px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer; background: #fafafa; }
+        #chatSection #contactsGrid .contact-tile:hover { background: #eee; }
     </style>
 </head>
 <body>
@@ -54,6 +63,17 @@
         <p style="font-size: 14px; color: #666;">Open chat in a separate window (chatapp).</p>
         <button type="button" id="openChatBtn" style="padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">Open Chat</button>
         <p id="openChatStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></p>
+        <p id="chatLoggedIn" style="font-size: 14px; margin-top: 8px;"></p>
+        <div id="chatStatus" class="info" style="margin: 12px 0; padding: 10px; border-radius: 8px; font-size: 14px; display: none;"></div>
+        <div id="contactsSection" style="margin-top: 12px; display: none;">
+            <p><strong>Choose a contact to call</strong></p>
+            <div id="contactsGrid"></div>
+        </div>
+        <div id="messages"></div>
+        <div id="chatSendRow" style="display: none;">
+            <input type="text" id="chatMsgInput" placeholder="Type a message…">
+            <button type="button" id="chatSendBtn">Send</button>
+        </div>
     </div>
 
     <h1>📍 Family Check-In</h1>

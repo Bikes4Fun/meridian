@@ -477,6 +477,7 @@ def register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix: s
             return jsonify({"error": "Invalid or expired token"}), 403
         session["user_id"] = payload["user_id"]
         session["family_circle_id"] = payload["family_circle_id"]
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
         path = (auth_redirect_base + "/chat.html") if auth_redirect_base else "/"
         sb = (payload.get("sendbird_user_id") or "").strip()
         dn = (payload.get("display_name") or "").strip()

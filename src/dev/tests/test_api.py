@@ -59,7 +59,12 @@ PROTECTED_GET_ROUTES = [
 
 PROTECTED_POST_PUT_ROUTES = [
     ("/api/emergency/alert", "POST", False, {"json": {"activated": False}}),
-    ("/api/family_circles/%s/emergency-profile", "PUT", True, {"json": {"user_id": CARE_RECIPIENT_USER_ID, "name": "x"}}),
+    (
+        "/api/family_circles/%s/emergency-profile",
+        "PUT",
+        True,
+        {"json": {"user_id": CARE_RECIPIENT_USER_ID, "name": "x"}},
+    ),
 ]
 # (path_template, method, is_family_scoped, kwargs for request)
 
@@ -170,7 +175,11 @@ def test_every_family_scoped_route_rejects_wrong_family_403(api_client):
 def test_every_protected_post_put_route_requires_both_headers_401(api_client):
     """Protected POST/PUT routes return 401 with no X-User-Id / X-Family-Circle-Id."""
     for template, method, is_family_scoped, kwargs in PROTECTED_POST_PUT_ROUTES:
-        path = (template % FAMILY_CIRCLE_ID) if is_family_scoped and "%s" in template else template
+        path = (
+            (template % FAMILY_CIRCLE_ID)
+            if is_family_scoped and "%s" in template
+            else template
+        )
         r = api_client.open(path, method=method, **kwargs)
         assert r.status_code == 401, "no auth must get 401: %s %s" % (method, path)
 
@@ -276,7 +285,10 @@ def test_api_photo_404_path_traversal(api_client):
 @pytest.mark.integration
 def test_api_calendar_headers(api_client):
     """Proves Flask + container + DB + auth path; response matches CalendarService.get_day_headers()."""
-    r = api_client.get("/api/family_circles/%s/calendar/headers" % FAMILY_CIRCLE_ID, headers=API_HEADERS)
+    r = api_client.get(
+        "/api/family_circles/%s/calendar/headers" % FAMILY_CIRCLE_ID,
+        headers=API_HEADERS,
+    )
     assert r.status_code == 200
     j = r.get_json()
     assert "data" in j

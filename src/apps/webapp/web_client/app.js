@@ -1,10 +1,46 @@
-
+/**
+ * Webapp client – single JS file. Handles login, check-in, and chat.
+ * API_URL replaced by server (__API_URL__).
+ */
 (function () {
     'use strict';
 
     var _u = '__API_URL__';
     var API_URL = (_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
+
+    function init() {
+        if (document.getElementById('loginForm')) initLogin();
+        if (document.getElementById('checkinBtn')) initCheckin();
+        if (document.getElementById('openChatBtn')) initOpenChat();
+    }
+
+    function initLogin() {
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var familyCircleId = document.getElementById('familyCircleId').value.trim();
+            var userId = document.getElementById('userId').value.trim();
+            if (!familyCircleId || !userId) return;
+            var apiBase = API_URL || '';
+            fetch((apiBase ? apiBase.replace(/\/$/, '') : '') + '/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ user_id: userId, family_circle_id: familyCircleId })
+            })
+            .then(function (r) {
+                if (r.ok) return r.json();
+                return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
+            })
+            .then(function () {
+                var base = (apiBase ? apiBase.replace(/\/$/, '') : '');
+                window.location.href = base ? base + '/' : '/';
+            })
+            .catch(function (err) {
+                alert(err.message || 'Login failed');
+            });
+        });
+    }
 
     function showStatus(message, type) {
         var container = document.getElementById('status');
@@ -33,18 +69,6 @@
             btn.disabled = false;
             return;
         }
-
-        // #region agent log
-        (function () {
-            var isSecure = typeof window !== 'undefined' && window.isSecureContext;
-            var origin = typeof location !== 'undefined' ? location.origin : '';
-            var isIframe = typeof window !== 'undefined' && window.self !== window.top;
-            fetch('http://127.0.0.1:7597/ingest/42253974-8a85-41c5-a6bf-91c1b0df07a4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '14aad6' }, body: JSON.stringify({ sessionId: '14aad6', location: 'checkin.js:before-getCurrentPosition', message: 'geolocation context', data: { isSecureContext: isSecure, origin: origin, isIframe: isIframe }, timestamp: Date.now(), hypothesisId: 'H1-H3' }) }).catch(function () {});
-            if (navigator.permissions && navigator.permissions.query) {
-                navigator.permissions.query({ name: 'geolocation' }).then(function (p) { fetch('http://127.0.0.1:7597/ingest/42253974-8a85-41c5-a6bf-91c1b0df07a4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '14aad6' }, body: JSON.stringify({ sessionId: '14aad6', location: 'checkin.js:permission-state', message: 'geolocation permission', data: { state: p.state }, timestamp: Date.now(), hypothesisId: 'H2' }) }).catch(function () {}); }).catch(function () {});
-            }
-        })();
-        // #endregion
 
         navigator.geolocation.getCurrentPosition(
             function (position) {
@@ -88,9 +112,6 @@
                     });
             },
             function (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7597/ingest/42253974-8a85-41c5-a6bf-91c1b0df07a4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '14aad6' }, body: JSON.stringify({ sessionId: '14aad6', location: 'checkin.js:getCurrentPosition-error', message: 'geolocation error', data: { code: error.code, message: error.message }, timestamp: Date.now(), hypothesisId: 'H5' }) }).catch(function () {});
-                // #endregion
                 var msg = 'Could not get location. ';
                 if (error.code === 1) msg += 'Permission denied.';
                 else if (error.code === 2) msg += 'Position unavailable.';
@@ -98,17 +119,20 @@
                 showStatus(msg, 'error');
                 btn.disabled = false;
             },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
 
     function loadFamilyMembers() {
-        fetch(API_URL + '/api/session', { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
+        var apiBase = (API_URL || '').replace(/\/$/, '');
+        fetch(apiBase + '/api/session', { credentials: 'include' })
+            .then(function (r) {
+                if (r.status === 401) {
+                    window.location.href = apiBase ? apiBase + '/login.html' : '/login.html';
+                    return null;
+                }
+                return r.ok ? r.json() : null;
+            })
             .then(function (session) {
                 if (!session || !session.family_circle_id) return;
                 _familyCircleId = session.family_circle_id;
@@ -162,7 +186,7 @@
             });
     }
 
-    function init() {
+    function initCheckin() {
         var btn = document.getElementById('checkinBtn');
         if (btn) btn.addEventListener('click', checkIn);
         var alertBtn = document.getElementById('alertBtn');
@@ -170,6 +194,32 @@
         var cancelBtn = document.getElementById('cancelAlertBtn');
         if (cancelBtn) cancelBtn.addEventListener('click', cancelAlert);
         loadFamilyMembers();
+    }
+
+    function initOpenChat() {
+        var btn = document.getElementById('openChatBtn');
+        var statusEl = document.getElementById('openChatStatus');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            btn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Opening chat…';
+            var base = (API_URL || '').replace(/\/$/, '');
+            fetch(base + '/api/chat/chat-session-url', { credentials: 'include' })
+                .then(function (r) {
+                    if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed to get chat URL'); });
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data && data.url) {
+                        window.open(data.url, 'chat', 'width=800,height=600');
+                        if (statusEl) statusEl.textContent = '';
+                    } else throw new Error('No URL returned');
+                })
+                .catch(function (err) {
+                    if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not open chat');
+                })
+                .finally(function () { btn.disabled = false; });
+        });
     }
 
     if (document.readyState === 'loading') {

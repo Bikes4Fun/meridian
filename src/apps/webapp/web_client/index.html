@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Check-In</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { color: #333; }
+        select, input, button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 18px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #45a049; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #chatSection { text-align: left; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
+        #chatSection h2 { font-size: 16px; color: #333; margin: 0 0 8px 0; }
+        #status {
+            margin-top: 20px;
+        }
+        #status div {
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        #chatSection #messages { border: 1px solid #ddd; border-radius: 8px; height: 200px; overflow-y: auto; padding: 12px; margin: 12px 0; background: #fafafa; }
+        #chatSection #messages p { margin: 6px 0; font-size: 14px; }
+        #chatSection #chatSendRow { display: flex; gap: 8px; margin-top: 8px; }
+        #chatSection #chatMsgInput { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        #chatSection #chatSendBtn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        #chatSection #chatSendBtn:disabled { background: #ccc; cursor: not-allowed; }
+        #chatSection #contactsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin: 12px 0; }
+        #chatSection #contactsGrid .contact-tile { padding: 12px; border: 1px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer; background: #fafafa; }
+        #chatSection #contactsGrid .contact-tile:hover { background: #eee; }
+    </style>
+</head>
+<body>
+    <div id="chatSection" style="margin-bottom: 24px;">
+        <h2>Chat</h2>
+        <p style="font-size: 14px; color: #666;">Open chat in a separate window (chatapp).</p>
+        <button type="button" id="openChatBtn" style="padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">Open Chat</button>
+        <p id="openChatStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></p>
+        <p id="chatLoggedIn" style="font-size: 14px; margin-top: 8px;"></p>
+        <div id="chatStatus" class="info" style="margin: 12px 0; padding: 10px; border-radius: 8px; font-size: 14px; display: none;"></div>
+        <div id="contactsSection" style="margin-top: 12px; display: none;">
+            <p><strong>Choose a contact to call</strong></p>
+            <div id="contactsGrid"></div>
+        </div>
+        <div id="messages"></div>
+        <div id="chatSendRow" style="display: none;">
+            <input type="text" id="chatMsgInput" placeholder="Type a message…">
+            <button type="button" id="chatSendBtn">Send</button>
+        </div>
+    </div>
+
+    <h1>📍 Family Check-In</h1>
+    <p style="font-size: 14px; color: #666;"><a href="/login.html">Log in</a></p>
+    
+    <select id="familyMemberSelect">
+        <option value="">-- Select who to log in --</option>
+    </select>
+    
+    <input type="text" id="notes" placeholder="Details / Notes (optional, e.g. note for family)">
+    
+    <button id="checkinBtn" type="button">Check In Now</button>
+
+    <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
+    <h2 style="color: #333; font-size: 20px;">Alert TV</h2>
+    <p style="color: #666; font-size: 14px;">Force the TV to show the emergency screen with flashing border.</p>
+    <button id="alertBtn" type="button" style="background: #e74c3c;">Alert Mode</button>
+    <button id="cancelAlertBtn" type="button" style="background: #95a5a6; margin-top: 5px;">Cancel Alert</button>
+
+    <div id="status"></div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

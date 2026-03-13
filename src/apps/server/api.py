@@ -491,9 +491,9 @@ def create_server_app(db_path=None):
 
     @app.route("/checkin")
     def checkin_page():
-        """Session-only: redirect to /login when no session."""
+        """Session-only: redirect to /login.html when no session."""
         if not session.get("user_id") or not session.get("family_circle_id"):
-            return redirect("/login")
+            return redirect("/login.html")
         return Response("OK", status=200)
 
     @app.route("/checkin.js")

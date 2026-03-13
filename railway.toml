@@ -1,10 +1,10 @@
-# Railway config: server & API only (webapp on Vercel, kiosk local)
+# Railway config: API + webapp + chatapp (all-in-one)
 # Docs: https://docs.railway.com/reference/config-as-code
 
 [build]
 builder = "RAILPACK"
-buildCommand = "true"
-watchPatterns = ["/src/apps/server/**", "/src/shared/**"]
+buildCommand = "cd src && node build_all.js"
+watchPatterns = ["/src/apps/server/**", "/src/apps/webapp/**", "/src/apps/chatapp/**", "/src/shared/**"]
 
 [deploy]
 startCommand = "python -m src.apps.server seed && python -m src.apps.server"

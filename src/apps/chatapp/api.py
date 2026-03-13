@@ -210,7 +210,11 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                     "error": "Cannot reach Sendbird",
                     "detail": "Check network and SENDBIRD_APP_ID.",
                 }), 502
-            return jsonify({"error": "Sendbird issue token failed", "detail": err_msg}), 502
+            logging.exception("Unexpected error while issuing Sendbird session token")
+            return jsonify({
+                "error": "Sendbird issue token failed",
+                "detail": "An internal error occurred while issuing the token.",
+            }), 502
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
         r = db_manager.execute_query(

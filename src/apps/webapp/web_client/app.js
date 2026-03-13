@@ -33,8 +33,7 @@
                 return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
             })
             .then(function () {
-                var base = (apiBase ? apiBase.replace(/\/$/, '') : '');
-                window.location.href = base ? base + '/' : '/';
+                window.location.href = '/';
             })
             .catch(function (err) {
                 alert(err.message || 'Login failed');
@@ -123,12 +122,12 @@
         );
     }
 
-    function loadFamilyMembers() {
+    function loadFamilyMembers() {oka
         var apiBase = (API_URL || '').replace(/\/$/, '');
         fetch(apiBase + '/api/session', { credentials: 'include' })
             .then(function (r) {
                 if (r.status === 401) {
-                    window.location.href = apiBase ? apiBase + '/login.html' : '/login.html';
+                    window.location.href = '/login.html';
                     return null;
                 }
                 return r.ok ? r.json() : null;

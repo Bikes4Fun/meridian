@@ -266,18 +266,6 @@ def create_server_app(db_path=None):
             or request.args.get("display_name")
             or ""
         ).strip()
-        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id.
-        recipient_sendbird_user_id, recipient_display_name = who the kiosk user will chat WITH (from headers)."""
-        recipient_sb = (
-            request.args.get("recipient_sendbird_user_id")
-            or request.args.get("sendbird_user_id")
-            or ""
-        ).strip()
-        recipient_name = (
-            request.args.get("recipient_display_name")
-            or request.args.get("display_name")
-            or ""
-        ).strip()
         token = _create_chat_entry_token(
             app.secret_key,
             g.user_id,

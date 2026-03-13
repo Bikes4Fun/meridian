@@ -6,6 +6,14 @@ Starts the API server (DB + REST) in a background thread, then runs the Kivy TV 
 import os
 import sys
 
+# Load .env from repo root if python-dotenv is available (SENDBIRD_APP_ID, etc.)
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+    load_dotenv(_env_path)
+except ImportError:
+    pass
+
 # Ensure src is on path for new package layout
 _src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 if _src_dir not in sys.path:
@@ -218,6 +226,7 @@ def main():
             print(f"  fm_care_001")
             print(f"  dtzecha")
             print(f"\nWindow 2 (Dylan):")
+            print(f"  F00000")
             print(f"  fm_005")
             print(f"  testpatient")
             print(f"")

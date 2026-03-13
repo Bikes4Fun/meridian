@@ -207,7 +207,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({
                     "error": "Cannot reach Sendbird",
-                    "detail": "Check internet connection and that SENDBIRD_APP_ID is a valid Sendbird app ID.",
+                    "detail": "Check network and SENDBIRD_APP_ID.",
                 }), 502
             return jsonify({"error": "Sendbird issue token failed", "detail": err_msg}), 502
         if not ok:
@@ -298,7 +298,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({
                     "error": "Cannot reach Sendbird",
-                    "detail": "Check internet connection and SENDBIRD_APP_ID.",
+                    "detail": "Check network and SENDBIRD_APP_ID.",
                 }), 502
             return jsonify({"error": "Create channel failed", "detail": err_msg}), 502
         if r.status_code != 200:

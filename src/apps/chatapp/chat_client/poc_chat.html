@@ -89,8 +89,7 @@ function appendMessage(text, isSelf) {
   el.scrollTop = el.scrollHeight;
 }
 
-var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/+esm';
-var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
+var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4.14.0/dist/esm/index.js'; 
 
 window.doLogin = function doLogin() {
   var apiUrl   = ($id('apiUrl').value.trim() || window.location.origin).replace(/\/$/, '');

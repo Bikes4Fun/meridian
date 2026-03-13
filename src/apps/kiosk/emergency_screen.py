@@ -8,7 +8,7 @@ from kivy.uix.anchorlayout import AnchorLayout
 from kivy.graphics import Color, Line, Rectangle
 from kivy.clock import Clock
 
-from .kiosk_primitives import KioskLabel, KioskWidget, apply_debug_border
+from .screen_primitives import KioskLabel, KioskWidget, apply_debug_border
 from .emergency_print import add_emergency_print_section
 
 

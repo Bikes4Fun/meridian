@@ -190,8 +190,7 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # /api/session: session only.
-        if request.path == "/api/session":
+
         # /api/session: session only.
         if request.path == "/api/session":
             uid = session.get("user_id")
@@ -201,16 +200,7 @@ def create_server_app(db_path=None):
             g.user_id = uid
             g.family_circle_id = fid
             return
-        # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
-        if request.path == "/api/chat/chat-session-url":
-            uid = session.get("user_id") or request.headers.get("X-User-Id")
-            fid = session.get("family_circle_id") or request.headers.get("X-Family-Circle-Id")
-            if not uid or not fid:
-                abort(401, "Log in at /login first or provide X-User-Id and X-Family-Circle-Id")
-                abort(401, "Not logged in")
-            g.user_id = uid
-            g.family_circle_id = fid
-            return
+
         # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
         if request.path == "/api/chat/chat-session-url":
             uid = session.get("user_id") or request.headers.get("X-User-Id")

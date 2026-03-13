@@ -7,7 +7,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 
-from .kiosk_primitives import KioskLabel, KioskButton
+from .screen_primitives import KioskLabel, KioskButton
 from .webview import open_chat_window
 
 

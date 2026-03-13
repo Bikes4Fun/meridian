@@ -11,7 +11,7 @@ from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy_garden.mapview import MapView, MapMarker
 
-from .kiosk_primitives import KioskLabel, KioskWidget, apply_debug_border
+from .screen_primitives import KioskLabel, KioskWidget, apply_debug_border
 
 logger = logging.getLogger(__name__)
 

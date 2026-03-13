@@ -47,7 +47,7 @@ class MeridianKioskApp(App):
             family_circle_id=self.family_circle_id,
         )
 
-        screen_factory.add_all_screens(screen_factory)
+        screen_factory.add_all_screens()
 
         # Sync photos on boot: fetch from server and cache locally for offline use
         Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)

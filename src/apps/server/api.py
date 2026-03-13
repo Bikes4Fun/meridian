@@ -327,6 +327,24 @@ def create_server_app(db_path=None):
     def api_health():
         return jsonify({"status": "ok"})
 
+    @app.route("/api/users/<user_id>/photo")
+    def api_serve_photo(user_id):
+        """Serve user photo. User must be in requester's family. Rejects path traversal in filename."""
+        db = container.get_database_manager()
+        r = db.execute_query(
+            "SELECT u.photo_filename FROM users u "
+            "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
+            "WHERE u.id = ? AND ufc.family_circle_id = ?",
+            (user_id, g.family_circle_id),
+        )
+        if not r.success or not r.data:
+            abort(404)
+        fn = (r.data[0].get("photo_filename") or "").strip()
+        if not fn or ".." in fn or "/" in fn or "\\" in fn:
+            abort(404)
+        uploads = get_uploads_dir()
+        return send_from_directory(uploads, fn, as_attachment=False)
+
     @app.route("/api/family_circles/<family_circle_id>/calendar/headers")
     def api_calendar_headers(family_circle_id):
         _require_family_access(family_circle_id)
@@ -371,16 +389,12 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
-        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_url, photo_filename, sendbird_user_id."""
+        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_filename, sendbird_user_id."""
         _require_family_access(family_circle_id)
         r = contact_svc.get_all_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        base = request.url_root.rstrip("/")
-        contacts = [asdict(c) for c in (r.data or [])]
-        for c in contacts:
-            c["photo_url"] = "%s/api/photo/contact/%s" % (base, c["id"])
-        return jsonify({"data": contacts})
+        return jsonify({"data": [asdict(c) for c in (r.data or [])]})
 
     @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
     def api_emergency_contacts(family_circle_id):
@@ -389,11 +403,7 @@ def create_server_app(db_path=None):
         r = contact_svc.c_service_get_emergency_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        base = request.url_root.rstrip("/")
-        contacts = [asdict(c) for c in (r.data or [])]
-        for c in contacts:
-            c["photo_url"] = "%s/api/photo/contact/%s" % (base, c["id"])
-        return jsonify({"data": contacts})
+        return jsonify({"data": [asdict(c) for c in (r.data or [])]})
 
     @app.route("/api/family_circles/<family_circle_id>/medical-summary")
     def api_medical_summary(family_circle_id):

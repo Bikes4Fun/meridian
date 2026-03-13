@@ -55,6 +55,11 @@ from .emergency_pdf import build_pdf
 from .services.container import create_service_container
 
 try:
+    from ...apps.chatapp.api import register_chatapp_routes
+except ImportError:
+    from apps.chatapp.api import register_chatapp_routes
+
+try:
     from ...shared.config import get_uploads_dir
 except ImportError:
     from shared.config import get_uploads_dir
@@ -199,7 +204,7 @@ def create_server_app(db_path=None):
     @app.before_request
     def set_user_id():
         """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
-        if request.path in ("/api/health", "/api/login"):
+        if request.path in ("/api/health", "/api/login", "/auth"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -291,7 +296,7 @@ def create_server_app(db_path=None):
         payload = _verify_chat_entry_token(app.secret_key, token)
         if not payload:
             return jsonify({"error": "Invalid or expired token"}), 403
-        chatapp_url = (os.environ.get("CHATAPP_URL") or "").rstrip("/")
+        chatapp_url = (os.environ.get("CHATAPP_URL") or request.url_root.rstrip("/")).rstrip("/")
         if not chatapp_url:
             return (
                 jsonify(
@@ -570,6 +575,34 @@ def create_server_app(db_path=None):
             uid = row.get("user_id")
             row["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
         return jsonify({"data": data})
+
+    # Chatapp routes + static (webapp, chatapp) for Railway all-in-one deploy
+    _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
+    _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
+    if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
+        sendbird_svc = container.get_sendbird_service()
+        db_manager = container.get_database_manager()
+        register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix="/chat")
+
+        @app.route("/")
+        def serve_index():
+            return send_from_directory(_webapp_dist, "index.html")
+
+        @app.route("/login.html")
+        def serve_login():
+            return send_from_directory(_webapp_dist, "login.html")
+
+        @app.route("/app.js")
+        def serve_app_js():
+            return send_from_directory(_webapp_dist, "app.js")
+
+        @app.route("/chat/")
+        @app.route("/chat/<path:path>")
+        def serve_chat(path=""):
+            if not path:
+                path = "poc_chat.html"
+            return send_from_directory(_chatapp_dist, path)
 
     return app
 

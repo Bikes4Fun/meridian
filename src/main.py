@@ -112,6 +112,12 @@ def _start_local_webapp_server(api_url, logger):
         def __init__(self, request, client_address, server):
             super().__init__(request, client_address, server, directory=webapp_dist)
 
+        def handle(self):
+            try:
+                super().handle()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
     webapp_server = HTTPServer(("127.0.0.1", webapp_port), WebappHandler)
     threading.Thread(target=webapp_server.serve_forever, daemon=True).start()
     logger.info("Webapp: %s", webapp_url)

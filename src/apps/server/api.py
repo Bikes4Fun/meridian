@@ -203,6 +203,11 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
+        # /checkin, /checkin.js: session-only; route handles redirect/401
+        if request.path in ("/checkin", "/checkin.js"):
+            g.user_id = session.get("user_id")
+            g.family_circle_id = session.get("family_circle_id")
+            return
         # chat-session-bootstrap: new webview (kiosk, mobile) opens URL from chat-session-url; no prior cookie. Token verified in handler.
         if request.path == "/api/chat/chat-session-bootstrap":
             g.user_id = None
@@ -473,6 +478,20 @@ def create_server_app(db_path=None):
         session["user_id"] = user_id
         session["family_circle_id"] = family_circle_id
         return jsonify({"ok": True})
+
+    @app.route("/checkin")
+    def checkin_page():
+        """Session-only: redirect to /login when no session."""
+        if not session.get("user_id") or not session.get("family_circle_id"):
+            return redirect("/login")
+        return Response("OK", status=200)
+
+    @app.route("/checkin.js")
+    def checkin_js():
+        """Session-only: 401 when no session."""
+        if not session.get("user_id") or not session.get("family_circle_id"):
+            abort(401, "Not logged in")
+        return Response("", status=404)
 
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):

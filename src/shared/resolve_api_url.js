@@ -45,6 +45,7 @@ async function resolveApiUrl() {
     const startPort = parseInt(process.env.PORT || '8000', 10);
     const local = await probeLocalApi(startPort);
     if (local) return local;
+    console.log('No API reachable. Using http://127.0.0.1:' + startPort + ' as default.');
     return `http://127.0.0.1:${startPort}`;
 }
 

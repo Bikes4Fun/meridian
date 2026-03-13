@@ -20,23 +20,6 @@ class ScreenFactory:
         self.kiosk_user_id = kiosk_user_id
         self.family_circle_id = family_circle_id
 
-    def add_all_screens(self):
-        self.screen_manager.add_widget(
-            self.create_home_screen()
-        )
-        self.screen_manager.add_widget(
-            self.create_emergency_screen()
-        )
-        self.screen_manager.add_widget(
-            self.create_checkin_screen()
-        )
-        self.screen_manager.add_widget(
-            self.create_chat_screen()
-        )
-        self.screen_manager.current = "chat"
-
-
-
     def screen_template_boxlayout(self):
         template_settings = {
             "orientation": "vertical",
@@ -65,7 +48,7 @@ class ScreenFactory:
         main_layout.add_widget(content)
 
         screen.add_widget(main_layout)
-        return screen
+        return screen, clock_widget, med_widget, events_widget
 
     def create_emergency_screen(self):
         """Create emergency screen: critical patient info for EMS."""

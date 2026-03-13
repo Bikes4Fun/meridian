@@ -190,7 +190,11 @@ def build_checkin_screen(services, screen):
                     src = None
                     photo_url = checkin.get("photo_url")
                     user_id = checkin.get("user_id")
-                    if photo_url and user_id and hasattr(loc_svc, "fetch_photo_to_cache"):
+                    if (
+                        photo_url
+                        and user_id
+                        and hasattr(loc_svc, "fetch_photo_to_cache")
+                    ):
                         src = loc_svc.fetch_photo_to_cache(user_id, cache_dir)
                     if not src:
                         photo_fn = checkin.get("photo_filename")

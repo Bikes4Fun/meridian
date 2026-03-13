@@ -47,11 +47,17 @@ class MeridianKioskApp(App):
             family_circle_id=self.family_circle_id,
         )
 
-        screen_factory.add_all_screens()
+        self.screen_manager.add_widget(screen_factory.create_emergency_screen())
+        self.screen_manager.add_widget(screen_factory.create_checkin_screen())
+        self.screen_manager.add_widget(screen_factory.create_chat_screen())
+        self.home_screen, self._clock_widget, self._med_widget, self._events_widget = (
+            screen_factory.create_home_screen()
+        )
+        self.screen_manager.add_widget(self.home_screen)
+        self.screen_manager.current = "chat"
 
         # Sync photos on boot: fetch from server and cache locally for offline use
         Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)
-
         # Full clock refresh on boot (day, date, year)
         Clock.schedule_once(lambda dt: self.refresh_clock(), 1.0)
         # Per-second tick: time digits + time-of-day when period changes
@@ -64,7 +70,6 @@ class MeridianKioskApp(App):
         Clock.schedule_once(lambda dt: self._load_events(), 1.5)
 
         return self.screen_manager
-
 
     def _check_alert_status(self, dt=None):
         """Poll alert API; when activated, switch to emergency screen, enable flashing, and auto-print."""
@@ -235,6 +240,7 @@ class MeridianKioskApp(App):
                 if self._find_and_update_widget(child, attribute_name, text):
                     return True
         return False
+
 
 def create_app(
     kiosk_user_id: str, family_circle_id: str, api_url: str = None

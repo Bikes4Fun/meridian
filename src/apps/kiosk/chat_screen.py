@@ -15,11 +15,11 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
     """Build fully constructed chat screen content widget. Wires on_enter to load contacts."""
     content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
     content.add_widget(
-        KioskLabel(type="subheader", text="Family Chat", size_hint_y=None, height=dp(48))
+        KioskLabel(
+            type="subheader", text="Family Chat", size_hint_y=None, height=dp(48)
+        )
     )
-    contacts_grid = GridLayout(
-        cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8)
-    )
+    contacts_grid = GridLayout(cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8))
     contacts_grid.bind(minimum_height=contacts_grid.setter("height"))
     scroll = ScrollView(size_hint=(1, 1))
     scroll.add_widget(contacts_grid)
@@ -49,9 +49,7 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
                 )
             )
             return
-        chat_contacts = [
-            c for c in r.data if (c.get("sendbird_user_id") or "").strip()
-        ]
+        chat_contacts = [c for c in r.data if (c.get("sendbird_user_id") or "").strip()]
         if not chat_contacts:
             contacts_grid.add_widget(
                 KioskLabel(

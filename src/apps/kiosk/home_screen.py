@@ -27,6 +27,7 @@ def get_time_of_day_icon(time_of_day):
         return path
     return ""
 
+
 def build_home_screen(services):
     """Build home screen content: clock, medications, events. Returns (content_widget, clock_widget, med_widget, events_widget)."""
     home_screen_top_bottom_split = 0.35
@@ -164,11 +165,13 @@ def _create_medication_widget():
 
     def update(data):
         time_groups = {}
-        for m in (data.get("timed_medications") or []):
+        for m in data.get("timed_medications") or []:
             t = m.get("time", "Unknown")
             time_groups.setdefault(t, []).append(m)
         group_times = data.get("medication_time_groups", {})
-        sorted_times = sorted(time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59"))
+        sorted_times = sorted(
+            time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59")
+        )
         meds_text = []
         for t in sorted_times:
             meds = time_groups[t]
@@ -181,7 +184,9 @@ def _create_medication_widget():
         if prn_meds:
             meds_text.append("PRN (As Needed):")
             for m in prn_meds:
-                last = f"Last: {m['last_taken']}" if m["last_taken"] else "Not taken today"
+                last = (
+                    f"Last: {m['last_taken']}" if m["last_taken"] else "Not taken today"
+                )
                 meds_text.append(f"  • {m['name']}: {last}")
         med_content.text = "\n".join(meds_text) if meds_text else "No medications"
 
@@ -201,7 +206,9 @@ def _create_events_widget():
     events.events_content = events_content
 
     def update(data):
-        events_content.text = "\n".join(f"• {e}" for e in data) if data else "No events today"
+        events_content.text = (
+            "\n".join(f"• {e}" for e in data) if data else "No events today"
+        )
 
     events.update = update
     return events

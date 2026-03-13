@@ -196,9 +196,9 @@ def build_emergency_screen(services):
         "contacts": e_data.get("emergency_contacts") or [],
         "poa_name": e_data.get("poa_name"),
         "poa_phone": e_data.get("poa_phone"),
-        "medical_proxy_name": (
-            (e_data.get("emergency") or {}).get("proxy") or {}
-        ).get("name"),
+        "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get(
+            "name"
+        ),
         "medical_proxy_phone": e_data.get("medical_proxy_phone"),
     }
 

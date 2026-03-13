@@ -52,12 +52,15 @@ def _start_local_api_server(logger):
         logger.warning(
             "Port %s in use, using port %s instead. Stop any separate "
             "'python -m apps.server' so web app and TV use the same server.",
-            start_port, port,
+            start_port,
+            port,
         )
     os.environ["PORT"] = str(port)
 
     logger.info("Starting API server...")
-    server_thread = threading.Thread(target=run_server, kwargs={"port": port}, daemon=True)
+    server_thread = threading.Thread(
+        target=run_server, kwargs={"port": port}, daemon=True
+    )
     server_thread.start()
     time.sleep(0.5)
 
@@ -85,7 +88,10 @@ def _start_local_webapp_server(api_url, logger):
             check=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error("Webapp build failed (%s). Run 'node build.js' in apps/webapp/web_server.", e)
+        logger.error(
+            "Webapp build failed (%s). Run 'node build.js' in apps/webapp/web_server.",
+            e,
+        )
         sys.exit(1)
 
     if not os.path.exists(webapp_dist):
@@ -123,7 +129,10 @@ def _start_local_chatapp_server(api_url, logger):
             check=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error("Chatapp build failed (%s). Run 'node build.js' in apps/chatapp/chat_server.", e)
+        logger.error(
+            "Chatapp build failed (%s). Run 'node build.js' in apps/chatapp/chat_server.",
+            e,
+        )
         sys.exit(1)
 
     if not os.path.exists(chatapp_dist):
@@ -140,6 +149,7 @@ def _start_local_chatapp_server(api_url, logger):
     logger.info("Chatapp: %s", chatapp_url)
     time.sleep(0.3)
     from apps.chatapp.verify_api import verify_api
+
     verify_api(chatapp_url, logger)
     return chatapp_url
 
@@ -165,9 +175,11 @@ def main():
     if use_local:
         db_path = get_database_path()
         from dev.demo.seed import ensure_local_database
+
         ensure_local_database(db_path)
         logger.info("Local DB validated.")
         from dev.demo.seed import refresh_demo_checkins
+
         refresh_demo_checkins(db_path)
         logger.info("Database loaded")
         api_url = _start_local_api_server(logger)
@@ -195,7 +207,9 @@ def main():
             kiosk_user_id=KIOSK_USER_ID,
             family_circle_id=PATIENT_FAMILY_CIRCLE_ID,
         )
-        logger.info("Meridian Kiosk, server, and webapp created successfully, starting...")
+        logger.info(
+            "Meridian Kiosk, server, and webapp created successfully, starting..."
+        )
         app.run()
     except Exception as e:
         logger.error("Meridian startup failed: %s", e)

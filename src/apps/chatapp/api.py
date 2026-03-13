@@ -12,7 +12,16 @@ import time
 import urllib.parse
 
 import requests
-from flask import Flask, abort, jsonify, request, g, session, redirect, send_from_directory
+from flask import (
+    Flask,
+    abort,
+    jsonify,
+    request,
+    g,
+    session,
+    redirect,
+    send_from_directory,
+)
 
 try:
     from ...shared.config import get_database_path, DatabaseConfig
@@ -47,7 +56,9 @@ def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
 def create_chatapp_app(static_dir: str, secret_key: str = None):
     """Create Flask app for chatapp API and static serving."""
     app = Flask(__name__, static_folder=None)
-    app.secret_key = secret_key or os.environ.get("SECRET_KEY") or "dev-secret-change-in-production"
+    app.secret_key = (
+        secret_key or os.environ.get("SECRET_KEY") or "dev-secret-change-in-production"
+    )
 
     db_path = get_database_path()
     db_config = DatabaseConfig(path=db_path, create_if_missing=True)
@@ -107,10 +118,18 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
     @app.after_request
     def _log_request_response(resp):
         """Print chat API requests in a compact format."""
-        if not (request.path.startswith("/api/chat/") or request.path == "/auth" or request.path == "/api/login"):
+        if not (
+            request.path.startswith("/api/chat/")
+            or request.path == "/auth"
+            or request.path == "/api/login"
+        ):
             return resp
         try:
-            body = request.get_json(silent=True) if request.method in ("POST", "PUT", "PATCH") else None
+            body = (
+                request.get_json(silent=True)
+                if request.method in ("POST", "PUT", "PATCH")
+                else None
+            )
             req = "%s %s" % (request.method, request.path)
             if body:
                 req += " " + json.dumps(body)
@@ -119,10 +138,17 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                 print("[chatapp] %s → %s redirect" % (req, resp.status_code))
             else:
                 resp_body = resp.get_data(as_text=True)
-                if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
+                if (
+                    resp.headers.get("Content-Type", "").startswith("application/json")
+                    and resp_body
+                ):
                     try:
-                        formatted = json.dumps(json.loads(resp_body), separators=(",", ":"))
-                        formatted = formatted[:300] + "…" if len(formatted) > 300 else formatted
+                        formatted = json.dumps(
+                            json.loads(resp_body), separators=(",", ":")
+                        )
+                        formatted = (
+                            formatted[:300] + "…" if len(formatted) > 300 else formatted
+                        )
                     except (ValueError, TypeError):
                         formatted = resp_body[:200]
                     print("[chatapp] %s → %s  %s" % (req, resp.status_code, formatted))
@@ -136,7 +162,14 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
     def api_chat_config():
         """Return Sendbird app_id for client SDK."""
         if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"}), 503
+            return (
+                jsonify(
+                    {
+                        "error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"
+                    }
+                ),
+                503,
+            )
         return jsonify({"app_id": sendbird_svc.get_sendbird_app_id()})
 
     @app.route("/api/chat/token", methods=["POST"])
@@ -147,15 +180,37 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         app_user_id = getattr(g, "user_id", None)
         if not app_user_id:
             return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(app_user_id) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
+        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
+            app_user_id
+        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
         if not sendbird_user_id:
-            return jsonify({"error": "No Sendbird user linked", "detail": "Add sendbird_user_id to user or set SENDBIRD_USER_ID_MAP."}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "No Sendbird user linked",
+                        "detail": "Add sendbird_user_id to user or set SENDBIRD_USER_ID_MAP.",
+                    }
+                ),
+                400,
+            )
         ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
-        r = db_manager.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
-        display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
-        return jsonify({"sendbird_user_id": sendbird_user_id, "session_token": token_val, "display_name": display_name})
+        r = db_manager.execute_query(
+            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
+        )
+        display_name = (
+            (r.data[0].get("display_name") or app_user_id).strip()
+            if r.success and r.data
+            else app_user_id
+        )
+        return jsonify(
+            {
+                "sendbird_user_id": sendbird_user_id,
+                "session_token": token_val,
+                "display_name": display_name,
+            }
+        )
 
     @app.route("/api/chat/recipient", methods=["GET"])
     def api_chat_recipient():
@@ -163,13 +218,27 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         if not sendbird_svc.is_configured():
             return jsonify({"error": "Sendbird not configured"}), 503
         family_circle_id = getattr(g, "family_circle_id", None) or ""
-        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(family_circle_id)
+        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(
+            family_circle_id
+        )
         if not sendbird_recipient_id:
-            sendbird_recipient_id = sendbird_svc.get_sendbird_default_recipient_id_from_env()
+            sendbird_recipient_id = (
+                sendbird_svc.get_sendbird_default_recipient_id_from_env()
+            )
             recipient_name = "Family"
         if not sendbird_recipient_id:
-            return jsonify({"error": "No default recipient", "detail": "Add sendbird_user_id to contact or set SENDBIRD_DEFAULT_RECIPIENT_ID."}), 503
-        return jsonify({"sendbird_user_id": sendbird_recipient_id, "name": recipient_name})
+            return (
+                jsonify(
+                    {
+                        "error": "No default recipient",
+                        "detail": "Add sendbird_user_id to contact or set SENDBIRD_DEFAULT_RECIPIENT_ID.",
+                    }
+                ),
+                503,
+            )
+        return jsonify(
+            {"sendbird_user_id": sendbird_recipient_id, "name": recipient_name}
+        )
 
     @app.route("/api/chat/channel", methods=["POST"])
     def api_chat_channel():
@@ -179,7 +248,9 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         app_user_id = getattr(g, "user_id", None)
         if not app_user_id:
             return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(app_user_id) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
+        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
+            app_user_id
+        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
         if not sendbird_user_id:
             return jsonify({"error": "No Sendbird user linked"}), 400
         data = request.get_json(silent=True) or {}
@@ -194,32 +265,77 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         base = sendbird_svc._api_url()
         if not base:
             return jsonify({"error": "Sendbird not configured"}), 503
-        payload = {"user_ids": [sendbird_user_id, recipient_id], "is_distinct": True, "name": "Family"}
-        r = requests.post(base + "/group_channels", headers=sendbird_svc._headers(), json=payload, timeout=10)
+        payload = {
+            "user_ids": [sendbird_user_id, recipient_id],
+            "is_distinct": True,
+            "name": "Family",
+        }
+        r = requests.post(
+            base + "/group_channels",
+            headers=sendbird_svc._headers(),
+            json=payload,
+            timeout=10,
+        )
         if r.status_code != 200:
-            body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            body = (
+                r.json()
+                if r.headers.get("content-type", "").startswith("application/json")
+                else {}
+            )
             msg = body.get("message", r.text)
             return jsonify({"error": "Create channel failed", "detail": msg}), 502
         data = r.json()
         channel_url = (data.get("channel_url") or "").strip()
         if not channel_url:
-            return jsonify({"error": "Create channel failed", "detail": "No channel_url in response"}), 502
-        r = db_manager.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
-        display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
-        msg_body = {"message_type": "MESG", "user_id": sendbird_user_id, "message": (display_name or "Someone") + " wants to chat."}
-        
+            return (
+                jsonify(
+                    {
+                        "error": "Create channel failed",
+                        "detail": "No channel_url in response",
+                    }
+                ),
+                502,
+            )
+        r = db_manager.execute_query(
+            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
+        )
+        display_name = (
+            (r.data[0].get("display_name") or app_user_id).strip()
+            if r.success and r.data
+            else app_user_id
+        )
+        msg_body = {
+            "message_type": "MESG",
+            "user_id": sendbird_user_id,
+            "message": (display_name or "Someone") + " wants to chat.",
+        }
+
         msg_url = base + "/group_channels/" + channel_url + "/messages"
         try:
-            r2 = requests.post(msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10)
+            r2 = requests.post(
+                msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10
+            )
             if r2.status_code == 200:
-                resp_data = r2.json() if r2.headers.get("content-type", "").startswith("application/json") else {}
+                resp_data = (
+                    r2.json()
+                    if r2.headers.get("content-type", "").startswith("application/json")
+                    else {}
+                )
                 msg_id = resp_data.get("message_id") or resp_data.get("id")
                 if msg_id is not None:
-                    print("[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)" % msg_id)
+                    print(
+                        "[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)"
+                        % msg_id
+                    )
                 else:
-                    print("[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)")
+                    print(
+                        "[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)"
+                    )
             else:
-                print("[chatapp] wants-to-chat → %s %s" % (r2.status_code, r2.text[:100] if r2.text else ""))
+                print(
+                    "[chatapp] wants-to-chat → %s %s"
+                    % (r2.status_code, r2.text[:100] if r2.text else "")
+                )
         except Exception as e:
             print("[chatapp] wants-to-chat → error: %s" % e)
         return jsonify({"channel_url": channel_url})

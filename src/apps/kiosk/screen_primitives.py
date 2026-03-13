@@ -128,6 +128,7 @@ class KioskButton(Button):
         defaults.update(kwargs)
         Button.__init__(self, **defaults)
 
+
 class KioskNavBar(KioskWidget):
     """Generic navigation bar with configurable buttons."""
 

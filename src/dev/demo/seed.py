@@ -126,11 +126,18 @@ def load_demo_users_from_json_into_db(db_manager):
             INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (uid, user.get("display_name"), photo_filename, user.get("family_circle_id"), sendbird_user_id),
+            (
+                uid,
+                user.get("display_name"),
+                photo_filename,
+                user.get("family_circle_id"),
+                sendbird_user_id,
+            ),
         )
 
     _link_users_to_family_circles(db_manager, users)
     logger.debug("  Loaded %d users" % len(users))
+
 
 def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: str):
     """Load medication times from medical.json."""
@@ -146,7 +153,9 @@ def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: s
     logger.debug("  Loaded medication times for family %s", family_circle_id)
 
 
-def load_demo_medications_data_from_json_to_db(db_manager, family_circle_id: str, care_recipient_user_id: str):
+def load_demo_medications_data_from_json_to_db(
+    db_manager, family_circle_id: str, care_recipient_user_id: str
+):
     """Load medications from JSON into SQLite database. care_recipient_user_id = person meds belong to."""
     medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
@@ -200,7 +209,9 @@ def load_allergies_data(db_manager, care_recipient_user_id: str):
             INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen)
             VALUES (?, ?)
         """
-        db_manager.execute_update(query, (care_recipient_user_id, allergy.get("allergen")))
+        db_manager.execute_update(
+            query, (care_recipient_user_id, allergy.get("allergen"))
+        )
     logger.debug("  Loaded %d allergies" % len(allergies))
 
 
@@ -227,7 +238,16 @@ def load_demo_care_recipient_data(db_manager, family_circle_id: str):
         INSERT OR REPLACE INTO care_recipients (family_circle_id, care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (family_circle_id, care_recipient_user_id, name, dob, None, medical_dnr, None, notes),
+        (
+            family_circle_id,
+            care_recipient_user_id,
+            name,
+            dob,
+            None,
+            medical_dnr,
+            None,
+            notes,
+        ),
     )
 
     # Assign proxy/POA roles to existing contacts (contacts must be in contacts.json).
@@ -450,11 +470,19 @@ def demo_main(user_id, db_path=None) -> bool:
         load_demo_users_from_json_into_db(db)
         load_demo_family_circles_from_json_into_db(db)
         load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        care_recipient_user_id = load_json_file("medical.json").get("care_recipient", {}).get("user_id")
+        care_recipient_user_id = (
+            load_json_file("medical.json").get("care_recipient", {}).get("user_id")
+        )
         if not care_recipient_user_id:
             raise ValueError("medical.json care_recipient must have user_id")
-        load_demo_medication_times_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_demo_medications_data_from_json_to_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID, care_recipient_user_id=care_recipient_user_id)
+        load_demo_medication_times_from_json_into_db(
+            db, family_circle_id=DEMO_FAMILY_CIRCLE_ID
+        )
+        load_demo_medications_data_from_json_to_db(
+            db,
+            family_circle_id=DEMO_FAMILY_CIRCLE_ID,
+            care_recipient_user_id=care_recipient_user_id,
+        )
         load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
         load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
         load_demo_care_recipient_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)

@@ -55,20 +55,21 @@
         #chatSection #contactsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin: 12px 0; }
         #chatSection #contactsGrid .contact-tile { padding: 12px; border: 1px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer; background: #fafafa; }
         #chatSection #contactsGrid .contact-tile:hover { background: #eee; }
+        body.pending #appContent { display: none; }
+        body.pending #appPending { display: block; }
+        #appPending { display: none; padding: 20px; text-align: center; color: #666; }
     </style>
 </head>
-<body>
+<body class="pending">
+    <div id="appPending">Checking session…</div>
+    <div id="appContent">
     <div id="chatSection" style="margin-bottom: 24px;">
         <h2>Chat</h2>
-        <p style="font-size: 14px; color: #666;">Open chat in a separate window (chatapp).</p>
-        <button type="button" id="openChatBtn" style="padding: 12px 24px; background: #007AFF; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">Open Chat</button>
-        <p id="openChatStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></p>
-        <p id="chatLoggedIn" style="font-size: 14px; margin-top: 8px;"></p>
-        <div id="chatStatus" class="info" style="margin: 12px 0; padding: 10px; border-radius: 8px; font-size: 14px; display: none;"></div>
-        <div id="contactsSection" style="margin-top: 12px; display: none;">
-            <p><strong>Choose a contact to call</strong></p>
+        <p style="font-size: 14px; color: #666;">Choose a contact to chat with. Opens in a separate window.</p>
+        <div id="contactsSection" style="margin-top: 12px;">
             <div id="contactsGrid"></div>
         </div>
+        <p id="openChatStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></p>
         <div id="messages"></div>
         <div id="chatSendRow" style="display: none;">
             <input type="text" id="chatMsgInput" placeholder="Type a message…">
@@ -77,7 +78,7 @@
     </div>
 
     <h1>📍 Family Check-In</h1>
-    <p style="font-size: 14px; color: #666;"><a href="/login.html">Log in</a></p>
+    <p style="font-size: 14px; color: #666;"><a href="/login.html">Log in</a> · <a href="#" id="logoutLink" style="display: none;">Log out</a></p>
     
     <select id="familyMemberSelect">
         <option value="">-- Select who to log in --</option>
@@ -94,6 +95,7 @@
     <button id="cancelAlertBtn" type="button" style="background: #95a5a6; margin-top: 5px;">Cancel Alert</button>
 
     <div id="status"></div>
+    </div>
 
     <script src="/app.js"></script>
 </body>

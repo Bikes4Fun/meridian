@@ -296,48 +296,49 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                 ),
                 502,
             )
-        r = db_manager.execute_query(
-            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
-        )
-        display_name = (
-            (r.data[0].get("display_name") or app_user_id).strip()
-            if r.success and r.data
-            else app_user_id
-        )
-        msg_body = {
-            "message_type": "MESG",
-            "user_id": sendbird_user_id,
-            "message": (display_name or "Someone") + " wants to chat.",
-        }
-
-        msg_url = base + "/group_channels/" + channel_url + "/messages"
-        try:
-            r2 = requests.post(
-                msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10
-            )
-            if r2.status_code == 200:
-                resp_data = (
-                    r2.json()
-                    if r2.headers.get("content-type", "").startswith("application/json")
-                    else {}
-                )
-                msg_id = resp_data.get("message_id") or resp_data.get("id")
-                if msg_id is not None:
-                    print(
-                        "[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)"
-                        % msg_id
-                    )
-                else:
-                    print(
-                        "[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)"
-                    )
-            else:
-                print(
-                    "[chatapp] wants-to-chat → %s %s"
-                    % (r2.status_code, r2.text[:100] if r2.text else "")
-                )
-        except Exception as e:
-            print("[chatapp] wants-to-chat → error: %s" % e)
+        # Automatic "wants to chat" message to Deanna — commented out
+        # r = db_manager.execute_query(
+        #     "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
+        # )
+        # display_name = (
+        #     (r.data[0].get("display_name") or app_user_id).strip()
+        #     if r.success and r.data
+        #     else app_user_id
+        # )
+        # msg_body = {
+        #     "message_type": "MESG",
+        #     "user_id": sendbird_user_id,
+        #     "message": (display_name or "Someone") + " wants to chat.",
+        # }
+        #
+        # msg_url = base + "/group_channels/" + channel_url + "/messages"
+        # try:
+        #     r2 = requests.post(
+        #         msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10
+        #     )
+        #     if r2.status_code == 200:
+        #         resp_data = (
+        #             r2.json()
+        #             if r2.headers.get("content-type", "").startswith("application/json")
+        #             else {}
+        #         )
+        #         msg_id = resp_data.get("message_id") or resp_data.get("id")
+        #         if msg_id is not None:
+        #             print(
+        #                 "[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)"
+        #                 % msg_id
+        #             )
+        #         else:
+        #             print(
+        #                 "[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)"
+        #             )
+        #     else:
+        #         print(
+        #             "[chatapp] wants-to-chat → %s %s"
+        #             % (r2.status_code, r2.text[:100] if r2.text else "")
+        #         )
+        # except Exception as e:
+        #     print("[chatapp] wants-to-chat → error: %s" % e)
         return jsonify({"channel_url": channel_url})
 
     @app.route("/", defaults={"path": ""})

@@ -113,7 +113,9 @@
             .then(function (channel) {
                 currentChannel = channel;
                 if (sendRow) sendRow.style.display = 'flex';
-                return channel.getMessageList ? channel.getMessageList({ prevResultSize: 50, nextResultSize: 0 }) : channel.getMessagesByTimestamp(0, { prevResultSize: 50, nextResultSize: 0 });
+                var query = channel.createPreviousMessageListQuery ? channel.createPreviousMessageListQuery({ limit: 50 }) : null;
+                if (query && query.load) return query.load();
+                return [];
             })
             .catch(function (err) { if (!err._step) err._step = 'getMessages'; throw err; })
             .then(function (list) {

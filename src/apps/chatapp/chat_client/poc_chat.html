@@ -66,11 +66,12 @@
 </div>
 
 <script type="module">
-// ESM: matches chat.js Sendbird v4 API (import from +esm, not UMD)
-var sb = null;
-var currentChannel = null;
+// Proxy approach: no Sendbird SDK. Uses /api/chat/send and /api/chat/messages.
+var channelUrl = null;
 var mySendbirdUserId = null;
-var currentRecipient = null;
+var apiUrl = null;
+var pollInterval = null;
+var seenMessageIds = {};
 
 function $id(id) { return document.getElementById(id); }
 
@@ -89,11 +90,35 @@ function appendMessage(text, isSelf) {
   el.scrollTop = el.scrollHeight;
 }
 
-var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4.14.0/dist/esm/index.js'; 
+function renderMessages(messages) {
+  var list = Array.isArray(messages) ? messages : (messages && messages.messages ? messages.messages : []);
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i];
+    var mid = m.message_id || m.id;
+    if (mid && seenMessageIds[mid]) continue;
+    if (mid) seenMessageIds[mid] = true;
+    var sender = (m.user && (m.user.nickname || m.user.user_id)) || (m.sender && (m.sender.nickname || m.sender.userId)) || '?';
+    var uid = (m.user && m.user.user_id) || (m.sender && m.sender.userId);
+    var text = m.message || '';
+    if (!text && m.type === 'MESG') continue;
+    appendMessage(sender + ': ' + text, uid === mySendbirdUserId);
+  }
+}
+
+function pollMessages() {
+  if (!channelUrl || !apiUrl) return;
+  fetch(apiUrl + '/api/chat/messages?channel_url=' + encodeURIComponent(channelUrl), { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) return;
+      renderMessages(data.messages || data);
+    })
+    .catch(function() {});
+}
 
 window.doLogin = function doLogin() {
-  var apiUrl   = ($id('apiUrl').value.trim() || window.location.origin).replace(/\/$/, '');
-  var userId   = $id('userId').value.trim();
+  apiUrl = ($id('apiUrl').value.trim() || window.location.origin).replace(/\/$/, '');
+  var userId = $id('userId').value.trim();
   var familyId = $id('familyId').value.trim();
 
   if (!apiUrl || !userId || !familyId) {
@@ -123,7 +148,7 @@ window.doLogin = function doLogin() {
     var chatEl = $id('chatSection');
     chatEl.style.display = 'block';
     chatEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setStatus('Fetching Sendbird config…', 'info');
+    setStatus('Fetching token…', 'info');
 
     var recipientId = $id('recipientId').value.trim();
     var recipientName = $id('recipientName').value.trim();
@@ -132,122 +157,61 @@ window.doLogin = function doLogin() {
       $id('loginBtn').textContent = 'Log In & Connect';
       $id('loginSection').style.display = 'block';
       $id('chatSection').style.display = 'none';
-      throw new Error('Recipient Sendbird ID required. Enter the other user\'s sendbird_user_id (e.g. dtzecha or testpatient).');
+      throw new Error('Recipient Sendbird ID required.');
     }
-    var recipientPromise = Promise.resolve({ sendbird_user_id: recipientId, name: recipientName || recipientId });
+    var recipient = { sendbird_user_id: recipientId, name: recipientName || recipientId };
 
-    return Promise.all([
-      fetch(apiUrl + '/api/chat/config', { credentials: 'include' }).then(function(r){ return r.json(); }),
-      fetch(apiUrl + '/api/chat/token',  { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: '{}' }).then(function(r){ return r.json(); }),
-      recipientPromise
-    ]);
-  })
-  .then(function(results) {
-    var config = results[0];
-    var tokenData = results[1];
-    var recipient = results[2];
-
-    if (!config.app_id) { var e = new Error('No app_id from /api/chat/config'); e._step = 'config'; throw e; }
-    if (!tokenData.session_token) {
-      var msg = tokenData.error ? (tokenData.detail ? tokenData.error + ': ' + tokenData.detail : tokenData.error) : 'No session_token';
-      var e2 = new Error(msg); e2._step = 'token'; throw e2;
-    }
-    if (!recipient.sendbird_user_id) throw new Error('No recipient: ' + (recipient.error || JSON.stringify(recipient)));
-
-    currentRecipient = recipient;
-    mySendbirdUserId = tokenData.sendbird_user_id;
-    $id('chatTitle').textContent = 'You: ' + (tokenData.display_name || mySendbirdUserId) + '  →  ' + (recipient.name || recipient.sendbird_user_id);
-
-    setStatus('Connecting to Sendbird…', 'info');
-
-    return import(sdkUrl).then(function(chatMod) {
-      return import(groupUrl).then(function(groupMod) {
-        var SendbirdChat = chatMod.default;
-        sb = SendbirdChat.init({
-          appId: config.app_id,
-          modules: [new groupMod.GroupChannelModule()]
-        });
-        return sb.connect(mySendbirdUserId, tokenData.session_token);
-      });
-    }).catch(function(e) { e._step = 'Sendbird connect'; throw e; })
-  })
-  .then(function() {
-    setStatus('Creating / joining channel…', 'info');
-
-    var channelBody = currentRecipient && currentRecipient.sendbird_user_id
-      ? JSON.stringify({ recipient_sendbird_user_id: currentRecipient.sendbird_user_id })
-      : '{}';
-    return fetch(apiUrl + '/api/chat/channel', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: channelBody
-    }).then(function(r) {
-      return r.text().then(function(txt) {
-        var data;
-        try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = null; }
-        if (!r.ok) {
-          var msg = (data && data.error) ? data.error : (txt || 'Channel failed (' + r.status + ')').slice(0, 200);
-          if (r.status === 401) msg = 'Not logged in. Please log in again.';
+    return fetch(apiUrl + '/api/chat/token', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: '{}' })
+      .then(function(r) { return r.json(); })
+      .then(function(tokenData) {
+        if (!tokenData.session_token) {
+          var msg = tokenData.error ? (tokenData.detail ? tokenData.error + ': ' + tokenData.detail : tokenData.error) : 'No session_token';
           throw new Error(msg);
         }
-        return data;
+        mySendbirdUserId = tokenData.sendbird_user_id;
+        $id('chatTitle').textContent = 'You: ' + (tokenData.display_name || mySendbirdUserId) + '  →  ' + (recipient.name || recipient.sendbird_user_id);
+        setStatus('Creating channel…', 'info');
+        return fetch(apiUrl + '/api/chat/channel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ recipient_sendbird_user_id: recipient.sendbird_user_id })
+        });
       });
-    }).catch(function(e) { e._step = e._step || 'channel API'; throw e; })
   })
-  .then(function(channelData) {
-    if (!channelData.channel_url) throw new Error('No channel_url: ' + JSON.stringify(channelData));
-
-    return sb.groupChannel.getChannel(channelData.channel_url);
-  }).catch(function(e) { e._step = e._step || 'getChannel'; throw e; })
-  .then(function(channel) {
-    currentChannel = channel;
-
-    return import(groupUrl).then(function(groupMod) {
-      try {
-        var HandlerClass = groupMod.GroupChannelHandler;
-        if (HandlerClass) {
-          var handler = new HandlerClass({
-            onMessageReceived: function(ch, msg) {
-              if (ch.url !== currentChannel.url) return;
-              var sender = (msg.sender && msg.sender.userId) || '?';
-              if (sender === mySendbirdUserId) return;
-              appendMessage((msg.sender && msg.sender.nickname || sender) + ': ' + msg.message, false);
-            }
-          });
-          sb.groupChannel.addGroupChannelHandler('poc-handler', handler);
-        }
-      } catch (handlerErr) {
-        console.warn('Real-time handler failed (non-fatal):', handlerErr);
+  .then(function(r) {
+    return r.text().then(function(txt) {
+      var data;
+      try { data = txt ? JSON.parse(txt) : null; } catch (_) { data = null; }
+      if (!r.ok) {
+        var msg = (data && data.error) ? data.error : (txt || 'Channel failed').slice(0, 200);
+        if (r.status === 401) msg = 'Not logged in. Please log in again.';
+        throw new Error(msg);
       }
-      var query = channel.createPreviousMessageListQuery ? channel.createPreviousMessageListQuery({ limit: 50 }) : null;
-      if (query && query.load) return query.load();
-      return [];
+      return data;
     });
   })
-  .then(function(list) {
-    var messages = Array.isArray(list) ? list : (list && list.messages ? list.messages : []);
-    for (var i = 0; i < messages.length; i++) {
-      var m = messages[i];
-      var sender = (m.sender && m.sender.nickname) ? m.sender.nickname : ((m.sender && m.sender.userId) || '?');
-      var isSelf = m.sender && m.sender.userId === mySendbirdUserId;
-      appendMessage(sender + ': ' + (m.message || ''), isSelf);
-    }
-
+  .then(function(channelData) {
+    if (!channelData.channel_url) throw new Error('No channel_url');
+    channelUrl = channelData.channel_url;
+    setStatus('Loading messages…', 'info');
+    return fetch(apiUrl + '/api/chat/messages?channel_url=' + encodeURIComponent(channelUrl), { credentials: 'include' }).then(function(r) { return r.json(); });
+  })
+  .then(function(data) {
+    if (data.error) throw new Error(data.error + (data.detail ? ': ' + data.detail : ''));
+    renderMessages(data.messages || data);
     setStatus('Connected. Say hello!', 'ok');
     $id('msgInput').disabled = false;
-    $id('sendBtn').disabled  = false;
+    $id('sendBtn').disabled = false;
     $id('msgInput').focus();
-
     $id('msgInput').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') sendMessage();
     });
+    pollInterval = setInterval(pollMessages, 2500);
   })
   .catch(function(err) {
-    var step = err && err._step ? err._step + ': ' : '';
-    var msg = (err && err.message ? err.message : String(err));
-    if (err && err.code) msg += ' (code: ' + err.code + ')';
-    setStatus('Error: ' + step + msg, 'error');
+    var msg = (err && err.message) ? err.message : String(err);
+    setStatus('Error: ' + msg, 'error');
     console.error('Chat POC error:', err);
     $id('loginBtn').disabled = false;
     $id('loginBtn').textContent = 'Log In & Connect';
@@ -256,19 +220,26 @@ window.doLogin = function doLogin() {
 
 window.sendMessage = function sendMessage() {
   var input = $id('msgInput');
-  var text  = input.value.trim();
-  if (!text || !currentChannel) return;
+  var text = input.value.trim();
+  if (!text || !channelUrl || !apiUrl) return;
 
   $id('sendBtn').disabled = true;
-  currentChannel.sendUserMessage({ message: text })
-    .onSucceeded(function() {
-      appendMessage('You: ' + text, true);
-      input.value = '';
-    })
-    .onFailed(function(err) {
-      setStatus('Send failed: ' + (err && err.message || err), 'error');
-    })
-    .finally(function() { $id('sendBtn').disabled = false; });
+  fetch(apiUrl + '/api/chat/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ channel_url: channelUrl, message: text })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) throw new Error(data.detail || data.error);
+    appendMessage('You: ' + text, true);
+    input.value = '';
+  })
+  .catch(function(err) {
+    setStatus('Send failed: ' + (err && err.message || err), 'error');
+  })
+  .finally(function() { $id('sendBtn').disabled = false; });
 };
 </script>
 </body>

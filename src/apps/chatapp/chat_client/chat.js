@@ -74,7 +74,7 @@
         return loadRecipient();
     }
 
-    function initSendbird(appId, sendbirdUserId, sessionTokenVal, recipientSendbirdUserId, recipientName, tokenData) {
+    function initSendbird(appId, sendbirdUserId, sessionTokenVal, channelUrl, recipientName, tokenData) {
         var sdkUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/+esm';
         var groupUrl = 'https://cdn.jsdelivr.net/npm/@sendbird/chat@4/groupChannel/+esm';
         var sb = null;
@@ -86,7 +86,7 @@
         var themName = document.getElementById('themName');
         var headerEl = document.getElementById('chatHeader');
         var youDisplay = (tokenData && tokenData.display_name) ? tokenData.display_name : (sendbirdUserId || 'You');
-        var themDisplay = recipientName || recipientSendbirdUserId || '…';
+        var themDisplay = recipientName || '…';
         if (youName) youName.textContent = youDisplay;
         if (themName) themName.textContent = themDisplay;
         if (headerEl) headerEl.textContent = 'Chat with ' + themDisplay;
@@ -106,18 +106,10 @@
             })
             .catch(function (err) { err._step = 'connect'; throw err; })
             .then(function () {
-                setStatus((sendbirdUserId || 'You') + ' is opening conversation with ' + (recipientSendbirdUserId || 'recipient') + '…', 'success');
-                return createChannel(recipientSendbirdUserId);
-            })
-            .then(function (data) {
-                var channelUrl = (data && data.channel_url) || '';
-                if (!channelUrl) throw new Error('No channel_url in response');
+                setStatus((recipientName || 'Opening conversation') + '…', 'success');
                 return sb.groupChannel.getChannel(channelUrl);
             })
-            .catch(function (err) {
-                if (err) err._step = 'createChannel';
-                throw err;
-            })
+            .catch(function (err) { if (!err._step) err._step = 'getChannel'; throw err; })
             .then(function (channel) {
                 currentChannel = channel;
                 if (sendRow) sendRow.style.display = 'flex';
@@ -185,7 +177,13 @@
                 if (youName) youName.textContent = youDisplay;
                 if (themName) themName.textContent = themDisplay;
                 if (document.title === 'Family Chat') document.title = 'Chat with ' + themDisplay;
-                return initSendbird(config.app_id, sendbirdUserId, tokenData.session_token, recipientData.sendbird_user_id, recipientData.name, tokenData);
+                setStatus('Creating channel…', 'info');
+                return createChannel(recipientData.sendbird_user_id)
+                    .then(function (data) {
+                        var channelUrl = (data && data.channel_url) || '';
+                        if (!channelUrl) throw new Error('No channel_url in response');
+                        return initSendbird(config.app_id, sendbirdUserId, tokenData.session_token, channelUrl, recipientData.name, tokenData);
+                    });
             })
             .catch(function (err) {
                 setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');

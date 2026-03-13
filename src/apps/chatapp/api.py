@@ -106,21 +106,28 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
 
     @app.after_request
     def _log_request_response(resp):
-        """Print full query and response for chat API requests only."""
+        """Print chat API requests in a compact format."""
         if not (request.path.startswith("/api/chat/") or request.path == "/auth" or request.path == "/api/login"):
             return resp
         try:
-            query = "%s %s" % (request.method, request.url)
             body = request.get_json(silent=True) if request.method in ("POST", "PUT", "PATCH") else None
-            if body is not None:
-                query += "\n  body: %s" % json.dumps(body)
-            resp_body = resp.get_data(as_text=True)
-            if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
-                try:
-                    resp_body = json.dumps(json.loads(resp_body), indent=2)
-                except (ValueError, TypeError):
-                    pass
-            print("[chatapp] query:\n  %s\n[chatapp] response: %s\n%s" % (query, resp.status_code, resp_body))
+            req = "%s %s" % (request.method, request.path)
+            if body:
+                req += " " + json.dumps(body)
+            if resp.status_code in (301, 302, 303, 307, 308):
+                loc = resp.headers.get("Location", "")
+                print("[chatapp] %s → %s redirect" % (req, resp.status_code))
+            else:
+                resp_body = resp.get_data(as_text=True)
+                if resp.headers.get("Content-Type", "").startswith("application/json") and resp_body:
+                    try:
+                        formatted = json.dumps(json.loads(resp_body), separators=(",", ":"))
+                        formatted = formatted[:300] + "…" if len(formatted) > 300 else formatted
+                    except (ValueError, TypeError):
+                        formatted = resp_body[:200]
+                    print("[chatapp] %s → %s  %s" % (req, resp.status_code, formatted))
+                else:
+                    print("[chatapp] %s → %s" % (req, resp.status_code))
         except Exception:
             pass
         return resp
@@ -200,12 +207,21 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         r = db_manager.execute_query("SELECT display_name FROM users WHERE id = ?", (app_user_id,))
         display_name = (r.data[0].get("display_name") or app_user_id).strip() if r.success and r.data else app_user_id
         msg_body = {"message_type": "MESG", "user_id": sendbird_user_id, "message": (display_name or "Someone") + " wants to chat."}
+        
+        msg_url = base + "/group_channels/" + channel_url + "/messages"
         try:
-            r2 = requests.post(base + "/group_channels/" + channel_url + "/messages", headers=sendbird_svc._headers(), json=msg_body, timeout=10)
-            if r2.status_code != 200:
-                print("[chatapp] send wants-to-chat message failed: %s" % (r2.text or r2.status_code))
+            r2 = requests.post(msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10)
+            if r2.status_code == 200:
+                resp_data = r2.json() if r2.headers.get("content-type", "").startswith("application/json") else {}
+                msg_id = resp_data.get("message_id") or resp_data.get("id")
+                if msg_id is not None:
+                    print("[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)" % msg_id)
+                else:
+                    print("[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)")
+            else:
+                print("[chatapp] wants-to-chat → %s %s" % (r2.status_code, r2.text[:100] if r2.text else ""))
         except Exception as e:
-            print("[chatapp] send wants-to-chat message error: %s" % e)
+            print("[chatapp] wants-to-chat → error: %s" % e)
         return jsonify({"channel_url": channel_url})
 
     @app.route("/", defaults={"path": ""})

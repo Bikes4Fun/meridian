@@ -136,6 +136,13 @@ def create_server_app(db_path=None):
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         elif origins:
             resp.headers["Access-Control-Allow-Origin"] = origins[0]
+        origins = [o.strip() for o in (os.environ.get("CORS_ORIGIN") or "").split(",") if o.strip()]
+        req_origin = request.headers.get("Origin", "").strip()
+        if origins and req_origin and req_origin in origins:
+            resp.headers["Access-Control-Allow-Origin"] = req_origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        elif origins:
+            resp.headers["Access-Control-Allow-Origin"] = origins[0]
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         else:
             resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -185,9 +192,21 @@ def create_server_app(db_path=None):
             return
         # /api/session: session only.
         if request.path == "/api/session":
+        # /api/session: session only.
+        if request.path == "/api/session":
             uid = session.get("user_id")
             fid = session.get("family_circle_id")
             if not uid or not fid:
+                abort(401, "Not logged in")
+            g.user_id = uid
+            g.family_circle_id = fid
+            return
+        # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
+        if request.path == "/api/chat/chat-session-url":
+            uid = session.get("user_id") or request.headers.get("X-User-Id")
+            fid = session.get("family_circle_id") or request.headers.get("X-Family-Circle-Id")
+            if not uid or not fid:
+                abort(401, "Log in at /login first or provide X-User-Id and X-Family-Circle-Id")
                 abort(401, "Not logged in")
             g.user_id = uid
             g.family_circle_id = fid
@@ -225,10 +244,16 @@ def create_server_app(db_path=None):
         recipient_sendbird_user_id, recipient_display_name = who the kiosk user will chat WITH (from headers)."""
         recipient_sb = (request.args.get("recipient_sendbird_user_id") or request.args.get("sendbird_user_id") or "").strip()
         recipient_name = (request.args.get("recipient_display_name") or request.args.get("display_name") or "").strip()
+        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id.
+        recipient_sendbird_user_id, recipient_display_name = who the kiosk user will chat WITH (from headers)."""
+        recipient_sb = (request.args.get("recipient_sendbird_user_id") or request.args.get("sendbird_user_id") or "").strip()
+        recipient_name = (request.args.get("recipient_display_name") or request.args.get("display_name") or "").strip()
         token = _create_chat_entry_token(
             app.secret_key,
             g.user_id,
             g.family_circle_id,
+            recipient_sb,
+            recipient_name,
             recipient_sb,
             recipient_name,
         )
@@ -248,6 +273,7 @@ def create_server_app(db_path=None):
         chatapp_url = (os.environ.get("CHATAPP_URL") or "").rstrip("/")
         if not chatapp_url:
             return jsonify({"error": "CHATAPP_URL not configured; cannot redirect to chat"}), 503
+        return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
         return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
 
     calendar_svc = container.get_calendar_service()

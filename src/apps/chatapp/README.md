@@ -19,7 +19,7 @@ Chat UI and verification for Meridian. Uses Sendbird for messaging.
 
 ## Current vs target
 
-**Current:** Chat endpoints (config, token, recipient, Sendbird) live in `apps/server/api.py`. Chatapp is a static frontend + `verify_api.py`. No chatapp API.
+**Current:** Chat endpoints (config, token, recipient, Sendbird) live in this app’s `api.py` (dedicated Chatapp Flask server). The main server only issues chat-session URLs and bootstrap redirects to Chatapp.
 
 ## Structure
 

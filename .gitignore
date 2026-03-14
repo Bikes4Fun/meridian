@@ -2,6 +2,7 @@
 # Xcode user state
 **/xcuserdata/
 *.xcuserstate
+*.pbxproj*.backup
 
 # Python
 __pycache__/

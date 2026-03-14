@@ -146,9 +146,7 @@ def _start_local_chatapp_server(api_url, logger):
     ).start()
     logger.info("Chatapp: %s", chatapp_url)
     time.sleep(0.3)
-    from apps.chatapp.verify_api import verify_api
 
-    # verify_api(chatapp_url, logger)
     return chatapp_url
 
 

@@ -4,7 +4,7 @@
   "steps": {
     "build": {
       "inputs": [{ "step": "install" }],
-      "commands": ["python src/build_all.py"]
+      "commands": ["python build_all.py"]
     }
   }
 }

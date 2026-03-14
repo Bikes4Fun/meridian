@@ -17,3 +17,7 @@ src/apps/kiosk/cache/
 
 package/*
 *package*
+
+# Xcode user state
+**/xcuserdata/
+*.xcuserstate

@@ -162,33 +162,7 @@ def create_server_app(db_path=None):
 
     @app.after_request
     def _log_request_response(resp):
-        """Print full query and response for chat, login, auth API requests only."""
-        if not (request.path.startswith("/api/chat/") or request.path == "/api/login"):
-            return resp
-        try:
-            query = "%s %s" % (request.method, request.url)
-            body = (
-                request.get_json(silent=True)
-                if request.method in ("POST", "PUT", "PATCH")
-                else None
-            )
-            if body is not None:
-                query += "\n  body: %s" % json.dumps(body)
-            resp_body = resp.get_data(as_text=True)
-            if (
-                resp.headers.get("Content-Type", "").startswith("application/json")
-                and resp_body
-            ):
-                try:
-                    resp_body = json.dumps(json.loads(resp_body), indent=2)
-                except (ValueError, TypeError):
-                    pass
-            print(
-                "[main server] query:\n  %s\n[main server] response: %s\n%s"
-                % (query, resp.status_code, resp_body)
-            )
-        except Exception:
-            pass
+        """Placeholder for request/response logging (disabled)."""
         return resp
 
     @app.before_request

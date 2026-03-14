@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "python",
+  "steps": {
+    "build": {
+      "inputs": [{ "step": "install" }],
+      "commands": ["cd src && python build_all.py"]
+    }
+  }
+}

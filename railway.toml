@@ -3,7 +3,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "python build_all.py"
+buildCommand = "cd src && python build_all.py"
 watchPatterns = ["/src/apps/server/**", "/src/apps/webapp/**", "/src/apps/chatapp/**", "/src/shared/**"]
 
 [deploy]

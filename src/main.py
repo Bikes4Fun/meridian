@@ -86,20 +86,12 @@ def _start_local_webapp_server(api_url, logger):
 
     src_dir = os.path.dirname(os.path.abspath(__file__))
     webapp_dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
-    webapp_server_dir = os.path.join(src_dir, "apps", "webapp", "web_server")
 
     try:
-        subprocess.run(
-            ["node", "build.js"],
-            cwd=webapp_server_dir,
-            env={**os.environ, "API_URL": api_url},
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error(
-            "Webapp build failed (%s). Run 'node build.js' in apps/webapp/web_server.",
-            e,
-        )
+        from build_all import build_webapp
+        build_webapp(api_url, src_dir)
+    except Exception as e:
+        logger.error("Webapp build failed (%s).", e)
         sys.exit(1)
 
     if not os.path.exists(webapp_dist):
@@ -132,21 +124,13 @@ def _start_local_chatapp_server(api_url, logger):
     os.environ["CHATAPP_URL"] = chatapp_url
 
     src_dir = os.path.dirname(os.path.abspath(__file__))
-    chatapp_server_dir = os.path.join(src_dir, "apps", "chatapp", "chat_server")
-    chatapp_dist = os.path.join(chatapp_server_dir, "dist")
+    chatapp_dist = os.path.join(src_dir, "apps", "chatapp", "chat_server", "dist")
 
     try:
-        subprocess.run(
-            ["node", "build.js"],
-            cwd=chatapp_server_dir,
-            env={**os.environ, "API_URL": ""},
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error(
-            "Chatapp build failed (%s). Run 'node build.js' in apps/chatapp/chat_server.",
-            e,
-        )
+        from build_all import build_chatapp
+        build_chatapp("", src_dir)
+    except Exception as e:
+        logger.error("Chatapp build failed (%s).", e)
         sys.exit(1)
 
     if not os.path.exists(chatapp_dist):
@@ -213,6 +197,12 @@ def main():
             get_railway_api_url(),
         )
         api_url = _start_local_api_server(logger)
+        _src = os.path.dirname(os.path.abspath(__file__))
+        _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
+        _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
+        if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
+            logger.info("[Webapp      ] %s", api_url)
+            logger.info("[Chatapp     ] %s/chatapp/", api_url)
 
     logger.info("Starting Meridian ...")
     try:

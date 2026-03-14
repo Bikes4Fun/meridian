@@ -28,12 +28,11 @@ def build_chatapp(api_url: str, src_dir: str):
     )
     open(os.path.join(dist, "index.html"), "w", encoding="utf-8").write(chat_html)
     open(os.path.join(dist, "chat.html"), "w", encoding="utf-8").write(chat_html)
-    shutil.copy(os.path.join(client, "poc_chat.html"), os.path.join(dist, "poc_chat.html"))
     chat_js = open(os.path.join(client, "chat.js"), encoding="utf-8").read().replace(
         "__API_URL__", api_url
     )
     open(os.path.join(dist, "chat.js"), "w", encoding="utf-8").write(chat_js)
-    print("Chatapp built: index.html, chat.html, poc_chat.html, chat.js")
+    print("Chatapp built: index.html, chat.html, chat.js")
 
 
 if __name__ == "__main__":

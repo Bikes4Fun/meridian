@@ -1,9 +1,3 @@
-
-# Xcode user state
-**/xcuserdata/
-*.xcuserstate
-*.pbxproj*.backup
-
 # Python
 __pycache__/
 *.pyc
@@ -23,7 +17,3 @@ src/apps/kiosk/cache/
 
 package/*
 *package*
-
-# Xcode user state
-**/xcuserdata/
-*.xcuserstate

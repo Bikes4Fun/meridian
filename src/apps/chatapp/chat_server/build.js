@@ -16,10 +16,12 @@ async function build() {
     fs.writeFileSync(path.join(dist, 'index.html'), replaceApi(chatHtml));
     fs.writeFileSync(path.join(dist, 'chat.html'), replaceApi(chatHtml));
 
+    fs.copyFileSync(path.join(client, 'poc_chat.html'), path.join(dist, 'poc_chat.html'));
+
     const chatJs = fs.readFileSync(path.join(client, 'chat.js'), 'utf8');
     fs.writeFileSync(path.join(dist, 'chat.js'), replaceApi(chatJs));
 
-    console.log('Chatapp built: index.html, chat.html, chat.js');
+    console.log('Chatapp built: index.html, chat.html, poc_chat.html, chat.js');
 }
 
 build().catch((e) => { console.error(e); process.exit(1); });

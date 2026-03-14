@@ -65,6 +65,7 @@ meridian/
 │   │       └── web_server/
 │   │           ├── build.js
 │   │           ├── package.json
+│   │           └── vercel.json
 │   ├── dev/
 │   │   ├── main.py             # Entry point
 │   │   ├── demo/

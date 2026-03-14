@@ -68,10 +68,10 @@
 		467D481C816861B95E5C51DF /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = GameController.framework; sourceTree = DEVELOPER_DIR; };
 		4AE14C90BF3A304C2F0B1D57 /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = MobileCoreServices.framework; sourceTree = DEVELOPER_DIR; };
 		4D9D4E7B894F9F9A97DA43DF /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "libc++.tbd"; sourceTree = DEVELOPER_DIR; };
-		59738AB41A8BB5D8001B2C0C /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ../dist/root/python3/lib; sourceTree = SOURCE_ROOT; };
+		59738AB41A8BB5D8001B2C0C /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = /Users/turtlesoup/meridian/dist/root/python3/lib; sourceTree = "<group>"; };
 		59738ABA1A8E19AA001B2C0C /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = meridian/Images.xcassets; sourceTree = "<group>"; };
 		59994E3A148E85C800863906 /* YourApp */ = {isa = PBXFileReference; lastKnownFileType = folder; path = YourApp; sourceTree = "<group>"; };
-		59FDEA8A21E7D34E004E6ECE /* include */ = {isa = PBXFileReference; lastKnownFileType = folder; name = include; path = ../dist/root/python3/include; sourceTree = SOURCE_ROOT; };
+		59FDEA8A21E7D34E004E6ECE /* include */ = {isa = PBXFileReference; lastKnownFileType = folder; name = include; path = /Users/turtlesoup/meridian/dist/root/python3/include; sourceTree = "<group>"; };
 		5CCB4C1A8F55A3F78AF41C46 /* libSDL2_mixer.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libSDL2_mixer.xcframework; path = ../dist/xcframework/libSDL2_mixer.xcframework; sourceTree = SOURCE_ROOT; };
 		660B4837842205F287545CD7 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = libz.tbd; sourceTree = DEVELOPER_DIR; };
 		78CF4C0D9790B4E5E485B87B /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = CoreVideo.framework; sourceTree = DEVELOPER_DIR; };
@@ -322,7 +322,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "rsync -av --delete \"${SRCROOT}/../ios_app\"/ \"${PROJECT_DIR}\"/YourApp";
+			shellScript = "rsync -av --delete \"/Users/turtlesoup/meridian/ios_app\"/ \"$PROJECT_DIR\"/YourApp";
 		};
 		113D17E2153E3DB5001310A6 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -335,7 +335,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "\"${SRCROOT}/../dist/hostpython3/bin/python\" -m compileall -f -b \"${PROJECT_DIR}\"/YourApp";
+			shellScript = "/Users/turtlesoup/meridian/dist/hostpython3/bin/python -m compileall -f -b \"$PROJECT_DIR\"/YourApp";
 		};
 		113D17E2153E3DB5001310A7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -348,7 +348,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "find \"${PROJECT_DIR}\"/YourApp/ -regex '.*\\.py' -delete";
+			shellScript = "find \"$PROJECT_DIR\"/YourApp/ -regex '.*\\.py' -delete";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -375,7 +375,7 @@
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(SRCROOT)/../dist/frameworks",
+					/Users/turtlesoup/meridian/dist/frameworks,
 					"$(SRCROOT)/../dist/xcframework",
 					"$(inherited)",
 				);
@@ -386,14 +386,14 @@
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/../dist/root/python3/include/python3.11/**",
-					"$(SRCROOT)/../dist/include/common/sdl2",
+					"/Users/turtlesoup/meridian/dist/root/python3/include/python3.11/**",
+					/Users/turtlesoup/meridian/dist/include/common/sdl2,
 				);
 				INFOPLIST_FILE = "meridian-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../dist/lib",
+					/Users/turtlesoup/meridian/dist/lib,
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-all_load";
@@ -418,7 +418,7 @@
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(SRCROOT)/../dist/frameworks",
+					/Users/turtlesoup/meridian/dist/frameworks,
 					"$(SRCROOT)/../dist/xcframework",
 					"$(inherited)",
 				);
@@ -426,14 +426,14 @@
 				GCC_PREFIX_HEADER = "";
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/../dist/root/python3/include/python3.11/**",
-					"$(SRCROOT)/../dist/include/common/sdl2",
+					"/Users/turtlesoup/meridian/dist/root/python3/include/python3.11/**",
+					/Users/turtlesoup/meridian/dist/include/common/sdl2,
 				);
 				INFOPLIST_FILE = "meridian-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../dist/lib",
+					/Users/turtlesoup/meridian/dist/lib,
 				);
 				OTHER_LDFLAGS = "-all_load";
 				PRODUCT_NAME = meridian;
@@ -454,7 +454,7 @@
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				DEAD_CODE_STRIPPING = NO;
 				ENABLE_BITCODE = NO;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../dist/root/include/";
+				USER_HEADER_SEARCH_PATHS = /Users/turtlesoup/meridian/dist/root/include/;
 			};
 			name = Debug;
 		};
@@ -465,7 +465,7 @@
 				DEAD_CODE_STRIPPING = NO;
 				ENABLE_BITCODE = NO;
 				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../dist/root/include/";
+				USER_HEADER_SEARCH_PATHS = /Users/turtlesoup/meridian/dist/root/include/;
 			};
 			name = Release;
 		};

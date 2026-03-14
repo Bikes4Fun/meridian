@@ -114,6 +114,7 @@ See GitHub for details. Some issues may duplicate across repos (dementia_tv_pyth
 - [ ] #18: Map details and UI
 - [ ] #28: Architecture review part 1
 - [ ] #29: Define tests | #30: Create tests | #31: Load tests into GitHub
+- [ ] #32: Fix vercel
 
 ---
 ---

@@ -4,7 +4,7 @@
 [build]
 builder = "RAILPACK"
 buildCommand = "cd src && python build_all.py"
-watchPatterns = ["/src/apps/server/**", "/src/apps/webapp/**", "/src/apps/chatapp/**", "/src/shared/**"]
+watchPatterns = ["/src/apps/**"]
 
 [deploy]
 startCommand = "python -m src.apps.server seed && python -m src.apps.server"

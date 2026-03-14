@@ -322,7 +322,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\nrsync -av --delete \"$(SRCROOT)/../ios_app\"/ \"$PROJECT_DIR\"/YourApp";
+			shellScript = "rsync -av --delete \"${SRCROOT}/../ios_app\"/ \"${PROJECT_DIR}\"/YourApp";
 		};
 		113D17E2153E3DB5001310A6 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -335,7 +335,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\n\"$(SRCROOT)/../dist/hostpython3/bin/python\" -m compileall -f -b \"$PROJECT_DIR\"/YourApp";
+			shellScript = "\"${SRCROOT}/../dist/hostpython3/bin/python\" -m compileall -f -b \"${PROJECT_DIR}\"/YourApp";
 		};
 		113D17E2153E3DB5001310A7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -348,7 +348,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -e\nfind \"$PROJECT_DIR\"/YourApp/ -regex '.*\\.py' -delete";
+			shellScript = "find \"${PROJECT_DIR}\"/YourApp/ -regex '.*\\.py' -delete";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -244,22 +244,42 @@
                     tile.style.display = 'flex';
                     tile.style.flexDirection = 'column';
                     tile.style.alignItems = 'center';
+                    var avatarSize = 96;
+                    var avatar = document.createElement('div');
+                    avatar.className = 'contact-avatar';
+                    avatar.style.width = avatarSize + 'px';
+                    avatar.style.height = avatarSize + 'px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.marginBottom = '10px';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.backgroundColor = '#b0b0b0';
+                    avatar.style.color = '#fff';
+                    avatar.style.fontSize = '40px';
+                    avatar.style.fontWeight = 'bold';
+                    avatar.textContent = (name || '?').charAt(0).toUpperCase();
                     if (c.user_id) {
                         var img = document.createElement('img');
                         img.src = apiBase + '/api/users/' + c.user_id + '/photo';
                         img.alt = name;
-                        img.style.width = '48px';
-                        img.style.height = '48px';
-                        img.style.borderRadius = '50%';
+                        img.style.position = 'absolute';
+                        img.style.top = '0';
+                        img.style.left = '0';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
                         img.style.objectFit = 'cover';
-                        img.style.marginBottom = '6px';
-                        tile.appendChild(img);
-                        var label = document.createElement('span');
-                        label.textContent = name;
-                        tile.appendChild(label);
-                    } else {
-                        tile.textContent = name;
+                        img.onerror = function () { img.style.display = 'none'; };
+                        avatar.style.position = 'relative';
+                        avatar.style.overflow = 'hidden';
+                        avatar.appendChild(img);
                     }
+                    tile.appendChild(avatar);
+                    var label = document.createElement('span');
+                    label.className = 'contact-name';
+                    label.style.fontSize = '20px';
+                    label.textContent = name;
+                    tile.appendChild(label);
                     tile.addEventListener('click', function () {
                         if (statusEl) statusEl.textContent = 'Opening chat…';
                         var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);

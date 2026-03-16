@@ -29,7 +29,7 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
             type="subheader", text="Family Chat", size_hint_y=None, height=dp(48)
         )
     )
-    contacts_grid = GridLayout(cols=3, spacing=dp(12), size_hint_y=None, padding=dp(8))
+    contacts_grid = GridLayout(cols=3, spacing=dp(20), size_hint_y=None, padding=dp(12))
     contacts_grid.bind(minimum_height=contacts_grid.setter("height"))
     scroll = ScrollView(size_hint=(1, 1))
     scroll.add_widget(contacts_grid)
@@ -88,17 +88,32 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
 
             tile = ContactTile(orientation="vertical")
             tile.size_hint_y = None
-            tile.height = dp(80)
+            tile.height = dp(140)
+            avatar_size = dp(96)
             src = None
             if c.get("user_id") and loc_svc and hasattr(loc_svc, "fetch_photo_to_cache"):
                 src = loc_svc.fetch_photo_to_cache(c["user_id"], cache_dir)
-            if src:
-                circle_img = _crop_image_to_circle(src, size=80)
-                if circle_img:
-                    img = Image(source=circle_img, size_hint=(None, None), size=(dp(48), dp(48)))
-                    tile.add_widget(img)
+            circle_img = _crop_image_to_circle(src, size=96) if src else None
+            if circle_img:
+                img = Image(source=circle_img, size_hint=(None, None), size=(avatar_size, avatar_size))
+                tile.add_widget(img)
+            else:
+                initial = (name or "?")[0].upper()
+                fallback = KioskLabel(
+                    type="body", text=initial, size_hint=(None, None), size=(avatar_size, avatar_size),
+                    halign="center", valign="middle", color=(1, 1, 1, 1)
+                )
+                from kivy.graphics import Color, RoundedRectangle
+                with fallback.canvas.before:
+                    Color(0.69, 0.69, 0.69, 1)
+                    fallback._bg = RoundedRectangle(pos=fallback.pos, size=fallback.size, radius=[avatar_size / 2])
+                def _update_bg(w, *_a):
+                    w._bg.pos = w.pos
+                    w._bg.size = w.size
+                fallback.bind(pos=_update_bg, size=_update_bg)
+                tile.add_widget(fallback)
             tile.add_widget(
-                KioskLabel(type="body", text=name, size_hint_y=None, height=dp(20))
+                KioskLabel(type="body", text=name, size_hint_y=None, height=dp(28), font_size=28)
             )
             tile.bind(on_press=lambda *_a, sb=sb_uid, nm=name: _on_contact_click(sb, nm))
             contacts_grid.add_widget(tile)

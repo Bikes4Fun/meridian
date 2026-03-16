@@ -142,7 +142,7 @@ class CustomMarker(MapMarker):
 
 
 def _clean_map_cache(cache_dir):
-    """Remove empty or corrupt tile files that cause MapView load errors."""
+    """Remove map tile files to avoid corrupt cache causing MapView load errors."""
     if not os.path.isdir(cache_dir):
         return
     try:
@@ -152,8 +152,7 @@ def _clean_map_cache(cache_dir):
             path = os.path.join(cache_dir, name)
             if os.path.isfile(path):
                 try:
-                    if os.path.getsize(path) < 100:
-                        os.remove(path)
+                    os.remove(path)
                 except OSError:
                     pass
     except OSError:

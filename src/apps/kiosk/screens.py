@@ -6,6 +6,7 @@ Thin registry: each create_x_screen follows the same 4-line pattern.
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 
+from .kiosk_metrics import scaled
 from .screen_primitives import KioskNavBar
 
 
@@ -24,8 +25,8 @@ class ScreenFactory:
         template_settings = {
             "orientation": "vertical",
             "size_hint": (1, 1),
-            "padding": 24,
-            "spacing": 24,
+            "padding": scaled(24),
+            "spacing": scaled(24),
         }
 
         main_layout = BoxLayout(**template_settings)

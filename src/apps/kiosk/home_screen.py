@@ -3,6 +3,7 @@ Home screen: clock, medications, events.
 """
 
 from .screen_primitives import KioskWidget, KioskLabel, KioskButton, apply_debug_border
+from .kiosk_metrics import scaled
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
@@ -56,13 +57,13 @@ def build_home_screen(services):
 
 def _create_clock_widget(services):
     # Widget-specific tokens (clock, med, events)
-    CLOCK_ICON_SIZE = 100
-    CLOCK_DAY_HEIGHT = 60
-    CLOCK_TEXT_HEIGHT = 50
-    CLOCK_TIME_HEIGHT = 120
-    CLOCK_DATE_HEIGHT = 60
+    CLOCK_ICON_SIZE = scaled(100)
+    CLOCK_DAY_HEIGHT = scaled(60)
+    CLOCK_TEXT_HEIGHT = scaled(50)
+    CLOCK_TIME_HEIGHT = scaled(120)
+    CLOCK_DATE_HEIGHT = scaled(60)
     CLOCK_SPACING = 0
-    CLOCK_PADDING = [15, 10]
+    CLOCK_PADDING = [scaled(15), scaled(10)]
     text_color = (0.1, 0.1, 0.1, 1)
 
     clock = KioskWidget()

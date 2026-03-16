@@ -4,6 +4,7 @@ Chat screen: contact grid with chat entry. Uses KioskLabel/KioskButton for demen
 
 import os
 from kivy.metrics import dp
+from .kiosk_metrics import scaled
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
@@ -23,13 +24,13 @@ class ContactTile(ButtonBehavior, BoxLayout):
 
 def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, screen):
     """Build fully constructed chat screen content widget. Wires on_enter to load contacts."""
-    content = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(24))
+    content = BoxLayout(orientation="vertical", padding=scaled(24), spacing=scaled(24))
     content.add_widget(
         KioskLabel(
-            type="subheader", text="Family Chat", size_hint_y=None, height=dp(48)
+            type="subheader", text="Family Chat", size_hint_y=None, height=scaled(48)
         )
     )
-    contacts_grid = GridLayout(cols=3, spacing=dp(20), size_hint_y=None, padding=dp(12))
+    contacts_grid = GridLayout(cols=3, spacing=scaled(20), size_hint_y=None, padding=scaled(12))
     contacts_grid.bind(minimum_height=contacts_grid.setter("height"))
     scroll = ScrollView(size_hint=(1, 1))
     scroll.add_widget(contacts_grid)
@@ -44,7 +45,7 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
                     type="body",
                     text="No contacts (check server).",
                     size_hint_y=None,
-                    height=dp(48),
+                    height=scaled(48),
                 )
             )
             return
@@ -55,7 +56,7 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
                     type="body",
                     text="No contacts.",
                     size_hint_y=None,
-                    height=dp(48),
+                    height=scaled(48),
                 )
             )
             return
@@ -66,7 +67,7 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
                     type="body",
                     text="No contacts with chat.",
                     size_hint_y=None,
-                    height=dp(48),
+                    height=scaled(48),
                 )
             )
             return
@@ -88,8 +89,8 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
 
             tile = ContactTile(orientation="vertical")
             tile.size_hint_y = None
-            tile.height = dp(140)
-            avatar_size = dp(96)
+            tile.height = scaled(140)
+            avatar_size = scaled(96)
             src = None
             if c.get("user_id") and loc_svc and hasattr(loc_svc, "fetch_photo_to_cache"):
                 src = loc_svc.fetch_photo_to_cache(c["user_id"], cache_dir)
@@ -113,7 +114,7 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
                 fallback.bind(pos=_update_bg, size=_update_bg)
                 tile.add_widget(fallback)
             tile.add_widget(
-                KioskLabel(type="body", text=name, size_hint_y=None, height=dp(28), font_size=28)
+                KioskLabel(type="body", text=name, size_hint_y=None, height=scaled(32))
             )
             tile.bind(on_press=lambda *_a, sb=sb_uid, nm=name: _on_contact_click(sb, nm))
             contacts_grid.add_widget(tile)

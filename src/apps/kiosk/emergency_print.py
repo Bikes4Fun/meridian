@@ -8,8 +8,8 @@ import sys
 import tempfile
 
 from kivy.clock import Clock
-from kivy.metrics import dp
 
+from .kiosk_metrics import scaled
 from .screen_primitives import KioskLabel, KioskButton
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ def add_emergency_print_section(layout, services):
     ):
         return
 
-    print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=dp(36))
+    print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=scaled(36))
     services["_emergency_print_status_label"] = print_status
 
     def _on_print(*_):
@@ -133,7 +133,7 @@ def add_emergency_print_section(layout, services):
     print_btn = KioskButton(
         text="Print Emergency Document",
         size_hint_y=None,
-        height=dp(56),
+        height=scaled(120),
         on_release=_on_print,
     )
     layout.add_widget(print_btn)

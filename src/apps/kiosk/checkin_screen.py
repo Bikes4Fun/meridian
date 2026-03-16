@@ -12,6 +12,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy_garden.mapview import MapView, MapMarker
 
 from .screen_primitives import KioskLabel, KioskWidget, apply_debug_border
+from .kiosk_metrics import scaled
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ def _create_title():
     """Create Family Locations screen title block."""
     title = KioskLabel(type="header", text="Family Locations")
     title.size_hint_y = None
-    title.height = 70
+    title.height = scaled(64)
     apply_debug_border(title)
     return title
 
@@ -53,7 +54,7 @@ def _create_possible_places_block(location_service):
 
 def _create_checkins_block(location_service):
     """Create family check-ins block."""
-    line_h = 32 + 4
+    line_h = scaled(32) + scaled(4)
     if location_service:
         result = location_service.get_checkins()
         if result.success and result.data:
@@ -91,7 +92,7 @@ def _create_checkins_block(location_service):
 
     widget = KioskLabel(type="body", text=text, shorten=False)
     widget.size_hint_x = 0.5
-    widget.height = max(120, int(n_lines * line_h))
+    widget.height = max(scaled(120), int(n_lines * line_h))
     apply_debug_border(widget)
     return widget
 

@@ -2,9 +2,11 @@
 Kiosk UI primitives: base styled components.
 KioskWidget, KioskLabel, KioskButton, apply_debug_border.
 Design tokens live here; composites in widgets.py.
+TV font spec: Display 96, H1 64, H2 48, Body large 40, Body 32, Caption 28.
 """
 
 from kivy.graphics import Color, Line, Rectangle
+from .kiosk_metrics import scaled
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -69,41 +71,21 @@ class KioskLabel(Label):
     """Text display widget with dementia-friendly defaults. type='header'|'subheader'|'body'|'hero'|'caption'|'button' for presets."""
 
     _TYPES = {
-        "header": {
-            "font_size": 56,
-            "color": (0.1, 0.1, 0.1, 1),
-            "valign": "middle",
-        },
-        "subheader": {
-            "font_size": 48,
-            "color": (0.1, 0.1, 0.1, 1),
-            "valign": "middle",
-        },
+        "header": {"font_size": 64, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
+        "subheader": {"font_size": 48, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
         "body": {"font_size": 32, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
-        "hero": {
-            "font_size": 96,
-            "color": (0.1, 0.1, 0.1, 1),
-            "halign": "center",
-            "valign": "middle",
-        },
-        "caption": {
-            "font_size": 32,
-            "color": (0.55, 0.55, 0.55, 1),
-            "halign": "center",
-            "valign": "middle",
-        },
-        "button": {
-            "font_size": 56,
-            "color": (0.1, 0.1, 0.1, 1),
-            "halign": "center",
-            "valign": "middle",
-        },
+        "body_large": {"font_size": 40, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
+        "hero": {"font_size": 96, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
+        "caption": {"font_size": 28, "color": (0.55, 0.55, 0.55, 1), "halign": "center", "valign": "middle"},
+        "button": {"font_size": 64, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
     }
 
     def __init__(self, type=None, **kwargs):
         # Only add overrides that differ from Kivy Label defaults (halign=left, valign=bottom)
         defaults = dict(self._TYPES.get(type, self._TYPES["body"]))
         defaults.update(kwargs)
+        fs = defaults.get("font_size", 32)
+        defaults["font_size"] = scaled(fs)
         Label.__init__(self, **defaults)
 
         def _update_text_size(widget, *args):
@@ -118,7 +100,7 @@ class KioskButton(Button):
 
     def __init__(self, **kwargs):
         defaults = {
-            "font_size": 56,
+            "font_size": 64,
             "color": (0.1, 0.1, 0.1, 1),
             "background_color": (0.4, 0.6, 0.85, 1),
             "background_normal": "",
@@ -126,6 +108,7 @@ class KioskButton(Button):
             "size_hint": (1, 1),
         }
         defaults.update(kwargs)
+        defaults["font_size"] = scaled(defaults.get("font_size", 64))
         Button.__init__(self, **defaults)
 
 
@@ -136,7 +119,7 @@ class KioskNavBar(KioskWidget):
         defaults = {
             "orientation": "horizontal",
             "size_hint": (1, None),
-            "height": 90,
+            "height": scaled(120),
         }
         defaults.update(kwargs)
         super().__init__(**defaults)

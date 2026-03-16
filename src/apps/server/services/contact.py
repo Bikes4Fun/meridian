@@ -67,6 +67,38 @@ class ContactService(DatabaseServiceMixin):
         ]
         return ServiceResult.success_result(contacts)
 
+    def get_all_contacts_with_user_ids(self, family_circle_id: str) -> ServiceResult:
+        """All contacts with user_id resolved from sendbird_user_id (for chat grid photos)."""
+        query = """
+            SELECT c.id, c.display_name, c.phone, c.email, c.birthday, c.relationship,
+                   c.emergency_priority, c.photo_filename, c.sendbird_user_id,
+                   CASE WHEN ufc.user_id IS NOT NULL THEN u.id ELSE NULL END AS user_id
+            FROM contacts c
+            LEFT JOIN users u ON u.sendbird_user_id = c.sendbird_user_id
+            LEFT JOIN user_family_circle ufc ON u.id = ufc.user_id
+                AND ufc.family_circle_id = c.family_circle_id
+            WHERE c.family_circle_id = ?
+        """
+        result = self.safe_query(query, (family_circle_id,))
+        if not result.success:
+            return result
+        data = []
+        for row in result.data:
+            d = {
+                "id": row["id"],
+                "display_name": row["display_name"],
+                "phone": row.get("phone"),
+                "email": row.get("email"),
+                "birthday": row.get("birthday"),
+                "relationship": row.get("relationship"),
+                "emergency_priority": row.get("emergency_priority"),
+                "photo_filename": row.get("photo_filename"),
+                "sendbird_user_id": row.get("sendbird_user_id"),
+                "user_id": row.get("user_id") if row.get("user_id") else None,
+            }
+            data.append(d)
+        return ServiceResult.success_result(data)
+
     def c_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
             SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id

@@ -239,9 +239,20 @@
                 chatContacts.forEach(function (c) {
                     var name = c.display_name || c.id || 'Contact';
                     var sb = (c.sendbird_user_id || '').trim();
+                    var photoUrl = c.photo_url || null;
                     var tile = document.createElement('div');
                     tile.className = 'contact-tile';
-                    tile.textContent = name;
+                    if (photoUrl) {
+                        var img = document.createElement('img');
+                        img.src = photoUrl;
+                        img.alt = name;
+                        img.className = 'contact-tile-photo';
+                        tile.appendChild(img);
+                    }
+                    var nameEl = document.createElement('span');
+                    nameEl.className = 'contact-tile-name';
+                    nameEl.textContent = name;
+                    tile.appendChild(nameEl);
                     tile.addEventListener('click', function () {
                         if (statusEl) statusEl.textContent = 'Opening chat…';
                         var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);

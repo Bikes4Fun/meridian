@@ -385,12 +385,17 @@ def create_server_app(db_path=None):
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
-        """All contacts for the family. Kiosk can load once at boot and cache; includes photo_filename, sendbird_user_id."""
+        """All contacts for the family. Chat contacts get photo_url from matching user."""
         _require_family_access(family_circle_id)
-        r = contact_svc.get_all_contacts(family_circle_id)
+        r = contact_svc.get_all_contacts_with_user_ids(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": [asdict(c) for c in (r.data or [])]})
+        base = request.url_root.rstrip("/")
+        data = r.data or []
+        for c in data:
+            uid = c.get("user_id")
+            c["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
+        return jsonify({"data": data})
 
     @app.route("/api/family_circles/<family_circle_id>/emergency-contacts")
     def api_emergency_contacts(family_circle_id):

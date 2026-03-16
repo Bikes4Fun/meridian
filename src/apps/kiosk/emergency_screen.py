@@ -2,20 +2,23 @@
 Emergency screen: fetches data, shapes contacts, builds form-style layout.
 """
 
+import os
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.image import Image
 from kivy.graphics import Color, Line, Rectangle
 from kivy.clock import Clock
 
+from .checkin_screen import _crop_image_to_circle
 from .screen_primitives import KioskLabel, KioskWidget, apply_debug_border
 from .emergency_print import add_emergency_print_section
 
 
-def _form_section_bar(title, bar_color=(1, 1, 1, 1), height=dp(44)):
+def _form_section_bar(title, bar_color=(1, 1, 1, 1), height=dp(48)):
     """Form-style section header: colored bar with white text."""
     bar = BoxLayout(
-        orientation="horizontal", size_hint_y=None, height=height, padding=[dp(12), 0]
+        orientation="horizontal", size_hint_y=None, height=height, padding=[dp(12), dp(6)]
     )
     with bar.canvas.before:
         Color(*bar_color)
@@ -31,17 +34,18 @@ def _form_section_bar(title, bar_color=(1, 1, 1, 1), height=dp(44)):
 
 
 def _form_row(label_text, value_text, dark_text=(0.1, 0.1, 0.1, 1)):
-    """One labeled row: LABEL  value."""
+    """One labeled row: LABEL  value. Value wraps to fit; no truncation."""
     row = BoxLayout(
-        orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8)
+        orientation="horizontal", size_hint_y=None, height=dp(52), spacing=dp(8)
     )
     lbl = KioskLabel(type="caption", text=label_text + ":", font_size=dp(28))
     lbl.color = dark_text
     lbl.size_hint_x = None
-    lbl.width = dp(220)
+    lbl.width = dp(200)
     row.add_widget(lbl)
-    val = KioskLabel(type="body", text=value_text or "—", font_size=dp(28))
+    val = KioskLabel(type="body", text=value_text or "—", font_size=dp(26))
     val.color = dark_text
+    val.shorten = False
     row.add_widget(val)
     return row
 
@@ -73,6 +77,15 @@ def _attach_emergency_border(widget, services):
 
 def _build_layout(layout, e_data, e_contacts, services):
     """Build the emergency layout (form-style sections). Returns the root KioskWidget."""
+    care_recipient_user_id = e_data.get("care_recipient_user_id")
+    photo_src = None
+    loc_svc = services.get("location_service")
+    if care_recipient_user_id and loc_svc and hasattr(loc_svc, "fetch_photo_to_cache"):
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+        raw = loc_svc.fetch_photo_to_cache(care_recipient_user_id, cache_dir)
+        if raw:
+            photo_src = _crop_image_to_circle(raw) or raw
+
     blue_bar = _form_section_bar("IN CASE OF EMERGENCY", (0.25, 0.45, 0.85, 1))
     apply_debug_border(blue_bar)
     layout.add_widget(blue_bar)
@@ -81,16 +94,15 @@ def _build_layout(layout, e_data, e_contacts, services):
     medical_data = e_data.get("medical") or {}
 
     red_bar = (0.75, 0.2, 0.2, 1)
-    personal_height = dp(40) + 7 * dp(40)
+    personal_height = dp(48) + 7 * dp(52)
 
     personal = BoxLayout(
         orientation="vertical",
         spacing=dp(4),
-        size_hint_y=None,
-        height=personal_height,
     )
+    personal.size_hint_x = 0.65 if photo_src else 1.0
     personal.add_widget(
-        _form_section_bar("PERSONAL INFORMATION", red_bar, height=dp(40))
+        _form_section_bar("PERSONAL INFORMATION", red_bar, height=dp(48))
     )
     name = patient_data.get("name") or "Patient"
     personal.add_widget(_form_row("FULL NAME", name))
@@ -117,13 +129,32 @@ def _build_layout(layout, e_data, e_contacts, services):
     personal.add_widget(_form_row("CURRENT HEALTH CONDITIONS", cond))
     apply_debug_border(personal)
 
+    personal_wrapper = BoxLayout(
+        orientation="horizontal",
+        size_hint_y=None,
+        height=personal_height,
+        spacing=dp(12),
+    )
+    personal_wrapper.add_widget(personal)
+    if photo_src:
+        photo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_x=0.35)
+        img = Image(
+            source=photo_src,
+            size_hint=(None, None),
+            size=(dp(140), dp(140)),
+            allow_stretch=True,
+            keep_ratio=True,
+        )
+        photo_anchor.add_widget(img)
+        personal_wrapper.add_widget(photo_anchor)
+
     ec_list = []
     for c in e_contacts.get("contacts", []):
         phone = c.get("phone") or ""
         rel = c.get("relationship") or ""
         ec_list.append(f"{c.get('display_name', '')} ({rel}): {phone}".strip())
     n_contact_rows = len(ec_list) + 2
-    contacts_height = dp(40) + n_contact_rows * dp(40)
+    contacts_height = dp(48) + n_contact_rows * dp(52)
 
     contacts_section = BoxLayout(
         orientation="vertical",
@@ -133,7 +164,7 @@ def _build_layout(layout, e_data, e_contacts, services):
     )
 
     contacts_section.add_widget(
-        _form_section_bar("EMERGENCY CONTACTS", red_bar, height=dp(40))
+        _form_section_bar("EMERGENCY CONTACTS", red_bar, height=dp(48))
     )
 
     for i, line in enumerate(ec_list):
@@ -156,7 +187,7 @@ def _build_layout(layout, e_data, e_contacts, services):
         spacing=dp(8),
     )
     top_half = AnchorLayout(anchor_y="center", size_hint_y=0.5)
-    top_half.add_widget(personal)
+    top_half.add_widget(personal_wrapper)
     apply_debug_border(top_half)
     bottom_box.add_widget(top_half)
 

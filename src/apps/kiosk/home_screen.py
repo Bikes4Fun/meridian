@@ -2,7 +2,7 @@
 Home screen: clock, medications, events.
 """
 
-from .screen_primitives import KioskWidget, KioskLabel, KioskButton, apply_debug_border
+from .screen_primitives import KioskWidget, KioskLabel, apply_debug_border
 from .kiosk_metrics import scaled
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
@@ -58,12 +58,12 @@ def build_home_screen(services):
 def _create_clock_widget(services):
     # Widget-specific tokens (clock, med, events)
     CLOCK_ICON_SIZE = scaled(100)
-    CLOCK_DAY_HEIGHT = scaled(60)
-    CLOCK_TEXT_HEIGHT = scaled(50)
+    CLOCK_DAY_HEIGHT = scaled(80)
+    CLOCK_TEXT_HEIGHT = scaled(60)
     CLOCK_TIME_HEIGHT = scaled(120)
     CLOCK_DATE_HEIGHT = scaled(60)
     CLOCK_SPACING = 0
-    CLOCK_PADDING = [scaled(15), scaled(10)]
+    CLOCK_PADDING = [scaled(20), scaled(16)]
     text_color = (0.1, 0.1, 0.1, 1)
 
     clock = KioskWidget()
@@ -111,7 +111,6 @@ def _create_clock_widget(services):
     icon_container.add_widget(time_of_day_icon)
 
     top_section.add_widget(icon_container)
-    clock.add_widget(top_section)
 
     time_label = KioskLabel(type="hero", text="")
     time_label.color = text_color
@@ -120,7 +119,6 @@ def _create_clock_widget(services):
     time_label.size_hint = (1, None)
     time_label.height = CLOCK_TIME_HEIGHT
     apply_debug_border(time_label)
-    clock.add_widget(time_label)
 
     bottom_section = BoxLayout(orientation="horizontal")
     bottom_section.size_hint = (1, None)
@@ -143,7 +141,15 @@ def _create_clock_widget(services):
     apply_debug_border(year_label)
     bottom_section.add_widget(year_label)
 
-    clock.add_widget(bottom_section)
+    # Center clock block vertically within the clock widget
+    clock_inner_height = CLOCK_DAY_HEIGHT + CLOCK_TEXT_HEIGHT + CLOCK_TIME_HEIGHT + CLOCK_DATE_HEIGHT
+    clock_inner = BoxLayout(orientation="vertical", size_hint_y=None, height=clock_inner_height)
+    clock_inner.add_widget(top_section)
+    clock_inner.add_widget(time_label)
+    clock_inner.add_widget(bottom_section)
+    clock_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, 1))
+    clock_anchor.add_widget(clock_inner)
+    clock.add_widget(clock_anchor)
 
     clock.day_label = day_label
     clock.time_of_day_icon = time_of_day_icon
@@ -205,6 +211,7 @@ def _create_events_widget():
     events.add_widget(title)
 
     events_content = KioskLabel(type="body", text="Loading events...")
+    events_content.valign = "middle"
     events.add_widget(events_content)
     events.events_content = events_content
 

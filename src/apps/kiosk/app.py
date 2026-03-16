@@ -12,6 +12,19 @@ SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses s
 import logging
 import os
 from .api_client import create_kiosk_remote
+
+# Register Atkinson Hyperlegible (design system) before any labels/buttons
+_src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_font_dir = os.path.join(_src, "shared", "fonts", "Atkinson_Hyperlegible")
+if os.path.isdir(_font_dir):
+    from kivy.core.text import LabelBase
+    LabelBase.register(
+        name="AtkinsonHyperlegible",
+        fn_regular=os.path.join(_font_dir, "AtkinsonHyperlegible-Regular.ttf"),
+        fn_bold=os.path.join(_font_dir, "AtkinsonHyperlegible-Bold.ttf"),
+        fn_italic=os.path.join(_font_dir, "AtkinsonHyperlegible-Italic.ttf"),
+        fn_bolditalic=os.path.join(_font_dir, "AtkinsonHyperlegible-BoldItalic.ttf"),
+    )
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.clock import Clock

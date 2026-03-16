@@ -11,7 +11,7 @@ from kivy.graphics import Color, Line, Rectangle
 from kivy.clock import Clock
 
 from .checkin_screen import _crop_image_to_circle
-from .screen_primitives import KioskLabel, KioskWidget, apply_debug_border
+from .screen_primitives import KioskLabel, KioskWidget
 from .emergency_print import add_emergency_print_section
 
 
@@ -87,6 +87,8 @@ def _build_layout(layout, e_data, e_contacts, services):
         raw = loc_svc.fetch_photo_to_cache(care_recipient_user_id, cache_dir)
         if raw:
             photo_src = _crop_image_to_circle(raw) or raw
+            if not os.path.isfile(photo_src):
+                photo_src = None
 
     blue_bar = _form_section_bar("IN CASE OF EMERGENCY", (0.25, 0.45, 0.85, 1), height=scaled(48))
     layout.add_widget(blue_bar)
@@ -129,9 +131,7 @@ def _build_layout(layout, e_data, e_contacts, services):
         _form_row("MEDICATIONS", ", ".join(med_strs) if med_strs else None, row_height=row_h)
     )
     cond = medical_data.get("conditions")
-    personal.add_widget(_form_row("CURRENT HEALTH CONDITIONS", cond, row_height=row_h))
-    apply_debug_border(personal)
-
+    personal.add_widget(_form_row("HEALTH", cond, row_height=row_h))
     personal_wrapper = BoxLayout(
         orientation="horizontal",
         size_hint_y=None,
@@ -148,7 +148,7 @@ def _build_layout(layout, e_data, e_contacts, services):
         img = Image(
             source=photo_src,
             size_hint=(None, None),
-            size=(scaled(140), scaled(140)),
+            size=(scaled(96), scaled(96)),
             fit_mode="contain",
         )
         photo_col.add_widget(img)
@@ -163,7 +163,7 @@ def _build_layout(layout, e_data, e_contacts, services):
         rel = c.get("relationship") or ""
         ec_list.append(f"{c.get('display_name', '')} ({rel}): {phone}".strip())
     n_contact_rows = len(ec_list) + 2
-    contacts_height = scaled(48) + n_contact_rows * scaled(52)
+    contacts_height = scaled(48) + n_contact_rows * scaled(64)
 
     contacts_section = BoxLayout(
         orientation="vertical",
@@ -177,18 +177,20 @@ def _build_layout(layout, e_data, e_contacts, services):
     )
 
     for i, line in enumerate(ec_list):
-        contacts_section.add_widget(_form_row("CONTACT " + str(i + 1), line))
+        contacts_section.add_widget(
+            _form_row("CONTACT " + str(i + 1), line, row_height=scaled(64))
+        )
 
     proxy_name = e_contacts.get("medical_proxy_name") or ""
     proxy_phone = e_contacts.get("medical_proxy_phone") or ""
     contacts_section.add_widget(
-        _form_row("MEDICAL PROXY", f"{proxy_name} {proxy_phone}".strip())
+        _form_row("MEDICAL PROXY", f"{proxy_name} {proxy_phone}".strip(), row_height=scaled(64))
     )
-
     poa_name = e_contacts.get("poa_name") or ""
     poa_phone = e_contacts.get("poa_phone") or ""
-    contacts_section.add_widget(_form_row("POA", f"{poa_name} {poa_phone}".strip()))
-    apply_debug_border(contacts_section)
+    contacts_section.add_widget(
+        _form_row("POA", f"{poa_name} {poa_phone}".strip(), row_height=scaled(64))
+    )
 
     bottom_box = BoxLayout(orientation="vertical", size_hint_y=1)
     bottom_box.add_widget(top_half)

@@ -2,7 +2,9 @@
 Kiosk UI primitives: base styled components.
 KioskWidget, KioskLabel, KioskButton, apply_debug_border.
 Design tokens live here; composites in widgets.py.
-TV font spec: Display 96, H1 64, H2 48, Body large 40, Body 32, Caption 28.
+Typography per meridian-design-system-2: Display 72, H1 56, H2 40, Body large 32, Body 28, Caption 24.
+Design system: Button 160×160px, text 24px min; line height 1.5–1.7;
+  touch target 120×120px min; nav bar uses nav_tab (32px) at 120px height.
 """
 
 from kivy.graphics import Color, Line, Rectangle
@@ -18,8 +20,8 @@ class KioskWidget(BoxLayout):
     def __init__(self, background_color=None, **kwargs):
         defaults = {
             "size_hint": (1, 1),
-            "padding": 16,
-            "spacing": 16,
+            "padding": 40,
+            "spacing": 32,
             "orientation": "vertical",
         }
         defaults.update(kwargs)
@@ -71,13 +73,14 @@ class KioskLabel(Label):
     """Text display widget with dementia-friendly defaults. type='header'|'subheader'|'body'|'hero'|'caption'|'button' for presets."""
 
     _TYPES = {
-        "header": {"font_size": 64, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
-        "subheader": {"font_size": 48, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
-        "body": {"font_size": 32, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
-        "body_large": {"font_size": 40, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
-        "hero": {"font_size": 96, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
-        "caption": {"font_size": 28, "color": (0.55, 0.55, 0.55, 1), "halign": "center", "valign": "middle"},
-        "button": {"font_size": 64, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
+        "header": {"font_size": 56, "bold": True, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
+        "subheader": {"font_size": 40, "bold": True, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "valign": "middle"},
+        "body": {"font_size": 28, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
+        "body_large": {"font_size": 32, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "valign": "top"},
+        "hero": {"font_size": 72, "bold": True, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
+        "caption": {"font_size": 24, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.2, 0.2, 0.2, 1), "halign": "center", "valign": "middle"},
+        "button": {"font_size": 32, "bold": True, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
+        "nav_tab": {"font_size": 32, "font_name": "AtkinsonHyperlegible", "line_height": 1.6, "color": (0.1, 0.1, 0.1, 1), "halign": "center", "valign": "middle"},
     }
 
     def __init__(self, type=None, **kwargs):
@@ -96,19 +99,18 @@ class KioskLabel(Label):
 
 
 class KioskButton(Button):
-    """Button with hardcoded standard style. Override via kwargs."""
+    """Button with standard style from _TYPES['button']. Override via kwargs."""
 
     def __init__(self, **kwargs):
-        defaults = {
-            "font_size": 64,
-            "color": (0.1, 0.1, 0.1, 1),
-            "background_color": (0.4, 0.6, 0.85, 1),
-            "background_normal": "",
-            "background_down": "",
-            "size_hint": (1, 1),
-        }
+        defaults = dict(KioskLabel._TYPES["button"])
+        defaults.update(
+            background_color=(0.4, 0.6, 0.85, 1),
+            background_normal="",
+            background_down="",
+            size_hint=(1, 1),
+        )
         defaults.update(kwargs)
-        defaults["font_size"] = scaled(defaults.get("font_size", 64))
+        defaults["font_size"] = scaled(defaults.get("font_size"))
         Button.__init__(self, **defaults)
 
 
@@ -146,10 +148,18 @@ class KioskNavBar(KioskWidget):
 
             btn = KioskButton(
                 text=text,
-                font_size=KioskLabel._TYPES["subheader"]["font_size"],
+                font_size=KioskLabel._TYPES["nav_tab"]["font_size"],
                 size_hint=(nav_button_width, None),
                 height=self.height,
+                halign="center",
+                valign="middle",
             )
+            btn.shorten = False
+
+            def _update_nav_text_size(bt, *_):
+                bt.text_size = (bt.width, None)
+
+            btn.bind(size=_update_nav_text_size)
 
             # Create proper closures for all callbacks to avoid reference issues
             def make_press_handler(btn_text, btn_screen):

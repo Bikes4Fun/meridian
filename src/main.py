@@ -19,12 +19,33 @@ _src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-# Before any Kivy import: silence Kivy startup logs (Logger, Factory, Image, Window, GL, etc.)
+# Before any Kivy import: silence Kivy startup logs, set fixed kiosk size (9:16)
 os.environ["KIVY_LOG_LEVEL"] = "warning"
 os.environ["KCFG_KIVY_LOG_LEVEL"] = "warning"
 # os.environ["KIVY_NO_CONSOLELOG"] = "2"
 if "--local" in sys.argv:
     os.environ["KIVY_NO_ARGS"] = "1"
+
+# --fullscreen = TV mode on second monitor (full 1080×1920, no dev scaling)
+if "--fullscreen" in sys.argv:
+    os.environ["KIOSK_TV_MODE"] = "1"
+
+# Fixed kiosk window size (must be before kivy imports)
+from kivy.config import Config
+from shared.config import (
+    get_kiosk_window_size,
+    get_kiosk_tv_mode,
+    get_kiosk_tv_position,
+)
+_kw, _kh = get_kiosk_window_size()
+Config.set("graphics", "width", str(_kw))
+Config.set("graphics", "height", str(_kh))
+Config.set("graphics", "resizable", "0")
+if get_kiosk_tv_mode():
+    _tx, _ty = get_kiosk_tv_position()
+    Config.set("graphics", "position", "custom")
+    Config.set("graphics", "left", str(_tx))
+    Config.set("graphics", "top", str(_ty))
 
 import logging
 import threading

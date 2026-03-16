@@ -18,6 +18,11 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from .screens import ScreenFactory
 from .home_screen import get_time_of_day_icon
+from shared.config import (
+    get_kiosk_tv_fullscreen,
+    get_kiosk_tv_mode,
+    get_kiosk_window_size,
+)
 import datetime
 
 
@@ -32,10 +37,20 @@ class MeridianKioskApp(App):
     def build(self):
         """Build the application UI using modular components."""
         Window.clearcolor = (0.98, 0.98, 0.96, 1)
-        Window.size = (740, 1080)
-        Window.left = 10
-        Window.top = 120
-        Window.borderless = True  # Remove macOS title bar for TV display
+        Window.size = get_kiosk_window_size()
+        if get_kiosk_tv_mode():
+            from shared.config import get_kiosk_tv_position
+
+            tx, ty = get_kiosk_tv_position()
+            Window.left = tx
+            Window.top = ty
+            Window.borderless = True
+            if get_kiosk_tv_fullscreen():
+                Window.fullscreen = "auto"
+        else:
+            Window.left = 10
+            Window.top = 120
+            Window.borderless = True
 
         # Create a Kivy screen manager
         self.screen_manager = ScreenManager()

@@ -5,6 +5,7 @@ Home screen: clock, medications, events.
 from .screen_primitives import KioskWidget, KioskLabel, apply_debug_border
 from .kiosk_metrics import scaled
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.anchorlayout import AnchorLayout
 import logging
@@ -141,15 +142,18 @@ def _create_clock_widget(services):
     apply_debug_border(year_label)
     bottom_section.add_widget(year_label)
 
-    # Center clock block vertically within the clock widget
+    # Center clock block vertically using spacers (avoids AnchorLayout add_widget issues)
     clock_inner_height = CLOCK_DAY_HEIGHT + CLOCK_TEXT_HEIGHT + CLOCK_TIME_HEIGHT + CLOCK_DATE_HEIGHT
     clock_inner = BoxLayout(orientation="vertical", size_hint_y=None, height=clock_inner_height)
     clock_inner.add_widget(top_section)
     clock_inner.add_widget(time_label)
     clock_inner.add_widget(bottom_section)
-    clock_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint=(1, 1))
-    clock_anchor.add_widget(clock_inner)
-    clock.add_widget(clock_anchor)
+
+    spacer_top = Widget(size_hint_y=0.5)
+    spacer_bottom = Widget(size_hint_y=0.5)
+    clock.add_widget(spacer_top)
+    clock.add_widget(clock_inner)
+    clock.add_widget(spacer_bottom)
 
     clock.day_label = day_label
     clock.time_of_day_icon = time_of_day_icon
@@ -169,6 +173,7 @@ def _create_medication_widget():
     med.add_widget(title)
 
     med_content = KioskLabel(type="body", text="Loading medications...")
+    med_content.valign = "middle"
     med.add_widget(med_content)
     med.medication_content = med_content
 

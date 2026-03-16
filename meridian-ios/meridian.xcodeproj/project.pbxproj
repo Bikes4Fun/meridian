@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -53,48 +53,48 @@
 
 /* Begin PBXFileReference section */
 		01532DA9137C099F0076F6BF /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
-		0DB6424A857D88F88B1A9D40 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Photos.framework; path = Photos.framework; sourceTree = DEVELOPER_DIR; };
+		0DB6424A857D88F88B1A9D40 /* Photos.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Photos.framework; sourceTree = DEVELOPER_DIR; };
 		16544B32B9379834C3E8EAE8 /* libpyobjus.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libpyobjus.xcframework; path = ../dist/xcframework/libpyobjus.xcframework; sourceTree = SOURCE_ROOT; };
-		17F246E1A30FB1188AA1DE30 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = UIKit.framework; sourceTree = DEVELOPER_DIR; };
-		1A97411197594FA21C29CA27 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = ImageIO.framework; sourceTree = DEVELOPER_DIR; };
+		17F246E1A30FB1188AA1DE30 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = UIKit.framework; sourceTree = DEVELOPER_DIR; };
+		1A97411197594FA21C29CA27 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = ImageIO.framework; sourceTree = DEVELOPER_DIR; };
 		1AB44261942FE96236CF677D /* libssl.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libssl.xcframework; path = ../dist/xcframework/libssl.xcframework; sourceTree = SOURCE_ROOT; };
 		1D6058910D05DD3D006BFB54 /* meridian.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = meridian.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29B97316FDCFA39411CA2CEA /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		2CB5F34517D5233A006187AB /* bridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bridge.h; sourceTree = SOURCE_ROOT; };
 		2CB5F34617D5233A006187AB /* bridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = bridge.m; sourceTree = SOURCE_ROOT; };
-		30B5461D8BA1E7721E351F27 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
+		30B5461D8BA1E7721E351F27 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
 		41BC43198C60E6B5BF443E60 /* libcrypto.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libcrypto.xcframework; path = ../dist/xcframework/libcrypto.xcframework; sourceTree = SOURCE_ROOT; };
-		452F4C1FA88E8A3A83ED427F /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = CoreMotion.framework; sourceTree = DEVELOPER_DIR; };
-		467D481C816861B95E5C51DF /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = GameController.framework; sourceTree = DEVELOPER_DIR; };
-		4AE14C90BF3A304C2F0B1D57 /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = MobileCoreServices.framework; sourceTree = DEVELOPER_DIR; };
-		4D9D4E7B894F9F9A97DA43DF /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "libc++.tbd"; sourceTree = DEVELOPER_DIR; };
+		452F4C1FA88E8A3A83ED427F /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = CoreMotion.framework; sourceTree = DEVELOPER_DIR; };
+		467D481C816861B95E5C51DF /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = GameController.framework; sourceTree = DEVELOPER_DIR; };
+		4AE14C90BF3A304C2F0B1D57 /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = MobileCoreServices.framework; sourceTree = DEVELOPER_DIR; };
+		4D9D4E7B894F9F9A97DA43DF /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; path = "libc++.tbd"; sourceTree = DEVELOPER_DIR; };
 		59738AB41A8BB5D8001B2C0C /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ../dist/root/python3/lib; sourceTree = SOURCE_ROOT; };
 		59738ABA1A8E19AA001B2C0C /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = meridian/Images.xcassets; sourceTree = "<group>"; };
 		59994E3A148E85C800863906 /* YourApp */ = {isa = PBXFileReference; lastKnownFileType = folder; path = YourApp; sourceTree = "<group>"; };
 		59FDEA8A21E7D34E004E6ECE /* include */ = {isa = PBXFileReference; lastKnownFileType = folder; name = include; path = ../dist/root/python3/include; sourceTree = SOURCE_ROOT; };
 		5CCB4C1A8F55A3F78AF41C46 /* libSDL2_mixer.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libSDL2_mixer.xcframework; path = ../dist/xcframework/libSDL2_mixer.xcframework; sourceTree = SOURCE_ROOT; };
-		660B4837842205F287545CD7 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = libz.tbd; sourceTree = DEVELOPER_DIR; };
-		78CF4C0D9790B4E5E485B87B /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = CoreVideo.framework; sourceTree = DEVELOPER_DIR; };
+		660B4837842205F287545CD7 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; path = libz.tbd; sourceTree = DEVELOPER_DIR; };
+		78CF4C0D9790B4E5E485B87B /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = CoreVideo.framework; sourceTree = DEVELOPER_DIR; };
 		821E433B849932361D2B7564 /* libios.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libios.xcframework; path = ../dist/xcframework/libios.xcframework; sourceTree = SOURCE_ROOT; };
 		8C2E4F24AD51D34C48FB0C09 /* libSDL2.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libSDL2.xcframework; path = ../dist/xcframework/libSDL2.xcframework; sourceTree = SOURCE_ROOT; };
 		8D1107310486CEB800E47090 /* meridian-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "meridian-Info.plist"; plistStructureDefinitionIdentifier = "com.apple.xcode.plist.structure-definition.iphone.info-plist"; sourceTree = "<group>"; };
-		8F4946C094F69B161595008F /* libbz2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libbz2.tbd; path = libbz2.tbd; sourceTree = DEVELOPER_DIR; };
-		92E7458BADB1636F41C9ED8B /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Metal.framework; sourceTree = DEVELOPER_DIR; };
+		8F4946C094F69B161595008F /* libbz2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; path = libbz2.tbd; sourceTree = DEVELOPER_DIR; };
+		92E7458BADB1636F41C9ED8B /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Metal.framework; sourceTree = DEVELOPER_DIR; };
 		937049B8ABE056DBDF3BE310 /* libffi.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libffi.xcframework; path = ../dist/xcframework/libffi.xcframework; sourceTree = SOURCE_ROOT; };
-		95164F08912814B5174A7743 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = libsqlite3.tbd; sourceTree = DEVELOPER_DIR; };
-		9BC547D295EBF4EDB6E92A23 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
+		95164F08912814B5174A7743 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; path = libsqlite3.tbd; sourceTree = DEVELOPER_DIR; };
+		9BC547D295EBF4EDB6E92A23 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		9F3E4AB6B514782492607A05 /* libSDL2_image.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libSDL2_image.xcframework; path = ../dist/xcframework/libSDL2_image.xcframework; sourceTree = SOURCE_ROOT; };
-		A8FB4BE2A6308405EC8E47AB /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = Accelerate.framework; sourceTree = DEVELOPER_DIR; };
+		A8FB4BE2A6308405EC8E47AB /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Accelerate.framework; sourceTree = DEVELOPER_DIR; };
 		AC5106F42959EE4E00655416 /* Launch Screen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = "Launch Screen.storyboard"; path = "Storyboards/Launch Screen.storyboard"; sourceTree = "<group>"; };
-		B6174BB6904B2B21008212AB /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = OpenGLES.framework; sourceTree = DEVELOPER_DIR; };
-		BEC04B2988EC0F28BCE6F2BE /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = WebKit.framework; sourceTree = DEVELOPER_DIR; };
+		B6174BB6904B2B21008212AB /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = OpenGLES.framework; sourceTree = DEVELOPER_DIR; };
+		BEC04B2988EC0F28BCE6F2BE /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WebKit.framework; sourceTree = DEVELOPER_DIR; };
 		C34E487FAD4FE368921571BF /* libpng16.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libpng16.xcframework; path = ../dist/xcframework/libpng16.xcframework; sourceTree = SOURCE_ROOT; };
-		D5AB4DDE853A971A5A9CD62A /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = CoreMedia.framework; sourceTree = DEVELOPER_DIR; };
-		DAB54B5E8AFF576860552766 /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = MessageUI.framework; sourceTree = DEVELOPER_DIR; };
-		E8B14A39B837E6E93EE93C11 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = AudioToolbox.framework; sourceTree = DEVELOPER_DIR; };
-		EB1048DCAC1135158827D139 /* CoreHaptics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreHaptics.framework; path = CoreHaptics.framework; sourceTree = DEVELOPER_DIR; };
+		D5AB4DDE853A971A5A9CD62A /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = CoreMedia.framework; sourceTree = DEVELOPER_DIR; };
+		DAB54B5E8AFF576860552766 /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = MessageUI.framework; sourceTree = DEVELOPER_DIR; };
+		E8B14A39B837E6E93EE93C11 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = AudioToolbox.framework; sourceTree = DEVELOPER_DIR; };
+		EB1048DCAC1135158827D139 /* CoreHaptics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = CoreHaptics.framework; sourceTree = DEVELOPER_DIR; };
 		EBAA48B8BDD512CD7B81205A /* libSDL2_ttf.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libSDL2_ttf.xcframework; path = ../dist/xcframework/libSDL2_ttf.xcframework; sourceTree = SOURCE_ROOT; };
-		EBCF4725A96AE6EACA3527D6 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
+		EBCF4725A96AE6EACA3527D6 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
 		ED6340F297991A8C855D1218 /* libpython3.11.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libpython3.11.xcframework; path = ../dist/xcframework/libpython3.11.xcframework; sourceTree = SOURCE_ROOT; };
 		F6CA4E70B51E78113A190829 /* libkivy.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libkivy.xcframework; path = ../dist/xcframework/libkivy.xcframework; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -273,7 +273,8 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0610;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1620;
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "meridian" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -322,7 +323,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "rsync -av --delete \"${SRCROOT}/../ios_app\"/ \"${PROJECT_DIR}\"/YourApp";
+			shellScript = "rsync -av --delete \"${SRCROOT}/../ios_app\"/ \"${PROJECT_DIR}\"/YourApp; [ -f \"${SRCROOT}/../src/shared/api_config.json\" ] && cp \"${SRCROOT}/../src/shared/api_config.json\" \"${PROJECT_DIR}\"/YourApp/";
 		};
 		113D17E2153E3DB5001310A6 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -368,11 +369,15 @@
 		1D6058940D05DD3E006BFB54 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = V2KY58YNP3;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SRCROOT)/../dist/frameworks",
@@ -397,11 +402,11 @@
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-all_load";
+				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.app;
 				PRODUCT_NAME = meridian;
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				SDKROOT = iphoneos;
-				STRIP_INSTALLED_PRODUCT = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				USER_HEADER_SEARCH_PATHS = "";
 			};
@@ -410,12 +415,16 @@
 		1D6058950D05DD3E006BFB54 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_RESOURCE_RULES_PATH = "$(SDKROOT)/ResourceRules.plist";
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = V2KY58YNP3;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SRCROOT)/../dist/frameworks",
@@ -436,12 +445,12 @@
 					"$(SRCROOT)/../dist/lib",
 				);
 				OTHER_LDFLAGS = "-all_load";
+				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.app;
 				PRODUCT_NAME = meridian;
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = NO;
-				STRIP_INSTALLED_PRODUCT = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				USER_HEADER_SEARCH_PATHS = "";
 				VALIDATE_PRODUCT = YES;
@@ -451,9 +460,38 @@
 		C01FCF4F08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				DEAD_CODE_STRIPPING = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_BITCODE = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../dist/root/include/";
 			};
 			name = Debug;
@@ -461,9 +499,36 @@
 		C01FCF5008A954540054247B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				DEAD_CODE_STRIPPING = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_BITCODE = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../dist/root/include/";
 			};

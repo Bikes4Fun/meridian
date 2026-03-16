@@ -178,7 +178,7 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         # Public routes: no auth required (login page, chatapp POC)
-        if request.path in ("/login.html", "/app.js") or request.path.startswith("/chatapp/"):
+        if request.path in ("/login.html", "/app.js") or request.path == "/chatapp" or request.path.startswith("/chatapp/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -194,16 +194,7 @@ def create_server_app(db_path=None):
             g.user_id = uid
             g.family_circle_id = fid
             return
-        # /checkin, /checkin.js: session-only; route handles redirect/401
-        if request.path in ("/checkin", "/checkin.js"):
-            if not _session_valid():
-                session.clear()
-                g.user_id = None
-                g.family_circle_id = None
-            else:
-                g.user_id = session.get("user_id")
-                g.family_circle_id = session.get("family_circle_id")
-            return
+
         # chat-session-bootstrap: new webview (kiosk, mobile) opens URL from chat-session-url; no prior cookie. Token verified in handler.
         if request.path == "/api/chat/chat-session-bootstrap":
             g.user_id = None
@@ -501,20 +492,6 @@ def create_server_app(db_path=None):
         session.clear()
         return jsonify({"ok": True})
 
-    @app.route("/checkin")
-    def checkin_page():
-        """Session-only: redirect to /login.html when no session."""
-        if not session.get("user_id") or not session.get("family_circle_id"):
-            return redirect("/login.html")
-        return Response("OK", status=200)
-
-    @app.route("/checkin.js")
-    def checkin_js():
-        """Session-only: 401 when no session."""
-        if not session.get("user_id") or not session.get("family_circle_id"):
-            abort(401, "Not logged in")
-        return Response("", status=404)
-
     @app.route("/api/family_circles/<family_circle_id>/family-members")
     def api_get_family_members(family_circle_id):
         _require_family_access(family_circle_id)
@@ -529,11 +506,10 @@ def create_server_app(db_path=None):
             )
         return jsonify({"data": members})
 
-    @app.route("/api/family_circles/<family_circle_id>/checkin", methods=["POST"])
+    @app.route("/api/family_circles/<family_circle_id>/create_checkin", methods=["POST"])
     def api_create_checkin(family_circle_id):
         """Create a new location check-in."""
         # TODO: use userid for this, not family circle. allowing the user to checkin to multiple families if needed?
-        # TODO: rename something like 'create_checkin'
         _require_family_access(family_circle_id)
         data = request.get_json()
         if not data:
@@ -568,10 +544,9 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/family_circles/<family_circle_id>/checkins")
+    @app.route("/api/family_circles/<family_circle_id>/get_checkins")
     def api_get_checkins(family_circle_id):
         """Get latest check-in per family member. Includes photo_url and photo_filename."""
-        # TODO: rename something like 'get_checkins'
         _require_family_access(family_circle_id)
         r = location_svc.get_checkins(family_circle_id)
         if not r.success:
@@ -609,7 +584,7 @@ def create_server_app(db_path=None):
         @app.route("/chatapp/<path:path>")
         def serve_chat(path=""):
             if not path:
-                path = "poc_chat.html"
+                path = "index.html"
             return send_from_directory(_chatapp_dist, path)
 
     return app

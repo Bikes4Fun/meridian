@@ -350,7 +350,7 @@ class RemoteLocationService:
 
     def get_checkins(self) -> Any:
         ok, data, err = _get(
-            f"{self._base}/api/family_circles/{self._fc_id}/checkins",
+            f"{self._base}/api/family_circles/{self._fc_id}/get_checkins",
             headers=self._headers,
             session=self._session,
         )
@@ -391,7 +391,7 @@ class RemoteLocationService:
 
             client = self._session if self._session else requests
             r = client.post(
-                f"{self._base}/api/family_circles/{self._fc_id}/checkin",
+                f"{self._base}/api/family_circles/{self._fc_id}/create_checkin",
                 json=payload,
                 headers=self._headers,
                 timeout=5,

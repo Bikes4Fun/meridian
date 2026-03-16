@@ -455,7 +455,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         """Serve static files from dist."""
         if not path:
             if not session.get("user_id") or not session.get("family_circle_id"):
-                return redirect("/poc_chat.html")
+                return redirect("/index.html")
             path = "index.html"
         return send_from_directory(static_dir, path)
 
@@ -477,6 +477,7 @@ def register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix: s
             return jsonify({"error": "Invalid or expired token"}), 403
         session["user_id"] = payload["user_id"]
         session["family_circle_id"] = payload["family_circle_id"]
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
         path = (auth_redirect_base + "/chat.html") if auth_redirect_base else "/"
         sb = (payload.get("sendbird_user_id") or "").strip()
         dn = (payload.get("display_name") or "").strip()

@@ -28,17 +28,14 @@ if "--local" in sys.argv:
 
 import json
 import logging
-import subprocess
 import threading
 import time
 from shared.config import (
-    ConfigManager,
+    get_log_level,
     get_database_path,
     get_railway_api_url,
     get_server_host,
     get_server_port,
-    get_webapp_port,
-    get_chatapp_port,
     find_available_port,
     is_railway_reachable,
 )
@@ -77,104 +74,14 @@ def _start_local_api_server(logger):
     return api_url
 
 
-def _start_local_webapp_server(api_url, logger):
-    """Build and serve webapp. Abort if build fails."""
-    host = get_server_host()
-    webapp_port = find_available_port(host, get_webapp_port())
-    webapp_url = "http://127.0.0.1:%s" % webapp_port
-    os.environ["WEBAPP_URL"] = webapp_url
-
-    src_dir = os.path.dirname(os.path.abspath(__file__))
-    webapp_dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
-    webapp_server_dir = os.path.join(src_dir, "apps", "webapp", "web_server")
-
-    try:
-        subprocess.run(
-            ["node", "build.js"],
-            cwd=webapp_server_dir,
-            env={**os.environ, "API_URL": api_url},
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error(
-            "Webapp build failed (%s). Run 'node build.js' in apps/webapp/web_server.",
-            e,
-        )
-        sys.exit(1)
-
-    if not os.path.exists(webapp_dist):
-        logger.error("Webapp dist/ missing after build. Aborting.")
-        sys.exit(1)
-
-    from http.server import HTTPServer, SimpleHTTPRequestHandler
-
-    class WebappHandler(SimpleHTTPRequestHandler):
-        def __init__(self, request, client_address, server):
-            super().__init__(request, client_address, server, directory=webapp_dist)
-
-        def handle(self):
-            try:
-                super().handle()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-
-    webapp_server = HTTPServer(("127.0.0.1", webapp_port), WebappHandler)
-    threading.Thread(target=webapp_server.serve_forever, daemon=True).start()
-    logger.info("Webapp: %s", webapp_url)
-    return webapp_url
-
-
-def _start_local_chatapp_server(api_url, logger):
-    """Build and run chatapp API server (Flask). Serves UI + chat API (config, token, recipient)."""
-    host = get_server_host()
-    chatapp_port = find_available_port(host, get_chatapp_port())
-    chatapp_url = "http://127.0.0.1:%s" % chatapp_port
-    os.environ["CHATAPP_URL"] = chatapp_url
-
-    src_dir = os.path.dirname(os.path.abspath(__file__))
-    chatapp_server_dir = os.path.join(src_dir, "apps", "chatapp", "chat_server")
-    chatapp_dist = os.path.join(chatapp_server_dir, "dist")
-
-    try:
-        subprocess.run(
-            ["node", "build.js"],
-            cwd=chatapp_server_dir,
-            env={**os.environ, "API_URL": ""},
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logger.error(
-            "Chatapp build failed (%s). Run 'node build.js' in apps/chatapp/chat_server.",
-            e,
-        )
-        sys.exit(1)
-
-    if not os.path.exists(chatapp_dist):
-        logger.error("Chatapp dist/ missing after build. Aborting.")
-        sys.exit(1)
-
-    from apps.chatapp.api import run_chatapp_server
-
-    threading.Thread(
-        target=run_chatapp_server,
-        kwargs={"port": chatapp_port, "static_dir": chatapp_dist},
-        daemon=True,
-    ).start()
-    logger.info("Chatapp: %s", chatapp_url)
-    time.sleep(0.3)
-    from apps.chatapp.verify_api import verify_api
-
-    # verify_api(chatapp_url, logger)
-    return chatapp_url
-
-
 def main():
     """Start Kivy TV client. Use Railway API if reachable, else start local server + DB."""
     use_local = "--local" in sys.argv
+    railway_reachable = is_railway_reachable()
+    using_local_db = use_local or not railway_reachable
 
-    config_manager = ConfigManager()
     logging.basicConfig(
-        level=getattr(logging, config_manager.get_log_level().upper()),
+        level=getattr(logging, get_log_level().upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     # Intentional: silence connection-pool, Werkzeug, PIL, verbose display/app_factory debug
@@ -183,36 +90,60 @@ def main():
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("display.widgets").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
-    logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
+    logging.getLogger("dev.demo.seed").setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
 
-    if use_local:
+    # using_local_db = where DB comes from (local file or Railway). Drives DB setup + API server.
+    # use_local = --local flag; also runs local webapp/chatapp. Railway-unreachable fallback uses local DB but not webapp/chatapp.
+    if using_local_db:
         db_path = get_database_path()
-        from dev.demo.seed import ensure_local_database
+        logger.info("Database: local - %s", db_path)
+        if not railway_reachable:
+            logger.warning(
+                "Railway API not reachable (%s), using local database.",
+                get_railway_api_url(),
+            )
+        from dev.demo.seed import ensure_local_database, refresh_demo_checkins
 
         ensure_local_database(db_path)
         logger.info("Local DB validated.")
-        from dev.demo.seed import refresh_demo_checkins
-
         refresh_demo_checkins(db_path)
         logger.info("Database loaded")
+        if use_local:
+            src_dir = os.path.dirname(os.path.abspath(__file__))
+            try:
+                from build_all import build_webapp, build_chatapp
+                build_webapp("", src_dir)
+                build_chatapp("", src_dir)
+            except Exception as e:
+                logger.error("Build failed (%s).", e)
+                sys.exit(1)
         api_url = _start_local_api_server(logger)
-        webapp_url = _start_local_webapp_server(api_url, logger)
-        chatapp_url = _start_local_chatapp_server(api_url, logger)
-        os.environ["CORS_ORIGIN"] = ",".join([webapp_url, chatapp_url])
-    elif is_railway_reachable():
+    else:
         api_url = get_railway_api_url()
-        logger.info("API/DB: %s", api_url)
+        logger.info("Database: Railway (remote) - %s", api_url)
         webapp_url = os.environ.get("WEBAPP_URL", "").strip()
         chatapp_url = os.environ.get("CHATAPP_URL", "").strip()
         logger.info("Webapp: %s", webapp_url or "(set WEBAPP_URL)")
         logger.info("Chatapp: %s", chatapp_url or "(set CHATAPP_URL for chat redirect)")
+
+    if use_local:
+        os.environ["WEBAPP_URL"] = api_url
+        os.environ["CHATAPP_URL"] = api_url.rstrip("/")
+        os.environ["CORS_ORIGIN"] = api_url
+        webapp_url = api_url
+        chatapp_url = api_url.rstrip("/") + "/chatapp"
+        logger.info("Webapp: %s", webapp_url)
+        logger.info("Chatapp: %s", chatapp_url)
+    elif not using_local_db:
+        pass  # webapp/chatapp from env already logged above
     else:
-        logger.warning(
-            "Railway API not reachable (%s), using local database.",
-            get_railway_api_url(),
-        )
-        api_url = _start_local_api_server(logger)
+        _src = os.path.dirname(os.path.abspath(__file__))
+        _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
+        _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
+        if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
+            logger.info("[Webapp      ] %s", api_url)
+            logger.info("[Chatapp     ] %s/chatapp/", api_url)
 
     logger.info("Starting Meridian ...")
     try:
@@ -224,10 +155,10 @@ def main():
         logger.info(
             "Meridian Kiosk, server, and webapp created successfully, starting..."
         )
-        if use_local and chatapp_url:
+        if use_local:
             print(f"")
             print(f"POC Chat — Window 1 (Marian):")
-            print("  Chatapp URL:", chatapp_url)
+            print("  Chatapp URL:", chatapp_url + "/")
             print(f"  F00000")
             print(f"  fm_care_001")
             print(f"  dtzecha")

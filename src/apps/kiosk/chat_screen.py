@@ -2,13 +2,23 @@
 Chat screen: contact grid with chat entry. Uses KioskLabel/KioskButton for dementia-friendly styling.
 """
 
+import os
 from kivy.metrics import dp
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.image import Image
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 
-from .screen_primitives import KioskLabel, KioskButton
+from .checkin_screen import _crop_image_to_circle
+from .screen_primitives import KioskLabel
 from .webview import open_chat_window
+
+
+class ContactTile(ButtonBehavior, BoxLayout):
+    """Clickable tile: photo (optional) + name. orientation=vertical."""
+
+    pass
 
 
 def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, screen):
@@ -61,6 +71,8 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
             )
             return
         entry_svc = services.get("chat_entry_service")
+        loc_svc = services.get("location_service")
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
         for c in chat_contacts:
             name = c.get("display_name") or c.get("id") or "Contact"
             sb_uid = (c.get("sendbird_user_id") or "").strip()
@@ -74,14 +86,22 @@ def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, scree
                     if r.success and r.data:
                         open_chat_window(r.data)
 
-            btn = KioskButton(
-                text=name,
-                size_hint_y=None,
-                height=dp(64),
-                font_size=KioskLabel._TYPES["body"]["font_size"],
+            tile = ContactTile(orientation="vertical")
+            tile.size_hint_y = None
+            tile.height = dp(80)
+            src = None
+            if c.get("user_id") and loc_svc and hasattr(loc_svc, "fetch_photo_to_cache"):
+                src = loc_svc.fetch_photo_to_cache(c["user_id"], cache_dir)
+            if src:
+                circle_img = _crop_image_to_circle(src, size=80)
+                if circle_img:
+                    img = Image(source=circle_img, size_hint=(None, None), size=(dp(48), dp(48)))
+                    tile.add_widget(img)
+            tile.add_widget(
+                KioskLabel(type="body", text=name, size_hint_y=None, height=dp(20))
             )
-            btn.bind(on_press=lambda *_a, sb=sb_uid, nm=name: _on_contact_click(sb, nm))
-            contacts_grid.add_widget(btn)
+            tile.bind(on_press=lambda *_a, sb=sb_uid, nm=name: _on_contact_click(sb, nm))
+            contacts_grid.add_widget(tile)
 
     screen.bind(on_enter=lambda *_a: _load_contacts())
     return content

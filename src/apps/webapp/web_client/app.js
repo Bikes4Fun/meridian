@@ -241,7 +241,25 @@
                     var sb = (c.sendbird_user_id || '').trim();
                     var tile = document.createElement('div');
                     tile.className = 'contact-tile';
-                    tile.textContent = name;
+                    tile.style.display = 'flex';
+                    tile.style.flexDirection = 'column';
+                    tile.style.alignItems = 'center';
+                    if (c.user_id) {
+                        var img = document.createElement('img');
+                        img.src = apiBase + '/api/users/' + c.user_id + '/photo';
+                        img.alt = name;
+                        img.style.width = '48px';
+                        img.style.height = '48px';
+                        img.style.borderRadius = '50%';
+                        img.style.objectFit = 'cover';
+                        img.style.marginBottom = '6px';
+                        tile.appendChild(img);
+                        var label = document.createElement('span');
+                        label.textContent = name;
+                        tile.appendChild(label);
+                    } else {
+                        tile.textContent = name;
+                    }
                     tile.addEventListener('click', function () {
                         if (statusEl) statusEl.textContent = 'Opening chat…';
                         var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);

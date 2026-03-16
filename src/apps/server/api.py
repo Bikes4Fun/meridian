@@ -580,6 +580,10 @@ def create_server_app(db_path=None):
         def serve_app_js():
             return send_from_directory(_webapp_dist, "app.js")
 
+        @app.route("/fonts/<path:path>")
+        def serve_fonts(path):
+            return send_from_directory(os.path.join(_webapp_dist, "fonts"), path)
+
         @app.route("/chatapp/")
         @app.route("/chatapp/<path:path>")
         def serve_chat(path=""):

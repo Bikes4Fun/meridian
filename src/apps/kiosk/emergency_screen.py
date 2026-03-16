@@ -97,7 +97,7 @@ def _build_layout(layout, e_data, e_contacts, services):
     medical_data = e_data.get("medical") or {}
 
     red_bar = (0.75, 0.2, 0.2, 1)
-    personal_height = scaled(48) + 6 * scaled(40)
+    personal_height = scaled(48) + 6 * scaled(40) + 6 * scaled(4)
     row_h = scaled(40)
 
     personal = BoxLayout(
@@ -154,9 +154,6 @@ def _build_layout(layout, e_data, e_contacts, services):
         photo_col.add_widget(img)
         personal_wrapper.add_widget(photo_col)
 
-    top_half = AnchorLayout(anchor_y="center", size_hint_y=1)
-    top_half.add_widget(personal_wrapper)
-
     ec_list = []
     for c in e_contacts.get("contacts", []):
         phone = c.get("phone") or ""
@@ -193,7 +190,7 @@ def _build_layout(layout, e_data, e_contacts, services):
     )
 
     bottom_box = BoxLayout(orientation="vertical", size_hint_y=1)
-    bottom_box.add_widget(top_half)
+    bottom_box.add_widget(personal_wrapper)
     bottom_box.add_widget(contacts_section)
     layout.add_widget(bottom_box)
 
@@ -205,7 +202,8 @@ def _build_layout(layout, e_data, e_contacts, services):
 
 def build_emergency_screen(services):
     """Build fully constructed emergency profile widget. Returns widget ready for layout."""
-    emergency_widget = KioskWidget()
+    # Extra top padding so "IN CASE OF EMERGENCY" header is not clipped
+    emergency_widget = KioskWidget(padding=[scaled(40), scaled(48), scaled(40), scaled(40)], spacing=0)
 
     emergency_svc = services.get("emergency_service")
     if not emergency_svc:

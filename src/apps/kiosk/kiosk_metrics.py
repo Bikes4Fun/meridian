@@ -1,6 +1,5 @@
 """
 Kiosk display metrics: scaled font/dimension helpers.
-
 Reference dimensions and dev settings live in shared.config.
 """
 
@@ -8,7 +7,6 @@ from shared.config import (
     KIOSK_REFERENCE_HEIGHT,
     get_kiosk_dev_height,
     get_kiosk_dev_scale,
-    get_kiosk_window_size,
 )
 
 

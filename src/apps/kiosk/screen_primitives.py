@@ -146,6 +146,7 @@ class KioskNavBar(KioskWidget):
 
             btn = KioskButton(
                 text=text,
+                font_size=KioskLabel._TYPES["subheader"]["font_size"],
                 size_hint=(nav_button_width, None),
                 height=self.height,
             )

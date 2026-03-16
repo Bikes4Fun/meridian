@@ -105,7 +105,9 @@ def _create_clock_widget(services):
     time_of_day_icon.height = CLOCK_ICON_SIZE
     time_svc = services.get("time_service")
     initial_time_of_day = time_svc.get_am_pm() if time_svc else "Morning"
-    time_of_day_icon.source = get_time_of_day_icon(initial_time_of_day)
+    icon_path = get_time_of_day_icon(initial_time_of_day)
+    if icon_path:
+        time_of_day_icon.source = icon_path
     icon_container.add_widget(time_of_day_icon)
 
     top_section.add_widget(icon_container)

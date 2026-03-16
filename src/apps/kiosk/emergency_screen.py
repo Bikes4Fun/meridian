@@ -149,8 +149,7 @@ def _build_layout(layout, e_data, e_contacts, services):
             source=photo_src,
             size_hint=(None, None),
             size=(scaled(140), scaled(140)),
-            allow_stretch=True,
-            keep_ratio=True,
+            fit_mode="contain",
         )
         photo_col.add_widget(img)
         personal_wrapper.add_widget(photo_col)

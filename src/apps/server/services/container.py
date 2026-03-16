@@ -9,6 +9,7 @@ except ImportError:
     from shared.config import DatabaseConfig
 from ..database import DatabaseManager
 from .contact import ContactService
+from .user import UserService
 from .calendar import CalendarService
 from .medical import MedicationService
 from .location import LocationService
@@ -37,6 +38,11 @@ class ServiceContainer:
                 self.get_database_manager()
             )
         return self._services["contact_service"]
+
+    def get_user_service(self):
+        if "user_service" not in self._services:
+            self._services["user_service"] = UserService(self.get_database_manager())
+        return self._services["user_service"]
 
     def get_calendar_service(self):
         if "calendar_service" not in self._services:

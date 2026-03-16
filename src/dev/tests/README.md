@@ -47,18 +47,18 @@ All auth is enforced in `apps.server.api` (`set_user_id`, `_require_family_acces
 
 **No auth (public):** GET `/api/health`, POST `/api/login`, GET `/login`
 
-**Session only** (no headers; session must have `user_id` + `family_circle_id`): GET `/checkin` (redirect to `/login` if no session), GET `/checkin.js` (401), GET `/api/session` (401)
+**Session only** (no headers; session must have `user_id` + `family_circle_id`): GET `/api/session` (401)
 
 **Both X-User-Id and X-Family-Circle-Id** (or same from session) required for all other API routes. Family-scoped routes also require the URL `family_circle_id` to match the header (wrong family → 403):
 
 - GET `/api/family_circles/<id>/calendar/headers`, `calendar/month`, `calendar/date`, `calendar/events`
 - GET `/api/family_circles/<id>/medications`, `contacts`, `emergency-contacts`, `medical-summary`
 - GET `/api/family_circles/<id>/emergency-profile`, `emergency-profile/pdf`
-- GET `/api/family_circles/<id>/family-members`, `named-places`, `checkins`
+- GET `/api/family_circles/<id>/family-members`, `named-places`, `get_checkins`
 - GET `/api/emergency/alert/status` (no family in URL; still requires both headers)
 - POST `/api/emergency/alert`
 - GET/PUT `/api/family_circles/<id>/emergency-profile`
-- POST `/api/family_circles/<id>/checkin` (body `user_id` must equal `X-User-Id`)
+- POST `/api/family_circles/<id>/create_checkin` (body `user_id` must equal `X-User-Id`)
 - GET `/api/users/<user_id>/photo` (user must be in same family as `X-Family-Circle-Id`)
 
 Tests in `test_api.py` use `PROTECTED_GET_ROUTES` and `PROTECTED_POST_PUT_ROUTES` to assert every protected route returns 401 without auth and every family-scoped route returns 403 when requesting another family.

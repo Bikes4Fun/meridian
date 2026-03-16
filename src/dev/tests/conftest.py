@@ -14,7 +14,7 @@ src_dir = Path(__file__).parent.parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-from shared.config import ConfigManager, DatabaseConfig
+from shared.config import DatabaseConfig
 from apps.server.database import DatabaseManager
 from apps.kiosk.api_client import LocalTimeService
 from apps.server.services.contact import ContactService
@@ -267,9 +267,3 @@ def medication_service(populated_test_db):
 def emergency_service(populated_test_db, contact_service):
     """Create an EmergencyService with test database and contact service."""
     return EmergencyService(populated_test_db, contact_service)
-
-
-@pytest.fixture
-def config_manager():
-    """Create a ConfigManager instance."""
-    return ConfigManager()

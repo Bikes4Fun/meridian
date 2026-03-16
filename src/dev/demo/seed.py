@@ -59,6 +59,9 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
     """Load contacts from JSON. Can have photo_filename, notes, sendbird_user_id for contact card and chat."""
     contacts_data = load_json_file("contacts.json")
     contacts = contacts_data.get("contacts", [])
+    names = [c.get("display_name") for c in contacts if c.get("display_name")]
+    if names:
+        logger.info("Contacts: %s", ", ".join(names))
 
     for contact in contacts:
         query = """
@@ -86,6 +89,10 @@ def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
 def load_demo_family_circles_from_json_into_db(db_manager):
     """Load family circles from family.json."""
     data = load_json_file("family.json")
+    family_members = data.get("family_members", [])
+    names = [m.get("display_name") for m in family_members if m.get("display_name")]
+    if names:
+        logger.info("Family members: %s", ", ".join(names))
     circles = data.get("family_circles", [])
     if not circles and data.get("family_circle_id"):
         circles = [{"id": data.get("family_circle_id")}]

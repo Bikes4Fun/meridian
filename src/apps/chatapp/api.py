@@ -455,7 +455,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         """Serve static files from dist."""
         if not path:
             if not session.get("user_id") or not session.get("family_circle_id"):
-                return redirect("/poc_chat.html")
+                return redirect("/index.html")
             path = "index.html"
         return send_from_directory(static_dir, path)
 

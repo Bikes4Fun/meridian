@@ -129,16 +129,3 @@ def is_railway_reachable(timeout: float = 3.0) -> bool:
             return resp.status == 200
     except Exception:
         return False
-
-
-# Backward compatibility - simple ConfigManager wrapper
-class ConfigManager:
-    """Simple configuration manager for backward compatibility."""
-
-    def get_database_path(self) -> str:
-        """Get database path."""
-        return get_database_path()
-
-    def get_log_level(self) -> str:
-        """Get log level."""
-        return get_log_level()

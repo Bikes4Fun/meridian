@@ -106,7 +106,7 @@
                     btn.disabled = false;
                     return;
                 }
-                fetch(API_URL + '/api/family_circles/' + fcId + '/checkin', {
+                fetch(API_URL + '/api/family_circles/' + fcId + '/create_checkin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',

@@ -4,7 +4,7 @@ Uses the Flask test client; no running server required.
 
 API auth (from apps.server.api set_user_id / _require_family_access):
 - No auth: GET /api/health, POST /api/login, GET /login
-- Session only (no headers): /checkin (redirect), /checkin.js (401), GET /api/session (401) — require session user_id + family_circle_id
+- Session only (no headers): GET /api/session (401) — requires session user_id + family_circle_id
 - Both X-User-Id and X-Family-Circle-Id (or session): all other API routes. Family-scoped routes also require URL family_circle_id == header family.
 """
 
@@ -52,7 +52,7 @@ PROTECTED_GET_ROUTES = [
     ("/api/family_circles/%s/emergency-profile/pdf", True),
     ("/api/family_circles/%s/family-members", True),
     ("/api/family_circles/%s/named-places", True),
-    ("/api/family_circles/%s/checkins", True),
+    ("/api/family_circles/%s/get_checkins", True),
     ("/api/emergency/alert/status", False),
 ]
 # (path_template, is_family_scoped): is_family_scoped means URL has family_circle_id and _require_family_access applies
@@ -196,20 +196,6 @@ def test_api_contacts_requires_auth(api_client):
     assert r.status_code == 401
 
 
-# --- Security: session routes ---
-@pytest.mark.integration
-def test_checkin_page_redirects_to_login_without_session(api_client):
-    r = api_client.get("/checkin")
-    assert r.status_code == 302
-    assert "login" in r.headers.get("Location", "").lower()
-
-
-@pytest.mark.integration
-def test_checkin_js_401_without_session(api_client):
-    r = api_client.get("/checkin.js")
-    assert r.status_code == 401
-
-
 # --- Security: user A (fam_a) cannot access family B (fam_b) data → 403 ---
 @pytest.mark.integration
 def test_api_cross_family_403(api_client):
@@ -240,7 +226,7 @@ def test_fam_a_cannot_access_fam_b_data(api_client):
 @pytest.mark.integration
 def test_checkin_succeeds_when_user_matches(api_client):
     r = api_client.post(
-        "/api/family_circles/%s/checkin" % FAMILY_CIRCLE_ID,
+        "/api/family_circles/%s/create_checkin" % FAMILY_CIRCLE_ID,
         headers=API_HEADERS,
         json={"user_id": TEST_USER_ID, "latitude": 37.0, "longitude": -113.0},
     )
@@ -251,7 +237,7 @@ def test_checkin_succeeds_when_user_matches(api_client):
 @pytest.mark.integration
 def test_checkin_forbidden_when_user_differs(api_client):
     r = api_client.post(
-        "/api/family_circles/%s/checkin" % FAMILY_CIRCLE_ID,
+        "/api/family_circles/%s/create_checkin" % FAMILY_CIRCLE_ID,
         headers=API_HEADERS,
         json={"user_id": "other_user", "latitude": 37.0, "longitude": -113.0},
     )

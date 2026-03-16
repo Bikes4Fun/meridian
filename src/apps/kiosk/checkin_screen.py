@@ -141,6 +141,25 @@ class CustomMarker(MapMarker):
         self.anchor_y = 0
 
 
+def _clean_map_cache(cache_dir):
+    """Remove empty or corrupt tile files that cause MapView load errors."""
+    if not os.path.isdir(cache_dir):
+        return
+    try:
+        for name in os.listdir(cache_dir):
+            if not name.endswith(".png") or "circle" in name:
+                continue
+            path = os.path.join(cache_dir, name)
+            if os.path.isfile(path):
+                try:
+                    if os.path.getsize(path) < 100:
+                        os.remove(path)
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+
 def _create_map_container():
     """Create map container; MapView added lazily on screen enter."""
     container = BoxLayout(size_hint_y=0.72)
@@ -174,6 +193,7 @@ def build_checkin_screen(services, screen):
     def on_checkin_enter(instance):
         if map_container.children:
             return
+        _clean_map_cache(cache_dir)
         map_view = MapView(
             lat=map_params["lat"],
             lon=map_params["lon"],

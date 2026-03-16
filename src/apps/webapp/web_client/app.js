@@ -239,20 +239,27 @@
                 chatContacts.forEach(function (c) {
                     var name = c.display_name || c.id || 'Contact';
                     var sb = (c.sendbird_user_id || '').trim();
-                    var photoUrl = c.photo_url || null;
                     var tile = document.createElement('div');
                     tile.className = 'contact-tile';
-                    if (photoUrl) {
+                    tile.style.display = 'flex';
+                    tile.style.flexDirection = 'column';
+                    tile.style.alignItems = 'center';
+                    if (c.user_id) {
                         var img = document.createElement('img');
-                        img.src = photoUrl;
+                        img.src = apiBase + '/api/users/' + c.user_id + '/photo';
                         img.alt = name;
-                        img.className = 'contact-tile-photo';
+                        img.style.width = '48px';
+                        img.style.height = '48px';
+                        img.style.borderRadius = '50%';
+                        img.style.objectFit = 'cover';
+                        img.style.marginBottom = '6px';
                         tile.appendChild(img);
+                        var label = document.createElement('span');
+                        label.textContent = name;
+                        tile.appendChild(label);
+                    } else {
+                        tile.textContent = name;
                     }
-                    var nameEl = document.createElement('span');
-                    nameEl.className = 'contact-tile-name';
-                    nameEl.textContent = name;
-                    tile.appendChild(nameEl);
                     tile.addEventListener('click', function () {
                         if (statusEl) statusEl.textContent = 'Opening chat…';
                         var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);

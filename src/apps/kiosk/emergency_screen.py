@@ -86,9 +86,32 @@ def _build_layout(layout, e_data, e_contacts, services):
         if raw:
             photo_src = _crop_image_to_circle(raw) or raw
 
-    blue_bar = _form_section_bar("IN CASE OF EMERGENCY", (0.25, 0.45, 0.85, 1))
-    apply_debug_border(blue_bar)
-    layout.add_widget(blue_bar)
+    top_bar = BoxLayout(
+        orientation="horizontal",
+        size_hint_y=None,
+        height=dp(120) if photo_src else dp(48),
+        padding=[0, dp(4)],
+    )
+    blue_bar = _form_section_bar("IN CASE OF EMERGENCY", (0.25, 0.45, 0.85, 1), height=dp(48))
+    if photo_src:
+        bar_anchor = AnchorLayout(anchor_x="left", anchor_y="center", size_hint_x=0.75, size_hint_y=1)
+        bar_anchor.add_widget(blue_bar)
+        top_bar.add_widget(bar_anchor)
+    else:
+        top_bar.add_widget(blue_bar)
+    if photo_src:
+        photo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_x=0.25)
+        img = Image(
+            source=photo_src,
+            size_hint=(None, None),
+            size=(dp(120), dp(120)),
+            allow_stretch=True,
+            keep_ratio=True,
+        )
+        photo_anchor.add_widget(img)
+        top_bar.add_widget(photo_anchor)
+    apply_debug_border(top_bar)
+    layout.add_widget(top_bar)
 
     patient_data = e_data.get("profile") or {}
     medical_data = e_data.get("medical") or {}
@@ -99,8 +122,9 @@ def _build_layout(layout, e_data, e_contacts, services):
     personal = BoxLayout(
         orientation="vertical",
         spacing=dp(4),
+        size_hint_y=None,
+        height=personal_height,
     )
-    personal.size_hint_x = 0.65 if photo_src else 1.0
     personal.add_widget(
         _form_section_bar("PERSONAL INFORMATION", red_bar, height=dp(48))
     )
@@ -128,25 +152,6 @@ def _build_layout(layout, e_data, e_contacts, services):
     cond = medical_data.get("conditions")
     personal.add_widget(_form_row("CURRENT HEALTH CONDITIONS", cond))
     apply_debug_border(personal)
-
-    personal_wrapper = BoxLayout(
-        orientation="horizontal",
-        size_hint_y=None,
-        height=personal_height,
-        spacing=dp(12),
-    )
-    personal_wrapper.add_widget(personal)
-    if photo_src:
-        photo_anchor = AnchorLayout(anchor_x="center", anchor_y="center", size_hint_x=0.35)
-        img = Image(
-            source=photo_src,
-            size_hint=(None, None),
-            size=(dp(140), dp(140)),
-            allow_stretch=True,
-            keep_ratio=True,
-        )
-        photo_anchor.add_widget(img)
-        personal_wrapper.add_widget(photo_anchor)
 
     ec_list = []
     for c in e_contacts.get("contacts", []):
@@ -187,7 +192,7 @@ def _build_layout(layout, e_data, e_contacts, services):
         spacing=dp(8),
     )
     top_half = AnchorLayout(anchor_y="center", size_hint_y=0.5)
-    top_half.add_widget(personal_wrapper)
+    top_half.add_widget(personal)
     apply_debug_border(top_half)
     bottom_box.add_widget(top_half)
 

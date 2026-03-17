@@ -107,17 +107,16 @@ def avatar_img(api_base, user_id, alt=""):
 
 
 def kiosk_button(text, onclick_js):
-    """Primary button. Design: 160×160px min, text 24px min, rounded 12-16px. Used by: Emergency (Print)."""
-    onclick_escaped = html.escape(onclick_js)
-    return f'<button class="kiosk-button" onclick="{onclick_escaped}">{html.escape(str(text))}</button>'
+    """Primary button. Design: 160×160px min, text 24px min, rounded 12-16px. Used by: Emergency (Print).
+    onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it."""
+    return f'<button class="kiosk-button" onclick="{onclick_js}">{html.escape(str(text))}</button>'
 
 
 def contact_tile(api_base, name, user_id, onclick_js, relationship=""):
     """Person/contact card. Design: Photo 128px, Name 32px bold, Relationship 20px. Min touch 120px.
-    Used by: Chat, Family. relationship: optional caption below name (Design: "Relationship: 20px regular")."""
+    Used by: Chat, Family. onclick_js is Python-generated — do not html.escape it."""
     initial = (name or "?")[0].upper()
     name_escaped = html.escape(str(name or "Contact"))
     img_tag = avatar_img(api_base, user_id, name)
-    onclick_escaped = html.escape(onclick_js)
     rel_part = f'<div class="contact-relationship">{html.escape(str(relationship))}</div>' if relationship else ""
-    return f'<div class="contact-tile" onclick="{onclick_escaped}">{img_tag}<div class="contact-initial">{html.escape(initial)}</div><div class="contact-name">{name_escaped}</div>{rel_part}</div>'
+    return f'<div class="contact-tile" onclick="{onclick_js}">{img_tag}<div class="contact-initial">{html.escape(initial)}</div><div class="contact-name">{name_escaped}</div>{rel_part}</div>'

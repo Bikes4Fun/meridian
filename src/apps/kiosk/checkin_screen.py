@@ -3,22 +3,59 @@ Check-in (family locations / map) screen. Title, columns, map with markers.
 MapView is lazy-loaded on screen enter.
 """
 
-import os
+import json
 import logging
+import os
 from datetime import datetime
-
-from kivy.metrics import dp
-from kivy.uix.boxlayout import BoxLayout
-from kivy_garden.mapview import MapView, MapMarker
-
-from .screen_primitives import KioskLabel, KioskWidget, apply_debug_border
-from .kiosk_metrics import scaled
 
 logger = logging.getLogger(__name__)
 
 
+def build_checkin_html(services, api_url: str, family_circle_id: str) -> tuple[str, str]:
+    """Build family/checkin screen HTML and map markers JSON for pywebview. Returns (html, markers_json)."""
+    from . import html_primitives as hp
+
+    loc_svc = services.get("location_service")
+    places_svc = loc_svc
+    markers = []
+    places_html = hp.loading_state("Loading places...")
+    checkins_html = hp.loading_state("Loading check-ins...")
+
+    if loc_svc:
+        places_result = loc_svc.get_named_places()
+        if places_result.success and places_result.data:
+            lines = [f"• {p.get('location_name', 'Unknown')}" for p in places_result.data]
+            places_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No named places")
+        else:
+            places_html = hp.empty_state("No named places")
+
+        checkins_result = loc_svc.get_checkins()
+        if checkins_result.success and checkins_result.data:
+            lines = []
+            for c in checkins_result.data:
+                name = c.get("contact_name", "Unknown")
+                loc = c.get("location_name") or "Unknown"
+                lat = c.get("latitude")
+                lon = c.get("longitude")
+                if lat is not None and lon is not None:
+                    markers.append({"lat": lat, "lon": lon, "name": name})
+                lines.append(f"• {name}: {loc}")
+            checkins_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No check-ins")
+        else:
+            checkins_html = hp.empty_state("No check-ins yet")
+
+    left_panel = hp.panel(hp.kiosk_subheader("Possible family locations") + hp.spacer(16) + places_html)
+    right_panel = hp.panel(hp.kiosk_subheader("Check-ins") + hp.spacer(16) + checkins_html)
+    row = hp.two_column_row(left_panel, right_panel)
+    map_div = '<div id="map"></div>'
+    return hp.kiosk_header("Family Locations") + hp.spacer(24) + row + hp.spacer(24) + map_div, json.dumps(markers)
+
+
 def _create_title():
-    """Create Family Locations screen title block."""
+    """Create Family Locations screen title block (Kivy)."""
+    from kivy.metrics import dp
+    from .screen_primitives import KioskLabel, apply_debug_border
+    from .kiosk_metrics import scaled
     title = KioskLabel(type="header", text="Family Locations")
     title.size_hint_y = None
     title.height = scaled(64)
@@ -27,7 +64,9 @@ def _create_title():
 
 
 def _create_possible_places_block(location_service):
-    """Create possible family locations block (debug)."""
+    """Create possible family locations block (Kivy)."""
+    from .screen_primitives import KioskLabel, apply_debug_border
+    from .kiosk_metrics import scaled
     prefix = "possible family locations:\n"
     if location_service:
         places_result = location_service.get_named_places()
@@ -53,7 +92,9 @@ def _create_possible_places_block(location_service):
 
 
 def _create_checkins_block(location_service):
-    """Create family check-ins block."""
+    """Create family check-ins block (Kivy)."""
+    from .screen_primitives import KioskLabel, apply_debug_border
+    from .kiosk_metrics import scaled
     line_h = scaled(32) + scaled(4)
     if location_service:
         result = location_service.get_checkins()
@@ -130,17 +171,6 @@ def _crop_image_to_circle(src_path, size=200):
         return None
 
 
-class CustomMarker(MapMarker):
-    """MapMarker with fixed size for Life360-style profile photo display."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.size_hint = (None, None)
-        self.size = (dp(50), dp(50))
-        self.anchor_x = 0.5
-        self.anchor_y = 0
-
-
 def _clean_map_cache(cache_dir):
     """Remove empty or corrupt tile files that cause MapView load errors."""
     if not os.path.isdir(cache_dir):
@@ -161,7 +191,9 @@ def _clean_map_cache(cache_dir):
 
 
 def _create_map_container():
-    """Create map container; MapView added lazily on screen enter."""
+    """Create map container; MapView added lazily on screen enter (Kivy)."""
+    from kivy.uix.boxlayout import BoxLayout
+    from .screen_primitives import apply_debug_border
     container = BoxLayout(size_hint_y=0.72)
     apply_debug_border(container)
     return container
@@ -169,6 +201,20 @@ def _create_map_container():
 
 def build_checkin_screen(services, screen):
     """Build fully constructed check-in (family locations) widget. Wires lazy-load MapView on screen enter internally."""
+    from kivy.metrics import dp
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy_garden.mapview import MapView, MapMarker
+    from .screen_primitives import KioskWidget, apply_debug_border
+
+    class CustomMarker(MapMarker):
+        """MapMarker with fixed size for Life360-style profile photo display."""
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.size_hint = (None, None)
+            self.size = (dp(50), dp(50))
+            self.anchor_x = 0.5
+            self.anchor_y = 0
+
     loc_svc = services.get("location_service")
     map_lat = (37.0056 + 37.139) / 2
     map_lon = (-113.503 + -113.599) / 2

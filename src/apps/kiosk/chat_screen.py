@@ -3,27 +3,51 @@ Chat screen: contact grid with chat entry. Uses KioskLabel/KioskButton for demen
 """
 
 import os
-from kivy.metrics import dp
-from .kiosk_metrics import scaled
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.image import Image
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.gridlayout import GridLayout
-
-from .checkin_screen import _crop_image_to_circle
-from .screen_primitives import KioskLabel
-from .webview import open_chat_window
 
 
-class ContactTile(ButtonBehavior, BoxLayout):
-    """Clickable tile: photo (optional) + name. orientation=vertical."""
+def build_chat_html(services, api_url: str, kiosk_user_id: str, family_circle_id: str) -> str:
+    """Build chat screen HTML for pywebview. Contact tiles call pywebview.api.open_chat(sb_uid, name)."""
+    import json
+    from . import html_primitives as hp
 
-    pass
+    contact_svc = services.get("contact_service")
+    if not contact_svc or not family_circle_id:
+        return hp.kiosk_header("Family Chat") + hp.spacer(16) + hp.error_state("No contacts (check server).")
+    r = contact_svc.get_contacts()
+    if not r.success or not r.data:
+        return hp.kiosk_header("Family Chat") + hp.spacer(16) + hp.empty_state("No contacts.")
+    chat_contacts = [c for c in r.data if (c.get("sendbird_user_id") or "").strip()]
+    if not chat_contacts:
+        return hp.kiosk_header("Family Chat") + hp.spacer(16) + hp.empty_state("No contacts with chat.")
+
+    tiles = []
+    for c in chat_contacts:
+        name = c.get("display_name") or c.get("id") or "Contact"
+        sb_uid = (c.get("sendbird_user_id") or "").strip()
+        user_id = c.get("user_id") or ""
+        onclick = f"pywebview.api.open_chat({json.dumps(sb_uid)}, {json.dumps(name)})"
+        tiles.append(hp.contact_tile(api_url, name, user_id, onclick))
+    grid = "".join(tiles)
+    return hp.kiosk_header("Family Chat") + hp.spacer(24) + f'<div style="display:flex;flex-wrap:wrap;gap:20px">{grid}</div>'
 
 
 def build_chat_screen(services, kiosk_user_id: str, family_circle_id: str, screen):
     """Build fully constructed chat screen content widget. Wires on_enter to load contacts."""
+    from kivy.metrics import dp
+    from kivy.uix.behaviors import ButtonBehavior
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.image import Image
+    from kivy.uix.scrollview import ScrollView
+    from kivy.uix.gridlayout import GridLayout
+    from .checkin_screen import _crop_image_to_circle
+    from .screen_primitives import KioskLabel
+    from .kiosk_metrics import scaled
+    from .webview import open_chat_window
+
+    class ContactTile(ButtonBehavior, BoxLayout):
+        """Clickable tile: photo (optional) + name. orientation=vertical."""
+        pass
+
     content = BoxLayout(orientation="vertical", padding=scaled(24), spacing=scaled(24))
     content.add_widget(
         KioskLabel(

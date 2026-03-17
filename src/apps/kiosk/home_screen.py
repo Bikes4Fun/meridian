@@ -2,12 +2,6 @@
 Home screen: clock, medications, events.
 """
 
-from .screen_primitives import KioskWidget, KioskLabel, apply_debug_border
-from .kiosk_metrics import scaled
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.widget import Widget
-from kivy.uix.image import Image
-from kivy.uix.anchorlayout import AnchorLayout
 import logging
 import os
 
@@ -30,8 +24,56 @@ def get_time_of_day_icon(time_of_day):
     return ""
 
 
+def build_home_html(services, api_url: str) -> str:
+    """Build home screen HTML for pywebview. Clock/med/events use ids for updateEl."""
+    from . import html_primitives as hp
+
+    time_svc = services.get("time_service")
+    day = time_svc.get_dayof_week().upper() if time_svc else ""
+    date = time_svc.get_month_day() if time_svc else ""
+    year = time_svc.get_year() if time_svc else ""
+    clock_time = time_svc.get_time() if time_svc else ""
+    period = time_svc.get_am_pm().upper() if time_svc else ""
+    icon_map = {"Morning": "sunrise.png", "Noon": "noon.png", "Afternoon": "noon.png", "Evening": "evening.png", "Night": "night.png"}
+    icon_file = icon_map.get(time_svc.get_am_pm() if time_svc else "Morning", "sunrise.png")
+    icon_html = f'<img src="../icons/{icon_file}" alt="" class="clock-period-icon" style="width:100px;height:100px">'
+
+    clock = hp.kiosk_header(day, id_="clock-day")
+    clock += '<div style="display:flex;align-items:center;gap:16px">'
+    clock += hp.kiosk_subheader(period, id_="clock-period")
+    clock += icon_html
+    clock += "</div>"
+    clock += hp.spacer(16)
+    clock += hp.kiosk_hero(clock_time, id_="clock-time")
+    clock += hp.spacer(8)
+    clock += hp.kiosk_subheader(date, id_="clock-date")
+    clock += hp.kiosk_subheader(year, id_="clock-year")
+
+    med_content = '<div id="medication_content" class="state-placeholder state-loading">Loading medications...</div>'
+    med_panel = hp.panel(
+        hp.kiosk_header("Medications") + hp.spacer(16) + med_content,
+        "med-panel",
+    )
+
+    events_content = '<div id="events_content" class="state-placeholder state-loading">Loading events...</div>'
+    events_panel = hp.panel(
+        hp.kiosk_header("Today's Events") + hp.spacer(16) + events_content,
+        "events-panel",
+    )
+
+    bottom = hp.two_column_row(med_panel, events_panel)
+    return clock + hp.spacer(32) + bottom
+
+
 def build_home_screen(services):
     """Build home screen content: clock, medications, events. Returns (content_widget, clock_widget, med_widget, events_widget)."""
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.widget import Widget
+    from kivy.uix.image import Image
+    from kivy.uix.anchorlayout import AnchorLayout
+    from .screen_primitives import KioskWidget, KioskLabel, apply_debug_border
+    from .kiosk_metrics import scaled
+
     home_screen_top_bottom_split = 0.35
     med_events_split = 0.5
 
@@ -57,6 +99,13 @@ def build_home_screen(services):
 
 
 def _create_clock_widget(services):
+    """Create clock widget (Kivy). Imports Kivy/screen_primitives; only used by build_home_screen."""
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.widget import Widget
+    from kivy.uix.image import Image
+    from kivy.uix.anchorlayout import AnchorLayout
+    from .screen_primitives import KioskWidget, KioskLabel, apply_debug_border
+    from .kiosk_metrics import scaled
     # Widget-specific tokens (clock, med, events)
     CLOCK_ICON_SIZE = scaled(100)
     CLOCK_DAY_HEIGHT = scaled(80)
@@ -166,6 +215,9 @@ def _create_clock_widget(services):
 
 
 def _create_medication_widget():
+    """Create medication widget (Kivy)."""
+    from .screen_primitives import KioskWidget, KioskLabel
+    from .kiosk_metrics import scaled
     light_blue = (0.94, 0.96, 0.98, 1)
     med = KioskWidget(background_color=light_blue)
 
@@ -209,6 +261,9 @@ def _create_medication_widget():
 
 
 def _create_events_widget():
+    """Create events widget (Kivy)."""
+    from .screen_primitives import KioskWidget, KioskLabel
+    from .kiosk_metrics import scaled
     EVENTS_BG = (0.96, 0.98, 0.94, 1)
     events = KioskWidget(orientation="vertical", background_color=EVENTS_BG)
 

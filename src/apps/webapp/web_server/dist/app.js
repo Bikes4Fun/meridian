@@ -1,11 +1,11 @@
 /**
  * Webapp client – single JS file. Handles login, check-in, and chat.
- * API_URL replaced by server (__API_URL__).
+ * API_URL replaced by server ().
  */
 (function () {
     'use strict';
 
-    var _u = '__API_URL__';
+    var _u = '';
     var API_URL = (_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
 

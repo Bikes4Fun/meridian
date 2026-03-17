@@ -1,6 +1,6 @@
 """
 Main entry point for the Meridian.
-Starts the API server (DB + REST) in a background thread, then runs the Kivy TV client.
+Starts the API server (DB + REST) in a background thread, then runs the pywebview kiosk client.
 """
 
 import os
@@ -19,12 +19,9 @@ _src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
-# Before any Kivy import: silence Kivy startup logs (Logger, Factory, Image, Window, GL, etc.)
-os.environ["KIVY_LOG_LEVEL"] = "warning"
-os.environ["KCFG_KIVY_LOG_LEVEL"] = "warning"
-# os.environ["KIVY_NO_CONSOLELOG"] = "2"
-if "--local" in sys.argv:
-    os.environ["KIVY_NO_ARGS"] = "1"
+# --fullscreen = TV mode on second monitor (full 1080×1920, no dev scaling)
+if "--fullscreen" in sys.argv:
+    os.environ["KIOSK_TV_MODE"] = "1"
 
 import json
 import logging
@@ -75,7 +72,7 @@ def _start_local_api_server(logger):
 
 
 def main():
-    """Start Kivy TV client. Use Railway API if reachable, else start local server + DB."""
+    """Start pywebview kiosk. Use Railway API if reachable, else start local server + DB."""
     use_local = "--local" in sys.argv
     railway_reachable = is_railway_reachable()
     using_local_db = use_local or not railway_reachable

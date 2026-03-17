@@ -1,255 +1,300 @@
 """
-Application factory for Meridian Kiosk.
-Creates and configures the application with proper dependency injection.
+Application factory for Meridian Kiosk (pywebview).
+Creates and configures the pywebview app with KioskBridge for Python↔JS communication.
 
 CLIENT vs SERVER:
-- This module is used only by the client (Kivy UI). api_url (from main entry) determines where
-  services come from via api_client.create_kiosk_remote(); container is not used.
+- This module is used only by the client. api_url determines where services come from
+  via api_client.create_kiosk_remote(); container is not used.
 
-SERVER DEPLOYMENT: app_factory.py is not needed on the server; the server uses server/app.py only.
+SERVER DEPLOYMENT: app_factory.py is not needed on the server.
 """
 
+import json
 import logging
 import os
+import threading
+import time
+from typing import Optional
+
+from shared.config import (
+    get_kiosk_tv_fullscreen,
+    get_kiosk_tv_mode,
+    get_kiosk_window_size,
+)
+
 from .api_client import create_kiosk_remote
-from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager
-from kivy.clock import Clock
-from kivy.core.window import Window
-from .screens import ScreenFactory
-from .home_screen import get_time_of_day_icon
-import datetime
+
+logger = logging.getLogger(__name__)
+
+NAV_BUTTONS = [
+    {"text": "Home", "screen": "home"},
+    {"text": "Emergency", "screen": "emergency"},
+    {"text": "Family", "screen": "family"},
+    {"text": "Chat", "screen": "chat"},
+]
 
 
-class MeridianKioskApp(App):
-    """Main Kivy application for Meridian Kiosk using modular components."""
+class KioskBridge:
+    """Exposed to JS as pywebview.api. Handles nav, open_chat, print_emergency."""
 
-    def __init__(self, services, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, app):
+        self._app = app
+
+    def navigate(self, screen_name: str):
+        """Switch to screen. Called from JS nav click handler."""
+        logger.info(f"Nav: {screen_name}")
+        self._app._navigate_to(screen_name)
+
+    def open_chat(self, sendbird_user_id: str, display_name: str):
+        """Open chat window for contact. Called from JS contact click."""
+        logger.info(f"Open chat: {display_name} ({sendbird_user_id})")
+        self._app._open_chat(sendbird_user_id, display_name)
+
+    def print_emergency(self):
+        """Print emergency document. Called from JS Print button."""
+        logger.info("Print emergency (button)")
+        self._app._print_emergency()
+
+
+class MeridianKioskApp:
+    """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""
+
+    def __init__(self, services, api_url: str, kiosk_user_id: str, family_circle_id: str):
         self.services = services
-        self.screen_manager = None
+        self.api_url = api_url
+        self.kiosk_user_id = kiosk_user_id
+        self.family_circle_id = family_circle_id
+        self._window = None
+        self._bridge = None
+        self._alert_was_activated = False
 
-    def build(self):
-        """Build the application UI using modular components."""
-        Window.clearcolor = (0.98, 0.98, 0.96, 1)
-        Window.size = (740, 1080)
-        Window.left = 10
-        Window.top = 120
-        Window.borderless = True  # Remove macOS title bar for TV display
+    def run(self):
+        """Create window, wire bridge, start webview loop."""
+        import webview
 
-        # Create a Kivy screen manager
-        self.screen_manager = ScreenManager()
+        web_dir = os.path.join(os.path.dirname(__file__), "web")
+        html_path = os.path.join(web_dir, "kiosk.html")
+        url = "file://" + os.path.abspath(html_path).replace("\\", "/")
 
-        screen_factory = ScreenFactory(
-            self.services,
-            self.screen_manager,
-            kiosk_user_id=self.kiosk_user_id,
-            family_circle_id=self.family_circle_id,
+        w, h = get_kiosk_window_size()
+        x, y = 10, 120
+        frameless = False
+        fullscreen = False
+        if get_kiosk_tv_mode():
+            from shared.config import get_kiosk_tv_position
+
+            x, y = get_kiosk_tv_position()
+            frameless = True
+            fullscreen = get_kiosk_tv_fullscreen()
+        self._bridge = KioskBridge(self)
+        self._window = webview.create_window(
+            "Meridian Kiosk",
+            url,
+            width=w,
+            height=h,
+            x=x,
+            y=y,
+            resizable=False,
+            frameless=frameless,
+            fullscreen=fullscreen,
+            js_api=self._bridge,
         )
 
-        self.screen_manager.add_widget(screen_factory.create_emergency_screen())
-        self.screen_manager.add_widget(screen_factory.create_checkin_screen())
-        self.screen_manager.add_widget(screen_factory.create_chat_screen())
-        self.home_screen, self._clock_widget, self._med_widget, self._events_widget = (
-            screen_factory.create_home_screen()
+        def on_loaded(*args, **kwargs):
+            threading.Thread(target=self._on_ready, daemon=True).start()
+
+        self._window.events.loaded += on_loaded
+        webview.start()
+
+    def _eval(self, js: str):
+        """Run JS in webview. Handles threading/platform quirks."""
+        try:
+            self._window.evaluate_js(js)
+        except Exception as e:
+            logger.debug(f"evaluate_js failed: {e}")
+
+    def _navigate_to(self, screen_name: str):
+        """Show screen by name. Builds HTML and calls showScreen."""
+        try:
+            logger.info(f"Building screen: {screen_name}")
+            html, extra = self._build_screen_html(screen_name)
+            escaped = json.dumps(html)
+            self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
+            if extra:
+                self._eval(extra)
+        except Exception as e:
+            logger.exception(f"navigate failed: {e}")
+
+    def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
+        """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
+        from . import html_primitives as hp
+
+        if screen_name == "home":
+            from .home_screen import build_home_html
+
+            return build_home_html(self.services, self.api_url), None
+        if screen_name == "emergency":
+            from .emergency_screen import build_emergency_html
+
+            return build_emergency_html(self.services, self.api_url), None
+        if screen_name == "family":
+            from .checkin_screen import build_checkin_html
+
+            html, markers_json = build_checkin_html(
+                self.services, self.api_url, self.family_circle_id
+            )
+            return html, f"initMap({json.dumps(markers_json)})"
+        if screen_name == "chat":
+            from .chat_screen import build_chat_html
+
+            return build_chat_html(
+                self.services, self.api_url, self.kiosk_user_id, self.family_circle_id
+            ), None
+        return hp.error_state("Unknown screen"), None
+
+    def _open_chat(self, sendbird_user_id: str, display_name: str):
+        """Fetch chat URL and open in webview."""
+        entry_svc = self.services.get("chat_entry_service")
+        if not entry_svc:
+            logger.warning("open_chat: no chat_entry_service")
+            return
+        r = entry_svc.get_entry_url(
+            recipient_sendbird_user_id=sendbird_user_id,
+            recipient_display_name=display_name,
         )
-        self.screen_manager.add_widget(self.home_screen)
-        self.screen_manager.current = "chat"
+        if r.success and r.data:
+            from .webview import open_chat_window
 
-        # Sync photos on boot: fetch from server and cache locally for offline use
-        Clock.schedule_once(lambda dt: self._sync_photos_on_boot(), 1.0)
-        # Full clock refresh on boot (day, date, year)
-        Clock.schedule_once(lambda dt: self.refresh_clock(), 1.0)
-        # Per-second tick: time digits + time-of-day when period changes
-        Clock.schedule_interval(self._tick_clock, 1.0)
-        # Poll alert status: when activated, switch TV to emergency screen and enable flashing
-        Clock.schedule_interval(self._check_alert_status, 2.0)
+            open_chat_window(r.data)
+        else:
+            logger.warning(f"open_chat: get_entry_url failed: {getattr(r, 'error', None)}")
 
-        # Load medications and events on boot
-        Clock.schedule_once(lambda dt: self._load_medications(), 1.5)
-        Clock.schedule_once(lambda dt: self._load_events(), 1.5)
+    def _print_emergency(self):
+        """Trigger emergency print (same flow as alert-activated)."""
+        from .emergency_print import trigger_emergency_print
 
-        return self.screen_manager
+        trigger_emergency_print(self.services)
 
-    def _check_alert_status(self, dt=None):
-        """Poll alert API; when activated, switch to emergency screen, enable flashing, and auto-print."""
-        alert_svc = self.services.get("alert_service")
-        if not alert_svc:
-            return
-        result = alert_svc.get_alert_status()
-        if not result.success:
-            return
-        activated = result.data.get("activated", False) if result.data else False
-        was_activated = getattr(self, "_alert_was_activated", False)
-        self.services["_alert_activated"][0] = activated
-        if activated and self.screen_manager:
-            self.screen_manager.current = "emergency"
-            if not was_activated:
-                from .emergency_print import trigger_emergency_print
-
-                Clock.schedule_once(
-                    lambda _dt: trigger_emergency_print(self.services), 0.5
-                )
-        self._alert_was_activated = activated
-
-    def _sync_photos_on_boot(self):
-        """Fetch checkins and download photos to local cache for offline use."""
-        loc_svc = self.services.get("location_service")
-        if not loc_svc or not hasattr(loc_svc, "fetch_photo_to_cache"):
-            return
-        result = loc_svc.get_checkins()
-        if not result.success or not result.data:
-            return
-        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
-        for checkin in result.data:
-            if checkin.get("photo_url") and checkin.get("user_id"):
-                loc_svc.fetch_photo_to_cache(checkin["user_id"], cache_dir)
-
-    def update_all(self):
-        """Update all display elements."""
-        self.refresh_clock()
+    def _on_ready(self):
+        """Runs in background thread after load. Initial screen, clock, meds, events, alerts."""
+        logger.info("Kiosk loaded, initializing...")
+        time.sleep(0.3)
+        self._navigate_to("home")
         self._load_medications()
         self._load_events()
+        self._refresh_clock()
+        self._start_clock_tick()
+        self._start_alert_poll()
 
-    def _tick_clock(self, dt=1):
-        """Per-second clock tick: time digits + time-of-day label/icon when period changes."""
-        if not hasattr(self, "_clock_widget") or not self._clock_widget:
-            return
-        cw = self._clock_widget
+    def _refresh_clock(self):
+        """Full clock update: day, date, year, time, time-of-day."""
         time_svc = self.services.get("time_service")
         if not time_svc:
             return
+        self._eval_el("clock-day", time_svc.get_dayof_week().upper())
+        self._eval_el("clock-date", time_svc.get_month_day())
+        self._eval_el("clock-year", time_svc.get_year())
+        self._eval_el("clock-time", time_svc.get_time())
+        self._eval_el("clock-period", time_svc.get_am_pm().upper())
 
-        cw.time_label.text = time_svc.get_time()
-        current_time_of_day = time_svc.get_am_pm()
-        if not hasattr(self, "_last_time_of_day"):
-            self._last_time_of_day = current_time_of_day
-        if current_time_of_day != self._last_time_of_day:
-            self._last_time_of_day = current_time_of_day
-            cw.time_of_day_label.text = current_time_of_day.upper()
-            if hasattr(cw, "time_of_day_icon"):
-                cw.time_of_day_icon.source = get_time_of_day_icon(current_time_of_day)
+    def _eval_el(self, el_id: str, content: str):
+        """Update element by id."""
+        self._eval(f"updateEl({json.dumps(el_id)}, {json.dumps(content)})")
 
-    def refresh_clock(self):
-        """Full clock refresh: day, date, year, then per-second tick."""
-        if not hasattr(self, "_clock_widget") or not self._clock_widget:
-            return
-        cw = self._clock_widget
-        time_svc = self.services.get("time_service")
-        if not time_svc:
-            return
-
-        cw.day_label.text = time_svc.get_dayof_week().upper()
-        cw.date_label.text = time_svc.get_month_day()
-        if hasattr(cw, "year_label"):
-            cw.year_label.text = time_svc.get_year()
-        self._tick_clock()
+    def _start_clock_tick(self):
+        """Per-second clock tick in background."""
+        while True:
+            time.sleep(1)
+            time_svc = self.services.get("time_service")
+            if not time_svc:
+                continue
+            self._eval_el("clock-time", time_svc.get_time())
+            self._eval_el("clock-period", time_svc.get_am_pm().upper())
 
     def _load_medications(self):
-        """Load medication data."""
-        if self.services.get("medication_service") and hasattr(self, "home_screen"):
-            result = self.services["medication_service"].get_medication_data()
-            if result.success:
-                # Group medications by time period
-                time_groups = {}
-                for med in result.data.get("timed_medications", []):
-                    time_period = med.get("time", "Unknown")
-                    if time_period not in time_groups:
-                        time_groups[time_period] = []
-                    time_groups[time_period].append(med)
-
-                # Sort time groups chronologically
-                group_times = result.data.get("medication_time_groups", {})
-                sorted_times = sorted(
-                    time_groups.keys(), key=lambda t: group_times.get(t, "23:59:59")
-                )
-
-                # Build display text with groups
-                meds_text = []
-                for time_period in sorted_times:
-                    meds = time_groups[time_period]
-                    if meds:  # Only show group if it has medications
-                        meds_text.append(f"{time_period}:")
-                        for med in meds:
-                            status = "Done" if med["status"] == "done" else "Not Done"
-                            meds_text.append(f"  • {med['name']}: {status}")
-
-                # Add PRN medications if any
-                prn_meds = result.data.get("prn_medications", [])
-                if prn_meds:
-                    meds_text.append("PRN (As Needed):")
-                    for med in prn_meds:
-                        last_taken = (
-                            f"Last: {med['last_taken']}"
-                            if med["last_taken"]
-                            else "Not taken today"
-                        )
-                        meds_text.append(f"  • {med['name']}: {last_taken}")
-
-                # Find medication widget in nested structure
-                self._find_and_update_widget(
-                    self.home_screen,
-                    "medication_content",
-                    "\n".join(meds_text) if meds_text else "No medications",
-                )
-            else:
-                # Find medication widget and show error
-                self._find_and_update_widget(
-                    self.home_screen, "medication_content", "Error loading medications"
-                )
+        """Fetch meds and update medication_content."""
+        med_svc = self.services.get("medication_service")
+        if not med_svc:
+            self._eval_el("medication_content", "Medications unavailable")
+            return
+        result = med_svc.get_medication_data()
+        if not result.success:
+            self._eval_el("medication_content", "Error loading medications")
+            return
+        data = result.data or {}
+        time_groups = {}
+        for m in data.get("timed_medications", []):
+            t = m.get("time", "Unknown")
+            time_groups.setdefault(t, []).append(m)
+        group_times = data.get("medication_time_groups", {})
+        sorted_times = sorted(
+            time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59")
+        )
+        lines = []
+        for t in sorted_times:
+            meds = time_groups[t]
+            if meds:
+                lines.append(f"{t}:")
+                for m in meds:
+                    status = "Done" if m.get("status") == "done" else "Not Done"
+                    lines.append(f"  • {m.get('name', '?')}: {status}")
+        prn = data.get("prn_medications", [])
+        if prn:
+            lines.append("PRN (As Needed):")
+            for m in prn:
+                lt = m.get("last_taken")
+                last = f"Last: {lt}" if lt else "Not taken today"
+                lines.append(f"  • {m.get('name', '?')}: {last}")
+        text = "\n".join(lines) if lines else "No medications"
+        self._eval_el("medication_content", text)
 
     def _load_events(self):
-        """Load events data."""
-        logger = logging.getLogger(__name__)
-        if self.services.get("calendar_service") and hasattr(self, "home_screen"):
-            today = datetime.datetime.now()
-            logger.debug(
-                f"Loading events for today: {today.strftime('%Y-%m-%d')} (day={today.day})"
-            )
-            result = self.services["calendar_service"].get_events_for_date(
-                today.strftime("%Y-%m-%d")
-            )
+        """Fetch events and update events_content."""
+        import datetime
 
-            logger.debug(
-                f"Events query result: success={result.success}, data_count={len(result.data) if result.data else 0}"
-            )
-            if result.data:
-                logger.debug(f"Events found: {result.data}")
+        cal_svc = self.services.get("calendar_service")
+        if not cal_svc:
+            self._eval_el("events_content", "Events unavailable")
+            return
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        result = cal_svc.get_events_for_date(today)
+        if result.success and result.data:
+            text = "\n".join(f"• {e}" for e in result.data)
+        else:
+            text = "No events today"
+        self._eval_el("events_content", text)
 
-            if result.success and result.data:
-                events_text = [f"• {event}" for event in result.data]
-                # Find events widget in nested structure
-                self._find_and_update_widget(
-                    self.home_screen, "events_content", "\n".join(events_text)
-                )
+    def _start_alert_poll(self):
+        """Poll alert; when activated, switch to emergency, add flash, trigger print."""
+        from .emergency_print import trigger_emergency_print
+
+        while True:
+            time.sleep(2)
+            alert_svc = self.services.get("alert_service")
+            if not alert_svc:
+                continue
+            result = alert_svc.get_alert_status()
+            if not result.success or not result.data:
+                continue
+            activated = result.data.get("activated", False)
+            self.services.get("_alert_activated", [False])[0] = activated
+            if activated:
+                self._navigate_to("emergency")
+                self._eval("document.body.classList.add('alert-active')")
+                if not self._alert_was_activated:
+                    time.sleep(0.5)
+                    trigger_emergency_print(self.services)
             else:
-                # Find events widget and show no events
-                logger.debug(f"No events found for today, showing 'No events today'")
-                self._find_and_update_widget(
-                    self.home_screen, "events_content", "No events today"
-                )
-
-    def _find_and_update_widget(self, parent, attribute_name, text):
-        """Recursively find widget with specific attribute and update its text."""
-        for child in parent.children:
-            if hasattr(child, attribute_name):
-                getattr(child, attribute_name).text = text
-                return True
-            # Recursively search in child widgets
-            if hasattr(child, "children"):
-                if self._find_and_update_widget(child, attribute_name, text):
-                    return True
-        return False
+                self._eval("document.body.classList.remove('alert-active')")
+            self._alert_was_activated = activated
 
 
 def create_app(
     kiosk_user_id: str, family_circle_id: str, api_url: str = None
 ) -> MeridianKioskApp:
-    """Create the Meridian Kiosk. kiosk_user_id and family_circle_id required. api_url from main entry."""
+    """Create the Meridian Kiosk. api_url, kiosk_user_id, family_circle_id required."""
     if not api_url:
-        raise ValueError(
-            "api_url required. Pass from main entry (e.g. create_app(..., api_url=...))."
-        )
+        raise ValueError("api_url required.")
     if not kiosk_user_id or not family_circle_id:
         raise ValueError("kiosk_user_id and family_circle_id required.")
     try:
@@ -258,13 +303,15 @@ def create_app(
         session = requests.Session()
     except ImportError:
         session = None
-    remote_services = create_kiosk_remote(
+    services = create_kiosk_remote(
         api_url,
         kiosk_user_id=kiosk_user_id,
         family_circle_id=family_circle_id,
         session=session,
     )
-    app = MeridianKioskApp(services=remote_services)
-    app.kiosk_user_id = kiosk_user_id
-    app.family_circle_id = family_circle_id
-    return app
+    return MeridianKioskApp(
+        services=services,
+        api_url=api_url,
+        kiosk_user_id=kiosk_user_id,
+        family_circle_id=family_circle_id,
+    )

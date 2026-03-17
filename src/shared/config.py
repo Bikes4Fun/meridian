@@ -70,8 +70,8 @@ def get_kiosk_dev_scale() -> bool:
 
 
 def get_kiosk_dev_height() -> int:
-    """Dev window height in px when scaling. Override with KIOSK_DEV_HEIGHT."""
-    return int(os.getenv("KIOSK_DEV_HEIGHT", "1107"))
+    """Dev window height in px. Override with KIOSK_DEV_HEIGHT."""
+    return int(os.getenv("KIOSK_DEV_HEIGHT", "900"))
 
 
 def get_kiosk_window_size() -> tuple[int, int]:

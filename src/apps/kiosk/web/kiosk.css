@@ -1,15 +1,18 @@
 
-    /* Design tokens per meridian-design-system-2.md */
+    /* Design tokens per meridian-design-system-2.md (TV ref 1080×1920). vh = proportional to viewport height. */
     :root {
-        --font-hero: 72px;
-        --font-header: 56px;
-        --font-subheader: 40px;
-        --font-body-large: 32px;
-        --font-body: 28px;
-        --font-caption: 24px;
-        --font-nav: 32px;
+        --font-hero: 3.75vh;
+        --font-header: 2.92vh;
+        --font-subheader: 2.08vh;
+        --font-body-large: 1.67vh;
+        --font-body: 1.46vh;
+        --font-caption: 1.25vh;
+        --font-nav: 1.67vh;
         --line-height: 1.6;
-        --safe-margin: 40px;
+        --safe-margin: 2.08vh;
+        --touch-min: 6.25vh;
+        --button-min: 8.33vh;
+        --avatar-size: 6.67vh;
         --bg: #f2f2ee;
         --text: #1a1a1a;
         --med-surface: #f0f5fa;
@@ -44,7 +47,7 @@
       /* Nav */
       #kiosk-nav {
         display: flex;
-        min-height: 120px;
+        min-height: var(--touch-min);
         padding: 0 var(--safe-margin);
         gap: 0;
         background: var(--bg);
@@ -54,13 +57,15 @@
         flex: 1;
         font-size: var(--font-nav);
         font-family: inherit;
-        min-height: 120px;
+        min-height: var(--touch-min);
         border: none;
         background: transparent;
         color: var(--text);
         cursor: pointer;
+        transition: transform 0.08s ease, background 0.08s ease;
       }
       .nav-tab:hover { background: rgba(0,0,0,0.05); }
+      .nav-tab:active { transform: scale(0.97); background: rgba(0,0,0,0.1); }
   
       /* Screen content */
       #screen-content {
@@ -77,7 +82,7 @@
       .kiosk-panel.events-panel { background: var(--events-surface); }
       .two-column-row {
         display: flex;
-        gap: 24px;
+        gap: 1.25vh;
       }
       .col-left, .col-right { overflow: auto; }
   
@@ -91,23 +96,28 @@
       .kiosk-caption { font-size: var(--font-caption); }
   
       /* State placeholders */
-      .state-placeholder { font-size: var(--font-body); padding: 16px 0; }
+      .state-placeholder { font-size: var(--font-body); padding: 0.83vh 0; }
       .state-loading { color: #666; }
       .state-empty { color: #666; }
       .state-error { color: #c00; }
   
-      /* Button */
+      /* Button - standard press feedback (size + color). Use .kiosk-button--no-feedback to disable. */
       .kiosk-button {
         font-family: inherit;
         font-size: var(--font-caption);
-        min-height: 120px;
-        min-width: 160px;
-        padding: 16px 24px;
+        min-height: var(--button-min);
+        min-width: var(--button-min);
+        padding: 0.83vh 1.25vh;
         border-radius: 12px;
         border: none;
         background: #4080c0;
         color: #fff;
         cursor: pointer;
+        transition: transform 0.08s ease, background 0.08s ease;
+      }
+      .kiosk-button:active:not(.kiosk-button--no-feedback) {
+        transform: scale(0.96);
+        background: #2d5a8f;
       }
   
       /* Contact tile - avatar 128px per design; initial as fallback when photo fails */
@@ -115,21 +125,23 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        min-height: 120px;
-        padding: 12px;
+        min-height: var(--touch-min);
+        padding: 0.625vh;
         cursor: pointer;
         border-radius: 12px;
+        transition: transform 0.08s ease, background 0.08s ease;
       }
       .contact-tile:hover { background: rgba(0,0,0,0.05); }
+      .contact-tile:active { transform: scale(0.96); background: rgba(0,0,0,0.1); }
       .avatar-wrapper {
         position: relative;
-        width: 128px;
-        height: 128px;
-        margin: 0 auto 8px;
+        width: var(--avatar-size);
+        height: var(--avatar-size);
+        margin: 0 auto 0.42vh;
       }
       .contact-initial {
-        width: 128px;
-        height: 128px;
+        width: var(--avatar-size);
+        height: var(--avatar-size);
         border-radius: 50%;
         background: #999;
         color: #fff;
@@ -143,8 +155,8 @@
         position: absolute;
         top: 0;
         left: 0;
-        width: 128px;
-        height: 128px;
+        width: var(--avatar-size);
+        height: var(--avatar-size);
         border-radius: 50%;
         object-fit: cover;
       }
@@ -154,11 +166,11 @@
       /* Emergency form (injected by Python) */
       .form-row {
         display: flex;
-        gap: 8px;
-        padding: 4px 0;
+        gap: 0.42vh;
+        padding: 0.21vh 0;
       }
       .form-row .label {
-        flex: 0 0 200px;
+        flex: 0 0 10.42vh;
         font-size: var(--font-caption);
         color: var(--text);
       }
@@ -167,7 +179,7 @@
         font-size: var(--font-body);
       }
       .section-bar {
-        padding: 12px 16px;
+        padding: 0.625vh 0.83vh;
         color: #fff;
         font-size: var(--font-subheader);
         font-weight: 700;
@@ -181,5 +193,5 @@
       body.alert-active { animation: alert-flash 0.5s infinite; }
   
       /* Map */
-      #map { height: 400px; min-height: 200px; }
+      #map { height: 20.83vh; min-height: 10.42vh; }
     

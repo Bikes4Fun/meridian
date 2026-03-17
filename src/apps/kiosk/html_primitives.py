@@ -106,10 +106,12 @@ def avatar_img(api_base, user_id, alt=""):
     return f'<img src="{html.escape(photo_url)}" onerror="this.style.display=\'none\'" class="avatar" alt="{alt_escaped}">'
 
 
-def kiosk_button(text, onclick_js):
+def kiosk_button(text, onclick_js, no_feedback=False):
     """Primary button. Design: 160×160px min, text 24px min, rounded 12-16px. Used by: Emergency (Print).
+    Standard: press feedback (scale + darker color). no_feedback=True disables it.
     onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it."""
-    return f'<button class="kiosk-button" onclick="{onclick_js}">{html.escape(str(text))}</button>'
+    cls = "kiosk-button kiosk-button--no-feedback" if no_feedback else "kiosk-button"
+    return f'<button class="{cls}" onclick="{onclick_js}">{html.escape(str(text))}</button>'
 
 
 def contact_tile(api_base, name, user_id, onclick_js=None, relationship="", data_sb_uid="", data_name=""):

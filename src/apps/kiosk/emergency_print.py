@@ -70,9 +70,10 @@ def _run_emergency_print(emergency_svc, status_label=None) -> None:
         status_label.text = "Printing..."
     result = emergency_svc.get_emergency_profile_pdf()
     if not result.success:
+        err = getattr(result, "error", None) or "could not get PDF"
         if status_label is not None:
-            status_label.text = "Print failed: could not get PDF"
-        logger.warning("Emergency print: could not get PDF")
+            status_label.text = f"Print failed: {err}"
+        logger.warning("Emergency print: could not get PDF (%s)", err)
         return
     if not result.data:
         if status_label is not None:

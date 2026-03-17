@@ -5,7 +5,7 @@ import sys
 
 
 def open_chat_window(url):
-    """Open URL in webview (pywebview). Uses subprocess to avoid Kivy event loop conflict on macOS."""
+    """Open URL in pywebview. Uses subprocess to avoid blocking the main kiosk window."""
     if not url:
         return
     try:

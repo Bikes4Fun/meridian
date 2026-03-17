@@ -24,7 +24,8 @@ def get_time_of_day_icon(time_of_day):
     return ""
 
 
-def build_home_html(services, api_url: str) -> str:
+def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = "") -> str:
+    """family_circle_id and kiosk_user_id kept for API; bridge handles add_event."""
     """Build home screen HTML for pywebview. Clock/med/events use ids for updateEl."""
     from . import html_primitives as hp
 
@@ -56,10 +57,30 @@ def build_home_html(services, api_url: str) -> str:
     )
 
     events_content = '<div id="events_content" class="state-placeholder state-loading">Loading events...</div>'
+    add_btn = '<button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>'
     events_panel = hp.panel(
-        hp.kiosk_header("Today's Events") + hp.spacer(16) + events_content,
+        hp.kiosk_header("Today's Events") + hp.spacer(16) + events_content + hp.spacer(12) + add_btn,
         "events-panel",
     )
 
+    modal_html = '''
+    <div id="eventFormOverlay" class="event-overlay" style="display:none;">
+        <div class="event-modal">
+            <h3 class="event-modal-title">Add Event</h3>
+            <form id="eventForm">
+                <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
+                <input type="date" id="eventDate" required class="event-input">
+                <input type="time" id="eventStartTime" required class="event-input">
+                <input type="time" id="eventEndTime" placeholder="End (optional)" class="event-input">
+                <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
+                <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
+                <div class="event-form-actions">
+                    <button type="submit" class="event-btn event-btn-primary">Save</button>
+                    <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    '''
     bottom = hp.two_column_row(med_panel, events_panel)
-    return clock + hp.spacer(32) + bottom
+    return clock + hp.spacer(32) + bottom + modal_html

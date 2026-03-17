@@ -55,6 +55,41 @@ class KioskBridge:
         logger.info("Print emergency (button)")
         self._app._print_emergency()
 
+    def refresh_events(self):
+        """Refresh events panel. Called from JS after adding event."""
+        self._app._load_events()
+
+    def add_event(self, payload_json: str) -> str:
+        """POST new event to API. Returns 'ok' or error message. Called from JS."""
+        try:
+            data = json.loads(payload_json)
+        except json.JSONDecodeError as e:
+            return str(e)
+        title = data.get("title")
+        start_time = data.get("start_time")
+        if not title or not start_time:
+            return "title and start_time required"
+        api_url = self._app.api_url.rstrip("/")
+        url = f"{api_url}/api/family_circles/{self._app.family_circle_id}/calendar/events"
+        headers = {
+            "Content-Type": "application/json",
+            "X-User-Id": self._app.kiosk_user_id,
+            "X-Family-Circle-Id": self._app.family_circle_id,
+        }
+        try:
+            import requests
+            r = requests.post(url, json=data, headers=headers, timeout=5)
+            if r.ok:
+                self._app._load_events()
+                return "ok"
+            try:
+                err = r.json().get("error", r.text)
+            except Exception:
+                err = r.text
+            return err or f"HTTP {r.status_code}"
+        except Exception as e:
+            return str(e)
+
 
 class MeridianKioskApp:
     """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""
@@ -132,7 +167,11 @@ class MeridianKioskApp:
         if screen_name == "home":
             from .home_screen import build_home_html
 
-            return build_home_html(self.services, self.api_url), None
+            return build_home_html(
+                self.services, self.api_url,
+                family_circle_id=self.family_circle_id,
+                kiosk_user_id=self.kiosk_user_id,
+            ), None
         if screen_name == "emergency":
             from .emergency_screen import build_emergency_html
 

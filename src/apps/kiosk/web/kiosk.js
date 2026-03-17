@@ -9,6 +9,55 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
   var tile = e.target.closest('.contact-tile[data-sb-uid]');
   if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
     pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
+    return;
+  }
+  var addBtn = e.target.closest('#addEventBtn');
+  if (addBtn) {
+    var overlay = document.getElementById('eventFormOverlay');
+    if (overlay) {
+      var today = new Date().toISOString().slice(0, 10);
+      var dateEl = document.getElementById('eventDate');
+      if (dateEl) dateEl.value = today;
+      overlay.style.display = 'flex';
+    }
+    return;
+  }
+  var cancelBtn = e.target.closest('#eventFormCancel');
+  if (cancelBtn) {
+    var ov = document.getElementById('eventFormOverlay');
+    if (ov) ov.style.display = 'none';
+    return;
+  }
+  if (e.target.id === 'eventFormOverlay') {
+    e.target.style.display = 'none';
+  }
+});
+
+document.getElementById('screen-content').addEventListener('submit', function(e) {
+  if (e.target.id !== 'eventForm') return;
+  e.preventDefault();
+  var overlay = document.getElementById('eventFormOverlay');
+  if (!overlay) return;
+  var title = (document.getElementById('eventTitle') || {}).value || '';
+  var date = (document.getElementById('eventDate') || {}).value || '';
+  var startTime = (document.getElementById('eventStartTime') || {}).value || '';
+  var endTime = (document.getElementById('eventEndTime') || {}).value || '';
+  var location = (document.getElementById('eventLocation') || {}).value || '';
+  var description = (document.getElementById('eventDescription') || {}).value || '';
+  if (!title || !date || !startTime) return;
+  var startDateTime = date + 'T' + startTime + ':00';
+  var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
+  if (endTime) payload.end_time = date + 'T' + endTime + ':00';
+
+  if (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_event) {
+    var result = pywebview.api.add_event(JSON.stringify(payload));
+    if (result === 'ok') {
+      overlay.style.display = 'none';
+    } else {
+      alert(result || 'Failed to add event');
+    }
+  } else {
+    alert('Add event unavailable');
   }
 });
 

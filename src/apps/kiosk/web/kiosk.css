@@ -1,0 +1,213 @@
+
+    /* Design tokens per meridian-design-system-2.md (TV ref 1080×1920). vh = proportional to viewport height. */
+    :root {
+        --font-hero: 3.75vh;
+        --font-header: 2.92vh;
+        --font-subheader: 2.08vh;
+        --font-body-large: 1.67vh;
+        --font-body: 1.46vh;
+        --font-caption: 1.25vh;
+        --font-nav: 1.67vh;
+        --line-height: 1.6;
+        --safe-margin: 2.08vh;
+        --touch-min: 6.25vh;
+        --button-min: 8.33vh;
+        --avatar-size: 6.67vh;
+        --bg: #f2f2ee;
+        --text: #1a1a1a;
+        --med-surface: #f0f5fa;
+        --events-surface: #f5faf0;
+      }
+  
+      @font-face {
+        font-family: 'AtkinsonHyperlegible';
+        src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf') format('truetype');
+      }
+      @font-face {
+        font-family: 'AtkinsonHyperlegible';
+        font-weight: bold;
+        src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf') format('truetype');
+      }
+  
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        font-family: AtkinsonHyperlegible, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: var(--line-height);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+  
+      /* Nav */
+      #kiosk-nav {
+        display: flex;
+        min-height: var(--touch-min);
+        padding: 0 var(--safe-margin);
+        gap: 0;
+        background: var(--bg);
+        border-bottom: 2px solid #ddd;
+      }
+      .nav-tab {
+        flex: 1;
+        font-size: var(--font-nav);
+        font-family: inherit;
+        min-height: var(--touch-min);
+        border: none;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        transition: transform 0.08s ease, background 0.08s ease;
+      }
+      .nav-tab:hover { background: rgba(0,0,0,0.05); }
+      .nav-tab:active { transform: scale(0.97); background: rgba(0,0,0,0.1); }
+  
+      /* Screen content */
+      #screen-content {
+        flex: 1;
+        overflow: auto;
+        padding: var(--safe-margin);
+      }
+  
+      /* Layout */
+      .kiosk-panel {
+        padding: var(--safe-margin);
+      }
+      .kiosk-panel.med-panel { background: var(--med-surface); }
+      .kiosk-panel.events-panel { background: var(--events-surface); }
+      .two-column-row {
+        display: flex;
+        gap: 1.25vh;
+      }
+      .col-left, .col-right { overflow: auto; }
+  
+      /* Typography */
+      .kiosk-hero { font-size: var(--font-hero); font-weight: 700; }
+      .kiosk-header { font-size: var(--font-header); font-weight: 700; }
+      .kiosk-subheader { font-size: var(--font-subheader); font-weight: 700; }
+      .kiosk-body-large { font-size: var(--font-body-large); }
+      .kiosk-body, .kiosk-caption { white-space: pre-wrap; }
+      .kiosk-body { font-size: var(--font-body); }
+      .kiosk-caption { font-size: var(--font-caption); }
+  
+      /* State placeholders */
+      .state-placeholder { font-size: var(--font-body); padding: 0.83vh 0; }
+      .state-loading { color: #666; }
+      .state-empty { color: #666; }
+      .state-error { color: #c00; }
+  
+      /* Button - standard press feedback (size + color). Use .kiosk-button--no-feedback to disable. */
+      .kiosk-button {
+        font-family: inherit;
+        font-size: var(--font-caption);
+        min-height: var(--button-min);
+        min-width: var(--button-min);
+        padding: 0.83vh 1.25vh;
+        border-radius: 12px;
+        border: none;
+        background: #4080c0;
+        color: #fff;
+        cursor: pointer;
+        transition: transform 0.08s ease, background 0.08s ease;
+      }
+      .kiosk-button:active:not(.kiosk-button--no-feedback) {
+        transform: scale(0.96);
+        background: #2d5a8f;
+      }
+  
+      /* Contact tile - avatar 128px per design; initial as fallback when photo fails */
+      .contact-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: var(--touch-min);
+        padding: 0.625vh;
+        cursor: pointer;
+        border-radius: 12px;
+        transition: transform 0.08s ease, background 0.08s ease;
+      }
+      .contact-tile:hover { background: rgba(0,0,0,0.05); }
+      .contact-tile:active { transform: scale(0.96); background: rgba(0,0,0,0.1); }
+      .avatar-wrapper {
+        position: relative;
+        width: var(--avatar-size);
+        height: var(--avatar-size);
+        margin: 0 auto 0.42vh;
+      }
+      .contact-initial {
+        width: var(--avatar-size);
+        height: var(--avatar-size);
+        border-radius: 50%;
+        background: #999;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--font-header);
+        font-weight: 700;
+      }
+      .avatar-wrapper .avatar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: var(--avatar-size);
+        height: var(--avatar-size);
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .contact-name { font-size: var(--font-body-large); font-weight: 700; }
+      .contact-relationship { font-size: var(--font-caption); color: #666; }
+  
+      /* Emergency patient photo */
+      .emergency-patient-photo {
+        margin-bottom: 1.25vh;
+      }
+      .emergency-patient-photo .avatar-wrapper {
+        display: inline-block;
+        width: 10vh;
+        height: 10vh;
+      }
+      .emergency-patient-photo .avatar,
+      .emergency-patient-photo .contact-initial {
+        width: 10vh;
+        height: 10vh;
+      }
+
+      /* Emergency form (injected by Python) */
+      .form-row {
+        display: flex;
+        gap: 0.42vh;
+        padding: 0.21vh 0;
+      }
+      .form-row .label {
+        flex: 0 0 10.42vh;
+        font-size: var(--font-caption);
+        color: var(--text);
+      }
+      .form-row .value {
+        flex: 1;
+        font-size: var(--font-body);
+      }
+      .section-bar {
+        padding: 0.625vh 0.83vh;
+        color: #fff;
+        font-size: var(--font-subheader);
+        font-weight: 700;
+      }
+  
+      /* Alert flash */
+      @keyframes alert-flash {
+        0%, 100% { box-shadow: inset 0 0 0 8px #ff8000; }
+        50% { box-shadow: inset 0 0 0 8px #ff3300; }
+      }
+      body.alert-active { animation: alert-flash 0.5s infinite; }
+  
+      /* Map */
+      #map { height: 20.83vh; min-height: 10.42vh; }
+      .map-marker-div { background: transparent; border: none; }
+    

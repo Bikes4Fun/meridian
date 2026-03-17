@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080, height=1920">
+  <title>Meridian Kiosk</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="kiosk.css">
+</head>
+<body>
+  <nav id="kiosk-nav">
+    <button class="nav-tab" data-screen="home">Home</button>
+    <button class="nav-tab" data-screen="emergency">Emergency</button>
+    <button class="nav-tab" data-screen="family">Family</button>
+    <button class="nav-tab" data-screen="chat">Chat</button>
+  </nav>
+  <div id="screen-content"><!-- Python injects screen HTML here --></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="kiosk.js"></script>
+</body>
+</html>

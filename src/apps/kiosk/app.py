@@ -42,14 +42,17 @@ class KioskBridge:
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
+        logger.info(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
     def open_chat(self, sendbird_user_id: str, display_name: str):
         """Open chat window for contact. Called from JS contact click."""
+        logger.info(f"Open chat: {display_name} ({sendbird_user_id})")
         self._app._open_chat(sendbird_user_id, display_name)
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
+        logger.info("Print emergency (button)")
         self._app._print_emergency()
 
 
@@ -108,18 +111,19 @@ class MeridianKioskApp:
         try:
             self._window.evaluate_js(js)
         except Exception as e:
-            logger.debug("evaluate_js failed: %s", e)
+            logger.debug(f"evaluate_js failed: {e}")
 
     def _navigate_to(self, screen_name: str):
         """Show screen by name. Builds HTML and calls showScreen."""
         try:
+            logger.info(f"Building screen: {screen_name}")
             html, extra = self._build_screen_html(screen_name)
             escaped = json.dumps(html)
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
             if extra:
                 self._eval(extra)
         except Exception as e:
-            logger.exception("navigate failed: %s", e)
+            logger.exception(f"navigate failed: {e}")
 
     def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
         """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
@@ -163,7 +167,7 @@ class MeridianKioskApp:
 
             open_chat_window(r.data)
         else:
-            logger.warning("open_chat: get_entry_url failed: %s", getattr(r, "error", None))
+            logger.warning(f"open_chat: get_entry_url failed: {getattr(r, 'error', None)}")
 
     def _print_emergency(self):
         """Trigger emergency print (same flow as alert-activated)."""
@@ -173,6 +177,7 @@ class MeridianKioskApp:
 
     def _on_ready(self):
         """Runs in background thread after load. Initial screen, clock, meds, events, alerts."""
+        logger.info("Kiosk loaded, initializing...")
         time.sleep(0.3)
         self._navigate_to("home")
         self._load_medications()

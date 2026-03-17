@@ -22,6 +22,28 @@ class RemoteServiceError(Exception):
     """Raised when a remote API request fails in an unrecoverable way."""
 
 
+def fetch_photo_b64(url: str, session: Any, headers: dict) -> Optional[str]:
+    """Fetch any photo URL via authenticated session, return data URI or None. Avoids file:// auth for <img>."""
+    if not url:
+        return None
+    try:
+        import requests
+        import base64
+    except ImportError:
+        return None
+    try:
+        client = session if session else requests
+        r = client.get(url, headers=headers, timeout=5)
+        if r.ok and r.content:
+            mime = r.headers.get("Content-Type", "image/jpeg")
+            b64 = base64.b64encode(r.content).decode()
+            return f"data:{mime};base64,{b64}"
+        logger.debug(f"Photo fetch {url} -> {r.status_code}")
+    except Exception as e:
+        logger.debug(f"Photo fetch {url} failed: {e}")
+    return None
+
+
 def _headers(
     kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
@@ -340,6 +362,10 @@ class RemoteContactService:
             return ServiceResult.error_result(err or "contacts request failed")
         return ServiceResult.success_result(data if data is not None else [])
 
+    def fetch_photo(self, url: str) -> Optional[str]:
+        """Fetch any photo URL; returns data URI or None."""
+        return fetch_photo_b64(url, self._session, self._headers)
+
 
 class RemoteLocationService:
     def __init__(
@@ -353,6 +379,10 @@ class RemoteLocationService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+
+    def fetch_photo(self, url: str) -> Optional[str]:
+        """Fetch any photo URL; returns data URI or None."""
+        return fetch_photo_b64(url, self._session, self._headers)
 
     def get_checkins(self) -> Any:
         ok, data, err = _get(

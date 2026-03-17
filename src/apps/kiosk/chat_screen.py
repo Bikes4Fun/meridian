@@ -17,11 +17,18 @@ def build_chat_html(services, api_url: str, kiosk_user_id: str, family_circle_id
     if not chat_contacts:
         return hp.kiosk_header("Family Chat") + hp.spacer(16) + hp.empty_state("No contacts with chat.")
 
+    base = api_url.rstrip("/")
     tiles = []
     for c in chat_contacts:
         name = c.get("display_name") or c.get("id") or "Contact"
         sb_uid = (c.get("sendbird_user_id") or "").strip()
         user_id = c.get("user_id") or ""
-        tiles.append(hp.contact_tile(api_url, name, user_id, data_sb_uid=sb_uid, data_name=name))
+        contact_id = c.get("id") or ""
+        avatar_src = None
+        if user_id:
+            avatar_src = contact_svc.fetch_photo(f"{base}/api/users/{user_id}/photo")
+        if not avatar_src and contact_id:
+            avatar_src = contact_svc.fetch_photo(f"{base}/api/family_circles/{family_circle_id}/contacts/{contact_id}/photo")
+        tiles.append(hp.contact_tile(avatar_src, name, data_sb_uid=sb_uid, data_name=name))
     grid = "".join(tiles)
     return hp.kiosk_header("Family Chat") + hp.spacer(24) + f'<div style="display:flex;flex-wrap:wrap;gap:20px">{grid}</div>'

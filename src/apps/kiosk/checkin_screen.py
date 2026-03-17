@@ -31,13 +31,19 @@ def build_checkin_html(services, api_url: str, family_circle_id: str) -> tuple[s
         checkins_result = loc_svc.get_checkins()
         if checkins_result.success and checkins_result.data:
             lines = []
+            base = api_url.rstrip("/")
             for c in checkins_result.data:
                 name = c.get("contact_name", "Unknown")
                 loc = c.get("location_name") or "Unknown"
                 lat = c.get("latitude")
                 lon = c.get("longitude")
+                user_id = c.get("user_id") or ""
+                photo_src = loc_svc.fetch_photo(f"{base}/api/users/{user_id}/photo") if user_id else None
+                m = {"lat": lat, "lon": lon, "name": name}
+                if photo_src:
+                    m["photo_src"] = photo_src
                 if lat is not None and lon is not None:
-                    markers.append({"lat": lat, "lon": lon, "name": name})
+                    markers.append(m)
                 lines.append(f"• {name}: {loc}")
             checkins_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No check-ins")
         else:

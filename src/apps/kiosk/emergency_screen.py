@@ -35,6 +35,13 @@ def build_emergency_html(services, api_url: str) -> str:
     e_data = result.data
     patient_data = e_data.get("profile") or {}
     medical_data = e_data.get("medical") or {}
+    care_recipient_user_id = e_data.get("care_recipient_user_id") or ""
+    patient_photo_src = None
+    if care_recipient_user_id:
+        contact_svc = services.get("contact_service")
+        if contact_svc and getattr(contact_svc, "fetch_photo", None):
+            base = api_url.rstrip("/")
+            patient_photo_src = contact_svc.fetch_photo(f"{base}/api/users/{care_recipient_user_id}/photo")
     e_contacts = {
         "contacts": e_data.get("emergency_contacts") or [],
         "poa_name": e_data.get("poa_name"),
@@ -46,6 +53,15 @@ def build_emergency_html(services, api_url: str) -> str:
     html_parts = []
     html_parts.append(_section_bar_html("IN CASE OF EMERGENCY", "#4080d9"))
     html_parts.append(_section_bar_html("PERSONAL INFORMATION", "#c03333"))
+    if patient_photo_src:
+        patient_name = patient_data.get("name") or "Patient"
+        initial = (patient_name or "?")[0].upper()
+        import html as html_mod
+        html_parts.append(
+            f'<div class="emergency-patient-photo">'
+            f'<div class="avatar-wrapper"><div class="contact-initial">{html_mod.escape(initial)}</div>'
+            f'{hp.avatar_img(patient_photo_src, patient_name)}</div></div>'
+        )
     html_parts.append(_form_row_html("FULL NAME", patient_data.get("name")))
     html_parts.append(_form_row_html("DOB", patient_data.get("dob")))
     dnr = medical_data.get("dnr", False)

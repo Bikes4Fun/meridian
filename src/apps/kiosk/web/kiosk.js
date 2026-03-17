@@ -36,7 +36,24 @@ function initMap(markersJson) {
     var map = L.map('map').setView([markers[0].lat, markers[0].lon], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     markers.forEach(function(m) {
-      L.marker([m.lat, m.lon]).bindPopup(m.name || '').addTo(map);
+      var marker;
+      if (m.photo_src) {
+        var html = '<div class="map-marker-photo" style="width:48px;height:48px;border-radius:50%;overflow:hidden;border:3px solid #4080c0;background:#4080c0">' +
+          '<img src="' + m.photo_src.replace(/"/g, '&quot;') + '" alt="" style="width:100%;height:100%;object-fit:cover"/>' +
+          '</div>';
+        marker = L.marker([m.lat, m.lon], {
+          icon: L.divIcon({
+            html: html,
+            className: 'map-marker-div',
+            iconSize: [48, 48],
+            iconAnchor: [24, 48],
+            popupAnchor: [0, -48]
+          })
+        });
+      } else {
+        marker = L.marker([m.lat, m.lon]);
+      }
+      marker.bindPopup(m.name || '').addTo(map);
     });
   } catch (e) {
     var mapEl = document.getElementById('map');

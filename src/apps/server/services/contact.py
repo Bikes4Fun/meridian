@@ -109,6 +109,34 @@ class ContactService(DatabaseServiceMixin):
         ]
         return ServiceResult.success_result(contacts)
 
+    def get_contact_in_family(
+        self, contact_id: str, family_circle_id: str
+    ) -> ServiceResult:
+        """Get contact by id, ensuring it belongs to the family."""
+        query = """
+            SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
+            FROM contacts WHERE id = ? AND family_circle_id = ?
+        """
+        result = self.safe_query(query, (contact_id, family_circle_id))
+        if not result.success:
+            return result
+        if result.data:
+            row = result.data[0]
+            return ServiceResult.success_result(
+                Contact(
+                    id=row["id"],
+                    display_name=row["display_name"],
+                    phone=row["phone"],
+                    email=row["email"],
+                    birthday=row["birthday"],
+                    relationship=row["relationship"],
+                    emergency_priority=row["emergency_priority"],
+                    photo_filename=row.get("photo_filename"),
+                    sendbird_user_id=row.get("sendbird_user_id"),
+                )
+            )
+        return ServiceResult.error_result(f"Contact with ID '{contact_id}' not found")
+
     def get_contact_by_id(self, contact_id: str) -> ServiceResult:
         query = """
             SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id

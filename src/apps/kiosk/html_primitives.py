@@ -97,13 +97,13 @@ def spacer(size=32):
     return f'<div class="spacer" style="height:{int(size)}px"></div>'
 
 
-def avatar_img(api_base, user_id, alt=""):
-    """Circle avatar alone. Design: 128px circular. Used by: Emergency, Family; contact_tile uses this. Hides on error."""
-    if not api_base or not user_id:
+def avatar_img(avatar_src, alt=""):
+    """Circle avatar alone. Design: 128px circular. avatar_src = data URI (from fetch_photo_b64) or None/empty for fallback only."""
+    if not avatar_src:
         return ""
-    photo_url = f"{api_base.rstrip('/')}/api/users/{user_id}/photo"
     alt_escaped = html.escape(str(alt))
-    return f'<img src="{html.escape(photo_url)}" onerror="this.style.display=\'none\'" class="avatar" alt="{alt_escaped}">'
+    src_escaped = html.escape(avatar_src)
+    return f'<img src="{src_escaped}" class="avatar" alt="{alt_escaped}">'
 
 
 def kiosk_button(text, onclick_js, no_feedback=False):
@@ -114,11 +114,11 @@ def kiosk_button(text, onclick_js, no_feedback=False):
     return f'<button class="{cls}" onclick="{onclick_js}">{html.escape(str(text))}</button>'
 
 
-def contact_tile(api_base, name, user_id, onclick_js=None, relationship="", data_sb_uid="", data_name=""):
-    """Person/contact card. Uses data-sb-uid/data-name for chat (delegated handler) when provided; else onclick_js."""
+def contact_tile(avatar_src, name, onclick_js=None, relationship="", data_sb_uid="", data_name=""):
+    """Person/contact card. avatar_src = data URI from fetch_photo_b64. Uses data-sb-uid/data-name for chat when provided."""
     initial = (name or "?")[0].upper()
     name_escaped = html.escape(str(name or "Contact"))
-    img_tag = avatar_img(api_base, user_id, name)
+    img_tag = avatar_img(avatar_src, name)
     rel_part = f'<div class="contact-relationship">{html.escape(str(relationship))}</div>' if relationship else ""
     avatar_block = f'<div class="avatar-wrapper"><div class="contact-initial">{html.escape(initial)}</div>{img_tag}</div>'
     if data_sb_uid or data_name:

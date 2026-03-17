@@ -289,66 +289,29 @@ def load_conditions_data(db_manager, care_recipient_user_id: str):
     logger.debug("  Loaded %d conditions" % len(conditions))
 
 
+def _resolve_event_time(value: str, today: datetime.date) -> str:
+    """Resolve TODAY_, TOMORROW_, PLUS_N_DAYS_ placeholders to ISO datetime strings."""
+    if not value:
+        return value
+    if value.startswith("TODAY_"):
+        return f"{today}T{value.replace('TODAY_', '')}"
+    if value.startswith("TOMORROW_"):
+        return f"{today + timedelta(days=1)}T{value.replace('TOMORROW_', '')}"
+    for n, prefix in enumerate(["PLUS_2_DAYS_", "PLUS_3_DAYS_", "PLUS_4_DAYS_", "PLUS_5_DAYS_"], 2):
+        if value.startswith(prefix):
+            return f"{today + timedelta(days=n)}T{value.replace(prefix, '')}"
+    return value
+
+
 def load_calendar_events_data(db_manager, family_circle_id: str):
-    """Load calendar events from JSON into SQLite database."""
+    """Load calendar events from JSON into SQLite database. Used by standalone seed (python -m apps.server seed)."""
+    today = datetime.now().date()
     calendar_data = load_json_file("calendar.json")
     events = calendar_data.get("calendar_events", [])
 
     for event_data in events:
-        # Handle dynamic date placeholders
-        start_time = event_data.get("start_time")
-        end_time = event_data.get("end_time")
-
-        # Replace date placeholders with actual dates
-        today = datetime.now().date()
-
-        if start_time and start_time.startswith("TODAY_"):
-            time_part = start_time.replace("TODAY_", "")
-            start_time = f"{today}T{time_part}"
-        elif start_time and start_time.startswith("TOMORROW_"):
-            time_part = start_time.replace("TOMORROW_", "")
-            tomorrow = today + timedelta(days=1)
-            start_time = f"{tomorrow}T{time_part}"
-        elif start_time and start_time.startswith("PLUS_2_DAYS_"):
-            time_part = start_time.replace("PLUS_2_DAYS_", "")
-            plus_2 = today + timedelta(days=2)
-            start_time = f"{plus_2}T{time_part}"
-        elif start_time and start_time.startswith("PLUS_3_DAYS_"):
-            time_part = start_time.replace("PLUS_3_DAYS_", "")
-            plus_3 = today + timedelta(days=3)
-            start_time = f"{plus_3}T{time_part}"
-        elif start_time and start_time.startswith("PLUS_4_DAYS_"):
-            time_part = start_time.replace("PLUS_4_DAYS_", "")
-            plus_4 = today + timedelta(days=4)
-            start_time = f"{plus_4}T{time_part}"
-        elif start_time and start_time.startswith("PLUS_5_DAYS_"):
-            time_part = start_time.replace("PLUS_5_DAYS_", "")
-            plus_5 = today + timedelta(days=5)
-            start_time = f"{plus_5}T{time_part}"
-
-        if end_time and end_time.startswith("TODAY_"):
-            time_part = end_time.replace("TODAY_", "")
-            end_time = f"{today}T{time_part}"
-        elif end_time and end_time.startswith("TOMORROW_"):
-            time_part = end_time.replace("TOMORROW_", "")
-            tomorrow = today + timedelta(days=1)
-            end_time = f"{tomorrow}T{time_part}"
-        elif end_time and end_time.startswith("PLUS_2_DAYS_"):
-            time_part = end_time.replace("PLUS_2_DAYS_", "")
-            plus_2 = today + timedelta(days=2)
-            end_time = f"{plus_2}T{time_part}"
-        elif end_time and end_time.startswith("PLUS_3_DAYS_"):
-            time_part = end_time.replace("PLUS_3_DAYS_", "")
-            plus_3 = today + timedelta(days=3)
-            end_time = f"{plus_3}T{time_part}"
-        elif end_time and end_time.startswith("PLUS_4_DAYS_"):
-            time_part = end_time.replace("PLUS_4_DAYS_", "")
-            plus_4 = today + timedelta(days=4)
-            end_time = f"{plus_4}T{time_part}"
-        elif end_time and end_time.startswith("PLUS_5_DAYS_"):
-            time_part = end_time.replace("PLUS_5_DAYS_", "")
-            plus_5 = today + timedelta(days=5)
-            end_time = f"{plus_5}T{time_part}"
+        start_time = _resolve_event_time(event_data.get("start_time"), today)
+        end_time = _resolve_event_time(event_data.get("end_time"), today)
 
         query = """
             INSERT OR REPLACE INTO calendar_events 
@@ -370,6 +333,57 @@ def load_calendar_events_data(db_manager, family_circle_id: str):
         )
         db_manager.execute_update(query, params)
     logger.debug("  Loaded %d calendar events" % len(events))
+
+
+def seed_calendar_events_via_api(
+    api_url: str, family_circle_id: str, user_id: str
+) -> bool:
+    """Load calendar events from JSON via POST /api/family_circles/.../calendar/events. Requires server running.
+    Idempotent: deletes existing demo events by id before posting."""
+    try:
+        import requests
+    except ImportError:
+        logger.error("requests required for API seed")
+        return False
+
+    today = datetime.now().date()
+    calendar_data = load_json_file("calendar.json")
+    events = calendar_data.get("calendar_events", [])
+    base = api_url.rstrip("/")
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-Id": user_id,
+        "X-Family-Circle-Id": family_circle_id,
+    }
+
+    for event_data in events:
+        evt_id = event_data.get("id")
+        evt_url = f"{base}/api/family_circles/{family_circle_id}/calendar/events/{evt_id}"
+        requests.delete(evt_url, headers=headers, timeout=5)
+
+    events_url = f"{base}/api/family_circles/{family_circle_id}/calendar/events"
+    for event_data in events:
+        start_time = _resolve_event_time(event_data.get("start_time"), today)
+        end_time = _resolve_event_time(event_data.get("end_time"), today)
+        payload = {
+            "id": event_data.get("id"),
+            "title": event_data.get("title"),
+            "start_time": start_time,
+            "end_time": end_time,
+            "description": event_data.get("description"),
+            "location": event_data.get("location"),
+            "driver_name": event_data.get("driver_name"),
+            "driver_contact_id": event_data.get("driver_contact_id"),
+            "pickup_time": event_data.get("pickup_time"),
+            "leave_time": event_data.get("leave_time"),
+        }
+        r = requests.post(events_url, json=payload, headers=headers, timeout=5)
+        if not r.ok:
+            logger.error("Calendar API POST failed: %s %s", r.status_code, r.text)
+            return False
+
+    logger.debug("  Seeded %d calendar events via API" % len(events))
+    return True
 
 
 def load_user_locations_data(db_manager, family_circle_id: str):
@@ -442,44 +456,82 @@ def refresh_demo_checkins(db_path: str) -> None:
         logger.debug("Demo checkins refresh skipped (old schema?): %s", e)
 
 
-def ensure_local_database(db_path: str) -> bool:
-    """Create schema (adds missing tables). Always seed demo data so DB stays updated."""
-    db_config = DatabaseConfig(path=db_path, create_if_missing=True)
-    db = DatabaseManager(db_config)
+def demo_bootstrap(db_path: str) -> bool:
+    """Schema + minimal data (users, circles, contacts, care_recipient, medication_times) required for FKs.
+    Call before starting the server. Remaining data goes via demo_seed_after_server."""
+    db = get_database_manager(db_path)
     result = db.create_database_schema()
     if not result.success:
         logger.error("Local database setup failed")
         raise RuntimeError("Local database setup failed")
-    data_loaded = demo_main(user_id=DEMO_USER_ID, db_path=db_path)
-    if not data_loaded:
-        logger.error("Local demo data loading error")
-        raise RuntimeError("Local demo data loading error")
+    load_demo_users_from_json_into_db(db)
+    load_demo_family_circles_from_json_into_db(db)
+    load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+    care_recipient_user_id = (
+        load_json_file("medical.json").get("care_recipient", {}).get("user_id")
+    )
+    if not care_recipient_user_id:
+        raise ValueError("medical.json care_recipient must have user_id")
+    load_demo_medication_times_from_json_into_db(
+        db, family_circle_id=DEMO_FAMILY_CIRCLE_ID
+    )
+    load_demo_care_recipient_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+    logger.debug("Demo bootstrap complete")
+    return True
+
+
+def demo_seed_after_server(api_url: str, db_path: str) -> bool:
+    """Seed remaining demo data. Server must be running. Calendar via API; rest via direct DB.
+    Eventually all entities will use API when endpoints exist."""
+    db = get_database_manager(db_path)
+    care_recipient_user_id = (
+        load_json_file("medical.json").get("care_recipient", {}).get("user_id")
+    )
+    if not care_recipient_user_id:
+        raise ValueError("medical.json care_recipient must have user_id")
+
+    # Direct DB (until APIs exist)
+    load_demo_medications_data_from_json_to_db(
+        db,
+        family_circle_id=DEMO_FAMILY_CIRCLE_ID,
+        care_recipient_user_id=care_recipient_user_id,
+    )
+    load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
+    load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
+    load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+    load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+
+    # Via API
+    if not seed_calendar_events_via_api(api_url, DEMO_FAMILY_CIRCLE_ID, DEMO_USER_ID):
+        logger.warning("Calendar API seed failed")
+        return False
+
+    logger.info("Demo data loaded successfully!")
+    return True
+
+
+def ensure_local_database(db_path: str) -> bool:
+    """Create schema + bootstrap data. Caller must start server then demo_seed_after_server(api_url, db_path)."""
+    if not demo_bootstrap(db_path):
+        raise RuntimeError("Local database bootstrap failed")
     return True
 
 
 def demo_main(user_id, db_path=None) -> bool:
-    """Load all JSON demo data into the database. Run via: python -m apps.server seed (or pass db_path)."""
+    """Load all JSON demo data into the database (direct DB). Run via: python -m apps.server seed.
+    Used when server is not running. Main/kiosk use demo_bootstrap + demo_seed_after_server instead."""
     logger.debug("Loading demo data into database...")
     if db_path is None:
         db_path = get_database_path()
 
-    # get_database_manager (used by all load_* below) creates DB and schema when missing
-    # Schema must already exist (main.py creates it when demo mode and DB missing)
-
     try:
+        demo_bootstrap(db_path)
         db = get_database_manager(db_path)
-        # Load all JSON data into database
-        load_demo_users_from_json_into_db(db)
-        load_demo_family_circles_from_json_into_db(db)
-        load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         care_recipient_user_id = (
             load_json_file("medical.json").get("care_recipient", {}).get("user_id")
         )
         if not care_recipient_user_id:
             raise ValueError("medical.json care_recipient must have user_id")
-        load_demo_medication_times_from_json_into_db(
-            db, family_circle_id=DEMO_FAMILY_CIRCLE_ID
-        )
         load_demo_medications_data_from_json_to_db(
             db,
             family_circle_id=DEMO_FAMILY_CIRCLE_ID,
@@ -487,7 +539,6 @@ def demo_main(user_id, db_path=None) -> bool:
         )
         load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
         load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
-        load_demo_care_recipient_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_calendar_events_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
         load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)

@@ -259,7 +259,11 @@ class MeridianKioskApp:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         result = cal_svc.get_events_for_date(today)
         if result.success and result.data:
-            text = "\n".join(f"• {e}" for e in result.data)
+            parts = []
+            for e in result.data:
+                disp = e.get("display", str(e)) if isinstance(e, dict) else str(e)
+                parts.append(f"• {disp}")
+            text = "\n".join(parts)
         else:
             text = "No events today"
         self._eval_el("events_content", text)

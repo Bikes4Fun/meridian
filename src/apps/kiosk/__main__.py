@@ -72,11 +72,17 @@ def main():
         logger.info(f"Database: local - {db_path}")
         if not railway_reachable:
             logger.warning("Railway unreachable, using local DB")
-        from dev.demo.seed import ensure_local_database, refresh_demo_checkins
+        from dev.demo.seed import (
+            ensure_local_database,
+            demo_seed_after_server,
+            refresh_demo_checkins,
+        )
 
         ensure_local_database(db_path)
-        refresh_demo_checkins(db_path)
         api_url = _start_local_api_server(logger)
+        if not demo_seed_after_server(api_url, db_path):
+            logger.warning("Demo seed after server failed")
+        refresh_demo_checkins(db_path)
     else:
         api_url = get_railway_api_url()
         logger.info(f"API: {api_url}")

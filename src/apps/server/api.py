@@ -177,8 +177,8 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Public routes: no auth required (login page, chatapp POC)
-        if request.path in ("/login.html", "/app.js") or request.path == "/chatapp" or request.path.startswith("/chatapp/"):
+        # Public routes: no auth required (login page, chatapp POC, fonts)
+        if request.path in ("/login.html", "/app.js") or request.path == "/chatapp" or request.path.startswith("/chatapp/") or request.path.startswith("/fonts/"):
             g.user_id = None
             g.family_circle_id = None
             return

@@ -86,6 +86,7 @@
       .kiosk-header { font-size: var(--font-header); font-weight: 700; }
       .kiosk-subheader { font-size: var(--font-subheader); font-weight: 700; }
       .kiosk-body-large { font-size: var(--font-body-large); }
+      .kiosk-body, .kiosk-caption { white-space: pre-wrap; }
       .kiosk-body { font-size: var(--font-body); }
       .kiosk-caption { font-size: var(--font-caption); }
   
@@ -109,7 +110,7 @@
         cursor: pointer;
       }
   
-      /* Contact tile - avatar 128px per design; initial stacks underneath as fallback when photo fails */
+      /* Contact tile - avatar 128px per design; initial as fallback when photo fails */
       .contact-tile {
         display: flex;
         flex-direction: column;
@@ -120,17 +121,15 @@
         border-radius: 12px;
       }
       .contact-tile:hover { background: rgba(0,0,0,0.05); }
-      .avatar {
+      .avatar-wrapper {
+        position: relative;
         width: 128px;
         height: 128px;
-        border-radius: 50%;
-        object-fit: cover;
-        z-index: 1;
+        margin: 0 auto 8px;
       }
       .contact-initial {
         width: 128px;
         height: 128px;
-        margin-top: -128px;
         border-radius: 50%;
         background: #999;
         color: #fff;
@@ -139,7 +138,15 @@
         justify-content: center;
         font-size: var(--font-header);
         font-weight: 700;
-        z-index: 0;
+      }
+      .avatar-wrapper .avatar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        object-fit: cover;
       }
       .contact-name { font-size: var(--font-body-large); font-weight: 700; }
       .contact-relationship { font-size: var(--font-caption); color: #666; }
@@ -157,7 +164,7 @@
       }
       .form-row .value {
         flex: 1;
-        font-size: var(--font-body-large);
+        font-size: var(--font-body);
       }
       .section-bar {
         padding: 12px 16px;

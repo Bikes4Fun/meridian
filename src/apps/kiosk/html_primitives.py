@@ -87,9 +87,9 @@ def panel(inner_html, class_name=""):
 
 
 def two_column_row(left_html, right_html, left_pct=50):
-    """50/50 horizontal split (or left_pct). Design: spacing 32-48px between. Used by: Home, Family."""
+    """50/50 horizontal split (or left_pct). Design: gap 24px; use calc to avoid overflow."""
     right_pct = 100 - left_pct
-    return f'<div class="two-column-row"><div class="col-left" style="flex:0 0 {left_pct}%">{left_html}</div><div class="col-right" style="flex:0 0 {right_pct}%">{right_html}</div></div>'
+    return f'<div class="two-column-row"><div class="col-left" style="flex:0 0 calc({left_pct}% - 12px)">{left_html}</div><div class="col-right" style="flex:0 0 calc({right_pct}% - 12px)">{right_html}</div></div>'
 
 
 def spacer(size=32):
@@ -112,11 +112,15 @@ def kiosk_button(text, onclick_js):
     return f'<button class="kiosk-button" onclick="{onclick_js}">{html.escape(str(text))}</button>'
 
 
-def contact_tile(api_base, name, user_id, onclick_js, relationship=""):
-    """Person/contact card. Design: Photo 128px, Name 32px bold, Relationship 20px. Min touch 120px.
-    Used by: Chat, Family. onclick_js is Python-generated — do not html.escape it."""
+def contact_tile(api_base, name, user_id, onclick_js=None, relationship="", data_sb_uid="", data_name=""):
+    """Person/contact card. Uses data-sb-uid/data-name for chat (delegated handler) when provided; else onclick_js."""
     initial = (name or "?")[0].upper()
     name_escaped = html.escape(str(name or "Contact"))
     img_tag = avatar_img(api_base, user_id, name)
     rel_part = f'<div class="contact-relationship">{html.escape(str(relationship))}</div>' if relationship else ""
-    return f'<div class="contact-tile" onclick="{onclick_js}">{img_tag}<div class="contact-initial">{html.escape(initial)}</div><div class="contact-name">{name_escaped}</div>{rel_part}</div>'
+    avatar_block = f'<div class="avatar-wrapper"><div class="contact-initial">{html.escape(initial)}</div>{img_tag}</div>'
+    if data_sb_uid or data_name:
+        sb = f' data-sb-uid="{html.escape(str(data_sb_uid))}"' if data_sb_uid else ""
+        nm = f' data-name="{html.escape(str(data_name))}"' if data_name else ""
+        return f'<div class="contact-tile" role="button"{sb}{nm}>{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'
+    return f'<div class="contact-tile" onclick="{onclick_js}">{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'

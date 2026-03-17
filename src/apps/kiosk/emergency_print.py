@@ -7,11 +7,6 @@ import subprocess
 import sys
 import tempfile
 
-from kivy.clock import Clock
-
-from .kiosk_metrics import scaled
-from .screen_primitives import KioskLabel, KioskButton
-
 logger = logging.getLogger(__name__)
 
 
@@ -88,17 +83,6 @@ def _run_emergency_print(emergency_svc, status_label=None) -> None:
         status_label.text = msg if ok else f"Print failed: {msg}"
     if ok:
         logger.info("Emergency print: %s", msg)
-        if job_id and status_label is not None:
-            poll_ev = [None]
-
-            def _poll(dt):
-                if not _job_still_queued(job_id):
-                    status_label.text = "Print completed"
-                    if poll_ev[0] is not None:
-                        poll_ev[0].cancel()
-                        poll_ev[0] = None
-
-            poll_ev[0] = Clock.schedule_interval(_poll, 2.0)
     else:
         logger.warning("Emergency print failed: %s", msg)
 
@@ -112,29 +96,3 @@ def trigger_emergency_print(services) -> None:
         return
     status_label = services.get("_emergency_print_status_label")
     _run_emergency_print(emergency_svc, status_label)
-
-
-def add_emergency_print_section(layout, services):
-    """Add Print Emergency Document button and status label to layout. No-op if no emergency service."""
-    emergency_svc = services.get("emergency_service")
-    if not emergency_svc or not getattr(
-        emergency_svc, "get_emergency_profile_pdf", None
-    ):
-        return
-
-    print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=scaled(36))
-    services["_emergency_print_status_label"] = print_status
-
-    def _on_print(*_):
-        Clock.schedule_once(
-            lambda dt: _run_emergency_print(emergency_svc, print_status), 0
-        )
-
-    print_btn = KioskButton(
-        text="Print Emergency Document",
-        size_hint_y=None,
-        height=scaled(120),
-        on_release=_on_print,
-    )
-    layout.add_widget(print_btn)
-    layout.add_widget(print_status)

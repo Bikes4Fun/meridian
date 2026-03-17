@@ -152,6 +152,7 @@ class MeridianKioskApp:
         """Fetch chat URL and open in webview."""
         entry_svc = self.services.get("chat_entry_service")
         if not entry_svc:
+            logger.warning("open_chat: no chat_entry_service")
             return
         r = entry_svc.get_entry_url(
             recipient_sendbird_user_id=sendbird_user_id,
@@ -161,6 +162,8 @@ class MeridianKioskApp:
             from .webview import open_chat_window
 
             open_chat_window(r.data)
+        else:
+            logger.warning("open_chat: get_entry_url failed: %s", getattr(r, "error", None))
 
     def _print_emergency(self):
         """Trigger emergency print (same flow as alert-activated)."""

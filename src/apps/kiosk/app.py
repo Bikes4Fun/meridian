@@ -14,6 +14,7 @@ import logging
 import os
 import threading
 import time
+from typing import Optional
 
 from shared.config import (
     get_kiosk_tv_fullscreen,
@@ -36,8 +37,7 @@ NAV_BUTTONS = [
 class KioskBridge:
     """Exposed to JS as pywebview.api. Handles nav, open_chat, print_emergency."""
 
-    def __init__(self, window, app):
-        self._window = window
+    def __init__(self, app):
         self._app = app
 
     def navigate(self, screen_name: str):
@@ -74,29 +74,34 @@ class MeridianKioskApp:
         url = "file://" + os.path.abspath(html_path).replace("\\", "/")
 
         w, h = get_kiosk_window_size()
+        x, y = 10, 120
+        frameless = False
+        fullscreen = False
+        if get_kiosk_tv_mode():
+            from shared.config import get_kiosk_tv_position
+
+            x, y = get_kiosk_tv_position()
+            frameless = True
+            fullscreen = get_kiosk_tv_fullscreen()
+        self._bridge = KioskBridge(self)
         self._window = webview.create_window(
             "Meridian Kiosk",
             url,
             width=w,
             height=h,
+            x=x,
+            y=y,
             resizable=False,
+            frameless=frameless,
+            fullscreen=fullscreen,
+            js_api=self._bridge,
         )
-        self._bridge = KioskBridge(self._window, self)
 
-        if get_kiosk_tv_mode():
-            from shared.config import get_kiosk_tv_position
-
-            tx, ty = get_kiosk_tv_position()
-            self._window._set_tv_position(tx, ty)
-            self._window.set_on_top(True)
-            if get_kiosk_tv_fullscreen():
-                self._window.toggle_fullscreen()
-
-        def on_loaded():
+        def on_loaded(*args, **kwargs):
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        webview.start(api=self._bridge)
+        webview.start()
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""
@@ -108,39 +113,40 @@ class MeridianKioskApp:
     def _navigate_to(self, screen_name: str):
         """Show screen by name. Builds HTML and calls showScreen."""
         try:
-            html = self._build_screen_html(screen_name)
+            html, extra = self._build_screen_html(screen_name)
             escaped = json.dumps(html)
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
+            if extra:
+                self._eval(extra)
         except Exception as e:
             logger.exception("navigate failed: %s", e)
 
-    def _build_screen_html(self, screen_name: str) -> str:
-        """Build HTML for screen. Uses html_primitives; screen modules provide content."""
+    def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
+        """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
         from . import html_primitives as hp
 
         if screen_name == "home":
             from .home_screen import build_home_html
 
-            return build_home_html(self.services, self.api_url)
+            return build_home_html(self.services, self.api_url), None
         if screen_name == "emergency":
             from .emergency_screen import build_emergency_html
 
-            return build_emergency_html(self.services, self.api_url)
+            return build_emergency_html(self.services, self.api_url), None
         if screen_name == "family":
             from .checkin_screen import build_checkin_html
 
             html, markers_json = build_checkin_html(
                 self.services, self.api_url, self.family_circle_id
             )
-            self._eval(f"initMap({json.dumps(markers_json)})")
-            return html
+            return html, f"initMap({json.dumps(markers_json)})"
         if screen_name == "chat":
             from .chat_screen import build_chat_html
 
             return build_chat_html(
                 self.services, self.api_url, self.kiosk_user_id, self.family_circle_id
-            )
-        return hp.error_state("Unknown screen")
+            ), None
+        return hp.error_state("Unknown screen"), None
 
     def _open_chat(self, sendbird_user_id: str, display_name: str):
         """Fetch chat URL and open in webview."""
@@ -228,8 +234,9 @@ class MeridianKioskApp:
         if prn:
             lines.append("PRN (As Needed):")
             for m in prn:
-                last = m.get("last_taken") or "Not taken today"
-                lines.append(f"  • {m.get('name', '?')}: Last: {last}")
+                lt = m.get("last_taken")
+                last = f"Last: {lt}" if lt else "Not taken today"
+                lines.append(f"  • {m.get('name', '?')}: {last}")
         text = "\n".join(lines) if lines else "No medications"
         self._eval_el("medication_content", text)
 

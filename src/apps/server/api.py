@@ -13,7 +13,7 @@ WHERE IT MOVED TO (client uses these instead of container on client):
   - client/remote.py (RemoteTimeService, RemoteCalendarService, etc.) calls this API.
 
 SERVER DEPLOYMENT: This module requires config, container/, and database_management/.
-client/, display/, app_factory.py, icons/, and the Kivy app are not needed on the server;
+client/, display/, app_factory.py, icons/, and the kiosk client are not needed on the server;
 they can be omitted or relocated to a client-only repo.
 """
 

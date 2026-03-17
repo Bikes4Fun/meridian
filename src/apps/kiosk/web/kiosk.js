@@ -36,7 +36,6 @@ function initMap(markersJson) {
     var map = L.map('map').setView([markers[0].lat, markers[0].lon], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     markers.forEach(function(m) {
-<<<<<<< HEAD
       var marker;
       if (m.photo_src) {
         var html = '<div class="map-marker-photo" style="width:48px;height:48px;border-radius:50%;overflow:hidden;border:3px solid #4080c0;background:#4080c0">' +
@@ -55,9 +54,6 @@ function initMap(markersJson) {
         marker = L.marker([m.lat, m.lon]);
       }
       marker.bindPopup(m.name || '').addTo(map);
-=======
-      L.marker([m.lat, m.lon]).bindPopup(m.name || '').addTo(map);
->>>>>>> 394e596c47892b56f9c64cb75916bdc12436d778
     });
   } catch (e) {
     var mapEl = document.getElementById('map');

@@ -163,7 +163,6 @@
       .contact-name { font-size: var(--font-body-large); font-weight: 700; }
       .contact-relationship { font-size: var(--font-caption); color: #666; }
   
-<<<<<<< HEAD
       /* Emergency patient photo */
       .emergency-patient-photo {
         margin-bottom: 1.25vh;
@@ -179,8 +178,6 @@
         height: 10vh;
       }
 
-=======
->>>>>>> 394e596c47892b56f9c64cb75916bdc12436d778
       /* Emergency form (injected by Python) */
       .form-row {
         display: flex;
@@ -212,8 +209,5 @@
   
       /* Map */
       #map { height: 20.83vh; min-height: 10.42vh; }
-<<<<<<< HEAD
       .map-marker-div { background: transparent; border: none; }
-=======
->>>>>>> 394e596c47892b56f9c64cb75916bdc12436d778
     

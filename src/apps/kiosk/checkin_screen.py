@@ -75,14 +75,6 @@ def build_checkin_html(services, api_url: str, family_circle_id: str) -> tuple[s
     row = hp.two_column_row(left_panel, right_panel)
     map_div = '<div id="map"></div>'
     return hp.kiosk_header("Family Locations") + hp.spacer(24) + row + hp.spacer(24) + map_div, json.dumps(markers)
-            checkins_html = hp.empty_state("No check-ins yet")
-
-    left_panel = hp.panel(hp.kiosk_subheader("Possible family locations") + hp.spacer(16) + places_html)
-    right_panel = hp.panel(hp.kiosk_subheader("Check-ins") + hp.spacer(16) + checkins_html)
-    row = hp.two_column_row(left_panel, right_panel)
-    map_div = '<div id="map"></div>'
-    return hp.kiosk_header("Family Locations") + hp.spacer(24) + row + hp.spacer(24) + map_div, json.dumps(markers)
-
 
 def _crop_image_to_circle(src_path, size=200):
     """Crop image to circle; save as PNG. Returns absolute path to output file, or None if source missing."""

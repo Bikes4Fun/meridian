@@ -43,10 +43,12 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
         if sys.platform in ("darwin", "linux"):
             r = subprocess.run(["lp", path], capture_output=True, text=True, timeout=10)
             if r.returncode != 0:
-                return False, r.stderr or r.stdout or "Print command failed", None
+                err_detail = (r.stderr or "").strip() or (r.stdout or "").strip() or "Print command failed"
+                logger.warning(f"Emergency print: lp failed (rc={r.returncode}) {err_detail}")
+                return False, err_detail, None
             job_id = _parse_lp_job_id(r.stdout or "")
             if job_id:
-                logger.info("Print job id: %s", job_id)
+                logger.info(f"Print job id: {job_id}")
         else:
             r = subprocess.run(
                 ["start", "/p", path], capture_output=True, shell=True, timeout=10
@@ -66,6 +68,7 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
 
 def _run_emergency_print(emergency_svc, status_label=None) -> None:
     """Fetch PDF, print, update status_label if provided, schedule job polling when job_id and label."""
+    logger.info("Emergency print: fetching PDF...")
     if status_label is not None:
         status_label.text = "Printing..."
     result = emergency_svc.get_emergency_profile_pdf()
@@ -73,19 +76,21 @@ def _run_emergency_print(emergency_svc, status_label=None) -> None:
         err = getattr(result, "error", None) or "could not get PDF"
         if status_label is not None:
             status_label.text = f"Print failed: {err}"
-        logger.warning("Emergency print: could not get PDF (%s)", err)
+        logger.warning(f"Emergency print: could not get PDF ({err})")
         return
     if not result.data:
+        logger.warning("Emergency print: PDF empty")
         if status_label is not None:
             status_label.text = "Print failed: no PDF data"
         return
+    logger.info(f"Emergency print: PDF fetched ({len(result.data)} bytes), sending to printer...")
     ok, msg, job_id = _print_pdf_bytes(result.data)
     if status_label is not None:
         status_label.text = msg if ok else f"Print failed: {msg}"
     if ok:
-        logger.info("Emergency print: %s", msg)
+        logger.info(f"Emergency print: {msg}")
     else:
-        logger.warning("Emergency print failed: %s", msg)
+        logger.warning(f"Emergency print failed: {msg}")
 
 
 def trigger_emergency_print(services) -> None:

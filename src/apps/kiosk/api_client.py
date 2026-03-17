@@ -45,17 +45,21 @@ def _get(
     except ImportError:
         return False, None, "requests not installed"
     try:
+        logger.info(f"API GET {url}")
         client = session if session else requests
         r = client.get(url, timeout=timeout, headers=headers or {})
         r.raise_for_status()
         j = r.json()
         if "error" in j:
+            logger.info(f"API {url} -> error: {j['error']}")
             return False, None, j["error"]
         if "data" in j:
+            logger.info(f"API {url} -> ok")
             return True, j["data"], None
+        logger.info(f"API {url} -> ok")
         return True, j, None
     except Exception as e:
-        logger.debug("Request failed %s: %s", url, e)
+        logger.info(f"API {url} -> failed: {e}")
         return False, None, str(e)
 
 
@@ -71,12 +75,14 @@ def _get_raw(
     except ImportError:
         return False, None, "requests not installed"
     try:
+        logger.info(f"API GET {url} (bytes)")
         client = session if session else requests
         r = client.get(url, timeout=timeout, headers=headers or {})
         r.raise_for_status()
+        logger.info(f"API {url} -> ok ({len(r.content)} bytes)")
         return True, r.content, None
     except Exception as e:
-        logger.debug("Request failed %s: %s", url, e)
+        logger.info(f"API {url} -> failed: {e}")
         return False, None, str(e)
 
 
@@ -402,7 +408,7 @@ class RemoteLocationService:
                 return ServiceResult.error_result(j["error"])
             return ServiceResult.success_result(j.get("data"))
         except Exception as e:
-            logger.debug("Check-in request failed: %s", e)
+            logger.debug(f"Check-in request failed: {e}")
             return ServiceResult.error_result(str(e))
 
     def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
@@ -425,7 +431,7 @@ class RemoteLocationService:
                 f.write(r.content)
             return cached
         except Exception as e:
-            logger.debug("Photo fetch failed for %s: %s", user_id, e)
+            logger.debug(f"Photo fetch failed for {user_id}: {e}")
             return None
 
 

@@ -44,12 +44,14 @@ def _start_local_api_server(logger):
     start_port = get_server_port()
     port = find_available_port(host, start_port)
     if port != start_port:
-        logger.warning("Port %s in use, using %s", start_port, port)
+        logger.warning(f"Port {start_port} in use, using {port}")
     os.environ["PORT"] = str(port)
     logger.info("Starting API server...")
     threading.Thread(target=run_server, kwargs={"port": port}, daemon=True).start()
     time.sleep(0.5)
-    return "http://127.0.0.1:%s" % port
+    api_url = f"http://127.0.0.1:{port}"
+    logger.info(f"API: {api_url}")
+    return api_url
 
 
 def main():
@@ -67,7 +69,7 @@ def main():
 
     if using_local_db:
         db_path = get_database_path()
-        logger.info("Database: local - %s", db_path)
+        logger.info(f"Database: local - {db_path}")
         if not railway_reachable:
             logger.warning("Railway unreachable, using local DB")
         from dev.demo.seed import ensure_local_database, refresh_demo_checkins
@@ -77,7 +79,17 @@ def main():
         api_url = _start_local_api_server(logger)
     else:
         api_url = get_railway_api_url()
-        logger.info("Database: Railway - %s", api_url)
+        logger.info(f"API: {api_url}")
+        logger.info("Database: Railway (remote)")
+        try:
+            import urllib.request
+            with urllib.request.urlopen(f"{api_url.rstrip('/')}/api/health", timeout=3) as resp:
+                if resp.status == 200:
+                    logger.info("Server health: ok")
+                else:
+                    logger.warning(f"Server health: {resp.status}")
+        except Exception as e:
+            logger.warning(f"Server health check failed: {e}")
 
     logger.info("Starting Meridian Kiosk (pywebview)...")
     app = create_app(

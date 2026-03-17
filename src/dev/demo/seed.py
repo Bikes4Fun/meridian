@@ -22,9 +22,11 @@ import sys
 
 try:
     from src.apps.server.database import DatabaseManager
+    from src.apps.server.services.user import UserService
     from src.shared.config import DatabaseConfig, get_database_path
 except ImportError:
     from apps.server.database import DatabaseManager
+    from apps.server.services.user import UserService
     from shared.config import DatabaseConfig, get_database_path
 
 
@@ -121,27 +123,20 @@ def _link_users_to_family_circles(db_manager, users):
 
 
 def load_demo_users_from_json_into_db(db_manager):
-    """Load all users from users.json. sendbird_user_id is used for chat (maps app user to Sendbird user)."""
+    """Load all users from users.json. sendbird_user_id is used for chat (maps app user to Sendbird user).
+    Uses UserService so SQLite enforces sendbird_user_id uniqueness; returns errors on constraint violation."""
     users = load_json_file("users.json")
-
+    user_svc = UserService(db_manager)
     for user in users:
-        uid = user.get("id")
-        photo_filename = user.get("photo_filename")
-        sendbird_user_id = user.get("sendbird_user_id")
-        db_manager.execute_update(
-            """
-            INSERT OR REPLACE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                uid,
-                user.get("display_name"),
-                photo_filename,
-                user.get("family_circle_id"),
-                sendbird_user_id,
-            ),
+        r = user_svc.add_user(
+            user_id=user.get("id"),
+            display_name=user.get("display_name"),
+            photo_filename=user.get("photo_filename"),
+            family_circle_id=user.get("family_circle_id"),
+            sendbird_user_id=user.get("sendbird_user_id"),
         )
-
+        if not r.success:
+            raise ValueError(r.error or "Failed to load user")
     _link_users_to_family_circles(db_manager, users)
     logger.debug("  Loaded %d users" % len(users))
 

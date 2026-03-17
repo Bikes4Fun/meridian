@@ -7,11 +7,6 @@ import subprocess
 import sys
 import tempfile
 
-from kivy.clock import Clock
-from kivy.metrics import dp
-
-from .screen_primitives import KioskLabel, KioskButton
-
 logger = logging.getLogger(__name__)
 
 
@@ -48,10 +43,12 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
         if sys.platform in ("darwin", "linux"):
             r = subprocess.run(["lp", path], capture_output=True, text=True, timeout=10)
             if r.returncode != 0:
-                return False, r.stderr or r.stdout or "Print command failed", None
+                err_detail = (r.stderr or "").strip() or (r.stdout or "").strip() or "Print command failed"
+                logger.warning(f"Emergency print: lp failed (rc={r.returncode}) {err_detail}")
+                return False, err_detail, None
             job_id = _parse_lp_job_id(r.stdout or "")
             if job_id:
-                logger.info("Print job id: %s", job_id)
+                logger.info(f"Print job id: {job_id}")
         else:
             r = subprocess.run(
                 ["start", "/p", path], capture_output=True, shell=True, timeout=10
@@ -71,36 +68,29 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
 
 def _run_emergency_print(emergency_svc, status_label=None) -> None:
     """Fetch PDF, print, update status_label if provided, schedule job polling when job_id and label."""
+    logger.info("Emergency print: fetching PDF...")
     if status_label is not None:
         status_label.text = "Printing..."
     result = emergency_svc.get_emergency_profile_pdf()
     if not result.success:
+        err = getattr(result, "error", None) or "could not get PDF"
         if status_label is not None:
-            status_label.text = "Print failed: could not get PDF"
-        logger.warning("Emergency print: could not get PDF")
+            status_label.text = f"Print failed: {err}"
+        logger.warning(f"Emergency print: could not get PDF ({err})")
         return
     if not result.data:
+        logger.warning("Emergency print: PDF empty")
         if status_label is not None:
             status_label.text = "Print failed: no PDF data"
         return
+    logger.info(f"Emergency print: PDF fetched ({len(result.data)} bytes), sending to printer...")
     ok, msg, job_id = _print_pdf_bytes(result.data)
     if status_label is not None:
         status_label.text = msg if ok else f"Print failed: {msg}"
     if ok:
-        logger.info("Emergency print: %s", msg)
-        if job_id and status_label is not None:
-            poll_ev = [None]
-
-            def _poll(dt):
-                if not _job_still_queued(job_id):
-                    status_label.text = "Print completed"
-                    if poll_ev[0] is not None:
-                        poll_ev[0].cancel()
-                        poll_ev[0] = None
-
-            poll_ev[0] = Clock.schedule_interval(_poll, 2.0)
+        logger.info(f"Emergency print: {msg}")
     else:
-        logger.warning("Emergency print failed: %s", msg)
+        logger.warning(f"Emergency print failed: {msg}")
 
 
 def trigger_emergency_print(services) -> None:
@@ -112,29 +102,3 @@ def trigger_emergency_print(services) -> None:
         return
     status_label = services.get("_emergency_print_status_label")
     _run_emergency_print(emergency_svc, status_label)
-
-
-def add_emergency_print_section(layout, services):
-    """Add Print Emergency Document button and status label to layout. No-op if no emergency service."""
-    emergency_svc = services.get("emergency_service")
-    if not emergency_svc or not getattr(
-        emergency_svc, "get_emergency_profile_pdf", None
-    ):
-        return
-
-    print_status = KioskLabel(type="caption", text="", size_hint_y=None, height=dp(36))
-    services["_emergency_print_status_label"] = print_status
-
-    def _on_print(*_):
-        Clock.schedule_once(
-            lambda dt: _run_emergency_print(emergency_svc, print_status), 0
-        )
-
-    print_btn = KioskButton(
-        text="Print Emergency Document",
-        size_hint_y=None,
-        height=dp(56),
-        on_release=_on_print,
-    )
-    layout.add_widget(print_btn)
-    layout.add_widget(print_status)

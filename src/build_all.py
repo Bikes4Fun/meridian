@@ -16,6 +16,13 @@ def build_webapp(api_url: str, src_dir: str):
         open(os.path.join(dist, filename), "w", encoding="utf-8").write(
             content.replace("__API_URL__", api_url)
         )
+    font_src = os.path.join(src_dir, "shared", "fonts", "Atkinson_Hyperlegible")
+    font_dst = os.path.join(dist, "fonts")
+    if os.path.isdir(font_src):
+        os.makedirs(font_dst, exist_ok=True)
+        for f in ("AtkinsonHyperlegible-Regular.ttf", "AtkinsonHyperlegible-Bold.ttf", "AtkinsonHyperlegible-Italic.ttf", "AtkinsonHyperlegible-BoldItalic.ttf"):
+            if os.path.isfile(os.path.join(font_src, f)):
+                shutil.copy2(os.path.join(font_src, f), os.path.join(font_dst, f))
     print("Webapp built: login.html, index.html, app.js")
 
 

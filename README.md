@@ -4,17 +4,18 @@ TV-based digital assistant for dementia patients and families. Provides daily or
 
 ## Technical Stack
 - **Language**: Python
-- **UI**: Kivy (TV-sized touch interface)
+- **UI**: pywebview + HTML/CSS/JS (TV-sized touch interface)
 - **Database**: SQLite
-- **Libraries**: Pillow (images), Requests (APIs), QR code libs
+- **Libraries**: Pillow (images), Requests (APIs), Leaflet (map)
 - **Deployment**: Raspberry Pi, local network, optional cloud backup
 
 
 ## Run
 ```bash
 pip install -r requirements.txt
-python src/dev/main.py
+PYTHONPATH=src python -m apps.kiosk
 ```
+Or via main entry: `PYTHONPATH=src python src/main.py`
 
 ## Tests
 ```bash
@@ -29,21 +30,20 @@ See `src/dev/tests/README.md` for fixtures, markers, and test structure.
 - **shared/config.py** – ConfigManager, DatabaseConfig; environment-based config
 - **shared/interfaces.py** – ServiceResult, service contracts
 - **apps/server/** – Flask API (api.py), database (database.py), services (container, calendar, contact, etc.)
-- **apps/kiosk/** – Kivy TV UI (app.py, screens.py, widgets.py, api_client.py, settings.py)
-- **dev/main.py** – Entry point; starts API server and Kivy client
+- **apps/kiosk/** – pywebview TV UI (app.py, web/, html_primitives, api_client, *_screen.py)
+- **main.py** – Entry point; starts API server and pywebview kiosk
 
 ## Project Structure
 ```
 meridian/
 ├── src/
 │   ├── apps/
-│   │   ├── kiosk/              # Kivy TV UI (screens, widgets, api_client)
+│   │   ├── kiosk/              # pywebview TV UI (HTML/CSS/JS)
 │   │   │   ├── app.py
-│   │   │   ├── screens.py
-│   │   │   ├── widgets.py
-│   │   │   ├── modular_display.py
+│   │   │   ├── web/            # kiosk.html, kiosk.css, kiosk.js
+│   │   │   ├── html_primitives.py
 │   │   │   ├── api_client.py
-│   │   │   ├── settings.py
+│   │   │   ├── *_screen.py     # home, emergency, checkin, chat
 │   │   │   └── cache/          # Map tile cache
 │   │   ├── server/             # Flask API, DB, services
 │   │   │   ├── api.py

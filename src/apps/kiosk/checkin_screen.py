@@ -4,7 +4,9 @@ MapView is lazy-loaded on screen enter.
 """
 
 import json
+import json
 import logging
+import os
 import os
 
 logger = logging.getLogger(__name__)
@@ -22,7 +24,26 @@ def build_checkin_html(services, api_url: str, family_circle_id: str) -> tuple[s
 
     if loc_svc:
         places_result = loc_svc.get_named_places()
+def build_checkin_html(services, api_url: str, family_circle_id: str) -> tuple[str, str]:
+    """Build family/checkin screen HTML and map markers JSON for pywebview. Returns (html, markers_json)."""
+    from . import html_primitives as hp
+
+    loc_svc = services.get("location_service")
+    places_svc = loc_svc
+    markers = []
+    places_html = hp.loading_state("Loading places...")
+    checkins_html = hp.loading_state("Loading check-ins...")
+
+    if loc_svc:
+        places_result = loc_svc.get_named_places()
         if places_result.success and places_result.data:
+            lines = [f"• {p.get('location_name', 'Unknown')}" for p in places_result.data]
+            places_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No named places")
+        else:
+            places_html = hp.empty_state("No named places")
+
+        checkins_result = loc_svc.get_checkins()
+        if checkins_result.success and checkins_result.data:
             lines = [f"• {p.get('location_name', 'Unknown')}" for p in places_result.data]
             places_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No named places")
         else:
@@ -47,6 +68,13 @@ def build_checkin_html(services, api_url: str, family_circle_id: str) -> tuple[s
                 lines.append(f"• {name}: {loc}")
             checkins_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No check-ins")
         else:
+            checkins_html = hp.empty_state("No check-ins yet")
+
+    left_panel = hp.panel(hp.kiosk_subheader("Possible family locations") + hp.spacer(16) + places_html)
+    right_panel = hp.panel(hp.kiosk_subheader("Check-ins") + hp.spacer(16) + checkins_html)
+    row = hp.two_column_row(left_panel, right_panel)
+    map_div = '<div id="map"></div>'
+    return hp.kiosk_header("Family Locations") + hp.spacer(24) + row + hp.spacer(24) + map_div, json.dumps(markers)
             checkins_html = hp.empty_state("No check-ins yet")
 
     left_panel = hp.panel(hp.kiosk_subheader("Possible family locations") + hp.spacer(16) + places_html)

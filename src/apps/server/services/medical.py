@@ -54,7 +54,7 @@ class MedicationService(DatabaseServiceMixin):
         if not care_recipient_user_id:
             return
         query = """
-            SELECT m.name, m.dosage, m.taken_today, mt.name as time_name, mt.time as group_time
+            SELECT m.id, m.name, m.dosage, m.taken_today, mt.name as time_name, mt.time as group_time
             FROM medications m
             LEFT JOIN medication_to_time mtt ON m.id = mtt.medication_id
             LEFT JOIN medication_times mt ON mtt.group_id = mt.id

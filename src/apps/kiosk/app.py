@@ -55,6 +55,41 @@ class KioskBridge:
         logger.info("Print emergency (button)")
         self._app._print_emergency()
 
+    def refresh_events(self):
+        """Refresh home schedule (Up Next + timeline). Called from JS after adding event."""
+        self._app._load_home_schedule()
+
+    def add_event(self, payload_json: str) -> str:
+        """POST new event to API. Returns 'ok' or error message. Called from JS."""
+        try:
+            data = json.loads(payload_json)
+        except json.JSONDecodeError as e:
+            return str(e)
+        title = data.get("title")
+        start_time = data.get("start_time")
+        if not title or not start_time:
+            return "title and start_time required"
+        api_url = self._app.api_url.rstrip("/")
+        url = f"{api_url}/api/family_circles/{self._app.family_circle_id}/calendar/events"
+        headers = {
+            "Content-Type": "application/json",
+            "X-User-Id": self._app.kiosk_user_id,
+            "X-Family-Circle-Id": self._app.family_circle_id,
+        }
+        try:
+            import requests
+            r = requests.post(url, json=data, headers=headers, timeout=5)
+            if r.ok:
+                self._app._load_home_schedule()
+                return "ok"
+            try:
+                err = r.json().get("error", r.text)
+            except Exception:
+                err = r.text
+            return err or f"HTTP {r.status_code}"
+        except Exception as e:
+            return str(e)
+
 
 class MeridianKioskApp:
     """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""
@@ -131,25 +166,37 @@ class MeridianKioskApp:
 
         if screen_name == "home":
             from .home_screen import build_home_html
+            return build_home_html(
+                self.services, self.api_url,
+                family_circle_id=self.family_circle_id,
+                kiosk_user_id=self.kiosk_user_id,
+            ), None
 
-            return build_home_html(self.services, self.api_url), None
         if screen_name == "emergency":
             from .emergency_screen import build_emergency_html
-
             return build_emergency_html(self.services, self.api_url), None
+
         if screen_name == "family":
             from .checkin_screen import build_checkin_html
-
             html, markers_json = build_checkin_html(
                 self.services, self.api_url, self.family_circle_id
             )
             return html, f"initMap({json.dumps(markers_json)})"
+
         if screen_name == "chat":
             from .chat_screen import build_chat_html
-
             return build_chat_html(
                 self.services, self.api_url, self.kiosk_user_id, self.family_circle_id
             ), None
+
+        if screen_name == "medications":
+            from .medications_screen import build_medications_html
+            return build_medications_html(self.services, self.api_url), None
+
+        if screen_name == "schedule":
+            from .schedule_screen import build_schedule_html
+            return build_schedule_html(self.services, self.api_url), None
+
         return hp.error_state("Unknown screen"), None
 
     def _open_chat(self, sendbird_user_id: str, display_name: str):
@@ -180,8 +227,6 @@ class MeridianKioskApp:
         logger.info("Kiosk loaded, initializing...")
         time.sleep(0.3)
         self._navigate_to("home")
-        self._load_medications()
-        self._load_events()
         self._refresh_clock()
         self._start_clock_tick()
         self._start_alert_poll()
@@ -211,58 +256,13 @@ class MeridianKioskApp:
             self._eval_el("clock-time", time_svc.get_time())
             self._eval_el("clock-period", time_svc.get_am_pm().upper())
 
-    def _load_medications(self):
-        """Fetch meds and update medication_content."""
-        med_svc = self.services.get("medication_service")
-        if not med_svc:
-            self._eval_el("medication_content", "Medications unavailable")
-            return
-        result = med_svc.get_medication_data()
-        if not result.success:
-            self._eval_el("medication_content", "Error loading medications")
-            return
-        data = result.data or {}
-        time_groups = {}
-        for m in data.get("timed_medications", []):
-            t = m.get("time", "Unknown")
-            time_groups.setdefault(t, []).append(m)
-        group_times = data.get("medication_time_groups", {})
-        sorted_times = sorted(
-            time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59")
-        )
-        lines = []
-        for t in sorted_times:
-            meds = time_groups[t]
-            if meds:
-                lines.append(f"{t}:")
-                for m in meds:
-                    status = "Done" if m.get("status") == "done" else "Not Done"
-                    lines.append(f"  • {m.get('name', '?')}: {status}")
-        prn = data.get("prn_medications", [])
-        if prn:
-            lines.append("PRN (As Needed):")
-            for m in prn:
-                lt = m.get("last_taken")
-                last = f"Last: {lt}" if lt else "Not taken today"
-                lines.append(f"  • {m.get('name', '?')}: {last}")
-        text = "\n".join(lines) if lines else "No medications"
-        self._eval_el("medication_content", text)
+    def _load_home_schedule(self):
+        """Update Up Next and timeline. Fetches data via home_screen, pushes to webview."""
+        from .home_screen import build_timeline_html, build_up_next_html, load_schedule_items
 
-    def _load_events(self):
-        """Fetch events and update events_content."""
-        import datetime
-
-        cal_svc = self.services.get("calendar_service")
-        if not cal_svc:
-            self._eval_el("events_content", "Events unavailable")
-            return
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        result = cal_svc.get_events_for_date(today)
-        if result.success and result.data:
-            text = "\n".join(f"• {e}" for e in result.data)
-        else:
-            text = "No events today"
-        self._eval_el("events_content", text)
+        items, now = load_schedule_items(self.services)
+        self._eval_el("up_next_content", build_up_next_html(items, now))
+        self._eval_el("timeline_content", build_timeline_html(items))
 
     def _start_alert_poll(self):
         """Poll alert; when activated, switch to emergency, add flash, trigger print."""

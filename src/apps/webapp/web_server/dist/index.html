@@ -108,19 +108,19 @@
     <p style="font-size: 14px; color: #666;">Today's schedule</p>
     <div id="eventsList" style="text-align: left; margin: 12px 0; padding: 12px; background: #fafafa; border-radius: 8px; min-height: 60px;">Loading…</div>
     <button id="addEventBtn" type="button" style="background: #2E7D9B;">Add Event</button>
-    <div id="eventFormModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; flex-direction: column;">
-        <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
+    <div id="eventFormModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-sizing: border-box;">
             <h3 style="margin: 0 0 16px 0;">Add Event</h3>
             <form id="eventForm">
-                <input type="text" id="eventTitle" placeholder="Title" required style="margin-bottom: 10px;">
-                <input type="date" id="eventDate" required style="margin-bottom: 10px;">
-                <input type="time" id="eventStartTime" required style="margin-bottom: 10px;">
-                <input type="time" id="eventEndTime" placeholder="End time (optional)" style="margin-bottom: 10px;">
-                <input type="text" id="eventLocation" placeholder="Location (optional)" style="margin-bottom: 10px;">
-                <textarea id="eventDescription" placeholder="Description (optional)" rows="3" style="width: 100%; margin-bottom: 12px; padding: 10px; border: 2px solid #ddd; border-radius: 8px;"></textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" style="flex: 1;">Save</button>
-                    <button type="button" id="eventFormCancel">Cancel</button>
+                <input type="text" id="eventTitle" placeholder="Title" required style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <input type="date" id="eventDate" required style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <input type="time" id="eventStartTime" required style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <input type="time" id="eventEndTime" placeholder="End time (optional)" style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <input type="text" id="eventLocation" placeholder="Location (optional)" style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <textarea id="eventDescription" placeholder="Description (optional)" rows="3" style="display: block; width: 100%; margin-bottom: 12px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical;"></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                    <button type="submit" style="flex: 1; padding: 12px; background: #2E7D9B; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Save</button>
+                    <button type="button" id="eventFormCancel" style="flex: 1; padding: 12px; background: #95a5a6; color: white; border: none; border-radius: 8px; cursor: pointer;">Cancel</button>
                 </div>
             </form>
         </div>

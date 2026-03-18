@@ -36,7 +36,7 @@ NAV_BUTTONS = [
 
 
 class KioskBridge:
-    """Exposed to JS as pywebview.api. Delegates to screen handlers."""
+    """Exposed to JS as pywebview.api. Composes handlers (events, etc.); delegates to them."""
 
     def __init__(self, app):
         self._app = app

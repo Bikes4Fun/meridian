@@ -7,14 +7,21 @@ document.getElementById('kiosk-nav').addEventListener('click', function(e) {
 
 document.getElementById('screen-content').addEventListener('click', function(e) {
   var addBtn = e.target.closest('#addEventBtn');
-  if (addBtn) {
-    var overlay = document.getElementById('eventFormOverlay');
-    if (overlay) {
-      var today = new Date().toISOString().slice(0, 10);
-      var dateEl = document.getElementById('eventDate');
-      if (dateEl) dateEl.value = today;
-      overlay.style.display = 'flex';
-    }
+  if (addBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_event_modal) {
+    pywebview.api.open_add_event_modal();
+    return;
+  }
+  var editBtn = e.target.closest('.event-edit-btn');
+  if (editBtn && editBtn.getAttribute('data-event') && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.edit_event) {
+    pywebview.api.edit_event(editBtn.getAttribute('data-event'));
+    return;
+  }
+  var deleteBtn = e.target.closest('.event-delete-btn');
+  if (deleteBtn && deleteBtn.dataset.eventId) {
+    if (!confirm('Delete this event?')) return;
+    var res = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.delete_event) ? pywebview.api.delete_event(deleteBtn.dataset.eventId) : 'Delete unavailable';
+    function done(r) { if (r !== 'ok') alert(r || 'Failed to delete'); }
+    (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
   var screenBtn = e.target.closest('[data-screen]');
@@ -43,8 +50,6 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
 document.getElementById('screen-content').addEventListener('submit', function(e) {
   if (e.target.id !== 'eventForm') return;
   e.preventDefault();
-  var overlay = document.getElementById('eventFormOverlay');
-  if (!overlay) return;
   var title = (document.getElementById('eventTitle') || {}).value || '';
   var date = (document.getElementById('eventDate') || {}).value || '';
   var startTime = (document.getElementById('eventStartTime') || {}).value || '';
@@ -52,29 +57,17 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
   var location = (document.getElementById('eventLocation') || {}).value || '';
   var description = (document.getElementById('eventDescription') || {}).value || '';
   if (!title || !date || !startTime) return;
-  var startDateTime = date + 'T' + startTime + ':00';
-  var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
+  var payload = { title: title, start_time: date + 'T' + startTime + ':00', location: location || undefined, description: description || undefined };
   if (endTime) payload.end_time = date + 'T' + endTime + ':00';
 
-  if (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_event) {
-    var result = pywebview.api.add_event(JSON.stringify(payload));
-    function handleResult(res) {
-      if (res === 'ok') {
-        overlay.style.display = 'none';
-        var form = document.getElementById('eventForm');
-        if (form) form.reset();
-      } else {
-        alert(res || 'Failed to add event');
-      }
-    }
-    if (result && typeof result.then === 'function') {
-      result.then(handleResult).catch(function(e) { alert(String(e)); });
-    } else {
-      handleResult(result);
-    }
-  } else {
-    alert('Add event unavailable');
+  var result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.submit_event_form) ? pywebview.api.submit_event_form(JSON.stringify(payload)) : 'Submit unavailable';
+  function done(res) {
+    if (res === 'ok') {
+      var o = document.getElementById('eventFormOverlay'); if (o) o.style.display = 'none';
+      var f = document.getElementById('eventForm'); if (f) f.reset();
+    } else { alert(res || 'Failed'); }
   }
+  (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);
 });
 
 function showScreen(name, html) {

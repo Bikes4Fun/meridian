@@ -4,6 +4,7 @@ Owns all home presentation: structure, schedule data merge, and HTML for dynamic
 """
 
 import html as html_module
+import json
 import logging
 import os
 
@@ -67,7 +68,7 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     modal_html = '''
     <div id="eventFormOverlay" class="event-overlay" style="display:none;">
         <div class="event-modal" onclick="event.stopPropagation()">
-            <h3 class="event-modal-title">Add Event</h3>
+            <h3 id="eventFormTitle" class="event-modal-title">Add Event</h3>
             <form id="eventForm">
                 <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
                 <input type="date" id="eventDate" required class="event-input">
@@ -134,6 +135,8 @@ def load_schedule_items(services) -> tuple[list, object]:
                     "title": e.get("title", "?"),
                     "done": False,
                     "display": e.get("display", e.get("title", "?")),
+                    "event_id": e.get("id"),
+                    "event_data": e,
                 })
     items.sort(key=lambda x: x["dt"])
     return items, now
@@ -188,5 +191,10 @@ def build_timeline_html(items: list) -> str:
         cls = "timeline-item timeline-item-done" if done else "timeline-item"
         title = it.get("display", it.get("title", "?"))
         title_esc = html_module.escape(str(title))
-        result.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>')
+        extra = ""
+        if it.get("type") == "event" and it.get("event_id"):
+            eid = html_module.escape(str(it["event_id"]))
+            edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
+            extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
+        result.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>')
     return "\n".join(result)

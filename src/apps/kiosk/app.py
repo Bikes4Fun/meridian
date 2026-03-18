@@ -23,6 +23,7 @@ from shared.config import (
 )
 
 from .api_client import create_kiosk_remote
+from .events_handler import EventsHandler
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,11 @@ NAV_BUTTONS = [
 
 
 class KioskBridge:
-    """Exposed to JS as pywebview.api. Handles nav, open_chat, print_emergency."""
+    """Exposed to JS as pywebview.api. Delegates to screen handlers."""
 
     def __init__(self, app):
         self._app = app
+        self._events = EventsHandler(app)
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
@@ -56,39 +58,26 @@ class KioskBridge:
         self._app._print_emergency()
 
     def refresh_events(self):
-        """Refresh home schedule (Up Next + timeline). Called from JS after adding event."""
+        """Refresh home schedule. Called from JS after event change."""
         self._app._load_home_schedule()
 
+    def open_add_event_modal(self) -> None:
+        self._events.open_add_event_modal()
+
+    def edit_event(self, event_data_json: str) -> None:
+        self._events.edit_event(event_data_json)
+
+    def submit_event_form(self, payload_json: str) -> str:
+        return self._events.submit_event_form(payload_json)
+
     def add_event(self, payload_json: str) -> str:
-        """POST new event to API. Returns 'ok' or error message. Called from JS."""
-        try:
-            data = json.loads(payload_json)
-        except json.JSONDecodeError as e:
-            return str(e)
-        title = data.get("title")
-        start_time = data.get("start_time")
-        if not title or not start_time:
-            return "title and start_time required"
-        api_url = self._app.api_url.rstrip("/")
-        url = f"{api_url}/api/family_circles/{self._app.family_circle_id}/calendar/events"
-        headers = {
-            "Content-Type": "application/json",
-            "X-User-Id": self._app.kiosk_user_id,
-            "X-Family-Circle-Id": self._app.family_circle_id,
-        }
-        try:
-            import requests
-            r = requests.post(url, json=data, headers=headers, timeout=5)
-            if r.ok:
-                self._app._load_home_schedule()
-                return "ok"
-            try:
-                err = r.json().get("error", r.text)
-            except Exception:
-                err = r.text
-            return err or f"HTTP {r.status_code}"
-        except Exception as e:
-            return str(e)
+        return self._events.add_event(payload_json)
+
+    def update_event(self, event_id: str, payload_json: str) -> str:
+        return self._events.update_event(event_id, payload_json)
+
+    def delete_event(self, event_id: str) -> str:
+        return self._events.delete_event(event_id)
 
 
 class MeridianKioskApp:
@@ -194,7 +183,7 @@ class MeridianKioskApp:
             return build_medications_html(self.services, self.api_url), None
 
         if screen_name == "schedule":
-            from .schedule_screen import build_schedule_html
+            from .events_handler import build_schedule_html
             return build_schedule_html(self.services, self.api_url), None
 
         return hp.error_state("Unknown screen"), None

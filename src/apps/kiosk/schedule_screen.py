@@ -3,6 +3,7 @@ Schedule screen: full merged timeline for today (meds + events).
 """
 
 import html as html_module
+import json
 
 from . import html_primitives as hp
 
@@ -60,6 +61,8 @@ def build_schedule_html(services, api_url: str) -> str:
                     "dt": dt,
                     "title": e.get("display", e.get("title", "?")),
                     "done": False,
+                    "event_id": e.get("id"),
+                    "event_data": e,
                 })
     items.sort(key=lambda x: x["dt"])
 
@@ -74,8 +77,31 @@ def build_schedule_html(services, api_url: str) -> str:
             check = " ✓" if done else ""
             cls = "timeline-item timeline-item-done" if done else "timeline-item"
             title_esc = html_module.escape(str(it.get("title", "?")))
+            extra = ""
+            if it.get("type") == "event" and it.get("event_id"):
+                eid = html_module.escape(str(it["event_id"]))
+                edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
+                extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
             parts.append(
-                f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>'
+                f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
             )
-
+    parts.append(
+        '''<div class="home-action-row" style="margin-top:16px;">
+        <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
+        </div>
+        <div id="eventFormOverlay" class="event-overlay" style="display:none;">
+        <div class="event-modal" onclick="event.stopPropagation()">
+        <h3 id="eventFormTitle" class="event-modal-title">Add Event</h3>
+        <form id="eventForm">
+        <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
+        <input type="date" id="eventDate" required class="event-input">
+        <input type="time" id="eventStartTime" required class="event-input">
+        <input type="time" id="eventEndTime" placeholder="End (optional)" class="event-input">
+        <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
+        <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
+        <div class="event-form-actions">
+        <button type="submit" class="event-btn event-btn-primary">Save</button>
+        <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
+        </div></form></div></div>'''
+    )
     return "".join(parts)

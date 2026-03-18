@@ -1,5 +1,6 @@
 """
-Home screen: clock, medications, events.
+Home screen: Option 5 - Up Next, What's Next Today, side-by-side action buttons.
+Clock kept for now; will be redesigned later.
 """
 
 import logging
@@ -25,8 +26,7 @@ def get_time_of_day_icon(time_of_day):
 
 
 def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = "") -> str:
-    """family_circle_id and kiosk_user_id kept for API; bridge handles add_event."""
-    """Build home screen HTML for pywebview. Clock/med/events use ids for updateEl."""
+    """Option 5: Up Next + What's Next Today + side-by-side action buttons."""
     from . import html_primitives as hp
 
     time_svc = services.get("time_service")
@@ -50,19 +50,16 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     clock += hp.kiosk_subheader(date, id_="clock-date")
     clock += hp.kiosk_subheader(year, id_="clock-year")
 
-    med_content = '<div id="medication_content" class="state-placeholder state-loading">Loading medications...</div>'
-    med_panel = hp.panel(
-        hp.kiosk_header("Medications") + hp.spacer(16) + med_content,
-        "med-panel",
-    )
-
-    events_content = '<div id="events_content" class="state-placeholder state-loading">Loading events...</div>'
-    add_btn = '<button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>'
-    events_panel = hp.panel(
-        hp.kiosk_header("Today's Events") + hp.spacer(16) + events_content + hp.spacer(12) + add_btn,
-        "events-panel",
-    )
-
+    up_next = '<div class="up-next-card" id="up_next_content"><div class="up-next-loading">Loading…</div></div>'
+    timeline = '''<div class="timeline-card">
+        <div class="timeline-header">WHAT'S NEXT TODAY</div>
+        <div id="timeline_content" class="timeline-list state-placeholder">Loading…</div>
+        <button type="button" class="timeline-view-btn" data-screen="schedule">View Full Schedule</button>
+    </div>'''
+    actions = '''<div class="home-action-row">
+        <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
+        <button type="button" class="manage-meds-btn" data-screen="medications">Manage Medications</button>
+    </div>'''
     modal_html = '''
     <div id="eventFormOverlay" class="event-overlay" style="display:none;">
         <div class="event-modal">
@@ -82,5 +79,4 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
         </div>
     </div>
     '''
-    bottom = hp.two_column_row(med_panel, events_panel)
-    return clock + hp.spacer(32) + bottom + modal_html
+    return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + modal_html

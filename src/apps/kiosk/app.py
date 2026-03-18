@@ -9,6 +9,7 @@ CLIENT vs SERVER:
 SERVER DEPLOYMENT: app_factory.py is not needed on the server.
 """
 
+import html
 import json
 import logging
 import os
@@ -56,8 +57,8 @@ class KioskBridge:
         self._app._print_emergency()
 
     def refresh_events(self):
-        """Refresh events panel. Called from JS after adding event."""
-        self._app._load_events()
+        """Refresh home schedule (Up Next + timeline). Called from JS after adding event."""
+        self._app._load_home_schedule()
 
     def add_event(self, payload_json: str) -> str:
         """POST new event to API. Returns 'ok' or error message. Called from JS."""
@@ -80,7 +81,7 @@ class KioskBridge:
             import requests
             r = requests.post(url, json=data, headers=headers, timeout=5)
             if r.ok:
-                self._app._load_events()
+                self._app._load_home_schedule()
                 return "ok"
             try:
                 err = r.json().get("error", r.text)
@@ -219,8 +220,7 @@ class MeridianKioskApp:
         logger.info("Kiosk loaded, initializing...")
         time.sleep(0.3)
         self._navigate_to("home")
-        self._load_medications()
-        self._load_events()
+        self._load_home_schedule()
         self._refresh_clock()
         self._start_clock_tick()
         self._start_alert_poll()
@@ -250,62 +250,101 @@ class MeridianKioskApp:
             self._eval_el("clock-time", time_svc.get_time())
             self._eval_el("clock-period", time_svc.get_am_pm().upper())
 
-    def _load_medications(self):
-        """Fetch meds and update medication_content."""
-        med_svc = self.services.get("medication_service")
-        if not med_svc:
-            self._eval_el("medication_content", "Medications unavailable")
-            return
-        result = med_svc.get_medication_data()
-        if not result.success:
-            self._eval_el("medication_content", "Error loading medications")
-            return
-        data = result.data or {}
-        time_groups = {}
-        for m in data.get("timed_medications", []):
-            t = m.get("time", "Unknown")
-            time_groups.setdefault(t, []).append(m)
-        group_times = data.get("medication_time_groups", {})
-        sorted_times = sorted(
-            time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59")
-        )
-        lines = []
-        for t in sorted_times:
-            meds = time_groups[t]
-            if meds:
-                lines.append(f"{t}:")
-                for m in meds:
-                    status = "Done" if m.get("status") == "done" else "Not Done"
-                    lines.append(f"  • {m.get('name', '?')}: {status}")
-        prn = data.get("prn_medications", [])
-        if prn:
-            lines.append("PRN (As Needed):")
-            for m in prn:
-                lt = m.get("last_taken")
-                last = f"Last: {lt}" if lt else "Not taken today"
-                lines.append(f"  • {m.get('name', '?')}: {last}")
-        text = "\n".join(lines) if lines else "No medications"
-        self._eval_el("medication_content", text)
-
-    def _load_events(self):
-        """Fetch events and update events_content."""
+    def _load_home_schedule(self):
+        """Merge meds + events into timeline. Update Up Next and What's Next Today."""
         import datetime
 
+        med_svc = self.services.get("medication_service")
         cal_svc = self.services.get("calendar_service")
-        if not cal_svc:
-            self._eval_el("events_content", "Events unavailable")
-            return
         today = datetime.datetime.now().strftime("%Y-%m-%d")
-        result = cal_svc.get_events_for_date(today)
-        if result.success and result.data:
-            parts = []
-            for e in result.data:
-                disp = e.get("display", str(e)) if isinstance(e, dict) else str(e)
-                parts.append(f"• {disp}")
-            text = "\n".join(parts)
+        now = datetime.datetime.now()
+
+        items = []
+        group_times = {}
+        if med_svc:
+            result = med_svc.get_medication_data()
+            if result.success and result.data:
+                data = result.data or {}
+                group_times = data.get("medication_time_groups", {})
+                for m in data.get("timed_medications", []):
+                    t = m.get("time", "Unknown")
+                    gt = group_times.get(t, "23:59:59")
+                    try:
+                        dt_str = f"{today}T{gt}"
+                        dt = datetime.datetime.fromisoformat(dt_str)
+                    except Exception:
+                        dt = now
+                    items.append({
+                        "type": "med",
+                        "dt": dt,
+                        "title": m.get("name", "?"),
+                        "done": m.get("status") == "done",
+                        "time_label": t,
+                    })
+        if cal_svc:
+            result = cal_svc.get_events_for_date(today)
+            if result.success and result.data:
+                for e in result.data:
+                    st = e.get("start_time")
+                    dt = now
+                    if st:
+                        try:
+                            dt = datetime.datetime.fromisoformat(str(st).replace("Z", "+00:00"))
+                            if dt.tzinfo:
+                                dt = dt.replace(tzinfo=None)
+                        except Exception:
+                            pass
+                    items.append({
+                        "type": "event",
+                        "dt": dt,
+                        "title": e.get("title", "?"),
+                        "done": False,
+                        "display": e.get("display", e.get("title", "?")),
+                    })
+        items.sort(key=lambda x: x["dt"])
+
+        up_next_html = self._build_up_next_html(items, now)
+        timeline_html = self._build_timeline_html(items)
+        self._eval_el("up_next_content", up_next_html)
+        self._eval_el("timeline_content", timeline_html)
+
+    def _build_up_next_html(self, items, now):
+        """Build Up Next card HTML. First non-done future item, or 'All done for today'."""
+        next_item = None
+        for it in items:
+            if not it.get("done") and it["dt"] >= now:
+                next_item = it
+                break
+        if not next_item:
+            return '<div class="up-next-card-inner"><span class="up-next-done">All done for today</span></div>'
+        diff = next_item["dt"] - now
+        mins = int(diff.total_seconds() / 60)
+        if mins < 60:
+            subtext = f"in {mins} min"
         else:
-            text = "No events today"
-        self._eval_el("events_content", text)
+            h = mins // 60
+            m = mins % 60
+            subtext = f"in {h}h {m}m" if m else f"in {h} hour"
+        time_str = next_item["dt"].strftime("%I:%M %p")
+        icon = "💊" if next_item["type"] == "med" else "📅"
+        title_esc = html.escape(next_item["title"])
+        return f'<div class="up-next-card-inner"><span class="up-next-icon">{icon}</span><div><span class="up-next-title">{title_esc}</span><span class="up-next-sub">{time_str} • {subtext}</span></div></div>'
+
+    def _build_timeline_html(self, items):
+        """Build What's Next Today list (4-5 items). Blue bar meds, teal bar events, checkmark for done."""
+        if not items:
+            return '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
+        parts = []
+        for it in items[:5]:
+            done = it.get("done")
+            bar_class = "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+            time_str = it["dt"].strftime("%I:%M %p")
+            check = " ✓" if done else ""
+            cls = "timeline-item timeline-item-done" if done else "timeline-item"
+            title = it.get("display", it.get("title", "?"))
+            title_esc = html.escape(str(title))
+            parts.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>')
+        return "\n".join(parts)
 
     def _start_alert_poll(self):
         """Poll alert; when activated, switch to emergency, add flash, trigger print."""

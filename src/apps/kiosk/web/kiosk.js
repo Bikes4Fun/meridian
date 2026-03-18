@@ -6,6 +6,11 @@ document.getElementById('kiosk-nav').addEventListener('click', function(e) {
 });
 
 document.getElementById('screen-content').addEventListener('click', function(e) {
+  var screenBtn = e.target.closest('[data-screen]');
+  if (screenBtn && typeof pywebview !== 'undefined' && pywebview.api) {
+    pywebview.api.navigate(screenBtn.dataset.screen);
+    return;
+  }
   var tile = e.target.closest('.contact-tile[data-sb-uid]');
   if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
     pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');

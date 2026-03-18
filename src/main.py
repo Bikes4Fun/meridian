@@ -100,12 +100,14 @@ def main():
                 "Railway API not reachable (%s), using local database.",
                 get_railway_api_url(),
             )
-        from dev.demo.seed import ensure_local_database, refresh_demo_checkins
+        from dev.demo.seed import (
+            ensure_local_database,
+            demo_seed_after_server,
+            refresh_demo_checkins,
+        )
 
         ensure_local_database(db_path)
-        logger.info("Local DB validated.")
-        refresh_demo_checkins(db_path)
-        logger.info("Database loaded")
+        logger.info("Local DB bootstrap complete.")
         if use_local:
             src_dir = os.path.dirname(os.path.abspath(__file__))
             try:
@@ -116,6 +118,10 @@ def main():
                 logger.error("Build failed (%s).", e)
                 sys.exit(1)
         api_url = _start_local_api_server(logger)
+        if not demo_seed_after_server(api_url, db_path):
+            logger.warning("Demo seed after server failed")
+        refresh_demo_checkins(db_path)
+        logger.info("Database loaded")
     else:
         api_url = get_railway_api_url()
         logger.info("Database: Railway (remote) - %s", api_url)

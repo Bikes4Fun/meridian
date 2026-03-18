@@ -430,13 +430,33 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": True})
 
-    @app.route("/api/family_circles/<family_circle_id>/medications")
+    @app.route("/api/family_circles/<family_circle_id>/medications", methods=["GET", "POST"])
     def api_medications(family_circle_id):
         _require_family_access(family_circle_id)
-        r = medication_svc.get_medication_data(family_circle_id)
+        if request.method == "GET":
+            r = medication_svc.get_medication_data(family_circle_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 500
+            return jsonify({"data": r.data})
+        body = request.get_json() or {}
+        name = body.get("name")
+        medication_times = body.get("medication_times") or []
+        if not name:
+            return jsonify({"error": "name required"}), 400
+        if not medication_times:
+            return jsonify({"error": "medication_times required"}), 400
+        r = medication_svc.add_medication(
+            family_circle_id,
+            name,
+            medication_times,
+            dosage=body.get("dosage"),
+            frequency=body.get("frequency"),
+            notes=body.get("notes"),
+            max_daily=body.get("max_daily"),
+        )
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        return jsonify({"data": r.data}), 201
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):

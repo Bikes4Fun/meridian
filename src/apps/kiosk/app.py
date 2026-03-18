@@ -24,6 +24,7 @@ from shared.config import (
 
 from .api_client import create_kiosk_remote
 from .events_handler import EventsHandler
+from .medications_screen import MedicationsHandler
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class KioskBridge:
     def __init__(self, app):
         self._app = app
         self._events = EventsHandler(app)
+        self._medications = MedicationsHandler(app)
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
@@ -78,6 +80,12 @@ class KioskBridge:
 
     def delete_event(self, event_id: str) -> str:
         return self._events.delete_event(event_id)
+
+    def open_add_medication_modal(self) -> None:
+        self._medications.open_add_medication_modal()
+
+    def add_medication(self, payload_json: str) -> str:
+        return self._medications.add_medication(payload_json)
 
 
 class MeridianKioskApp:

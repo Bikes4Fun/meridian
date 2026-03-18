@@ -286,6 +286,16 @@ class RemoteMedicationService:
             return ServiceResult.error_result(err or "medications request failed")
         return ServiceResult.success_result(data)
 
+    def add_medication(self, payload: dict) -> Any:
+        """POST new medication. Payload: name, medication_times, dosage?, frequency?, notes?, max_daily?"""
+        return _calendar_request(
+            "POST",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications",
+            self._headers,
+            self._session,
+            json_body=payload,
+        )
+
 
 class RemoteAlertService:
     def __init__(

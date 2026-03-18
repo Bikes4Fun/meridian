@@ -111,6 +111,49 @@ class MedicationService(DatabaseServiceMixin):
             else:
                 self.logger.warning("Medication '%s' has no times assigned", med_name)
 
+    def add_medication(
+        self,
+        family_circle_id: str,
+        name: str,
+        medication_times: List[str],
+        dosage: Optional[str] = None,
+        frequency: Optional[str] = None,
+        notes: Optional[str] = None,
+        max_daily: Optional[int] = None,
+    ) -> ServiceResult:
+        """Insert medication into DB and link to medication_times. Returns med id or error."""
+        care_recipient_user_id = self._get_care_recipient_user_id(family_circle_id)
+        if not care_recipient_user_id:
+            return ServiceResult.error_result("No care recipient for family circle")
+        if not name or not medication_times:
+            return ServiceResult.error_result("name and medication_times required")
+        result = self.db_manager.execute_insert(
+            """INSERT INTO medications
+               (care_recipient_user_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
+               VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)""",
+            (care_recipient_user_id, name, dosage, frequency, notes, max_daily),
+        )
+        if not result.success:
+            return ServiceResult.error_result(result.error or "Insert failed")
+        medication_id = result.data
+        for time_name in medication_times:
+            r = self.safe_query(
+                "SELECT id FROM medication_times WHERE family_circle_id = ? AND name = ?",
+                (family_circle_id, time_name),
+            )
+            if not r.success or not r.data:
+                return ServiceResult.error_result(
+                    f"Medication time '{time_name}' not found for family"
+                )
+            group_id = r.data[0]["id"]
+            link_result = self.db_manager.execute_update(
+                "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (?, ?)",
+                (medication_id, group_id),
+            )
+            if not link_result.success:
+                return ServiceResult.error_result(link_result.error or "Link failed")
+        return ServiceResult.success_result({"id": medication_id})
+
     def add_timed_medication(self, name: str, time: str, **kwargs) -> TimedMedication:
         medication = TimedMedication(
             name=name,

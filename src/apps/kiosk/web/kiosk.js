@@ -11,6 +11,11 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     pywebview.api.open_add_event_modal();
     return;
   }
+  var addMedBtn = e.target.closest('#addMedicationBtn');
+  if (addMedBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_medication_modal) {
+    pywebview.api.open_add_medication_modal();
+    return;
+  }
   var editBtn = e.target.closest('.event-edit-btn');
   if (editBtn && editBtn.getAttribute('data-event') && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.edit_event) {
     pywebview.api.edit_event(editBtn.getAttribute('data-event'));
@@ -40,7 +45,17 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     if (ov) ov.style.display = 'none';
     return;
   }
+  var medCancelBtn = e.target.closest('#medFormCancel');
+  if (medCancelBtn) {
+    var mov = document.getElementById('medFormOverlay');
+    if (mov) mov.style.display = 'none';
+    return;
+  }
   if (e.target.id === 'eventFormOverlay') {
+    e.target.style.display = 'none';
+    return;
+  }
+  if (e.target.id === 'medFormOverlay') {
     e.target.style.display = 'none';
     return;
   }
@@ -48,6 +63,37 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
 
 
 document.getElementById('screen-content').addEventListener('submit', function(e) {
+  if (e.target.id === 'medForm') {
+    e.preventDefault();
+    var name = (document.getElementById('medName') || {}).value || '';
+    var dosage = (document.getElementById('medDosage') || {}).value || '';
+    var notes = (document.getElementById('medNotes') || {}).value || '';
+    var maxDailyEl = document.getElementById('medMaxDaily');
+    var maxDaily = maxDailyEl && maxDailyEl.value ? parseInt(maxDailyEl.value, 10) : undefined;
+    var times = [];
+    (document.querySelectorAll('#medForm input[name="med_time"]:checked') || []).forEach(function(cb) {
+      if (cb.value) times.push(cb.value);
+    });
+    if (!name || times.length === 0) {
+      alert('Name and at least one time required');
+      return;
+    }
+    var payload = { name: name, medication_times: times };
+    if (dosage) payload.dosage = dosage;
+    if (notes) payload.notes = notes;
+    if (maxDaily) payload.max_daily = maxDaily;
+    var result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_medication) ? pywebview.api.add_medication(JSON.stringify(payload)) : 'Submit unavailable';
+    function done(res) {
+      if (res === 'ok') {
+        var o = document.getElementById('medFormOverlay');
+        if (o) o.style.display = 'none';
+        var f = document.getElementById('medForm');
+        if (f) f.reset();
+      } else { alert(res || 'Failed'); }
+    }
+    (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);
+    return;
+  }
   if (e.target.id !== 'eventForm') return;
   e.preventDefault();
   var title = (document.getElementById('eventTitle') || {}).value || '';

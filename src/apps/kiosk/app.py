@@ -166,37 +166,37 @@ class MeridianKioskApp:
 
         if screen_name == "home":
             from .home_screen import build_home_html
-
             return build_home_html(
                 self.services, self.api_url,
                 family_circle_id=self.family_circle_id,
                 kiosk_user_id=self.kiosk_user_id,
             ), None
+
         if screen_name == "emergency":
             from .emergency_screen import build_emergency_html
-
             return build_emergency_html(self.services, self.api_url), None
+
         if screen_name == "family":
             from .checkin_screen import build_checkin_html
-
             html, markers_json = build_checkin_html(
                 self.services, self.api_url, self.family_circle_id
             )
             return html, f"initMap({json.dumps(markers_json)})"
+
         if screen_name == "chat":
             from .chat_screen import build_chat_html
-
             return build_chat_html(
                 self.services, self.api_url, self.kiosk_user_id, self.family_circle_id
             ), None
+
         if screen_name == "medications":
             from .medications_screen import build_medications_html
-
             return build_medications_html(self.services, self.api_url), None
+
         if screen_name == "schedule":
             from .schedule_screen import build_schedule_html
-
             return build_schedule_html(self.services, self.api_url), None
+
         return hp.error_state("Unknown screen"), None
 
     def _open_chat(self, sendbird_user_id: str, display_name: str):
@@ -227,7 +227,6 @@ class MeridianKioskApp:
         logger.info("Kiosk loaded, initializing...")
         time.sleep(0.3)
         self._navigate_to("home")
-        self._load_home_schedule()
         self._refresh_clock()
         self._start_clock_tick()
         self._start_alert_poll()

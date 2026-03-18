@@ -51,10 +51,13 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     clock += hp.kiosk_subheader(date, id_="clock-date")
     clock += hp.kiosk_subheader(year, id_="clock-year")
 
-    up_next = '<div class="up-next-card" id="up_next_content"><div class="up-next-loading">Loading…</div></div>'
-    timeline = '''<div class="timeline-card">
+    items, now = load_schedule_items(services)
+    up_next_html = build_up_next_html(items, now)
+    timeline_html = build_timeline_html(items)
+    up_next = f'<div class="up-next-card" id="up_next_content">{up_next_html}</div>'
+    timeline = f'''<div class="timeline-card">
         <div class="timeline-header">WHAT'S NEXT TODAY</div>
-        <div id="timeline_content" class="timeline-list state-placeholder">Loading…</div>
+        <div id="timeline_content" class="timeline-list">{timeline_html}</div>
         <button type="button" class="timeline-view-btn" data-screen="schedule">View Full Schedule</button>
     </div>'''
     actions = '''<div class="home-action-row">
@@ -74,7 +77,7 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
                 <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
                 <div class="event-form-actions">
                     <button type="submit" class="event-btn event-btn-primary">Save</button>
-                    <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
+                    <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary" onclick="var o=document.getElementById('eventFormOverlay');if(o)o.style.display='none'">Cancel</button>
                 </div>
             </form>
         </div>

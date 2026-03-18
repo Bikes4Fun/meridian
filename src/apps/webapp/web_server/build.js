@@ -20,6 +20,11 @@ async function build() {
 
     const appJs = fs.readFileSync(path.join(webClient, 'app.js'), 'utf8');
     fs.writeFileSync(path.join(dist, 'app.js'), replaceApi(appJs));
+    const eventsJs = fs.readFileSync(path.join(webClient, 'events.js'), 'utf8');
+    fs.writeFileSync(path.join(dist, 'events.js'), replaceApi(eventsJs));
+    if (fs.existsSync(path.join(webClient, 'style.css'))) {
+        fs.copyFileSync(path.join(webClient, 'style.css'), path.join(dist, 'style.css'));
+    }
 }
 
 build().catch((e) => { console.error(e); process.exit(1); });

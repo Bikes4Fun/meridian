@@ -21,7 +21,7 @@ body {
     text-align: center;
 }
 h1 { font-size: 32px; font-weight: 700; color: #333; }
-h2 { font-size: 24px; font-weight: 600; }
+h2 { font-size: 24px; font-weight: 600; color: #333; }
 select, input, button {
     width: 100%;
     padding: 15px;
@@ -67,3 +67,37 @@ button:disabled {
 body.pending #appContent { display: none; }
 body.pending #appPending { display: block; }
 #appPending { display: none; padding: 20px; text-align: center; color: #666; }
+
+#chatSection { margin-bottom: 24px; }
+.muted { font-size: 14px; color: #666; }
+#contactsSection { margin-top: 12px; }
+#openChatStatus { font-size: 13px; color: #666; margin-top: 8px; }
+#chatSendRow { display: none; }
+#logoutLink { display: none; }
+
+.section-hr { margin: 25px 0; border: none; border-top: 1px solid #ddd; }
+
+#eventsList { text-align: left; margin: 12px 0; padding: 12px; background: #fafafa; border-radius: 8px; min-height: 60px; }
+#addEventBtn { background: #2E7D9B; }
+#addEventBtn:hover { background: #25718a; }
+
+#eventFormModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; flex-direction: column; align-items: center; justify-content: center; }
+#eventFormModal.visible { display: flex; }
+#eventFormModal .modal-inner { background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-sizing: border-box; }
+#eventFormModal h3 { margin: 0 0 16px 0; }
+#eventFormModal .event-input { display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+#eventFormModal textarea.event-input { margin-bottom: 12px; resize: vertical; }
+#eventFormModal .event-form-actions { display: flex; gap: 10px; margin-top: 16px; }
+#eventFormModal .event-form-actions button { flex: 1; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+#eventFormModal .event-btn-primary { background: #2E7D9B; color: white; border: none; }
+#eventFormModal .event-btn-secondary { background: #95a5a6; color: white; border: none; }
+
+#alertBtn { background: #e74c3c; }
+#alertBtn:hover { background: #c0392b; }
+#cancelAlertBtn { background: #95a5a6; margin-top: 5px; }
+
+.app-nav { display: flex; gap: 8px; margin-bottom: 20px; }
+.app-nav .nav-btn { width: auto; padding: 10px 16px; margin: 0; }
+.app-nav .nav-btn.active { background: #2E7D9B; }
+.page { display: none; }
+.page.active { display: block; }

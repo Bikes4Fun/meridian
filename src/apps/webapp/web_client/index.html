@@ -4,89 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Family Check-In</title>
-    <style>
-        @font-face {
-            font-family: 'Atkinson Hyperlegible';
-            src: url('/fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Atkinson Hyperlegible';
-            src: url('/fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype');
-            font-weight: 700;
-            font-style: normal;
-        }
-        body {
-            font-family: 'Atkinson Hyperlegible', Arial, sans-serif;
-            font-size: 16px;
-            line-height: 1.6;
-            max-width: 500px;
-            margin: 50px auto;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 { font-size: 32px; font-weight: 700; color: #333; }
-        h2 { font-size: 24px; font-weight: 600; }
-        select, input, button {
-            width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            font-size: 16px;
-            border-radius: 8px;
-            border: 2px solid #ddd;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover { background: #45a049; }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        #chatSection { text-align: left; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
-        #chatSection h2 { font-size: 24px; font-weight: 600; color: #333; margin: 0 0 8px 0; }
-        #status {
-            margin-top: 20px;
-        }
-        #status div {
-            padding: 15px;
-            margin-top: 10px;
-            border-radius: 8px;
-        }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        .info { background: #d1ecf1; color: #0c5460; }
-        #chatSection #messages { border: 1px solid #ddd; border-radius: 8px; height: 200px; overflow-y: auto; padding: 12px; margin: 12px 0; background: #fafafa; }
-        #chatSection #messages p { margin: 6px 0; font-size: 14px; line-height: 1.6; }
-        #chatSection #chatSendRow { display: flex; gap: 8px; margin-top: 8px; }
-        #chatSection #chatMsgInput { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-        #chatSection #chatSendBtn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        #chatSection #chatSendBtn:disabled { background: #ccc; cursor: not-allowed; }
-        #chatSection #contactsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; margin: 12px 0; }
-        #chatSection #contactsGrid .contact-tile { padding: 20px; border: 1px solid #ddd; border-radius: 12px; text-align: center; cursor: pointer; background: #fafafa; }
-        #chatSection #contactsGrid .contact-tile:hover { background: #eee; }
-        body.pending #appContent { display: none; }
-        body.pending #appPending { display: block; }
-        #appPending { display: none; padding: 20px; text-align: center; color: #666; }
-    </style>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body class="pending">
     <div id="appPending">Checking session…</div>
     <div id="appContent">
-    <div id="chatSection" style="margin-bottom: 24px;">
+    <nav id="appNav" class="app-nav">
+        <button type="button" class="nav-btn active" data-page="checkin">Check-In</button>
+        <button type="button" class="nav-btn" data-page="events">Events</button>
+        <button type="button" class="nav-btn" data-page="alert">Alert</button>
+    </nav>
+    <div id="pageCheckin" class="page active">
+    <div id="chatSection">
         <h2>Chat</h2>
         <p style="font-size: 14px; color: #666;">Choose a contact to chat with. Opens in a separate window.</p>
-        <div id="contactsSection" style="margin-top: 12px;">
+        <div id="contactsSection">
             <div id="contactsGrid"></div>
         </div>
-        <p id="openChatStatus" style="font-size: 13px; color: #666; margin-top: 8px;"></p>
+        <p id="openChatStatus"></p>
         <div id="messages"></div>
-        <div id="chatSendRow" style="display: none;">
+        <div id="chatSendRow">
             <input type="text" id="chatMsgInput" placeholder="Type a message…">
             <button type="button" id="chatSendBtn">Send</button>
         </div>
@@ -102,39 +39,19 @@
     <input type="text" id="notes" placeholder="Details / Notes (optional, e.g. note for family)">
     
     <button id="checkinBtn" type="button">Check In Now</button>
-
-    <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
-    <h2 style="color: #333; font-size: 24px; font-weight: 600;">Events</h2>
-    <p style="font-size: 14px; color: #666;">Today's schedule</p>
-    <div id="eventsList" style="text-align: left; margin: 12px 0; padding: 12px; background: #fafafa; border-radius: 8px; min-height: 60px;">Loading…</div>
-    <button id="addEventBtn" type="button" style="background: #2E7D9B;">Add Event</button>
-    <div id="eventFormModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-sizing: border-box;">
-            <h3 style="margin: 0 0 16px 0;">Add Event</h3>
-            <form id="eventForm">
-                <input type="text" id="eventTitle" placeholder="Title" required style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <input type="date" id="eventDate" required style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <input type="time" id="eventStartTime" required style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <input type="time" id="eventEndTime" placeholder="End time (optional)" style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <input type="text" id="eventLocation" placeholder="Location (optional)" style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <textarea id="eventDescription" placeholder="Description (optional)" rows="3" style="display: block; width: 100%; margin-bottom: 12px; padding: 10px; box-sizing: border-box; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical;"></textarea>
-                <div style="display: flex; gap: 10px; margin-top: 16px;">
-                    <button type="submit" style="flex: 1; padding: 12px; background: #2E7D9B; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Save</button>
-                    <button type="button" id="eventFormCancel" style="flex: 1; padding: 12px; background: #95a5a6; color: white; border: none; border-radius: 8px; cursor: pointer;">Cancel</button>
-                </div>
-            </form>
-        </div>
     </div>
-
-    <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
-    <h2 style="color: #333; font-size: 24px; font-weight: 600;">Alert TV</h2>
+    <div id="pageEvents" class="page"></div>
+    <div id="pageAlert" class="page">
+    <h2>Alert TV</h2>
     <p style="color: #666; font-size: 14px;">Force the TV to show the emergency screen with flashing border.</p>
-    <button id="alertBtn" type="button" style="background: #e74c3c;">Alert Mode</button>
-    <button id="cancelAlertBtn" type="button" style="background: #95a5a6; margin-top: 5px;">Cancel Alert</button>
+    <button id="alertBtn" type="button">Alert Mode</button>
+    <button id="cancelAlertBtn" type="button">Cancel Alert</button>
+    </div>
 
     <div id="status"></div>
     </div>
 
+    <script src="/events.js"></script>
     <script src="/app.js"></script>
 </body>
 </html>

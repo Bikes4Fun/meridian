@@ -177,8 +177,8 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Public routes: no auth required (login page, chatapp POC)
-        if request.path in ("/login.html", "/app.js") or request.path == "/chatapp" or request.path.startswith("/chatapp/"):
+        # Public routes: no auth required (login page, chatapp POC, fonts)
+        if request.path in ("/login.html", "/app.js") or request.path == "/chatapp" or request.path.startswith("/chatapp/") or request.path.startswith("/fonts/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -370,10 +370,65 @@ def create_server_app(db_path=None):
         date = request.args.get("date")
         if not date:
             return jsonify({"error": "missing date"}), 400
-        r = calendar_svc.get_events_for_date(date)
+        r = calendar_svc.get_events_for_date(date, family_circle_id=family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
+
+    @app.route("/api/family_circles/<family_circle_id>/calendar/events", methods=["POST"])
+    def api_calendar_events_post(family_circle_id):
+        _require_family_access(family_circle_id)
+        data = request.get_json() or {}
+        event_id = data.get("id") or (f"evt_{int(time.time() * 1000)}")
+        title = data.get("title")
+        start_time = data.get("start_time")
+        if not title or not start_time:
+            return jsonify({"error": "title and start_time required"}), 400
+        r = calendar_svc.add_event(
+            family_circle_id,
+            event_id=event_id,
+            title=title,
+            start_time=start_time,
+            description=data.get("description"),
+            location=data.get("location"),
+            end_time=data.get("end_time"),
+            driver_name=data.get("driver_name"),
+            driver_contact_id=data.get("driver_contact_id"),
+            pickup_time=data.get("pickup_time"),
+            leave_time=data.get("leave_time"),
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data})
+
+    @app.route("/api/family_circles/<family_circle_id>/calendar/events/<event_id>", methods=["PUT"])
+    def api_calendar_event_put(family_circle_id, event_id):
+        _require_family_access(family_circle_id)
+        data = request.get_json() or {}
+        r = calendar_svc.update_event(
+            family_circle_id,
+            event_id=event_id,
+            title=data.get("title"),
+            description=data.get("description"),
+            start_time=data.get("start_time"),
+            end_time=data.get("end_time"),
+            location=data.get("location"),
+            driver_name=data.get("driver_name"),
+            driver_contact_id=data.get("driver_contact_id"),
+            pickup_time=data.get("pickup_time"),
+            leave_time=data.get("leave_time"),
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data})
+
+    @app.route("/api/family_circles/<family_circle_id>/calendar/events/<event_id>", methods=["DELETE"])
+    def api_calendar_event_delete(family_circle_id, event_id):
+        _require_family_access(family_circle_id)
+        r = calendar_svc.delete_event(family_circle_id, event_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": True})
 
     @app.route("/api/family_circles/<family_circle_id>/medications")
     def api_medications(family_circle_id):

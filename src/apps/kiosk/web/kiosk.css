@@ -74,6 +74,63 @@
         padding: var(--safe-margin);
       }
   
+      .add-event-btn {
+        font-size: var(--font-body);
+        font-family: inherit;
+        min-height: var(--touch-min);
+        padding: 0 var(--safe-margin);
+        background: #2E7D9B;
+        color: white;
+        border: 2px solid #1e5d7a;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .add-event-btn:hover { background: #3a8fab; }
+      .add-event-btn:active { transform: scale(0.97); }
+
+      .event-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--safe-margin);
+      }
+      .event-modal {
+        background: var(--bg);
+        padding: var(--safe-margin);
+        border-radius: 12px;
+        max-width: 90%;
+        min-width: 320px;
+        border: 2px solid #ddd;
+      }
+      .event-modal-title { margin: 0 0 1em 0; font-size: var(--font-header); }
+      .event-input {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.75em;
+        padding: 0.5em;
+        font-size: var(--font-body);
+        font-family: inherit;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        min-height: var(--touch-min);
+      }
+      .event-form-actions { display: flex; gap: 1em; margin-top: 1em; }
+      .event-btn {
+        flex: 1;
+        min-height: var(--touch-min);
+        font-size: var(--font-body);
+        font-family: inherit;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 2px solid #ccc;
+      }
+      .event-btn-primary { background: #2E7D9B; color: white; border-color: #1e5d7a; }
+      .event-btn-secondary { background: #e8e8e8; color: var(--text); }
+
       /* Layout */
       .kiosk-panel {
         padding: var(--safe-margin);
@@ -210,4 +267,93 @@
       /* Map */
       #map { height: 20.83vh; min-height: 10.42vh; }
       .map-marker-div { background: transparent; border: none; }
+
+      /* Option 5: Up Next, What's Next Today */
+      .up-next-card {
+        background: #2E7D9B;
+        color: #fff;
+        padding: var(--safe-margin);
+        border-radius: 12px;
+        min-height: 5vh;
+      }
+      .up-next-card-inner {
+        display: flex;
+        align-items: center;
+        gap: 1em;
+      }
+      .up-next-icon { font-size: var(--font-header); }
+      .up-next-title { font-size: var(--font-body-large); font-weight: 700; display: block; }
+      .up-next-sub { font-size: var(--font-caption); opacity: 0.9; display: block; margin-top: 0.25em; }
+      .up-next-done { font-size: var(--font-body); opacity: 0.9; }
+      .up-next-loading { font-size: var(--font-body); opacity: 0.8; }
+
+      .timeline-card {
+        padding: var(--safe-margin);
+        background: var(--med-surface);
+        border-radius: 12px;
+      }
+      .timeline-header {
+        font-size: var(--font-caption);
+        font-weight: 700;
+        color: #666;
+        margin-bottom: 0.5em;
+      }
+      .timeline-list { font-size: var(--font-body); }
+      .timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75em;
+        padding: 0.35em 0;
+      }
+      .timeline-item-done { color: #666; text-decoration: line-through; }
+      .timeline-bar-med {
+        flex-shrink: 0;
+        width: 4px;
+        height: 1.5em;
+        background: #2E7D9B;
+        border-radius: 2px;
+      }
+      .timeline-bar-event {
+        flex-shrink: 0;
+        width: 4px;
+        height: 1.5em;
+        background: #1a9b8a;
+        border-radius: 2px;
+      }
+
+      .home-action-row {
+        display: flex;
+        gap: 1em;
+        flex-wrap: wrap;
+      }
+      .home-action-row .add-event-btn,
+      .home-action-row .manage-meds-btn {
+        flex: 1;
+        min-width: 10em;
+      }
+      .manage-meds-btn {
+        font-size: var(--font-body);
+        font-family: inherit;
+        min-height: var(--touch-min);
+        padding: 0 var(--safe-margin);
+        background: #2E7D9B;
+        color: white;
+        border: 2px solid #1e5d7a;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .manage-meds-btn:hover { background: #3a8fab; }
+      .manage-meds-btn:active { transform: scale(0.97); }
+      .timeline-view-btn {
+        font-size: var(--font-caption);
+        font-family: inherit;
+        margin-top: 0.75em;
+        padding: 0.5em 1em;
+        background: #e8e8e8;
+        color: var(--text);
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .timeline-view-btn:hover { background: #ddd; }
     

@@ -104,6 +104,29 @@
     <button id="checkinBtn" type="button">Check In Now</button>
 
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
+    <h2 style="color: #333; font-size: 24px; font-weight: 600;">Events</h2>
+    <p style="font-size: 14px; color: #666;">Today's schedule</p>
+    <div id="eventsList" style="text-align: left; margin: 12px 0; padding: 12px; background: #fafafa; border-radius: 8px; min-height: 60px;">Loading…</div>
+    <button id="addEventBtn" type="button" style="background: #2E7D9B;">Add Event</button>
+    <div id="eventFormModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; flex-direction: column;">
+        <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
+            <h3 style="margin: 0 0 16px 0;">Add Event</h3>
+            <form id="eventForm">
+                <input type="text" id="eventTitle" placeholder="Title" required style="margin-bottom: 10px;">
+                <input type="date" id="eventDate" required style="margin-bottom: 10px;">
+                <input type="time" id="eventStartTime" required style="margin-bottom: 10px;">
+                <input type="time" id="eventEndTime" placeholder="End time (optional)" style="margin-bottom: 10px;">
+                <input type="text" id="eventLocation" placeholder="Location (optional)" style="margin-bottom: 10px;">
+                <textarea id="eventDescription" placeholder="Description (optional)" rows="3" style="width: 100%; margin-bottom: 12px; padding: 10px; border: 2px solid #ddd; border-radius: 8px;"></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" style="flex: 1;">Save</button>
+                    <button type="button" id="eventFormCancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
     <h2 style="color: #333; font-size: 24px; font-weight: 600;">Alert TV</h2>
     <p style="color: #666; font-size: 14px;">Force the TV to show the emergency screen with flashing border.</p>
     <button id="alertBtn" type="button" style="background: #e74c3c;">Alert Mode</button>

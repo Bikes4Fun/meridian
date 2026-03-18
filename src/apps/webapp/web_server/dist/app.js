@@ -161,6 +161,7 @@
                 _familyCircleId = session.family_circle_id;
                 if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = '';
                 if (document.getElementById('contactsGrid')) initChatContacts();
+                if (document.getElementById('eventsList')) loadEvents();
                 return fetch(API_URL + '/api/family_circles/' + session.family_circle_id + '/family-members', {
                     credentials: 'include'
                 });
@@ -218,7 +219,85 @@
         if (alertBtn) alertBtn.addEventListener('click', activateAlert);
         var cancelBtn = document.getElementById('cancelAlertBtn');
         if (cancelBtn) cancelBtn.addEventListener('click', cancelAlert);
+        if (document.getElementById('addEventBtn')) initEvents();
         loadFamilyMembers();
+    }
+
+    function loadEvents() {
+        var list = document.getElementById('eventsList');
+        if (!list || !_familyCircleId) return;
+        var today = new Date().toISOString().slice(0, 10);
+        var apiBase = (API_URL || '').replace(/\/$/, '');
+        fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (!list) return;
+                if (!data || !data.data || data.data.length === 0) {
+                    list.innerHTML = '<p style="color: #666; margin: 0;">No events today</p>';
+                    return;
+                }
+                list.innerHTML = '<ul style="margin: 0; padding-left: 20px;">' +
+                    data.data.map(function (e) { return '<li>' + (e.display || e.title || '') + '</li>'; }).join('') +
+                    '</ul>';
+            })
+            .catch(function () { if (list) list.innerHTML = '<p style="color: #999;">Could not load events</p>'; });
+    }
+
+    function initEvents() {
+        var addBtn = document.getElementById('addEventBtn');
+        var modal = document.getElementById('eventFormModal');
+        var form = document.getElementById('eventForm');
+        var cancelBtn = document.getElementById('eventFormCancel');
+        if (!addBtn || !modal || !form) return;
+
+        addBtn.addEventListener('click', function () {
+            var today = new Date().toISOString().slice(0, 10);
+            document.getElementById('eventTitle').value = '';
+            document.getElementById('eventDate').value = today;
+            document.getElementById('eventStartTime').value = '09:00';
+            document.getElementById('eventEndTime').value = '';
+            document.getElementById('eventLocation').value = '';
+            document.getElementById('eventDescription').value = '';
+            modal.style.display = 'flex';
+        });
+
+        cancelBtn.addEventListener('click', function () { modal.style.display = 'none'; });
+        modal.addEventListener('click', function (e) { if (e.target === modal) modal.style.display = 'none'; });
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var title = document.getElementById('eventTitle').value.trim();
+            var date = document.getElementById('eventDate').value;
+            var startTime = document.getElementById('eventStartTime').value;
+            var endTime = document.getElementById('eventEndTime').value;
+            var location = document.getElementById('eventLocation').value.trim();
+            var description = document.getElementById('eventDescription').value.trim();
+            if (!title || !date || !startTime) {
+                showStatus('Title, date, and start time required', 'error');
+                return;
+            }
+            var startDateTime = date + 'T' + startTime + ':00';
+            var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
+            if (endTime) payload.end_time = date + 'T' + endTime + ':00';
+
+            var apiBase = (API_URL || '').replace(/\/$/, '');
+            fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) {
+                    if (r.ok) {
+                        modal.style.display = 'none';
+                        showStatus('\u2713 Event added', 'success');
+                        loadEvents();
+                    } else return r.json().then(function (d) { throw new Error(d.error || 'Failed to add event'); });
+                })
+                .catch(function (err) {
+                    showStatus('\u2717 ' + err.message, 'error');
+                });
+        });
     }
 
     function initChatContacts() {

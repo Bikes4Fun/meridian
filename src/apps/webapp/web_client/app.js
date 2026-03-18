@@ -181,34 +181,46 @@
     }
 
     function activateAlert() {
-        fetch(API_URL + '/api/emergency/alert', {
+        var url = (API_URL || '').replace(/\/$/, '') + '/api/emergency/alert';
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ activated: true })
         })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw new Error(data.error || 'Request failed');
+                    return data;
+                });
+            })
+            .then(function () {
                 showStatus('Alert mode activated. TV should switch to emergency screen.', 'success');
             })
             .catch(function (err) {
-                showStatus('Alert failed: ' + err.message, 'error');
+                showStatus('Alert failed: ' + (err.message || String(err)), 'error');
             });
     }
 
     function cancelAlert() {
-        fetch(API_URL + '/api/emergency/alert', {
+        var url = (API_URL || '').replace(/\/$/, '') + '/api/emergency/alert';
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ activated: false })
         })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw new Error(data.error || 'Request failed');
+                    return data;
+                });
+            })
+            .then(function () {
                 showStatus('Alert cancelled.', 'success');
             })
             .catch(function (err) {
-                showStatus('Cancel failed: ' + err.message, 'error');
+                showStatus('Cancel failed: ' + (err.message || String(err)), 'error');
             });
     }
 

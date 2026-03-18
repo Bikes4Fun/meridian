@@ -225,8 +225,8 @@ class MeridianKioskApp:
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()
-        self._start_clock_tick()
-        self._start_alert_poll()
+        threading.Thread(target=self._start_clock_tick, daemon=True).start()
+        threading.Thread(target=self._start_alert_poll, daemon=True).start()
 
     def _refresh_clock(self):
         """Full clock update: day, date, year, time, time-of-day."""

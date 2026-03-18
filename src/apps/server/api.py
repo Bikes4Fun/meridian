@@ -486,10 +486,12 @@ def create_server_app(db_path=None):
 
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
+        """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
         return jsonify({"data": {"activated": _alert_activated}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
+        """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
         global _alert_activated
         data = request.get_json() or {}
         _alert_activated = bool(data.get("activated", False))

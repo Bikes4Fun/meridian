@@ -9,7 +9,6 @@ CLIENT vs SERVER:
 SERVER DEPLOYMENT: app_factory.py is not needed on the server.
 """
 
-import html
 import json
 import logging
 import os
@@ -190,6 +189,14 @@ class MeridianKioskApp:
             return build_chat_html(
                 self.services, self.api_url, self.kiosk_user_id, self.family_circle_id
             ), None
+        if screen_name == "medications":
+            from .medications_screen import build_medications_html
+
+            return build_medications_html(self.services, self.api_url), None
+        if screen_name == "schedule":
+            from .schedule_screen import build_schedule_html
+
+            return build_schedule_html(self.services, self.api_url), None
         return hp.error_state("Unknown screen"), None
 
     def _open_chat(self, sendbird_user_id: str, display_name: str):
@@ -251,100 +258,12 @@ class MeridianKioskApp:
             self._eval_el("clock-period", time_svc.get_am_pm().upper())
 
     def _load_home_schedule(self):
-        """Merge meds + events into timeline. Update Up Next and What's Next Today."""
-        import datetime
+        """Update Up Next and timeline. Fetches data via home_screen, pushes to webview."""
+        from .home_screen import build_timeline_html, build_up_next_html, load_schedule_items
 
-        med_svc = self.services.get("medication_service")
-        cal_svc = self.services.get("calendar_service")
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
-        now = datetime.datetime.now()
-
-        items = []
-        group_times = {}
-        if med_svc:
-            result = med_svc.get_medication_data()
-            if result.success and result.data:
-                data = result.data or {}
-                group_times = data.get("medication_time_groups", {})
-                for m in data.get("timed_medications", []):
-                    t = m.get("time", "Unknown")
-                    gt = group_times.get(t, "23:59:59")
-                    try:
-                        dt_str = f"{today}T{gt}"
-                        dt = datetime.datetime.fromisoformat(dt_str)
-                    except Exception:
-                        dt = now
-                    items.append({
-                        "type": "med",
-                        "dt": dt,
-                        "title": m.get("name", "?"),
-                        "done": m.get("status") == "done",
-                        "time_label": t,
-                    })
-        if cal_svc:
-            result = cal_svc.get_events_for_date(today)
-            if result.success and result.data:
-                for e in result.data:
-                    st = e.get("start_time")
-                    dt = now
-                    if st:
-                        try:
-                            dt = datetime.datetime.fromisoformat(str(st).replace("Z", "+00:00"))
-                            if dt.tzinfo:
-                                dt = dt.replace(tzinfo=None)
-                        except Exception:
-                            pass
-                    items.append({
-                        "type": "event",
-                        "dt": dt,
-                        "title": e.get("title", "?"),
-                        "done": False,
-                        "display": e.get("display", e.get("title", "?")),
-                    })
-        items.sort(key=lambda x: x["dt"])
-
-        up_next_html = self._build_up_next_html(items, now)
-        timeline_html = self._build_timeline_html(items)
-        self._eval_el("up_next_content", up_next_html)
-        self._eval_el("timeline_content", timeline_html)
-
-    def _build_up_next_html(self, items, now):
-        """Build Up Next card HTML. First non-done future item, or 'All done for today'."""
-        next_item = None
-        for it in items:
-            if not it.get("done") and it["dt"] >= now:
-                next_item = it
-                break
-        if not next_item:
-            return '<div class="up-next-card-inner"><span class="up-next-done">All done for today</span></div>'
-        diff = next_item["dt"] - now
-        mins = int(diff.total_seconds() / 60)
-        if mins < 60:
-            subtext = f"in {mins} min"
-        else:
-            h = mins // 60
-            m = mins % 60
-            subtext = f"in {h}h {m}m" if m else f"in {h} hour"
-        time_str = next_item["dt"].strftime("%I:%M %p")
-        icon = "💊" if next_item["type"] == "med" else "📅"
-        title_esc = html.escape(next_item["title"])
-        return f'<div class="up-next-card-inner"><span class="up-next-icon">{icon}</span><div><span class="up-next-title">{title_esc}</span><span class="up-next-sub">{time_str} • {subtext}</span></div></div>'
-
-    def _build_timeline_html(self, items):
-        """Build What's Next Today list (4-5 items). Blue bar meds, teal bar events, checkmark for done."""
-        if not items:
-            return '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
-        parts = []
-        for it in items[:5]:
-            done = it.get("done")
-            bar_class = "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
-            time_str = it["dt"].strftime("%I:%M %p")
-            check = " ✓" if done else ""
-            cls = "timeline-item timeline-item-done" if done else "timeline-item"
-            title = it.get("display", it.get("title", "?"))
-            title_esc = html.escape(str(title))
-            parts.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>')
-        return "\n".join(parts)
+        items, now = load_schedule_items(self.services)
+        self._eval_el("up_next_content", build_up_next_html(items, now))
+        self._eval_el("timeline_content", build_timeline_html(items))
 
     def _start_alert_poll(self):
         """Poll alert; when activated, switch to emergency, add flash, trigger print."""

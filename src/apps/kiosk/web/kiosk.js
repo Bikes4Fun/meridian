@@ -6,16 +6,6 @@ document.getElementById('kiosk-nav').addEventListener('click', function(e) {
 });
 
 document.getElementById('screen-content').addEventListener('click', function(e) {
-  var screenBtn = e.target.closest('[data-screen]');
-  if (screenBtn && typeof pywebview !== 'undefined' && pywebview.api) {
-    pywebview.api.navigate(screenBtn.dataset.screen);
-    return;
-  }
-  var tile = e.target.closest('.contact-tile[data-sb-uid]');
-  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
-    pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
-    return;
-  }
   var addBtn = e.target.closest('#addEventBtn');
   if (addBtn) {
     var overlay = document.getElementById('eventFormOverlay');
@@ -27,6 +17,16 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     }
     return;
   }
+  var screenBtn = e.target.closest('[data-screen]');
+  if (screenBtn && typeof pywebview !== 'undefined' && pywebview.api) {
+    pywebview.api.navigate(screenBtn.dataset.screen);
+    return;
+  }
+  var tile = e.target.closest('.contact-tile[data-sb-uid]');
+  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
+    pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
+    return;
+  }
   var cancelBtn = e.target.closest('#eventFormCancel');
   if (cancelBtn) {
     var ov = document.getElementById('eventFormOverlay');
@@ -35,8 +35,10 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
   }
   if (e.target.id === 'eventFormOverlay') {
     e.target.style.display = 'none';
+    return;
   }
 });
+
 
 document.getElementById('screen-content').addEventListener('submit', function(e) {
   if (e.target.id !== 'eventForm') return;
@@ -59,6 +61,8 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
     function handleResult(res) {
       if (res === 'ok') {
         overlay.style.display = 'none';
+        var form = document.getElementById('eventForm');
+        if (form) form.reset();
       } else {
         alert(res || 'Failed to add event');
       }

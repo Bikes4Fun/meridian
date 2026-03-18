@@ -1,8 +1,9 @@
 """
 Home screen: Option 5 - Up Next, What's Next Today, side-by-side action buttons.
-Clock kept for now; will be redesigned later.
+Owns all home presentation: structure, schedule data merge, and HTML for dynamic content.
 """
 
+import html as html_module
 import logging
 import os
 
@@ -62,7 +63,7 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     </div>'''
     modal_html = '''
     <div id="eventFormOverlay" class="event-overlay" style="display:none;">
-        <div class="event-modal">
+        <div class="event-modal" onclick="event.stopPropagation()">
             <h3 class="event-modal-title">Add Event</h3>
             <form id="eventForm">
                 <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
@@ -80,3 +81,109 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     </div>
     '''
     return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + modal_html
+
+
+def load_schedule_items(services) -> tuple[list, object]:
+    """Fetch meds + events, merge into chronological items. Returns (items, now)."""
+    import datetime
+
+    med_svc = services.get("medication_service")
+    cal_svc = services.get("calendar_service")
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    now = datetime.datetime.now()
+    items = []
+    group_times = {}
+    if med_svc:
+        result = med_svc.get_medication_data()
+        if result.success and result.data:
+            data = result.data or {}
+            group_times = data.get("medication_time_groups", {})
+            for m in data.get("timed_medications", []):
+                t = m.get("time", "Unknown")
+                gt = group_times.get(t, "23:59:59")
+                try:
+                    dt_str = f"{today}T{gt}"
+                    dt = datetime.datetime.fromisoformat(dt_str)
+                except Exception:
+                    dt = now
+                items.append({
+                    "type": "med",
+                    "dt": dt,
+                    "title": m.get("name", "?"),
+                    "done": m.get("status") == "done",
+                })
+    if cal_svc:
+        result = cal_svc.get_events_for_date(today)
+        if result.success and result.data:
+            for e in result.data:
+                st = e.get("start_time")
+                dt = now
+                if st:
+                    try:
+                        dt = datetime.datetime.fromisoformat(str(st).replace("Z", "+00:00"))
+                        if dt.tzinfo:
+                            dt = dt.replace(tzinfo=None)
+                    except Exception:
+                        pass
+                items.append({
+                    "type": "event",
+                    "dt": dt,
+                    "title": e.get("title", "?"),
+                    "done": False,
+                    "display": e.get("display", e.get("title", "?")),
+                })
+    items.sort(key=lambda x: x["dt"])
+    return items, now
+
+
+def build_up_next_html(items: list, now) -> str:
+    """Build Up Next card HTML. First non-done future item, or 'All done for today'."""
+    next_item = None
+    for it in items:
+        if not it.get("done") and it["dt"] >= now:
+            next_item = it
+            break
+    if not next_item:
+        return '<div class="up-next-card-inner"><span class="up-next-done">All done for today</span></div>'
+    diff = next_item["dt"] - now
+    mins = int(diff.total_seconds() / 60)
+    if mins < 60:
+        subtext = f"in {mins} min"
+    else:
+        h = mins // 60
+        m = mins % 60
+        subtext = f"in {h}h {m}m" if m else f"in {h} hour"
+    time_str = next_item["dt"].strftime("%I:%M %p")
+    icon = "💊" if next_item["type"] == "med" else "📅"
+    title_esc = html_module.escape(next_item["title"])
+    return f'<div class="up-next-card-inner"><span class="up-next-icon">{icon}</span><div><span class="up-next-title">{title_esc}</span><span class="up-next-sub">{time_str} • {subtext}</span></div></div>'
+
+
+def build_timeline_html(items: list) -> str:
+    """Build What's Next Today list: 1-2 done, 1-3 upcoming, in chronological order."""
+    if not items:
+        return '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
+    done_count = 0
+    upcoming_count = 0
+    shown = []
+    for it in items:
+        if it.get("done"):
+            if done_count >= 2:
+                continue
+            done_count += 1
+        else:
+            if upcoming_count >= 3:
+                continue
+            upcoming_count += 1
+        shown.append(it)
+    result = []
+    for it in shown:
+        done = it.get("done")
+        bar_class = "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+        time_str = it["dt"].strftime("%I:%M %p")
+        check = " ✓" if done else ""
+        cls = "timeline-item timeline-item-done" if done else "timeline-item"
+        title = it.get("display", it.get("title", "?"))
+        title_esc = html_module.escape(str(title))
+        result.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>')
+    return "\n".join(result)

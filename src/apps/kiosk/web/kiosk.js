@@ -51,10 +51,17 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
 
   if (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_event) {
     var result = pywebview.api.add_event(JSON.stringify(payload));
-    if (result === 'ok') {
-      overlay.style.display = 'none';
+    function handleResult(res) {
+      if (res === 'ok') {
+        overlay.style.display = 'none';
+      } else {
+        alert(res || 'Failed to add event');
+      }
+    }
+    if (result && typeof result.then === 'function') {
+      result.then(handleResult).catch(function(e) { alert(String(e)); });
     } else {
-      alert(result || 'Failed to add event');
+      handleResult(result);
     }
   } else {
     alert('Add event unavailable');

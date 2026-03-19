@@ -97,6 +97,9 @@ class KioskBridge:
     def delete_medication(self, medication_id: int) -> str:
         return self._medications.delete_medication(medication_id)
 
+    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> str:
+        return self._medications.mark_medication_taken(medication_id, time_slot, taken)
+
 
 class MeridianKioskApp:
     """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""

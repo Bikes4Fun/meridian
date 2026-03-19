@@ -323,6 +323,15 @@ class RemoteMedicationService:
             self._session,
         )
 
+    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> Any:
+        return _calendar_request(
+            "POST",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}/mark-taken",
+            self._headers,
+            self._session,
+            json_body={"time": time_slot, "taken": taken},
+        )
+
 
 class RemoteAlertService:
     def __init__(

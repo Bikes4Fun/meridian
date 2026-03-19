@@ -149,7 +149,7 @@ def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: s
         if t == "null":
             t = None
         db_manager.execute_update(
-            "INSERT OR REPLACE INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
+            "INSERT OR IGNORE INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
             (family_circle_id, name, t),
         )
     logger.debug("  Loaded medication times for family %s", family_circle_id)
@@ -202,7 +202,7 @@ def load_demo_medications_data_from_json_to_db(
 
 
 def seed_medications_via_api(
-    api_url: str, family_circle_id: str, user_id: str
+    api_url: str, family_circle_id: str, user_id: str, db_path: str = None
 ) -> bool:
     """Add demo medications via POST API. Skips meds that already exist (preserves user edits)."""
     try:
@@ -213,6 +213,21 @@ def seed_medications_via_api(
 
     medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
+    care_recipient_user_id = medical_data.get("care_recipient", {}).get("user_id")
+
+    existing = set()
+    if db_path and care_recipient_user_id:
+        try:
+            db = get_database_manager(db_path)
+            r = db.execute_query(
+                "SELECT name FROM medications WHERE care_recipient_user_id = ?",
+                (care_recipient_user_id,),
+            )
+            if r.success and r.data:
+                existing = {row["name"] for row in r.data}
+        except Exception as e:
+            logger.debug("Could not query existing medications: %s", e)
+
     base = api_url.rstrip("/")
     headers = {
         "Content-Type": "application/json",
@@ -223,9 +238,11 @@ def seed_medications_via_api(
 
     added = 0
     for med in medications:
-        name = med.get("name") or ""
+        name = (med.get("name") or "").strip()
         times = med.get("medication_times") or []
         if not name or not times:
+            continue
+        if name in existing:
             continue
         payload = {
             "name": name,
@@ -238,8 +255,7 @@ def seed_medications_via_api(
         r = requests.post(url, json=payload, headers=headers, timeout=5)
         if r.ok:
             added += 1
-        else:
-            logger.debug("Medication %s skip (already exists?): %s", name, r.status_code)
+            existing.add(name)
 
     logger.debug("  Seeded %d medications via API" % added)
     return True
@@ -520,6 +536,11 @@ def demo_bootstrap(db_path: str) -> bool:
         db, family_circle_id=DEMO_FAMILY_CIRCLE_ID
     )
     load_demo_care_recipient_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
+    load_demo_medications_data_from_json_to_db(
+        db,
+        family_circle_id=DEMO_FAMILY_CIRCLE_ID,
+        care_recipient_user_id=care_recipient_user_id,
+    )
     logger.debug("Demo bootstrap complete")
     return True
 
@@ -534,8 +555,7 @@ def demo_seed_after_server(api_url: str, db_path: str) -> bool:
     if not care_recipient_user_id:
         raise ValueError("medical.json care_recipient must have user_id")
 
-    # Medications via API (adds missing demo meds; skips existing, preserving user edits).
-    seed_medications_via_api(api_url, DEMO_FAMILY_CIRCLE_ID, DEMO_USER_ID)
+    # Medications loaded in demo_bootstrap. API seed skipped (direct DB is authoritative for demo).
     load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
     load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
     load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)

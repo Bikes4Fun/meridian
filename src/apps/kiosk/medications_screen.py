@@ -202,3 +202,15 @@ class MedicationsHandler:
             self._app._navigate_to("medications")
             return "ok"
         return r.error or "failed"
+
+    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> str:
+        """Mark medication time slot taken or not. Returns 'ok' or error."""
+        med_svc = self._app.services.get("medication_service")
+        if not med_svc:
+            return "medication service unavailable"
+        if not hasattr(med_svc, "mark_medication_taken"):
+            return "mark taken not supported"
+        r = med_svc.mark_medication_taken(medication_id, time_slot, taken)
+        if r.success:
+            return "ok"
+        return r.error or "failed"

@@ -103,14 +103,14 @@ class MedicationService(DatabaseServiceMixin):
                         )
                     )
                 else:
+                    taken_slots = [s.strip() for s in (med_data["taken_today"] or "").split(",") if s.strip()]
                     for group in med_data["groups"]:
+                        slot_done = group["name"] in taken_slots
                         self.timed_medications.append(
                             TimedMedication(
                                 name=f"{med_name} {med_data['dosage']}".strip(),
                                 time=group["name"],
-                                status=(
-                                    "done" if med_data["taken_today"] else "not_done"
-                                ),
+                                status="done" if slot_done else "not_done",
                                 group_time=group["time"],
                                 id=med_id,
                             )
@@ -294,6 +294,33 @@ class MedicationService(DatabaseServiceMixin):
                     med.status = "taken"
                     return ServiceResult.success_result(True)
         return ServiceResult.error_result(f"Medication '{medication_name}' not found")
+
+    def mark_medication_taken(
+        self, family_circle_id: str, medication_id: int, time_slot: str, taken: bool
+    ) -> ServiceResult:
+        """Mark a medication time slot as taken or not. time_slot e.g. Morning, Evening. taken_today stores comma-separated list."""
+        self._load_medication_data(family_circle_id)
+        r = self.safe_query(
+            "SELECT taken_today FROM medications WHERE id = ? AND care_recipient_user_id IN (SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?)",
+            (medication_id, family_circle_id),
+        )
+        if not r.success or not r.data:
+            return ServiceResult.error_result("Medication not found")
+        current = (r.data[0].get("taken_today") or "").strip()
+        slots = [s.strip() for s in current.split(",") if s.strip()]
+        if taken:
+            if time_slot not in slots:
+                slots.append(time_slot)
+        else:
+            slots = [s for s in slots if s != time_slot]
+        new_value = ",".join(slots) if slots else None
+        up = self.db_manager.execute_update(
+            "UPDATE medications SET taken_today = ? WHERE id = ?",
+            (new_value, medication_id),
+        )
+        if not up.success:
+            return ServiceResult.error_result(up.error or "Update failed")
+        return ServiceResult.success_result(True)
 
     def get_medication_data(self, family_circle_id: str) -> ServiceResult:
         self._load_medication_data(family_circle_id)

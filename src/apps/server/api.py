@@ -489,6 +489,21 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 404
         return jsonify({"data": True})
 
+    @app.route("/api/family_circles/<family_circle_id>/medications/<int:medication_id>/mark-taken", methods=["POST"])
+    def api_medication_mark_taken(family_circle_id, medication_id):
+        _require_family_access(family_circle_id)
+        body = request.get_json() or {}
+        time_slot = body.get("time")
+        taken = body.get("taken", True)
+        if not time_slot:
+            return jsonify({"error": "time required (e.g. Morning, Evening)"}), 400
+        r = medication_svc.mark_medication_taken(
+            family_circle_id, medication_id, time_slot, taken
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": True})
+
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
         """All contacts for the family. Kiosk can load once at boot and cache; includes photo_filename, sendbird_user_id."""

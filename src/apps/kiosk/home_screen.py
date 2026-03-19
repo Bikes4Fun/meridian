@@ -99,6 +99,8 @@ def load_schedule_items(services) -> tuple[list, object]:
                     "dt": dt,
                     "title": m.get("name", "?"),
                     "done": m.get("status") == "done",
+                    "med_id": m.get("id"),
+                    "time_slot": t,
                 })
     if cal_svc:
         result = cal_svc.get_events_for_date(today)
@@ -176,7 +178,11 @@ def build_timeline_html(items: list) -> str:
         title = it.get("display", it.get("title", "?"))
         title_esc = html_module.escape(str(title))
         extra = ""
-        if it.get("type") == "event" and it.get("event_id"):
+        if it.get("type") == "med" and it.get("med_id") is not None:
+            mid = html_module.escape(str(it["med_id"]))
+            slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
+            extra = f' <button type="button" class="med-taken-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}" style="font-size:11px;padding:2px 6px;">{"Uncheck" if done else "Check"} took</button>'
+        elif it.get("type") == "event" and it.get("event_id"):
             eid = html_module.escape(str(it["event_id"]))
             edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
             extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'

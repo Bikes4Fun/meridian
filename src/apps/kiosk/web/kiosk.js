@@ -43,6 +43,19 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
+  var medTakenBtn = e.target.closest('.med-taken-btn');
+  if (medTakenBtn && medTakenBtn.dataset.medId && medTakenBtn.dataset.medTime && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.mark_medication_taken) {
+    var mid = parseInt(medTakenBtn.dataset.medId, 10);
+    var timeSlot = medTakenBtn.dataset.medTime || '';
+    var currentlyDone = medTakenBtn.dataset.medDone === 'true';
+    var res = pywebview.api.mark_medication_taken(mid, timeSlot, !currentlyDone);
+    function done(r) {
+      if (r === 'ok') pywebview.api.refresh_events();
+      else if (r) alert(r);
+    }
+    (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
+    return;
+  }
   var editBtn = e.target.closest('.event-edit-btn');
   if (editBtn && editBtn.getAttribute('data-event') && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.edit_event) {
     pywebview.api.edit_event(editBtn.getAttribute('data-event'));

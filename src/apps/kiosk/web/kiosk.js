@@ -56,16 +56,14 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
+  var tile = e.target.closest('.contact-tile[data-sb-uid]');
+  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
+    pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
+    return;
+  }
   var screenBtn = e.target.closest('[data-screen]');
   if (screenBtn && typeof pywebview !== 'undefined' && pywebview.api) {
     pywebview.api.navigate(screenBtn.dataset.screen);
-    return;
-  }
-  var tile = e.target.closest('.contact-tile[data-sb-uid]');
-  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.get_chat_url) {
-    var res = pywebview.api.get_chat_url(tile.dataset.sbUid || '', tile.dataset.name || '');
-    function openUrl(url) { if (url) window.open(url, 'chat_' + (tile.dataset.sbUid || ''), 'width=800,height=600'); }
-    (res && res.then) ? res.then(openUrl).catch(function() {}) : openUrl(res);
     return;
   }
   if (e.target.id === 'eventFormOverlay') {

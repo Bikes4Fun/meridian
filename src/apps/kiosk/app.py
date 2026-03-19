@@ -51,9 +51,9 @@ class KioskBridge:
         logger.info(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def get_chat_url(self, sendbird_user_id: str, display_name: str) -> str:
-        """Fetch chat entry URL for contact. Returns URL or empty string. JS calls window.open(url)."""
-        return self._chat.get_chat_url(sendbird_user_id, display_name)
+    def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
+        """Fetch chat entry URL and open in new pywebview window. No window.open in JS."""
+        self._chat.open_chat(sendbird_user_id, display_name)
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
@@ -259,7 +259,7 @@ class MeridianKioskApp:
         from .emergency_print import trigger_emergency_print
 
         while True:
-            time.sleep(2)
+            time.sleep(10)
             alert_svc = self.services.get("alert_service")
             if not alert_svc:
                 continue

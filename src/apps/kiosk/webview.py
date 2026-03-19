@@ -1,13 +1,17 @@
 """Open URLs in a webview. Kiosk uses this for chatapp (opened via session-url)."""
 
+import logging
 import subprocess
 import sys
+
+logger = logging.getLogger(__name__)
 
 
 def open_chat_window(url):
     """Open URL in pywebview. Uses subprocess to avoid blocking the main kiosk window."""
     if not url:
         return
+    logger.info("open_chat_window: url=%s", url[:80] if url else "")
     try:
         subprocess.Popen(
             [

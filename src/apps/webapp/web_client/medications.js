@@ -62,7 +62,11 @@
                     if (seen[m.id]) return;
                     seen[m.id] = true;
                     var name = (m.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    items.push('<li data-med-id="' + m.id + '" data-med=\'' + JSON.stringify(m).replace(/'/g, '&#39;') + '\'><span>' + name + ' (PRN)</span> ' +
+                    var taken = m.status === 'taken';
+                    var status = m.last_taken ? 'Last: ' + m.last_taken : (taken ? 'Taken \u2713' : 'Not taken today');
+                    var takeLbl = taken ? 'Uncheck' : 'Take';
+                    items.push('<li data-med-id="' + m.id + '" data-med-prn="1" data-med-taken="' + (taken ? '1' : '0') + '" data-med=\'' + JSON.stringify(m).replace(/'/g, '&#39;') + '\'><span>' + name + ' (PRN) \u2022 ' + status + '</span> ' +
+                        '<button type="button" class="med-take-prn-btn" style="font-size:12px;padding:2px 8px;">' + takeLbl + '</button> ' +
                         '<button type="button" class="med-edit-btn" style="font-size:12px;padding:2px 8px;">Edit</button> ' +
                         '<button type="button" class="med-delete-btn" style="font-size:12px;padding:2px 8px;">Delete</button></li>');
                 });
@@ -131,6 +135,22 @@
                 var medId = parseInt(li.getAttribute('data-med-id'), 10);
                 if (e.target.classList.contains('med-edit-btn')) {
                     openForEdit(medId);
+                } else if (e.target.classList.contains('med-take-prn-btn')) {
+                    var taken = li.getAttribute('data-med-taken') === '1';
+                    var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                    fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/medications/' + medId + '/mark-taken', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ time: 'prn', taken: !taken })
+                    })
+                        .then(function (r) {
+                            if (r.ok) {
+                                _showStatus(!taken ? '\u2713 Taken' : 'Unchecked', 'success');
+                                loadMeds();
+                            } else return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
+                        })
+                        .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); });
                 } else if (e.target.classList.contains('med-delete-btn')) {
                     if (!confirm('Delete this medication?')) return;
                     var apiBase = (_apiUrl || '').replace(/\/$/, '');

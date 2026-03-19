@@ -64,6 +64,13 @@ class KioskBridge:
         """Refresh home schedule. Called from JS after event change."""
         self._app._load_home_schedule()
 
+    def refresh_screen(self, screen_name: str):
+        """Refresh current screen (home or medications). Called from JS after med taken."""
+        if screen_name == "home":
+            self._app._load_home_schedule()
+        elif screen_name == "medications":
+            self._app._navigate_to("medications")
+
     def open_add_event_modal(self) -> None:
         self._events.open_add_event_modal()
 

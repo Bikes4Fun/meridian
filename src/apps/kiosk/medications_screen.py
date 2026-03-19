@@ -53,12 +53,14 @@ def build_medications_html(services, api_url: str) -> str:
         for m in prn:
             name = html_module.escape(m.get("name", "?"))
             lt = m.get("last_taken")
-            last = f"Last: {lt}" if lt else "Not taken today"
+            taken = m.get("status") == "taken"
+            last = f"Last: {lt}" if lt else ("Taken ✓" if taken else "Not taken today")
             med_id = m.get("id")
             btns = ""
             if med_id is not None:
                 med_data = html_module.escape(json.dumps({"id": med_id, "name": m.get("name")}), quote=True)
-                btns = f' <button type="button" class="med-edit-btn" data-med="{med_data}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="med-delete-btn" data-med-id="{med_id}" style="font-size:11px;padding:2px 6px;">Delete</button>'
+                take_lbl = "Uncheck" if taken else "Take"
+                btns = f' <button type="button" class="med-taken-btn" data-med-id="{med_id}" data-med-time="prn" data-med-done="{str(taken).lower()}" style="font-size:11px;padding:2px 6px;">{take_lbl}</button> <button type="button" class="med-edit-btn" data-med="{med_data}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="med-delete-btn" data-med-id="{med_id}" style="font-size:11px;padding:2px 6px;">Delete</button>'
             prn_html.append(f'<div class="timeline-item"><span class="timeline-bar-event"></span><span>{name} • {last}</span>{btns}</div>')
         parts.append(f'<div class="timeline-card"><div class="timeline-header">PRN (As Needed)</div><div class="timeline-list">{"".join(prn_html)}</div></div>')
 

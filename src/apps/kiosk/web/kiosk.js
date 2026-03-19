@@ -50,8 +50,11 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     var currentlyDone = medTakenBtn.dataset.medDone === 'true';
     var res = pywebview.api.mark_medication_taken(mid, timeSlot, !currentlyDone);
     function done(r) {
-      if (r === 'ok') pywebview.api.refresh_events();
-      else if (r) alert(r);
+      if (r === 'ok') {
+        var screen = (document.body && document.body.dataset.screen) || 'home';
+        if (pywebview.api.refresh_screen) pywebview.api.refresh_screen(screen);
+        else pywebview.api.refresh_events();
+      } else if (r) alert(r);
     }
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;

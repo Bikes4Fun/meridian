@@ -56,7 +56,7 @@ class MedicationService(DatabaseServiceMixin):
         if not care_recipient_user_id:
             return
         query = """
-            SELECT m.id, m.name, m.dosage, m.taken_today, mt.name as time_name, mt.time as group_time
+            SELECT m.id, m.name, m.dosage, m.taken_today, m.last_taken, mt.name as time_name, mt.time as group_time
             FROM medications m
             LEFT JOIN medication_to_time mtt ON m.id = mtt.medication_id
             LEFT JOIN medication_times mt ON mtt.group_id = mt.id
@@ -74,12 +74,14 @@ class MedicationService(DatabaseServiceMixin):
             time_name = row["time_name"]
             group_time = row["group_time"]
             taken_today = row["taken_today"]
+            last_taken = row.get("last_taken")
             med_id = row["id"]
             if med_name not in medication_groups:
                 medication_groups[med_name] = {
                     "id": med_id,
                     "dosage": dosage,
                     "taken_today": taken_today,
+                    "last_taken": last_taken,
                     "groups": [],
                 }
             if time_name:
@@ -94,11 +96,13 @@ class MedicationService(DatabaseServiceMixin):
                 )
                 med_id = med_data.get("id")
                 if is_prn:
+                    taken_slots = [s.strip() for s in (med_data.get("taken_today") or "").split(",") if s.strip()]
+                    prn_taken = "prn" in taken_slots or "as needed" in taken_slots
                     self.prn_medications.append(
                         PRNMedication(
                             name=f"{med_name} {med_data['dosage']}".strip(),
-                            status="available",
-                            last_taken=None,
+                            status="taken" if prn_taken else "available",
+                            last_taken=med_data.get("last_taken"),
                             id=med_id,
                         )
                     )
@@ -298,26 +302,38 @@ class MedicationService(DatabaseServiceMixin):
     def mark_medication_taken(
         self, family_circle_id: str, medication_id: int, time_slot: str, taken: bool
     ) -> ServiceResult:
-        """Mark a medication time slot as taken or not. time_slot e.g. Morning, Evening. taken_today stores comma-separated list."""
+        """Mark a medication time slot as taken or not. time_slot e.g. Morning, Evening, prn. taken_today stores comma-separated list. For prn, also updates last_taken."""
         self._load_medication_data(family_circle_id)
         r = self.safe_query(
-            "SELECT taken_today FROM medications WHERE id = ? AND care_recipient_user_id IN (SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?)",
+            "SELECT taken_today, last_taken FROM medications WHERE id = ? AND care_recipient_user_id IN (SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?)",
             (medication_id, family_circle_id),
         )
         if not r.success or not r.data:
             return ServiceResult.error_result("Medication not found")
         current = (r.data[0].get("taken_today") or "").strip()
         slots = [s.strip() for s in current.split(",") if s.strip()]
-        if taken:
-            if time_slot not in slots:
-                slots.append(time_slot)
+        slot_normalized = time_slot.strip().lower()
+        if slot_normalized in ("prn", "as needed"):
+            slot_key = "prn"
         else:
-            slots = [s for s in slots if s != time_slot]
-        new_value = ",".join(slots) if slots else None
-        up = self.db_manager.execute_update(
-            "UPDATE medications SET taken_today = ? WHERE id = ?",
-            (new_value, medication_id),
-        )
+            slot_key = time_slot.strip()
+        if taken:
+            if slot_key not in slots:
+                slots.append(slot_key)
+        else:
+            slots = [s for s in slots if s.lower() != slot_key and s.lower() != "as needed"]
+        new_taken_today = ",".join(slots) if slots else None
+        now_str = datetime.now().strftime("%I:%M %p")
+        if slot_key == "prn" and taken:
+            up = self.db_manager.execute_update(
+                "UPDATE medications SET taken_today = ?, last_taken = ? WHERE id = ?",
+                (new_taken_today, now_str, medication_id),
+            )
+        else:
+            up = self.db_manager.execute_update(
+                "UPDATE medications SET taken_today = ? WHERE id = ?",
+                (new_taken_today, medication_id),
+            )
         if not up.success:
             return ServiceResult.error_result(up.error or "Update failed")
         return ServiceResult.success_result(True)

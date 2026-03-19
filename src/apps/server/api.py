@@ -178,7 +178,7 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         # Public routes: no auth required (login page, chatapp POC, fonts)
-        if request.path in ("/login.html", "/app.js") or request.path == "/chatapp" or request.path.startswith("/chatapp/") or request.path.startswith("/fonts/"):
+        if request.path in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css") or request.path == "/chatapp" or request.path.startswith("/chatapp/") or request.path.startswith("/fonts/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -430,13 +430,79 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": True})
 
-    @app.route("/api/family_circles/<family_circle_id>/medications")
+    @app.route("/api/family_circles/<family_circle_id>/medications", methods=["GET", "POST"])
     def api_medications(family_circle_id):
         _require_family_access(family_circle_id)
-        r = medication_svc.get_medication_data(family_circle_id)
+        if request.method == "GET":
+            r = medication_svc.get_medication_data(family_circle_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 500
+            return jsonify({"data": r.data})
+        body = request.get_json() or {}
+        name = body.get("name")
+        medication_times = body.get("medication_times") or []
+        if not name:
+            return jsonify({"error": "name required"}), 400
+        if not medication_times:
+            return jsonify({"error": "medication_times required"}), 400
+        r = medication_svc.add_medication(
+            family_circle_id,
+            name,
+            medication_times,
+            dosage=body.get("dosage"),
+            frequency=body.get("frequency"),
+            notes=body.get("notes"),
+            max_daily=body.get("max_daily"),
+        )
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": r.data})
+        return jsonify({"data": r.data}), 201
+
+    @app.route("/api/family_circles/<family_circle_id>/medications/<int:medication_id>", methods=["GET", "PUT", "DELETE"])
+    def api_medication(family_circle_id, medication_id):
+        _require_family_access(family_circle_id)
+        if request.method == "GET":
+            r = medication_svc.get_medication_for_edit(family_circle_id, medication_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 404
+            return jsonify({"data": r.data})
+        if request.method == "PUT":
+            body = request.get_json() or {}
+            name = body.get("name")
+            medication_times = body.get("medication_times") or []
+            if not name:
+                return jsonify({"error": "name required"}), 400
+            if not medication_times:
+                return jsonify({"error": "medication_times required"}), 400
+            r = medication_svc.update_medication(
+                family_circle_id,
+                medication_id,
+                name,
+                medication_times,
+                dosage=body.get("dosage"),
+            )
+            if not r.success:
+                return jsonify({"error": r.error}), 400
+            return jsonify({"data": r.data})
+        r = medication_svc.delete_medication(family_circle_id, medication_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 404
+        return jsonify({"data": True})
+
+    @app.route("/api/family_circles/<family_circle_id>/medications/<int:medication_id>/mark-taken", methods=["POST"])
+    def api_medication_mark_taken(family_circle_id, medication_id):
+        _require_family_access(family_circle_id)
+        body = request.get_json() or {}
+        time_slot = body.get("time")
+        taken = body.get("taken", True)
+        if not time_slot:
+            return jsonify({"error": "time required (e.g. Morning, Evening)"}), 400
+        r = medication_svc.mark_medication_taken(
+            family_circle_id, medication_id, time_slot, taken
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": True})
 
     @app.route("/api/family_circles/<family_circle_id>/contacts")
     def api_contacts(family_circle_id):
@@ -466,10 +532,12 @@ def create_server_app(db_path=None):
 
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
+        """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
         return jsonify({"data": {"activated": _alert_activated}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
+        """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
         global _alert_activated
         data = request.get_json() or {}
         _alert_activated = bool(data.get("activated", False))
@@ -634,6 +702,18 @@ def create_server_app(db_path=None):
         @app.route("/app.js")
         def serve_app_js():
             return send_from_directory(_webapp_dist, "app.js")
+
+        @app.route("/events.js")
+        def serve_events_js():
+            return send_from_directory(_webapp_dist, "events.js")
+
+        @app.route("/medications.js")
+        def serve_medications_js():
+            return send_from_directory(_webapp_dist, "medications.js")
+
+        @app.route("/style.css")
+        def serve_style_css():
+            return send_from_directory(_webapp_dist, "style.css")
 
         @app.route("/fonts/<path:path>")
         def serve_fonts(path):

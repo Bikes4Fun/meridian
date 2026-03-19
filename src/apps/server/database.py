@@ -60,6 +60,18 @@ class DatabaseManager:
             self.logger.error("Update execution failed: %s", e)
             return ServiceResult.error_result("Database update failed: %s" % e)
 
+    def execute_insert(self, query: str, params: tuple = ()) -> ServiceResult:
+        """Run INSERT, return lastrowid on success."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                conn.commit()
+                return ServiceResult.success_result(cursor.lastrowid)
+        except sqlite3.Error as e:
+            self.logger.error("Insert execution failed: %s", e)
+            return ServiceResult.error_result("Database insert failed: %s" % e)
+
     def execute_many(self, query: str, params_list: List[tuple]) -> ServiceResult:
         try:
             with self.get_connection() as conn:

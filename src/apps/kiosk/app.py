@@ -23,6 +23,9 @@ from shared.config import (
 )
 
 from .api_client import create_kiosk_remote
+from .chat_screen import ChatHandler
+from .events_handler import EventsHandler
+from .medications_screen import MedicationsHandler
 
 logger = logging.getLogger(__name__)
 
@@ -35,20 +38,22 @@ NAV_BUTTONS = [
 
 
 class KioskBridge:
-    """Exposed to JS as pywebview.api. Handles nav, open_chat, print_emergency."""
+    """Exposed to JS as pywebview.api. Composes handlers (events, etc.); delegates to them."""
 
     def __init__(self, app):
         self._app = app
+        self._chat = ChatHandler(app)
+        self._events = EventsHandler(app)
+        self._medications = MedicationsHandler(app)
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
         logger.info(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def open_chat(self, sendbird_user_id: str, display_name: str):
-        """Open chat window for contact. Called from JS contact click."""
-        logger.info(f"Open chat: {display_name} ({sendbird_user_id})")
-        self._app._open_chat(sendbird_user_id, display_name)
+    def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
+        """Fetch chat entry URL and open in new pywebview window. No window.open in JS."""
+        self._chat.open_chat(sendbird_user_id, display_name)
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
@@ -56,39 +61,51 @@ class KioskBridge:
         self._app._print_emergency()
 
     def refresh_events(self):
-        """Refresh home schedule (Up Next + timeline). Called from JS after adding event."""
+        """Refresh home schedule. Called from JS after event change."""
         self._app._load_home_schedule()
 
+    def refresh_screen(self, screen_name: str):
+        """Refresh current screen (home or medications). Called from JS after med taken."""
+        if screen_name == "home":
+            self._app._load_home_schedule()
+        elif screen_name == "medications":
+            self._app._navigate_to("medications")
+
+    def open_add_event_modal(self) -> None:
+        self._events.open_add_event_modal()
+
+    def edit_event(self, event_data_json: str) -> None:
+        self._events.edit_event(event_data_json)
+
+    def submit_event_form(self, payload_json: str) -> str:
+        return self._events.submit_event_form(payload_json)
+
     def add_event(self, payload_json: str) -> str:
-        """POST new event to API. Returns 'ok' or error message. Called from JS."""
-        try:
-            data = json.loads(payload_json)
-        except json.JSONDecodeError as e:
-            return str(e)
-        title = data.get("title")
-        start_time = data.get("start_time")
-        if not title or not start_time:
-            return "title and start_time required"
-        api_url = self._app.api_url.rstrip("/")
-        url = f"{api_url}/api/family_circles/{self._app.family_circle_id}/calendar/events"
-        headers = {
-            "Content-Type": "application/json",
-            "X-User-Id": self._app.kiosk_user_id,
-            "X-Family-Circle-Id": self._app.family_circle_id,
-        }
-        try:
-            import requests
-            r = requests.post(url, json=data, headers=headers, timeout=5)
-            if r.ok:
-                self._app._load_home_schedule()
-                return "ok"
-            try:
-                err = r.json().get("error", r.text)
-            except Exception:
-                err = r.text
-            return err or f"HTTP {r.status_code}"
-        except Exception as e:
-            return str(e)
+        return self._events.add_event(payload_json)
+
+    def update_event(self, event_id: str, payload_json: str) -> str:
+        return self._events.update_event(event_id, payload_json)
+
+    def delete_event(self, event_id: str) -> str:
+        return self._events.delete_event(event_id)
+
+    def open_add_medication_modal(self) -> None:
+        self._medications.open_add_medication_modal()
+
+    def open_edit_medication_modal(self, medication_id: int) -> None:
+        self._medications.open_edit_medication_modal(medication_id)
+
+    def add_medication(self, payload_json: str) -> str:
+        return self._medications.add_medication(payload_json)
+
+    def update_medication(self, medication_id: int, payload_json: str) -> str:
+        return self._medications.update_medication(medication_id, payload_json)
+
+    def delete_medication(self, medication_id: int) -> str:
+        return self._medications.delete_medication(medication_id)
+
+    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> str:
+        return self._medications.mark_medication_taken(medication_id, time_slot, taken)
 
 
 class MeridianKioskApp:
@@ -194,27 +211,10 @@ class MeridianKioskApp:
             return build_medications_html(self.services, self.api_url), None
 
         if screen_name == "schedule":
-            from .schedule_screen import build_schedule_html
+            from .events_handler import build_schedule_html
             return build_schedule_html(self.services, self.api_url), None
 
         return hp.error_state("Unknown screen"), None
-
-    def _open_chat(self, sendbird_user_id: str, display_name: str):
-        """Fetch chat URL and open in webview."""
-        entry_svc = self.services.get("chat_entry_service")
-        if not entry_svc:
-            logger.warning("open_chat: no chat_entry_service")
-            return
-        r = entry_svc.get_entry_url(
-            recipient_sendbird_user_id=sendbird_user_id,
-            recipient_display_name=display_name,
-        )
-        if r.success and r.data:
-            from .webview import open_chat_window
-
-            open_chat_window(r.data)
-        else:
-            logger.warning(f"open_chat: get_entry_url failed: {getattr(r, 'error', None)}")
 
     def _print_emergency(self):
         """Trigger emergency print (same flow as alert-activated)."""
@@ -228,8 +228,8 @@ class MeridianKioskApp:
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()
-        self._start_clock_tick()
-        self._start_alert_poll()
+        threading.Thread(target=self._start_clock_tick, daemon=True).start()
+        threading.Thread(target=self._start_alert_poll, daemon=True).start()
 
     def _refresh_clock(self):
         """Full clock update: day, date, year, time, time-of-day."""
@@ -269,7 +269,7 @@ class MeridianKioskApp:
         from .emergency_print import trigger_emergency_print
 
         while True:
-            time.sleep(2)
+            time.sleep(10)
             alert_svc = self.services.get("alert_service")
             if not alert_svc:
                 continue

@@ -1,6 +1,34 @@
 """
-Chat screen: contact grid with chat entry.
+Chat screen: contact grid with chat entry. JS calls open_chat; Python fetches URL and opens pywebview window.
 """
+
+import logging
+
+from .webview import open_chat_window
+
+logger = logging.getLogger(__name__)
+
+
+class ChatHandler:
+    """Fetch chat entry URL and open in new pywebview window. JS calls open_chat (no window.open)."""
+
+    def __init__(self, app):
+        self._app = app
+
+    def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
+        """Fetch chat entry URL for contact and open in new pywebview window."""
+        entry_svc = self._app.services.get("chat_entry_service")
+        if not entry_svc:
+            logger.warning("open_chat: no chat_entry_service")
+            return
+        r = entry_svc.get_entry_url(
+            recipient_sendbird_user_id=sendbird_user_id,
+            recipient_display_name=display_name,
+        )
+        if r.success and r.data:
+            open_chat_window(str(r.data))
+        else:
+            logger.warning("open_chat failed: %s", getattr(r, "error", None))
 
 
 def build_chat_html(services, api_url: str, kiosk_user_id: str, family_circle_id: str) -> str:

@@ -29,6 +29,7 @@
                         window.location.href = '/login.html';
                         return;
                     }
+                    _familyCircleId = session.family_circle_id;
                     document.body.classList.remove('pending');
                     initNav();
                     initCheckin();
@@ -231,7 +232,7 @@
             var btn = e.target.closest('.nav-btn');
             if (!btn || !btn.dataset.page) return;
             var pageId = btn.dataset.page;
-            var pageMap = { checkin: 'pageCheckin', events: 'pageEvents', alert: 'pageAlert' };
+            var pageMap = { checkin: 'pageCheckin', events: 'pageEvents', medications: 'pageMedications', alert: 'pageAlert' };
             var targetId = pageMap[pageId];
             if (!targetId) return;
             [].forEach.call(nav.querySelectorAll('.nav-btn'), function (b) { b.classList.remove('active'); });
@@ -241,6 +242,9 @@
             if (target) target.classList.add('active');
             if (pageId === 'events' && window.MeridianEvents) {
                 MeridianEvents.init((API_URL || '').replace(/\/$/, ''), _familyCircleId, showStatus);
+            }
+            if (pageId === 'medications' && window.MeridianMedications) {
+                MeridianMedications.init((API_URL || '').replace(/\/$/, ''), _familyCircleId, showStatus);
             }
         });
     }

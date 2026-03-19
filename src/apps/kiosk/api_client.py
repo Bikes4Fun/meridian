@@ -287,13 +287,40 @@ class RemoteMedicationService:
         return ServiceResult.success_result(data)
 
     def add_medication(self, payload: dict) -> Any:
-        """POST new medication. Payload: name, medication_times, dosage?, frequency?, notes?, max_daily?"""
+        """POST new medication. Payload: name, medication_times, dosage?"""
         return _calendar_request(
             "POST",
             f"{self._base}/api/family_circles/{self._fc_id}/medications",
             self._headers,
             self._session,
             json_body=payload,
+        )
+
+    def get_medication_for_edit(self, medication_id: int) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "request failed")
+        return ServiceResult.success_result(data)
+
+    def update_medication(self, medication_id: int, payload: dict) -> Any:
+        return _calendar_request(
+            "PUT",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
+            self._headers,
+            self._session,
+            json_body=payload,
+        )
+
+    def delete_medication(self, medication_id: int) -> Any:
+        return _calendar_request(
+            "DELETE",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
+            self._headers,
+            self._session,
         )
 
 

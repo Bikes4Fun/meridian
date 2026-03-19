@@ -22,6 +22,8 @@ async function build() {
     fs.writeFileSync(path.join(dist, 'app.js'), replaceApi(appJs));
     const eventsJs = fs.readFileSync(path.join(webClient, 'events.js'), 'utf8');
     fs.writeFileSync(path.join(dist, 'events.js'), replaceApi(eventsJs));
+    const medicationsJs = fs.readFileSync(path.join(webClient, 'medications.js'), 'utf8');
+    fs.writeFileSync(path.join(dist, 'medications.js'), replaceApi(medicationsJs));
     if (fs.existsSync(path.join(webClient, 'style.css'))) {
         fs.copyFileSync(path.join(webClient, 'style.css'), path.join(dist, 'style.css'));
     }

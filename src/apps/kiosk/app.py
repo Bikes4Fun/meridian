@@ -84,8 +84,17 @@ class KioskBridge:
     def open_add_medication_modal(self) -> None:
         self._medications.open_add_medication_modal()
 
+    def open_edit_medication_modal(self, medication_id: int) -> None:
+        self._medications.open_edit_medication_modal(medication_id)
+
     def add_medication(self, payload_json: str) -> str:
         return self._medications.add_medication(payload_json)
+
+    def update_medication(self, medication_id: int, payload_json: str) -> str:
+        return self._medications.update_medication(medication_id, payload_json)
+
+    def delete_medication(self, medication_id: int) -> str:
+        return self._medications.delete_medication(medication_id)
 
 
 class MeridianKioskApp:

@@ -11,7 +11,7 @@ def build_webapp(api_url: str, src_dir: str):
     client = os.path.join(src_dir, "apps", "webapp", "web_client")
     dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
     os.makedirs(dist, exist_ok=True)
-    for filename in ("login.html", "index.html", "app.js", "events.js"):
+    for filename in ("login.html", "index.html", "app.js", "events.js", "medications.js"):
         content = open(os.path.join(client, filename), encoding="utf-8").read()
         open(os.path.join(dist, filename), "w", encoding="utf-8").write(
             content.replace("__API_URL__", api_url)

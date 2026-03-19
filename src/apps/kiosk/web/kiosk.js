@@ -16,6 +16,21 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     pywebview.api.open_add_medication_modal();
     return;
   }
+  var medEditBtn = e.target.closest('.med-edit-btn');
+  if (medEditBtn && medEditBtn.dataset.med && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_edit_medication_modal) {
+    var m = JSON.parse(medEditBtn.dataset.med);
+    if (m && m.id != null) pywebview.api.open_edit_medication_modal(m.id);
+    return;
+  }
+  var medDeleteBtn = e.target.closest('.med-delete-btn');
+  if (medDeleteBtn && medDeleteBtn.dataset.medId) {
+    if (!confirm('Delete this medication?')) return;
+    var mid = parseInt(medDeleteBtn.dataset.medId, 10);
+    var res = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.delete_medication) ? pywebview.api.delete_medication(mid) : 'Delete unavailable';
+    function done(r) { if (r !== 'ok') alert(r || 'Failed'); }
+    (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
+    return;
+  }
   var editBtn = e.target.closest('.event-edit-btn');
   if (editBtn && editBtn.getAttribute('data-event') && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.edit_event) {
     pywebview.api.edit_event(editBtn.getAttribute('data-event'));
@@ -67,9 +82,8 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
     e.preventDefault();
     var name = (document.getElementById('medName') || {}).value || '';
     var dosage = (document.getElementById('medDosage') || {}).value || '';
-    var notes = (document.getElementById('medNotes') || {}).value || '';
-    var maxDailyEl = document.getElementById('medMaxDaily');
-    var maxDaily = maxDailyEl && maxDailyEl.value ? parseInt(maxDailyEl.value, 10) : undefined;
+    var medIdEl = document.getElementById('medId');
+    var medId = medIdEl && medIdEl.value ? parseInt(medIdEl.value, 10) : 0;
     var times = [];
     (document.querySelectorAll('#medForm input[name="med_time"]:checked') || []).forEach(function(cb) {
       if (cb.value) times.push(cb.value);
@@ -80,9 +94,12 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
     }
     var payload = { name: name, medication_times: times };
     if (dosage) payload.dosage = dosage;
-    if (notes) payload.notes = notes;
-    if (maxDaily) payload.max_daily = maxDaily;
-    var result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_medication) ? pywebview.api.add_medication(JSON.stringify(payload)) : 'Submit unavailable';
+    var result;
+    if (medId) {
+      result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.update_medication) ? pywebview.api.update_medication(medId, JSON.stringify(payload)) : 'Submit unavailable';
+    } else {
+      result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_medication) ? pywebview.api.add_medication(JSON.stringify(payload)) : 'Submit unavailable';
+    }
     function done(res) {
       if (res === 'ok') {
         var o = document.getElementById('medFormOverlay');

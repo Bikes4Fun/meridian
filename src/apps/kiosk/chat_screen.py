@@ -17,7 +17,6 @@ class ChatHandler:
 
     def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
         """Fetch chat entry URL for contact and open in new pywebview window."""
-        logger.info("open_chat called: sb_uid=%s name=%s", sendbird_user_id, display_name)
         entry_svc = self._app.services.get("chat_entry_service")
         if not entry_svc:
             logger.warning("open_chat: no chat_entry_service")
@@ -27,7 +26,6 @@ class ChatHandler:
             recipient_display_name=display_name,
         )
         if r.success and r.data:
-            logger.info("open_chat: opening window url=%s", str(r.data)[:80])
             open_chat_window(str(r.data))
         else:
             logger.warning("open_chat failed: %s", getattr(r, "error", None))

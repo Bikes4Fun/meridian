@@ -158,7 +158,7 @@ def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: s
 def load_demo_medications_data_from_json_to_db(
     db_manager, family_circle_id: str, care_recipient_user_id: str
 ):
-    """Load medications from JSON into SQLite database. care_recipient_user_id = person meds belong to."""
+    """Load medications from JSON into SQLite. Used by demo_main when server not running."""
     medical_data = load_json_file("medical.json")
     medications = medical_data.get("medications", [])
 
@@ -199,6 +199,50 @@ def load_demo_medications_data_from_json_to_db(
 
         conn.commit()
     logger.debug("  Loaded %d medications" % len(medications))
+
+
+def seed_medications_via_api(
+    api_url: str, family_circle_id: str, user_id: str
+) -> bool:
+    """Add demo medications via POST API. Skips meds that already exist (preserves user edits)."""
+    try:
+        import requests
+    except ImportError:
+        logger.error("requests required for medication API seed")
+        return False
+
+    medical_data = load_json_file("medical.json")
+    medications = medical_data.get("medications", [])
+    base = api_url.rstrip("/")
+    headers = {
+        "Content-Type": "application/json",
+        "X-User-Id": user_id,
+        "X-Family-Circle-Id": family_circle_id,
+    }
+    url = f"{base}/api/family_circles/{family_circle_id}/medications"
+
+    added = 0
+    for med in medications:
+        name = med.get("name") or ""
+        times = med.get("medication_times") or []
+        if not name or not times:
+            continue
+        payload = {
+            "name": name,
+            "medication_times": times,
+            "dosage": med.get("dosage"),
+            "frequency": med.get("frequency"),
+            "notes": med.get("notes"),
+            "max_daily": med.get("max_daily"),
+        }
+        r = requests.post(url, json=payload, headers=headers, timeout=5)
+        if r.ok:
+            added += 1
+        else:
+            logger.debug("Medication %s skip (already exists?): %s", name, r.status_code)
+
+    logger.debug("  Seeded %d medications via API" % added)
+    return True
 
 
 def load_allergies_data(db_manager, care_recipient_user_id: str):
@@ -490,12 +534,8 @@ def demo_seed_after_server(api_url: str, db_path: str) -> bool:
     if not care_recipient_user_id:
         raise ValueError("medical.json care_recipient must have user_id")
 
-    # Direct DB (until APIs exist)
-    load_demo_medications_data_from_json_to_db(
-        db,
-        family_circle_id=DEMO_FAMILY_CIRCLE_ID,
-        care_recipient_user_id=care_recipient_user_id,
-    )
+    # Medications via API (adds missing demo meds; skips existing, preserving user edits).
+    seed_medications_via_api(api_url, DEMO_FAMILY_CIRCLE_ID, DEMO_USER_ID)
     load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
     load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
     load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)

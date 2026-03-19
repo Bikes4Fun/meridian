@@ -1,12 +1,15 @@
 """
 Home screen: Option 5 - Up Next, What's Next Today, side-by-side action buttons.
 Owns all home presentation: structure, schedule data merge, and HTML for dynamic content.
+Event modal: single source in events_handler.get_event_form_overlay_html().
 """
 
 import html as html_module
 import json
 import logging
 import os
+
+from . import events_handler
 
 logger = logging.getLogger(__name__)
 
@@ -65,26 +68,7 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
         <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
         <button type="button" class="manage-meds-btn" data-screen="medications">Manage Medications</button>
     </div>'''
-    modal_html = '''
-    <div id="eventFormOverlay" class="event-overlay" style="display:none;">
-        <div class="event-modal" onclick="event.stopPropagation()">
-            <h3 id="eventFormTitle" class="event-modal-title">Add Event</h3>
-            <form id="eventForm">
-                <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
-                <input type="date" id="eventDate" required class="event-input">
-                <input type="time" id="eventStartTime" required class="event-input">
-                <input type="time" id="eventEndTime" placeholder="End (optional)" class="event-input">
-                <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
-                <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
-                <div class="event-form-actions">
-                    <button type="submit" class="event-btn event-btn-primary">Save</button>
-                    <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary" onclick="var o=document.getElementById('eventFormOverlay');if(o)o.style.display='none'">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    '''
-    return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + modal_html
+    return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + events_handler.get_event_form_overlay_html()
 
 
 def load_schedule_items(services) -> tuple[list, object]:

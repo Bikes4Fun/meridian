@@ -1,6 +1,32 @@
 """
-Chat screen: contact grid with chat entry.
+Chat screen: contact grid with chat entry. ChatHandler fetches entry URL for JS window.open.
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class ChatHandler:
+    """Fetch chat entry URL for kiosk. JS opens URL with window.open."""
+
+    def __init__(self, app):
+        self._app = app
+
+    def get_chat_url(self, sendbird_user_id: str, display_name: str) -> str:
+        """Fetch chat entry URL for contact. Returns URL or empty on failure."""
+        entry_svc = self._app.services.get("chat_entry_service")
+        if not entry_svc:
+            logger.warning("get_chat_url: no chat_entry_service")
+            return ""
+        r = entry_svc.get_entry_url(
+            recipient_sendbird_user_id=sendbird_user_id,
+            recipient_display_name=display_name,
+        )
+        if r.success and r.data:
+            return str(r.data)
+        logger.warning(f"get_chat_url failed: {getattr(r, 'error', None)}")
+        return ""
 
 
 def build_chat_html(services, api_url: str, kiosk_user_id: str, family_circle_id: str) -> str:

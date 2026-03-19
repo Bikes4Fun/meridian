@@ -1,10 +1,13 @@
 """
 Schedule screen: full merged timeline for today (meds + events).
+Event modal: single source in events_handler.get_event_modal_html().
+Note: app.py uses events_handler.build_schedule_html for schedule screen.
 """
 
 import html as html_module
 import json
 
+from . import events_handler
 from . import html_primitives as hp
 
 
@@ -85,23 +88,5 @@ def build_schedule_html(services, api_url: str) -> str:
             parts.append(
                 f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
             )
-    parts.append(
-        '''<div class="home-action-row" style="margin-top:16px;">
-        <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
-        </div>
-        <div id="eventFormOverlay" class="event-overlay" style="display:none;">
-        <div class="event-modal" onclick="event.stopPropagation()">
-        <h3 id="eventFormTitle" class="event-modal-title">Add Event</h3>
-        <form id="eventForm">
-        <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
-        <input type="date" id="eventDate" required class="event-input">
-        <input type="time" id="eventStartTime" required class="event-input">
-        <input type="time" id="eventEndTime" placeholder="End (optional)" class="event-input">
-        <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
-        <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
-        <div class="event-form-actions">
-        <button type="submit" class="event-btn event-btn-primary">Save</button>
-        <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
-        </div></form></div></div>'''
-    )
+    parts.append(events_handler.get_event_modal_html())
     return "".join(parts)

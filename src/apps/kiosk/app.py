@@ -23,6 +23,7 @@ from shared.config import (
 )
 
 from .api_client import create_kiosk_remote
+from .chat_screen import ChatHandler
 from .events_handler import EventsHandler
 from .medications_screen import MedicationsHandler
 
@@ -41,6 +42,7 @@ class KioskBridge:
 
     def __init__(self, app):
         self._app = app
+        self._chat = ChatHandler(app)
         self._events = EventsHandler(app)
         self._medications = MedicationsHandler(app)
 
@@ -49,10 +51,9 @@ class KioskBridge:
         logger.info(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def open_chat(self, sendbird_user_id: str, display_name: str):
-        """Open chat window for contact. Called from JS contact click."""
-        logger.info(f"Open chat: {display_name} ({sendbird_user_id})")
-        self._app._open_chat(sendbird_user_id, display_name)
+    def get_chat_url(self, sendbird_user_id: str, display_name: str) -> str:
+        """Fetch chat entry URL for contact. Returns URL or empty string. JS calls window.open(url)."""
+        return self._chat.get_chat_url(sendbird_user_id, display_name)
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
@@ -204,23 +205,6 @@ class MeridianKioskApp:
             return build_schedule_html(self.services, self.api_url), None
 
         return hp.error_state("Unknown screen"), None
-
-    def _open_chat(self, sendbird_user_id: str, display_name: str):
-        """Fetch chat URL and open in webview."""
-        entry_svc = self.services.get("chat_entry_service")
-        if not entry_svc:
-            logger.warning("open_chat: no chat_entry_service")
-            return
-        r = entry_svc.get_entry_url(
-            recipient_sendbird_user_id=sendbird_user_id,
-            recipient_display_name=display_name,
-        )
-        if r.success and r.data:
-            from .webview import open_chat_window
-
-            open_chat_window(r.data)
-        else:
-            logger.warning(f"open_chat: get_entry_url failed: {getattr(r, 'error', None)}")
 
     def _print_emergency(self):
         """Trigger emergency print (same flow as alert-activated)."""

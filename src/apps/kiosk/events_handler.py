@@ -12,11 +12,9 @@ from . import html_primitives as hp
 
 logger = logging.getLogger(__name__)
 
-EVENT_MODAL_HTML = '''
-<div class="home-action-row" style="margin-top:16px;">
-<button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
-</div>
-<div id="eventFormOverlay" class="event-overlay" style="display:none;">
+def get_event_form_overlay_html() -> str:
+    """Event add/edit modal overlay only. Home adds its own Add Event button."""
+    return '''<div id="eventFormOverlay" class="event-overlay" style="display:none;">
 <div class="event-modal" onclick="event.stopPropagation()">
 <h3 id="eventFormTitle" class="event-modal-title">Add Event</h3>
 <form id="eventForm">
@@ -30,6 +28,13 @@ EVENT_MODAL_HTML = '''
 <button type="submit" class="event-btn event-btn-primary">Save</button>
 <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
 </div></form></div></div>'''
+
+
+def get_event_modal_html() -> str:
+    """Add Event button + overlay (for schedule screen)."""
+    return '''<div class="home-action-row" style="margin-top:16px;">
+<button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
+</div>''' + get_event_form_overlay_html()
 
 
 def build_schedule_html(services, api_url: str) -> str:
@@ -104,7 +109,7 @@ def build_schedule_html(services, api_url: str) -> str:
             parts.append(
                 f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
             )
-    parts.append(EVENT_MODAL_HTML)
+    parts.append(get_event_modal_html())
     return "".join(parts)
 
 

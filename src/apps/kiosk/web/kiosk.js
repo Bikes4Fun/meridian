@@ -5,6 +5,18 @@ document.getElementById('kiosk-nav').addEventListener('click', function(e) {
   }
 });
 
+// Cancel button: event-modal div has stopPropagation() so clicks inside the modal
+// (Cancel, form, etc.) never bubble up to screen-content. Capture phase runs first.
+function handleModalCancel(e) {
+  var cancelBtn = e.target.closest('#eventFormCancel, #medFormCancel');
+  if (cancelBtn) {
+    var ov = document.getElementById(cancelBtn.id === 'eventFormCancel' ? 'eventFormOverlay' : 'medFormOverlay');
+    if (ov) ov.style.display = 'none';
+    e.stopPropagation();
+  }
+}
+document.getElementById('screen-content').addEventListener('click', handleModalCancel, true);
+
 document.getElementById('screen-content').addEventListener('click', function(e) {
   var addBtn = e.target.closest('#addEventBtn');
   if (addBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_event_modal) {
@@ -50,20 +62,10 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     return;
   }
   var tile = e.target.closest('.contact-tile[data-sb-uid]');
-  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
-    pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
-    return;
-  }
-  var cancelBtn = e.target.closest('#eventFormCancel');
-  if (cancelBtn) {
-    var ov = document.getElementById('eventFormOverlay');
-    if (ov) ov.style.display = 'none';
-    return;
-  }
-  var medCancelBtn = e.target.closest('#medFormCancel');
-  if (medCancelBtn) {
-    var mov = document.getElementById('medFormOverlay');
-    if (mov) mov.style.display = 'none';
+  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.get_chat_url) {
+    var res = pywebview.api.get_chat_url(tile.dataset.sbUid || '', tile.dataset.name || '');
+    function openUrl(url) { if (url) window.open(url, 'chat_' + (tile.dataset.sbUid || ''), 'width=800,height=600'); }
+    (res && res.then) ? res.then(openUrl).catch(function() {}) : openUrl(res);
     return;
   }
   if (e.target.id === 'eventFormOverlay') {

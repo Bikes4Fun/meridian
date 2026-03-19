@@ -198,6 +198,70 @@ class RemoteCalendarService:
             return ServiceResult.error_result(err or "calendar/events request failed")
         return ServiceResult.success_result(data)
 
+    def add_event(self, payload: dict) -> Any:
+        """POST new event. Shared by kiosk, future mobile client, etc."""
+        return _calendar_request(
+            "POST",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/events",
+            self._headers,
+            self._session,
+            json_body=payload,
+        )
+
+    def update_event(self, event_id: str, payload: dict) -> Any:
+        """PUT event. Shared by kiosk, webapp, mobile, etc."""
+        quoted = urllib.parse.quote(event_id, safe="")
+        return _calendar_request(
+            "PUT",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/events/{quoted}",
+            self._headers,
+            self._session,
+            json_body=payload,
+        )
+
+    def delete_event(self, event_id: str) -> Any:
+        """DELETE event. Shared by kiosk, webapp, mobile, etc."""
+        quoted = urllib.parse.quote(event_id, safe="")
+        return _calendar_request(
+            "DELETE",
+            f"{self._base}/api/family_circles/{self._fc_id}/calendar/events/{quoted}",
+            self._headers,
+            self._session,
+        )
+
+
+def _calendar_request(
+    method: str,
+    url: str,
+    headers: dict,
+    session: Any,
+    json_body: Optional[dict] = None,
+) -> Any:
+    """Shared helper for calendar API write operations."""
+    try:
+        import requests
+    except ImportError:
+        return ServiceResult.error_result("requests not installed")
+    try:
+        client = session if session else requests
+        if method == "POST":
+            r = client.post(url, json=json_body, headers={**headers, "Content-Type": "application/json"}, timeout=5)
+        elif method == "PUT":
+            r = client.put(url, json=json_body, headers={**headers, "Content-Type": "application/json"}, timeout=5)
+        elif method == "DELETE":
+            r = client.delete(url, headers=headers, timeout=5)
+        else:
+            return ServiceResult.error_result(f"unsupported method {method}")
+        if r.ok:
+            return ServiceResult.success_result(r.json().get("data") if r.content else True)
+        try:
+            err = r.json().get("error", r.text)
+        except Exception:
+            err = r.text
+        return ServiceResult.error_result(err or f"HTTP {r.status_code}")
+    except Exception as e:
+        return ServiceResult.error_result(str(e))
+
 
 class RemoteMedicationService:
     def __init__(
@@ -221,6 +285,52 @@ class RemoteMedicationService:
         if not ok:
             return ServiceResult.error_result(err or "medications request failed")
         return ServiceResult.success_result(data)
+
+    def add_medication(self, payload: dict) -> Any:
+        """POST new medication. Payload: name, medication_times, dosage?"""
+        return _calendar_request(
+            "POST",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications",
+            self._headers,
+            self._session,
+            json_body=payload,
+        )
+
+    def get_medication_for_edit(self, medication_id: int) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "request failed")
+        return ServiceResult.success_result(data)
+
+    def update_medication(self, medication_id: int, payload: dict) -> Any:
+        return _calendar_request(
+            "PUT",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
+            self._headers,
+            self._session,
+            json_body=payload,
+        )
+
+    def delete_medication(self, medication_id: int) -> Any:
+        return _calendar_request(
+            "DELETE",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
+            self._headers,
+            self._session,
+        )
+
+    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> Any:
+        return _calendar_request(
+            "POST",
+            f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}/mark-taken",
+            self._headers,
+            self._session,
+            json_body={"time": time_slot, "taken": taken},
+        )
 
 
 class RemoteAlertService:

@@ -1,9 +1,13 @@
 """
 Schedule screen: full merged timeline for today (meds + events).
+Event modal: single source in events_handler.get_event_modal_html().
+Note: app.py uses events_handler.build_schedule_html for schedule screen.
 """
 
 import html as html_module
+import json
 
+from . import events_handler
 from . import html_primitives as hp
 
 
@@ -60,6 +64,8 @@ def build_schedule_html(services, api_url: str) -> str:
                     "dt": dt,
                     "title": e.get("display", e.get("title", "?")),
                     "done": False,
+                    "event_id": e.get("id"),
+                    "event_data": e,
                 })
     items.sort(key=lambda x: x["dt"])
 
@@ -74,8 +80,13 @@ def build_schedule_html(services, api_url: str) -> str:
             check = " ✓" if done else ""
             cls = "timeline-item timeline-item-done" if done else "timeline-item"
             title_esc = html_module.escape(str(it.get("title", "?")))
+            extra = ""
+            if it.get("type") == "event" and it.get("event_id"):
+                eid = html_module.escape(str(it["event_id"]))
+                edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
+                extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
             parts.append(
-                f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>'
+                f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
             )
-
+    parts.append(events_handler.get_event_modal_html())
     return "".join(parts)

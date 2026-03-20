@@ -1,11 +1,15 @@
 """
 Home screen: Option 5 - Up Next, What's Next Today, side-by-side action buttons.
 Owns all home presentation: structure, schedule data merge, and HTML for dynamic content.
+Event modal: single source in events_handler.get_event_form_overlay_html().
 """
 
 import html as html_module
+import json
 import logging
 import os
+
+from . import events_handler
 
 logger = logging.getLogger(__name__)
 
@@ -64,26 +68,7 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
         <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
         <button type="button" class="manage-meds-btn" data-screen="medications">Manage Medications</button>
     </div>'''
-    modal_html = '''
-    <div id="eventFormOverlay" class="event-overlay" style="display:none;">
-        <div class="event-modal" onclick="event.stopPropagation()">
-            <h3 class="event-modal-title">Add Event</h3>
-            <form id="eventForm">
-                <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
-                <input type="date" id="eventDate" required class="event-input">
-                <input type="time" id="eventStartTime" required class="event-input">
-                <input type="time" id="eventEndTime" placeholder="End (optional)" class="event-input">
-                <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
-                <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
-                <div class="event-form-actions">
-                    <button type="submit" class="event-btn event-btn-primary">Save</button>
-                    <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary" onclick="var o=document.getElementById('eventFormOverlay');if(o)o.style.display='none'">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    '''
-    return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + modal_html
+    return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + events_handler.get_event_form_overlay_html()
 
 
 def load_schedule_items(services) -> tuple[list, object]:
@@ -114,6 +99,17 @@ def load_schedule_items(services) -> tuple[list, object]:
                     "dt": dt,
                     "title": m.get("name", "?"),
                     "done": m.get("status") == "done",
+                    "med_id": m.get("id"),
+                    "time_slot": t,
+                })
+            for m in data.get("prn_medications", []):
+                items.append({
+                    "type": "prn",
+                    "dt": now,
+                    "title": m.get("name", "?"),
+                    "done": m.get("status") == "taken",
+                    "med_id": m.get("id"),
+                    "time_slot": "prn",
                 })
     if cal_svc:
         result = cal_svc.get_events_for_date(today)
@@ -134,6 +130,8 @@ def load_schedule_items(services) -> tuple[list, object]:
                     "title": e.get("title", "?"),
                     "done": False,
                     "display": e.get("display", e.get("title", "?")),
+                    "event_id": e.get("id"),
+                    "event_data": e,
                 })
     items.sort(key=lambda x: x["dt"])
     return items, now
@@ -182,11 +180,21 @@ def build_timeline_html(items: list) -> str:
     result = []
     for it in shown:
         done = it.get("done")
-        bar_class = "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
-        time_str = it["dt"].strftime("%I:%M %p")
+        bar_class = "timeline-bar-med" if it["type"] in ("med", "prn") else "timeline-bar-event"
+        time_str = "As needed" if it.get("type") == "prn" else it["dt"].strftime("%I:%M %p")
         check = " ✓" if done else ""
         cls = "timeline-item timeline-item-done" if done else "timeline-item"
         title = it.get("display", it.get("title", "?"))
         title_esc = html_module.escape(str(title))
-        result.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span></div>')
+        extra = ""
+        if (it.get("type") in ("med", "prn")) and it.get("med_id") is not None:
+            mid = html_module.escape(str(it["med_id"]))
+            slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
+            lbl = "Uncheck" if done else ("Take" if it.get("type") == "prn" else "Check took")
+            extra = f' <button type="button" class="med-taken-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}" style="font-size:11px;padding:2px 6px;">{lbl}</button>'
+        elif it.get("type") == "event" and it.get("event_id"):
+            eid = html_module.escape(str(it["event_id"]))
+            edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
+            extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
+        result.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>')
     return "\n".join(result)

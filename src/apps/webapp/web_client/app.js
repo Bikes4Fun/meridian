@@ -29,7 +29,9 @@
                         window.location.href = '/login.html';
                         return;
                     }
+                    _familyCircleId = session.family_circle_id;
                     document.body.classList.remove('pending');
+                    initNav();
                     initCheckin();
                     initLogoutLink();
                 })
@@ -161,7 +163,6 @@
                 _familyCircleId = session.family_circle_id;
                 if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = '';
                 if (document.getElementById('contactsGrid')) initChatContacts();
-                if (document.getElementById('eventsList')) loadEvents();
                 return fetch(API_URL + '/api/family_circles/' + session.family_circle_id + '/family-members', {
                     credentials: 'include'
                 });
@@ -181,35 +182,71 @@
     }
 
     function activateAlert() {
-        fetch(API_URL + '/api/emergency/alert', {
+        var url = (API_URL || '').replace(/\/$/, '') + '/api/emergency/alert';
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ activated: true })
         })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw new Error(data.error || 'Request failed');
+                    return data;
+                });
+            })
+            .then(function () {
                 showStatus('Alert mode activated. TV should switch to emergency screen.', 'success');
             })
             .catch(function (err) {
-                showStatus('Alert failed: ' + err.message, 'error');
+                showStatus('Alert failed: ' + (err.message || String(err)), 'error');
             });
     }
 
     function cancelAlert() {
-        fetch(API_URL + '/api/emergency/alert', {
+        var url = (API_URL || '').replace(/\/$/, '') + '/api/emergency/alert';
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ activated: false })
         })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) throw new Error(data.error || 'Request failed');
+                    return data;
+                });
+            })
+            .then(function () {
                 showStatus('Alert cancelled.', 'success');
             })
             .catch(function (err) {
-                showStatus('Cancel failed: ' + err.message, 'error');
+                showStatus('Cancel failed: ' + (err.message || String(err)), 'error');
             });
+    }
+
+    function initNav() {
+        var nav = document.getElementById('appNav');
+        if (!nav) return;
+        nav.addEventListener('click', function (e) {
+            var btn = e.target.closest('.nav-btn');
+            if (!btn || !btn.dataset.page) return;
+            var pageId = btn.dataset.page;
+            var pageMap = { checkin: 'pageCheckin', events: 'pageEvents', medications: 'pageMedications', alert: 'pageAlert' };
+            var targetId = pageMap[pageId];
+            if (!targetId) return;
+            [].forEach.call(nav.querySelectorAll('.nav-btn'), function (b) { b.classList.remove('active'); });
+            [].forEach.call(document.querySelectorAll('.page'), function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            var target = document.getElementById(targetId);
+            if (target) target.classList.add('active');
+            if (pageId === 'events' && window.MeridianEvents) {
+                MeridianEvents.init((API_URL || '').replace(/\/$/, ''), _familyCircleId, showStatus);
+            }
+            if (pageId === 'medications' && window.MeridianMedications) {
+                MeridianMedications.init((API_URL || '').replace(/\/$/, ''), _familyCircleId, showStatus);
+            }
+        });
     }
 
     function initCheckin() {
@@ -219,85 +256,7 @@
         if (alertBtn) alertBtn.addEventListener('click', activateAlert);
         var cancelBtn = document.getElementById('cancelAlertBtn');
         if (cancelBtn) cancelBtn.addEventListener('click', cancelAlert);
-        if (document.getElementById('addEventBtn')) initEvents();
         loadFamilyMembers();
-    }
-
-    function loadEvents() {
-        var list = document.getElementById('eventsList');
-        if (!list || !_familyCircleId) return;
-        var today = new Date().toISOString().slice(0, 10);
-        var apiBase = (API_URL || '').replace(/\/$/, '');
-        fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (data) {
-                if (!list) return;
-                if (!data || !data.data || data.data.length === 0) {
-                    list.innerHTML = '<p style="color: #666; margin: 0;">No events today</p>';
-                    return;
-                }
-                list.innerHTML = '<ul style="margin: 0; padding-left: 20px;">' +
-                    data.data.map(function (e) { return '<li>' + (e.display || e.title || '') + '</li>'; }).join('') +
-                    '</ul>';
-            })
-            .catch(function () { if (list) list.innerHTML = '<p style="color: #999;">Could not load events</p>'; });
-    }
-
-    function initEvents() {
-        var addBtn = document.getElementById('addEventBtn');
-        var modal = document.getElementById('eventFormModal');
-        var form = document.getElementById('eventForm');
-        var cancelBtn = document.getElementById('eventFormCancel');
-        if (!addBtn || !modal || !form) return;
-
-        addBtn.addEventListener('click', function () {
-            var today = new Date().toISOString().slice(0, 10);
-            document.getElementById('eventTitle').value = '';
-            document.getElementById('eventDate').value = today;
-            document.getElementById('eventStartTime').value = '09:00';
-            document.getElementById('eventEndTime').value = '';
-            document.getElementById('eventLocation').value = '';
-            document.getElementById('eventDescription').value = '';
-            modal.style.display = 'flex';
-        });
-
-        cancelBtn.addEventListener('click', function () { modal.style.display = 'none'; });
-        modal.addEventListener('click', function (e) { if (e.target === modal) modal.style.display = 'none'; });
-
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var title = document.getElementById('eventTitle').value.trim();
-            var date = document.getElementById('eventDate').value;
-            var startTime = document.getElementById('eventStartTime').value;
-            var endTime = document.getElementById('eventEndTime').value;
-            var location = document.getElementById('eventLocation').value.trim();
-            var description = document.getElementById('eventDescription').value.trim();
-            if (!title || !date || !startTime) {
-                showStatus('Title, date, and start time required', 'error');
-                return;
-            }
-            var startDateTime = date + 'T' + startTime + ':00';
-            var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
-            if (endTime) payload.end_time = date + 'T' + endTime + ':00';
-
-            var apiBase = (API_URL || '').replace(/\/$/, '');
-            fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            })
-                .then(function (r) {
-                    if (r.ok) {
-                        modal.style.display = 'none';
-                        showStatus('\u2713 Event added', 'success');
-                        loadEvents();
-                    } else return r.json().then(function (d) { throw new Error(d.error || 'Failed to add event'); });
-                })
-                .catch(function (err) {
-                    showStatus('\u2717 ' + err.message, 'error');
-                });
-        });
     }
 
     function initChatContacts() {

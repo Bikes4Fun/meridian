@@ -234,6 +234,7 @@ function initMap(markersJson, placesJson) {
       placeMarkers();
       map.on('zoomend', placeMarkers);
       map.invalidateSize();
+      map.invalidateSize();
     } catch (e) {
       var mapEl = document.getElementById('map');
       if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';

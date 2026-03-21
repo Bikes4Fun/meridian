@@ -29,3 +29,7 @@ package/*
 *.xcuserstate
 
 */dist/*
+
+# Swift Package Manager
+meridian-ios/.build/
+meridian-ios/.swiftpm/

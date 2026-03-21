@@ -201,33 +201,34 @@ function drawPlaceCircles(map, places) {
 }
 
 function initMap(markersJson, placesJson) {
-  try {
-    var mapEl = document.getElementById('map');
-    if (!mapEl) return;
-    if (typeof L === 'undefined') {
-      mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable (offline)</div>';
-      return;
+  function run() {
+    try {
+      var mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      if (typeof L === 'undefined') {
+        mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable (offline)</div>';
+        return;
+      }
+      var markers = JSON.parse(markersJson);
+      var places = placesJson ? JSON.parse(placesJson) : [];
+      if (!markers || markers.length === 0) return;
+
+      var map = L.map('map').setView([markers[0].lat, markers[0].lon], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      drawPlaceCircles(map, places);
+      var markerLayer = null;
+      function placeMarkers() {
+        if (markerLayer) map.removeLayer(markerLayer);
+        var useClusters = map.getZoom() < CLUSTER_ZOOM_THRESHOLD;
+        markerLayer = buildMarkerLayer(markers, useClusters);
+        markerLayer.addTo(map);
+      }
+      placeMarkers();
+      map.on('zoomend', placeMarkers);
+    } catch (e) {
+      var mapEl = document.getElementById('map');
+      if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';
     }
-    var markers = JSON.parse(markersJson);
-    var places = placesJson ? JSON.parse(placesJson) : [];
-    if (!markers || markers.length === 0) return;
-
-    var map = L.map('map').setView([markers[0].lat, markers[0].lon], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    drawPlaceCircles(map, places);
-
-    var markerLayer = null;
-    function placeMarkers() {
-      if (markerLayer) map.removeLayer(markerLayer);
-      var useClusters = map.getZoom() < CLUSTER_ZOOM_THRESHOLD;
-      markerLayer = buildMarkerLayer(markers, useClusters);
-      markerLayer.addTo(map);
-    }
-    placeMarkers();
-    map.on('zoomend', placeMarkers);
-  } catch (e) {
-    var mapEl = document.getElementById('map');
-    if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';
   }
+  requestAnimationFrame(function() { requestAnimationFrame(run); });
 }

@@ -65,11 +65,13 @@ class KioskBridge:
         self._app._load_home_schedule()
 
     def refresh_screen(self, screen_name: str):
-        """Refresh current screen (home or medications). Called from JS after med taken."""
+        """Refresh current screen (home, medications, family). Called from JS after med taken or Refresh button."""
         if screen_name == "home":
             self._app._load_home_schedule()
         elif screen_name == "medications":
             self._app._navigate_to("medications")
+        elif screen_name == "family":
+            self._app._navigate_to("family")
 
     def open_add_event_modal(self) -> None:
         self._events.open_add_event_modal()
@@ -124,9 +126,12 @@ class MeridianKioskApp:
         """Create window, wire bridge, start webview loop."""
         import webview
 
-        web_dir = os.path.join(os.path.dirname(__file__), "web")
-        html_path = os.path.join(web_dir, "kiosk.html")
-        url = "file://" + os.path.abspath(html_path).replace("\\", "/")
+        base = (self.api_url or "").rstrip("/")
+        url = f"{base}/kiosk/" if base else None
+        if not url:
+            web_dir = os.path.join(os.path.dirname(__file__), "web")
+            html_path = os.path.join(web_dir, "kiosk.html")
+            url = "file://" + os.path.abspath(html_path).replace("\\", "/")
 
         w, h = get_kiosk_window_size()
         x, y = 10, 120
@@ -195,10 +200,11 @@ class MeridianKioskApp:
 
         if screen_name == "family":
             from .checkin_screen import build_checkin_html
-            html, markers_json = build_checkin_html(
-                self.services, self.api_url, self.family_circle_id
+            html, markers_json, places_json = build_checkin_html(
+                self.services, self.api_url, self.family_circle_id,
+                kiosk_user_id=self.kiosk_user_id,
             )
-            return html, f"initMap({json.dumps(markers_json)})"
+            return html, f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})"
 
         if screen_name == "chat":
             from .chat_screen import build_chat_html

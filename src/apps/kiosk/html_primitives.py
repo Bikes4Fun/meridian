@@ -106,11 +106,16 @@ def avatar_img(avatar_src, alt=""):
     return f'<img src="{src_escaped}" class="avatar" alt="{alt_escaped}">'
 
 
-def kiosk_button(text, onclick_js, no_feedback=False):
+def kiosk_button(text, onclick_js, no_feedback=False, small=False):
     """Primary button. Design: 160×160px min, text 24px min, rounded 12-16px. Used by: Emergency (Print).
-    Standard: press feedback (scale + darker color). no_feedback=True disables it.
+    Standard: press feedback (scale + darker color). no_feedback=True disables it. small=True: compact, no min size.
     onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it."""
-    cls = "kiosk-button kiosk-button--no-feedback" if no_feedback else "kiosk-button"
+    parts = ["kiosk-button"]
+    if no_feedback:
+        parts.append("kiosk-button--no-feedback")
+    if small:
+        parts.append("kiosk-button--small")
+    cls = " ".join(parts)
     return f'<button class="{cls}" onclick="{onclick_js}">{html.escape(str(text))}</button>'
 
 

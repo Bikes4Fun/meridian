@@ -62,7 +62,7 @@ def get_map_markers(
             name = c.get("contact_name", "Unknown")
             loc = c.get("location_name") or ""
             user_id = c.get("user_id") or ""
-            photo_src = loc_svc.fetch_photo(f"{base}/api/users/{user_id}/photo") if user_id else None
+            photo_src = loc_svc.fetch_photo(f"{base}/api/users/{user_id}/photo") if base and user_id else None
             m = {"lat": lat, "lon": lon, "name": name, "location_name": loc}
             if photo_src:
                 m["photo_src"] = photo_src

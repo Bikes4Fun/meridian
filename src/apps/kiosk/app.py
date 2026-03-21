@@ -126,9 +126,12 @@ class MeridianKioskApp:
         """Create window, wire bridge, start webview loop."""
         import webview
 
-        web_dir = os.path.join(os.path.dirname(__file__), "web")
-        html_path = os.path.join(web_dir, "kiosk.html")
-        url = "file://" + os.path.abspath(html_path).replace("\\", "/")
+        base = (self.api_url or "").rstrip("/")
+        url = f"{base}/kiosk/" if base else None
+        if not url:
+            web_dir = os.path.join(os.path.dirname(__file__), "web")
+            html_path = os.path.join(web_dir, "kiosk.html")
+            url = "file://" + os.path.abspath(html_path).replace("\\", "/")
 
         w, h = get_kiosk_window_size()
         x, y = 10, 120

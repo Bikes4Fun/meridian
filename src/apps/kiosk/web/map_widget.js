@@ -203,6 +203,11 @@ function drawPlaceCircles(map, places) {
 function initMap(markersJson, placesJson) {
   function run() {
     try {
+      // Remove previous map instance before re-init (e.g. after Refresh)
+      if (window._meridianMap) {
+        try { window._meridianMap.remove(); } catch (e) {}
+        window._meridianMap = null;
+      }
       var mapEl = document.getElementById('map');
       if (!mapEl) return;
       if (typeof L === 'undefined') {
@@ -214,7 +219,10 @@ function initMap(markersJson, placesJson) {
       if (!markers || markers.length === 0) return;
 
       var map = L.map('map').setView([markers[0].lat, markers[0].lon], 11);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      window._meridianMap = map;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
       drawPlaceCircles(map, places);
       var markerLayer = null;
       function placeMarkers() {
@@ -225,6 +233,7 @@ function initMap(markersJson, placesJson) {
       }
       placeMarkers();
       map.on('zoomend', placeMarkers);
+      map.invalidateSize();
     } catch (e) {
       var mapEl = document.getElementById('map');
       if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';

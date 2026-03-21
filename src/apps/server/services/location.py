@@ -156,14 +156,36 @@ class LocationService(DatabaseServiceMixin):
         result = self.safe_query(query, (family_circle_id, family_circle_id))
         if not result.success or not result.data:
             return result
+        named_places_result = self.get_named_places(family_circle_id)
+        if not named_places_result.success or not named_places_result.data:
+            return result
+        places = named_places_result.data
         for row in result.data:
             lat = row.get("latitude")
             lon = row.get("longitude")
             if row.get("location_name") is None and lat is not None and lon is not None:
-                resolved = self.resolve_place_name(lat, lon, family_circle_id)
+                resolved = self._resolve_from_places(lat, lon, places)
                 if resolved:
                     row["location_name"] = resolved
         return result
+
+    def _resolve_from_places(
+        self, lat: float, lon: float, places: list
+    ) -> Optional[str]:
+        """Resolve place name from prefetched places (avoids N+1)."""
+        nearest_name = None
+        nearest_dist = float("inf")
+        for row in places:
+            plat = row.get("gps_latitude")
+            plon = row.get("gps_longitude")
+            if plat is None or plon is None:
+                continue
+            place_radius = row.get("radius_metres", DEFAULT_PLACE_RADIUS_M)
+            dist_between = self._haversine_metres(lat, lon, plat, plon)
+            if dist_between <= place_radius and dist_between < nearest_dist:
+                nearest_dist = dist_between
+                nearest_name = row.get("location_name")
+        return nearest_name
 
     def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
         """Return all family-wide named places. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""

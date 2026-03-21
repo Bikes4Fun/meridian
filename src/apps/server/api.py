@@ -177,8 +177,8 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Public routes: no auth required (login page, chatapp POC, fonts)
-        if request.path in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css") or request.path == "/chatapp" or request.path.startswith("/chatapp/") or request.path.startswith("/fonts/"):
+        # Public routes: no auth required (login page, chatapp POC, kiosk static, fonts)
+        if request.path in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css") or request.path in ("/chatapp", "/kiosk") or request.path.startswith("/chatapp/") or request.path.startswith("/kiosk/") or request.path.startswith("/fonts/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -681,10 +681,12 @@ def create_server_app(db_path=None):
             row["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
         return jsonify({"data": data})
 
-    # Chatapp routes + static (webapp, chatapp) for Railway all-in-one deploy
+    # Chatapp routes + static (webapp, chatapp, kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
+    _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
+    _kiosk_icons = os.path.join(_src, "apps", "kiosk", "icons")
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         sendbird_svc = container.get_sendbird_service()
         db_manager = container.get_database_manager()
@@ -725,6 +727,16 @@ def create_server_app(db_path=None):
             if not path:
                 path = "index.html"
             return send_from_directory(_chatapp_dist, path)
+
+        if os.path.isdir(_kiosk_web):
+            @app.route("/kiosk/")
+            @app.route("/kiosk/<path:path>")
+            def serve_kiosk(path=""):
+                if not path:
+                    path = "kiosk.html"
+                if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
+                    return send_from_directory(_kiosk_icons, path[6:])
+                return send_from_directory(_kiosk_web, path)
 
     return app
 

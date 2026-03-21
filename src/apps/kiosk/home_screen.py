@@ -42,7 +42,7 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     period = time_svc.get_am_pm().upper() if time_svc else ""
     icon_map = {"Morning": "sunrise.png", "Noon": "noon.png", "Afternoon": "noon.png", "Evening": "evening.png", "Night": "night.png"}
     icon_file = icon_map.get(time_svc.get_am_pm() if time_svc else "Morning", "sunrise.png")
-    icon_html = f'<img src="../icons/{icon_file}" alt="" class="clock-period-icon" style="width:100px;height:100px">'
+    icon_html = f'<img src="icons/{icon_file}" alt="" class="clock-period-icon" style="width:100px;height:100px">'
 
     clock = hp.kiosk_header(day, id_="clock-day")
     clock += '<div style="display:flex;align-items:center;gap:16px">'

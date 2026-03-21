@@ -84,7 +84,6 @@ def main():
     logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
-    logging.getLogger("display.widgets").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
     logging.getLogger("dev.demo.seed").setLevel(logging.INFO)
     logger = logging.getLogger(__name__)

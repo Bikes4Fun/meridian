@@ -8,6 +8,7 @@
     var _u = '__API_URL__';
     var API_URL = (_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
+    var _userId = null;
 
     function init() {
         if (document.getElementById('loginForm')) {
@@ -25,12 +26,15 @@
                     return r.ok ? r.json() : null;
                 })
                 .then(function (session) {
-                    if (!session || !session.family_circle_id) {
+                    if (!session || !session.family_circle_id || !session.user_id) {
                         window.location.href = '/login.html';
                         return;
                     }
                     _familyCircleId = session.family_circle_id;
+                    _userId = session.user_id;
                     document.body.classList.remove('pending');
+                    if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = '';
+                    if (document.getElementById('contactsGrid')) initChatContacts();
                     initNav();
                     initCheckin();
                     initLogoutLink();
@@ -77,12 +81,12 @@
     }
 
     function checkIn() {
-        var userId = document.getElementById('familyMemberSelect').value;
+        var userId = _userId;
         var notes = document.getElementById('notes').value;
         var btn = document.getElementById('checkinBtn');
 
         if (!userId) {
-            showStatus('Please select who to check in!', 'error');
+            showStatus('Session expired. Please log in again.', 'error');
             return;
         }
 
@@ -146,39 +150,6 @@
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
-    }
-
-    function loadFamilyMembers() {
-        var apiBase = (API_URL || '').replace(/\/$/, '');
-        fetch(apiBase + '/api/session', { credentials: 'include' })
-            .then(function (r) {
-                if (r.status === 401) {
-                    window.location.href = '/login.html';
-                    return null;
-                }
-                return r.ok ? r.json() : null;
-            })
-            .then(function (session) {
-                if (!session || !session.family_circle_id) return;
-                _familyCircleId = session.family_circle_id;
-                if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = '';
-                if (document.getElementById('contactsGrid')) initChatContacts();
-                return fetch(API_URL + '/api/family_circles/' + session.family_circle_id + '/family-members', {
-                    credentials: 'include'
-                });
-            })
-            .then(function (r) { return r && r.ok ? r.json() : null; })
-            .then(function (data) {
-                var sel = document.getElementById('familyMemberSelect');
-                if (!sel || !data || !data.data) return;
-                data.data.forEach(function (fm) {
-                    var opt = document.createElement('option');
-                    opt.value = fm.id;
-                    opt.textContent = fm.display_name;
-                    sel.appendChild(opt);
-                });
-            })
-            .catch(function () {});
     }
 
     function activateAlert() {
@@ -256,7 +227,6 @@
         if (alertBtn) alertBtn.addEventListener('click', activateAlert);
         var cancelBtn = document.getElementById('cancelAlertBtn');
         if (cancelBtn) cancelBtn.addEventListener('click', cancelAlert);
-        loadFamilyMembers();
     }
 
     function initChatContacts() {

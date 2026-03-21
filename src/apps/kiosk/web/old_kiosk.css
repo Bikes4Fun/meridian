@@ -1,0 +1,447 @@
+
+/* Design tokens per meridian-design-system-2.md (TV ref 1080×1920). vh = proportional to viewport height. */
+:root {
+    /* Typography */
+    --font-hero: 3.75vh;
+    --font-header: 2.92vh;
+    --font-subheader: 2.08vh;
+    --font-body-large: 1.67vh;
+    --font-body: 1.46vh;
+    --font-caption: 1.25vh;
+    --font-nav: 1.67vh;
+    --line-height: 1.6;
+    
+    /* Spacing */
+    --safe-margin: 2.08vh;
+    --touch-min: 6.25vh;
+    --button-min: 8.33vh;
+    --avatar-size: 6.67vh;
+    
+    /* Surfaces */
+    --bg: #f2f2ee;
+    --text: #1a1a1a;
+    --med-surface: #f0f5fa;
+    --events-surface: #f5faf0;
+    --surface-muted: #e8e8e8;
+    --surface-hover: #ddd;
+    
+    /* Primary (teal) */
+    --primary: #2E7D9B;
+    --primary-dark: #1e5d7a;
+    --primary-hover: #3a8fab;
+    
+    /* Accent (blue) */
+    --accent: #4080c0;
+    --accent-dark: #2d5a8f;
+
+    /* Secondary (teal-green for events) */
+    --secondary: #1a9b8a;
+    /* Map marker - patient at home */
+    --map-marker-patient: #2d7a3e;
+    
+    /* Neutrals */
+    --border: #ddd;
+    --border-light: #ccc;
+    --text-muted: #666;
+    --avatar-fallback: #999;
+    --error: #c00;
+    
+    /* Layout */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-pill: 2px;
+    --transition-press: transform 0.08s ease, background 0.08s ease;
+    --active-scale: 0.97;
+  }
+
+  @font-face {
+    font-family: 'AtkinsonHyperlegible';
+    src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf') format('truetype');
+  }
+  @font-face {
+    font-family: 'AtkinsonHyperlegible';
+    font-weight: bold;
+    src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf') format('truetype');
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: AtkinsonHyperlegible, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: var(--line-height);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Nav */
+  #kiosk-nav {
+    display: flex;
+    min-height: var(--touch-min);
+    padding: 0 var(--safe-margin);
+    gap: 0;
+    background: var(--bg);
+    border-bottom: 2px solid var(--border);
+  }
+  .nav-tab {
+    flex: 1;
+    font-size: var(--font-nav);
+    font-family: inherit;
+    min-height: var(--touch-min);
+    border: none;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition-press);
+  }
+  .nav-tab:hover { background: rgba(0,0,0,0.05); }
+  .nav-tab:active { transform: scale(var(--active-scale)); background: rgba(0,0,0,0.1); }
+
+  /* Screen content */
+  #screen-content {
+    flex: 1;
+    overflow: auto;
+    padding: var(--safe-margin);
+  }
+  #screen-content:has(.family-locations-layout) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+  #screen-content:has(.family-locations-layout) .family-locations-layout {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Primary action buttons (Add Event, Manage Meds) */
+  .add-event-btn,
+  .manage-meds-btn {
+    font-size: var(--font-body);
+    font-family: inherit;
+    min-height: var(--touch-min);
+    padding: 0 var(--safe-margin);
+    background: var(--primary);
+    color: white;
+    border: 2px solid var(--primary-dark);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-press);
+  }
+  .add-event-btn:hover,
+  .manage-meds-btn:hover { background: var(--primary-hover); }
+  .add-event-btn:active,
+  .manage-meds-btn:active { transform: scale(var(--active-scale)); }
+
+  .event-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--safe-margin);
+  }
+  .event-modal {
+    background: var(--bg);
+    padding: var(--safe-margin);
+    border-radius: var(--radius-md);
+    max-width: 90%;
+    min-width: 320px;
+    border: 2px solid var(--border);
+  }
+  .event-modal-title { margin: 0 0 1em 0; font-size: var(--font-header); }
+  .event-input {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.75em;
+    padding: 0.5em;
+    font-size: var(--font-body);
+    font-family: inherit;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    min-height: var(--touch-min);
+  }
+  .event-form-actions { display: flex; gap: 1em; margin-top: 1em; }
+  .event-btn {
+    flex: 1;
+    min-height: var(--touch-min);
+    font-size: var(--font-body);
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 2px solid var(--border-light);
+    transition: var(--transition-press);
+  }
+  .event-btn-primary { background: var(--primary); color: white; border-color: var(--primary-dark); }
+  .event-btn-primary:hover { background: var(--primary-hover); }
+  .event-btn-primary:active { transform: scale(var(--active-scale)); }
+  .event-btn-secondary { background: var(--surface-muted); color: var(--text); }
+  .event-btn-secondary:hover { background: var(--surface-hover); }
+  .event-btn-secondary:active { transform: scale(var(--active-scale)); }
+
+  /* Layout */
+  .flex-row { display: flex; gap: 1.25vh; }
+  .flex-col { display: flex; flex-direction: column; }
+  .flex-1 { flex: 1; min-height: 0; }
+  .flex-auto { flex: 0 0 auto; }
+  .kiosk-panel {
+    padding: var(--safe-margin);
+  }
+  .kiosk-panel.med-panel { background: var(--med-surface); }
+  .kiosk-panel.events-panel { background: var(--events-surface); }
+  .two-column-row {
+    display: flex;
+    gap: 1.25vh;
+  }
+  /* Press feedback - use on interactive elements for consistent :hover/:active */
+  .press-feedback:hover { background: rgba(0,0,0,0.05); }
+  .press-feedback:active { transform: scale(var(--active-scale)); background: rgba(0,0,0,0.1); }
+  .col-left, .col-right { overflow: auto; }
+
+  /* Typography */
+  .kiosk-hero { font-size: var(--font-hero); font-weight: 700; }
+  .kiosk-header { font-size: var(--font-header); font-weight: 700; }
+  .kiosk-subheader { font-size: var(--font-subheader); font-weight: 700; }
+  .kiosk-body-large { font-size: var(--font-body-large); }
+  .kiosk-body, .kiosk-caption { white-space: pre-wrap; }
+  .kiosk-body { font-size: var(--font-body); }
+  .kiosk-caption { font-size: var(--font-caption); }
+
+  /* State placeholders */
+  .state-placeholder { font-size: var(--font-body); padding: 0.83vh 0; }
+  .state-loading { color: var(--text-muted); }
+  .state-empty { color: var(--text-muted); }
+  .state-error { color: var(--error); }
+
+  /* Button - standard press feedback (size + color). Use .kiosk-button--no-feedback to disable. */
+  .kiosk-button {
+    font-family: inherit;
+    font-size: var(--font-caption);
+    min-height: var(--button-min);
+    min-width: var(--button-min);
+    padding: 0.83vh 1.25vh;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: var(--transition-press);
+  }
+  .kiosk-button:active:not(.kiosk-button--no-feedback) {
+    transform: scale(var(--active-scale));
+    background: var(--accent-dark);
+  }
+
+  /* Contact tile - avatar 128px per design; initial as fallback when photo fails */
+  .contact-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: var(--touch-min);
+    padding: 0.625vh;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: var(--transition-press);
+  }
+  .contact-tile:hover { background: rgba(0,0,0,0.05); }
+  .contact-tile:active { transform: scale(var(--active-scale)); background: rgba(0,0,0,0.1); }
+  .avatar-wrapper {
+    position: relative;
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    margin: 0 auto 0.42vh;
+  }
+  .contact-initial {
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: 50%;
+    background: var(--avatar-fallback);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-header);
+    font-weight: 700;
+  }
+  .avatar-wrapper .avatar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .contact-name { font-size: var(--font-body-large); font-weight: 700; }
+  .contact-relationship { font-size: var(--font-caption); color: var(--text-muted); }
+
+  /* Emergency patient photo */
+  .emergency-patient-photo {
+    margin-bottom: 1.25vh;
+  }
+  .emergency-patient-photo .avatar-wrapper {
+    display: inline-block;
+    width: 10vh;
+    height: 10vh;
+  }
+  .emergency-patient-photo .avatar,
+  .emergency-patient-photo .contact-initial {
+    width: 10vh;
+    height: 10vh;
+  }
+
+  /* Emergency form (injected by Python) */
+  .form-row {
+    display: flex;
+    gap: 0.42vh;
+    padding: 0.21vh 0;
+  }
+  .form-row .label {
+    flex: 0 0 10.42vh;
+    font-size: var(--font-caption);
+    color: var(--text);
+  }
+  .form-row .value {
+    flex: 1;
+    font-size: var(--font-body);
+  }
+  .section-bar {
+    padding: 0.625vh 0.83vh;
+    color: #fff;
+    font-size: var(--font-subheader);
+    font-weight: 700;
+  }
+
+  /* Alert flash */
+  @keyframes alert-flash {
+    0%, 100% { box-shadow: inset 0 0 0 8px #ff8000; }
+    50% { box-shadow: inset 0 0 0 8px #ff3300; }
+  }
+  body.alert-active { animation: alert-flash 0.5s infinite; }
+
+  /* Map */
+  #map { height: 20.83vh; min-height: 10.42vh; }
+  .map-marker-div { background: transparent; border: none; }
+  .map-marker-photo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--accent);
+    background: var(--accent);
+  }
+  .map-marker-photo--patient {
+    border-color: var(--map-marker-patient);
+    background: var(--map-marker-patient);
+  }
+  .map-marker-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Option 5: Up Next, What's Next Today */
+  .up-next-card {
+    background: var(--primary);
+    color: #fff;
+    padding: var(--safe-margin);
+    border-radius: var(--radius-md);
+    min-height: 5vh;
+  }
+  .up-next-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+  }
+  .up-next-icon { font-size: var(--font-header); }
+  .up-next-title { font-size: var(--font-body-large); font-weight: 700; display: block; }
+  .up-next-sub { font-size: var(--font-caption); opacity: 0.9; display: block; margin-top: 0.25em; }
+  .up-next-done { font-size: var(--font-body); opacity: 0.9; }
+  .up-next-loading { font-size: var(--font-body); opacity: 0.8; }
+
+  .timeline-card {
+    padding: var(--safe-margin);
+    background: var(--med-surface);
+    border-radius: var(--radius-md);
+  }
+  .timeline-header {
+    font-size: var(--font-caption);
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.5em;
+  }
+  .timeline-list { font-size: var(--font-body); }
+  .timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    padding: 0.35em 0;
+  }
+  .timeline-item-done { color: var(--text-muted); text-decoration: line-through; }
+  .timeline-bar-med {
+    flex-shrink: 0;
+    width: 4px;
+    height: 1.5em;
+    background: var(--primary);
+    border-radius: var(--radius-pill);
+  }
+  .timeline-bar-event {
+    flex-shrink: 0;
+    width: 4px;
+    height: 1.5em;
+    background: var(--secondary);
+    border-radius: var(--radius-pill);
+  }
+
+  .home-action-row {
+    display: flex;
+    gap: 1em;
+    flex-wrap: wrap;
+  }
+  .home-action-row .add-event-btn,
+  .home-action-row .manage-meds-btn {
+    flex: 1;
+    min-width: 10em;
+  }
+  .timeline-view-btn {
+    font-size: var(--font-caption);
+    font-family: inherit;
+    margin-top: 0.75em;
+    padding: 0.5em 1em;
+    background: var(--surface-muted);
+    color: var(--text);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-press);
+  }
+  .timeline-view-btn:hover { background: var(--surface-hover); }
+  .timeline-view-btn:active { transform: scale(var(--active-scale)); }
+
+
+    
+  /* Family Locations: top minimal (max 30vh), map fills remainder */
+  .family-locations-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .family-locations-top {
+    flex: 0 0 auto;
+    max-height: 30vh;
+    overflow: auto;
+  }
+  .family-locations-layout #map {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+  }

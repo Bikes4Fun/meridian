@@ -196,7 +196,8 @@ class MeridianKioskApp:
         if screen_name == "family":
             from .checkin_screen import build_checkin_html
             html, markers_json = build_checkin_html(
-                self.services, self.api_url, self.family_circle_id
+                self.services, self.api_url, self.family_circle_id,
+                kiosk_user_id=self.kiosk_user_id,
             )
             return html, f"initMap({json.dumps(markers_json)})"
 

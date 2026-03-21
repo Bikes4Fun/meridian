@@ -1,359 +1,685 @@
+/* =============================================================================
+   MERIDIAN DESIGN SYSTEM - DESIGN TOKENS V3
+   TV Kiosk (1080×1920px portrait) | Optimized for dementia care
+   ============================================================================= */
 
-    /* Design tokens per meridian-design-system-2.md (TV ref 1080×1920). vh = proportional to viewport height. */
-    :root {
-        --font-hero: 3.75vh;
-        --font-header: 2.92vh;
-        --font-subheader: 2.08vh;
-        --font-body-large: 1.67vh;
-        --font-body: 1.46vh;
-        --font-caption: 1.25vh;
-        --font-nav: 1.67vh;
-        --line-height: 1.6;
-        --safe-margin: 2.08vh;
-        --touch-min: 6.25vh;
-        --button-min: 8.33vh;
-        --avatar-size: 6.67vh;
-        --bg: #f2f2ee;
-        --text: #1a1a1a;
-        --med-surface: #f0f5fa;
-        --events-surface: #f5faf0;
-      }
-  
-      @font-face {
-        font-family: 'AtkinsonHyperlegible';
-        src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf') format('truetype');
-      }
-      @font-face {
-        font-family: 'AtkinsonHyperlegible';
-        font-weight: bold;
-        src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf') format('truetype');
-      }
-  
-      * { box-sizing: border-box; }
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        font-family: AtkinsonHyperlegible, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        line-height: var(--line-height);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-  
-      /* Nav */
-      #kiosk-nav {
-        display: flex;
-        min-height: var(--touch-min);
-        padding: 0 var(--safe-margin);
-        gap: 0;
-        background: var(--bg);
-        border-bottom: 2px solid #ddd;
-      }
-      .nav-tab {
-        flex: 1;
-        font-size: var(--font-nav);
-        font-family: inherit;
-        min-height: var(--touch-min);
-        border: none;
-        background: transparent;
-        color: var(--text);
-        cursor: pointer;
-        transition: transform 0.08s ease, background 0.08s ease;
-      }
-      .nav-tab:hover { background: rgba(0,0,0,0.05); }
-      .nav-tab:active { transform: scale(0.97); background: rgba(0,0,0,0.1); }
-  
-      /* Screen content */
-      #screen-content {
-        flex: 1;
-        overflow: auto;
-        padding: var(--safe-margin);
-      }
-  
-      .add-event-btn {
-        font-size: var(--font-body);
-        font-family: inherit;
-        min-height: var(--touch-min);
-        padding: 0 var(--safe-margin);
-        background: #2E7D9B;
-        color: white;
-        border: 2px solid #1e5d7a;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      .add-event-btn:hover { background: #3a8fab; }
-      .add-event-btn:active { transform: scale(0.97); }
+:root {
+  /* ===== TYPOGRAPHY SCALE (vh-based for responsive scaling) ===== */
+  --font-hero: 3.75vh;        /* ~72px at 1920px height */
+  --font-header: 2.92vh;      /* ~56px */
+  --font-subheader: 2.08vh;   /* ~40px */
+  --font-body-large: 1.67vh;  /* ~32px */
+  --font-body: 1.46vh;        /* ~28px */
+  --font-caption: 1.25vh;     /* ~24px */
+  --font-nav: 1.67vh;         /* ~32px */
+  --line-height: 1.6;
 
-      .event-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 100;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--safe-margin);
-      }
-      .event-modal {
-        background: var(--bg);
-        padding: var(--safe-margin);
-        border-radius: 12px;
-        max-width: 90%;
-        min-width: 320px;
-        border: 2px solid #ddd;
-      }
-      .event-modal-title { margin: 0 0 1em 0; font-size: var(--font-header); }
-      .event-input {
-        display: block;
-        width: 100%;
-        margin-bottom: 0.75em;
-        padding: 0.5em;
-        font-size: var(--font-body);
-        font-family: inherit;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        min-height: var(--touch-min);
-      }
-      .event-form-actions { display: flex; gap: 1em; margin-top: 1em; }
-      .event-btn {
-        flex: 1;
-        min-height: var(--touch-min);
-        font-size: var(--font-body);
-        font-family: inherit;
-        border-radius: 8px;
-        cursor: pointer;
-        border: 2px solid #ccc;
-      }
-      .event-btn-primary { background: #2E7D9B; color: white; border-color: #1e5d7a; }
-      .event-btn-secondary { background: #e8e8e8; color: var(--text); }
+  /* ===== SPACING SCALE (vh-based) ===== */
+  --space-xs: 0.42vh;   /* ~8px */
+  --space-sm: 0.83vh;   /* ~16px */
+  --space-md: 1.25vh;   /* ~24px */
+  --space-lg: 2.08vh;   /* ~40px - safe margin for kiosk edges */
+  --safe-margin: 2.08vh; /* Alias for clarity in kiosk context */
 
-      /* Layout */
-      .kiosk-panel {
-        padding: var(--safe-margin);
-      }
-      .kiosk-panel.med-panel { background: var(--med-surface); }
-      .kiosk-panel.events-panel { background: var(--events-surface); }
-      .two-column-row {
-        display: flex;
-        gap: 1.25vh;
-      }
-      .col-left, .col-right { overflow: auto; }
-  
-      /* Typography */
-      .kiosk-hero { font-size: var(--font-hero); font-weight: 700; }
-      .kiosk-header { font-size: var(--font-header); font-weight: 700; }
-      .kiosk-subheader { font-size: var(--font-subheader); font-weight: 700; }
-      .kiosk-body-large { font-size: var(--font-body-large); }
-      .kiosk-body, .kiosk-caption { white-space: pre-wrap; }
-      .kiosk-body { font-size: var(--font-body); }
-      .kiosk-caption { font-size: var(--font-caption); }
-  
-      /* State placeholders */
-      .state-placeholder { font-size: var(--font-body); padding: 0.83vh 0; }
-      .state-loading { color: #666; }
-      .state-empty { color: #666; }
-      .state-error { color: #c00; }
-  
-      /* Button - standard press feedback (size + color). Use .kiosk-button--no-feedback to disable. */
-      .kiosk-button {
-        font-family: inherit;
-        font-size: var(--font-caption);
-        min-height: var(--button-min);
-        min-width: var(--button-min);
-        padding: 0.83vh 1.25vh;
-        border-radius: 12px;
-        border: none;
-        background: #4080c0;
-        color: #fff;
-        cursor: pointer;
-        transition: transform 0.08s ease, background 0.08s ease;
-      }
-      .kiosk-button:active:not(.kiosk-button--no-feedback) {
-        transform: scale(0.96);
-        background: #2d5a8f;
-      }
-  
-      /* Contact tile - avatar 128px per design; initial as fallback when photo fails */
-      .contact-tile {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: var(--touch-min);
-        padding: 0.625vh;
-        cursor: pointer;
-        border-radius: 12px;
-        transition: transform 0.08s ease, background 0.08s ease;
-      }
-      .contact-tile:hover { background: rgba(0,0,0,0.05); }
-      .contact-tile:active { transform: scale(0.96); background: rgba(0,0,0,0.1); }
-      .avatar-wrapper {
-        position: relative;
-        width: var(--avatar-size);
-        height: var(--avatar-size);
-        margin: 0 auto 0.42vh;
-      }
-      .contact-initial {
-        width: var(--avatar-size);
-        height: var(--avatar-size);
-        border-radius: 50%;
-        background: #999;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: var(--font-header);
-        font-weight: 700;
-      }
-      .avatar-wrapper .avatar {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: var(--avatar-size);
-        height: var(--avatar-size);
-        border-radius: 50%;
-        object-fit: cover;
-      }
-      .contact-name { font-size: var(--font-body-large); font-weight: 700; }
-      .contact-relationship { font-size: var(--font-caption); color: #666; }
-  
-      /* Emergency patient photo */
-      .emergency-patient-photo {
-        margin-bottom: 1.25vh;
-      }
-      .emergency-patient-photo .avatar-wrapper {
-        display: inline-block;
-        width: 10vh;
-        height: 10vh;
-      }
-      .emergency-patient-photo .avatar,
-      .emergency-patient-photo .contact-initial {
-        width: 10vh;
-        height: 10vh;
-      }
+  /* ===== SIZING ===== */
+  --touch-min: 6.25vh;      /* ~120px - minimum touch target */
+  --button-min: 8.33vh;     /* ~160px - minimum button height */
+  --avatar-size: 6.67vh;    /* ~128px - standard avatar */
+  --avatar-large: 10vh;     /* ~192px - emergency photo */
 
-      /* Emergency form (injected by Python) */
-      .form-row {
-        display: flex;
-        gap: 0.42vh;
-        padding: 0.21vh 0;
-      }
-      .form-row .label {
-        flex: 0 0 10.42vh;
-        font-size: var(--font-caption);
-        color: var(--text);
-      }
-      .form-row .value {
-        flex: 1;
-        font-size: var(--font-body);
-      }
-      .section-bar {
-        padding: 0.625vh 0.83vh;
-        color: #fff;
-        font-size: var(--font-subheader);
-        font-weight: 700;
-      }
-  
-      /* Alert flash */
-      @keyframes alert-flash {
-        0%, 100% { box-shadow: inset 0 0 0 8px #ff8000; }
-        50% { box-shadow: inset 0 0 0 8px #ff3300; }
-      }
-      body.alert-active { animation: alert-flash 0.5s infinite; }
-  
-      /* Map */
-      #map { height: 20.83vh; min-height: 10.42vh; }
-      .map-marker-div { background: transparent; border: none; }
+  /* ===== BORDER RADIUS ===== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-pill: 2px;       /* Thin pill shape for timeline bars */
+  --radius-full: 50%;
 
-      /* Option 5: Up Next, What's Next Today */
-      .up-next-card {
-        background: #2E7D9B;
-        color: #fff;
-        padding: var(--safe-margin);
-        border-radius: 12px;
-        min-height: 5vh;
-      }
-      .up-next-card-inner {
-        display: flex;
-        align-items: center;
-        gap: 1em;
-      }
-      .up-next-icon { font-size: var(--font-header); }
-      .up-next-title { font-size: var(--font-body-large); font-weight: 700; display: block; }
-      .up-next-sub { font-size: var(--font-caption); opacity: 0.9; display: block; margin-top: 0.25em; }
-      .up-next-done { font-size: var(--font-body); opacity: 0.9; }
-      .up-next-loading { font-size: var(--font-body); opacity: 0.8; }
+  /* ===== COLOR PALETTE ===== */
+  /* Neutrals & Background */
+  --bg: #f2f2ee;
+  --text: #1a1a1a;
+  --text-muted: #666;
+  --border: #ddd;
+  --border-light: #ccc;
 
-      .timeline-card {
-        padding: var(--safe-margin);
-        background: var(--med-surface);
-        border-radius: 12px;
-      }
-      .timeline-header {
-        font-size: var(--font-caption);
-        font-weight: 700;
-        color: #666;
-        margin-bottom: 0.5em;
-      }
-      .timeline-list { font-size: var(--font-body); }
-      .timeline-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75em;
-        padding: 0.35em 0;
-      }
-      .timeline-item-done { color: #666; text-decoration: line-through; }
-      .timeline-bar-med {
-        flex-shrink: 0;
-        width: 4px;
-        height: 1.5em;
-        background: #2E7D9B;
-        border-radius: 2px;
-      }
-      .timeline-bar-event {
-        flex-shrink: 0;
-        width: 4px;
-        height: 1.5em;
-        background: #1a9b8a;
-        border-radius: 2px;
-      }
+  /* Surfaces */
+  --med-surface: #f0f5fa;      /* Light blue for medication */
+  --events-surface: #f5faf0;   /* Light green for events */
+  --surface-muted: #e8e8e8;    /* Neutral gray */
+  --surface-hover: #ddd;       /* Hover state for muted surfaces */
 
-      .home-action-row {
-        display: flex;
-        gap: 1em;
-        flex-wrap: wrap;
-      }
-      .home-action-row .add-event-btn,
-      .home-action-row .manage-meds-btn {
-        flex: 1;
-        min-width: 10em;
-      }
-      .manage-meds-btn {
-        font-size: var(--font-body);
-        font-family: inherit;
-        min-height: var(--touch-min);
-        padding: 0 var(--safe-margin);
-        background: #2E7D9B;
-        color: white;
-        border: 2px solid #1e5d7a;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      .manage-meds-btn:hover { background: #3a8fab; }
-      .manage-meds-btn:active { transform: scale(0.97); }
-      .timeline-view-btn {
-        font-size: var(--font-caption);
-        font-family: inherit;
-        margin-top: 0.75em;
-        padding: 0.5em 1em;
-        background: #e8e8e8;
-        color: var(--text);
-        border: 2px solid #ccc;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      .timeline-view-btn:hover { background: #ddd; }
-    
+  /* Primary (Teal - medication/medical) */
+  --primary: #2E7D9B;
+  --primary-dark: #1e5d7a;
+  --primary-hover: #3a8fab;
+
+  /* Accent (Blue - interactive elements) */
+  --accent: #4080c0;
+  --accent-dark: #2d5a8f;
+
+  /* Secondary (Teal-green - events/calendar) */
+  --secondary: #1a9b8a;
+
+  /* Status colors */
+  --avatar-fallback: #999;
+  --error: #c00;
+  --warning: #ff8000;
+  --warning-bright: #ff3300;
+
+  /* Overlays (with alpha for transparency) */
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-light: rgba(0, 0, 0, 0.05);
+  --overlay-medium: rgba(0, 0, 0, 0.1);
+
+  /* ===== TRANSITIONS ===== */
+  --transition-press: transform 0.08s ease, background 0.08s ease;
+  --active-scale: 0.97;  /* Scale down slightly when pressed */
+}
+
+/* =============================================================================
+   FONTS
+   ============================================================================= */
+
+@font-face {
+  font-family: 'AtkinsonHyperlegible';
+  src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'AtkinsonHyperlegible';
+  font-weight: bold;
+  src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf') format('truetype');
+}
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: AtkinsonHyperlegible, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: var(--line-height);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =============================================================================
+   LAYOUT COMPONENTS
+   ============================================================================= */
+
+/* Navigation */
+#kiosk-nav {
+  display: flex;
+  min-height: var(--touch-min);
+  padding: 0 var(--safe-margin);
+  gap: 0;
+  background: var(--bg);
+  border-bottom: 2px solid var(--border);
+}
+
+.nav-tab {
+  flex: 1;
+  font-size: var(--font-nav);
+  font-family: inherit;
+  min-height: var(--touch-min);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.nav-tab:hover {
+  background: var(--overlay-light);
+}
+
+.nav-tab:active {
+  transform: scale(var(--active-scale));
+  background: var(--overlay-medium);
+}
+
+/* Screen content area */
+#screen-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--safe-margin);
+}
+
+/* Panel containers */
+.kiosk-panel {
+  padding: var(--safe-margin);
+}
+
+.kiosk-panel.med-panel {
+  background: var(--med-surface);
+}
+
+.kiosk-panel.events-panel {
+  background: var(--events-surface);
+}
+
+/* Utility layout classes */
+.flex-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-1 {
+  flex: 1;
+  min-height: 0;
+}
+
+.flex-auto {
+  flex: 0 0 auto;
+}
+
+.two-column-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.col-left,
+.col-right {
+  overflow: auto;
+}
+
+/* Press feedback utility - add to any interactive element */
+.press-feedback:hover {
+  background: var(--overlay-light);
+}
+
+.press-feedback:active {
+  transform: scale(var(--active-scale));
+  background: var(--overlay-medium);
+}
+
+/* Family Locations layout: top minimal, map fills remainder */
+.family-locations-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.family-locations-top {
+  flex: 0 0 auto;
+  max-height: 30vh;
+  overflow: auto;
+}
+
+.family-locations-layout #map {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+
+/* =============================================================================
+   TYPOGRAPHY
+   ============================================================================= */
+
+.kiosk-hero {
+  font-size: var(--font-hero);
+  font-weight: 700;
+}
+
+.kiosk-header {
+  font-size: var(--font-header);
+  font-weight: 700;
+}
+
+.kiosk-subheader {
+  font-size: var(--font-subheader);
+  font-weight: 700;
+}
+
+.kiosk-body-large {
+  font-size: var(--font-body-large);
+}
+
+.kiosk-body {
+  font-size: var(--font-body);
+  white-space: pre-wrap;
+}
+
+.kiosk-caption {
+  font-size: var(--font-caption);
+  white-space: pre-wrap;
+}
+
+/* =============================================================================
+   BUTTONS
+   ============================================================================= */
+
+/* Generic kiosk button */
+.kiosk-button {
+  font-family: inherit;
+  font-size: var(--font-caption);
+  min-height: var(--button-min);
+  min-width: var(--button-min);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.kiosk-button:active:not(.kiosk-button--no-feedback) {
+  transform: scale(var(--active-scale));
+  background: var(--accent-dark);
+}
+
+/* Primary action buttons (Add Event, Manage Meds) */
+.add-event-btn,
+.manage-meds-btn {
+  font-size: var(--font-body);
+  font-family: inherit;
+  min-height: var(--touch-min);
+  padding: 0 var(--safe-margin);
+  background: var(--primary);
+  color: white;
+  border: 2px solid var(--primary-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.add-event-btn:hover,
+.manage-meds-btn:hover {
+  background: var(--primary-hover);
+}
+
+.add-event-btn:active,
+.manage-meds-btn:active {
+  transform: scale(var(--active-scale));
+}
+
+.home-action-row {
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+}
+
+.home-action-row .add-event-btn,
+.home-action-row .manage-meds-btn {
+  flex: 1;
+  min-width: 10em;
+}
+
+/* Timeline view button */
+.timeline-view-btn {
+  font-size: var(--font-caption);
+  font-family: inherit;
+  margin-top: var(--space-sm);
+  padding: 0.5em 1em;
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.timeline-view-btn:hover {
+  background: var(--surface-hover);
+}
+
+.timeline-view-btn:active {
+  transform: scale(var(--active-scale));
+}
+
+/* Modal/Event form buttons */
+.event-btn {
+  flex: 1;
+  min-height: var(--touch-min);
+  font-size: var(--font-body);
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 2px solid var(--border-light);
+  transition: var(--transition-press);
+}
+
+.event-btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary-dark);
+}
+
+.event-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.event-btn-primary:active {
+  transform: scale(var(--active-scale));
+}
+
+.event-btn-secondary {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.event-btn-secondary:hover {
+  background: var(--surface-hover);
+}
+
+.event-btn-secondary:active {
+  transform: scale(var(--active-scale));
+}
+
+/* =============================================================================
+   CONTACT TILES & AVATARS
+   ============================================================================= */
+
+.contact-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: var(--touch-min);
+  padding: 0.625vh;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: var(--transition-press);
+}
+
+.contact-tile:hover {
+  background: var(--overlay-light);
+}
+
+.contact-tile:active {
+  transform: scale(var(--active-scale));
+  background: var(--overlay-medium);
+}
+
+.avatar-wrapper {
+  position: relative;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  margin: 0 auto var(--space-xs);
+}
+
+.contact-initial {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: var(--radius-full);
+  background: var(--avatar-fallback);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-header);
+  font-weight: 700;
+}
+
+.avatar-wrapper .avatar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.contact-name {
+  font-size: var(--font-body-large);
+  font-weight: 700;
+}
+
+.contact-relationship {
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+}
+
+/* Large avatar for emergency screen */
+.emergency-patient-photo {
+  margin-bottom: var(--space-md);
+}
+
+.emergency-patient-photo .avatar-wrapper {
+  display: inline-block;
+  width: var(--avatar-large);
+  height: var(--avatar-large);
+}
+
+.emergency-patient-photo .avatar,
+.emergency-patient-photo .contact-initial {
+  width: var(--avatar-large);
+  height: var(--avatar-large);
+}
+
+/* =============================================================================
+   MODALS & OVERLAYS
+   ============================================================================= */
+
+.event-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-dark);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--safe-margin);
+}
+
+.event-modal {
+  background: var(--bg);
+  padding: var(--safe-margin);
+  border-radius: var(--radius-md);
+  max-width: 90%;
+  min-width: 320px;
+  border: 2px solid var(--border);
+}
+
+.event-modal-title {
+  margin: 0 0 1em 0;
+  font-size: var(--font-header);
+}
+
+.event-input {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.75em;
+  padding: 0.5em;
+  font-size: var(--font-body);
+  font-family: inherit;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-height: var(--touch-min);
+}
+
+.event-form-actions {
+  display: flex;
+  gap: 1em;
+  margin-top: 1em;
+}
+
+/* =============================================================================
+   TIMELINE & UP NEXT CARDS
+   ============================================================================= */
+
+.up-next-card {
+  background: var(--primary);
+  color: #fff;
+  padding: var(--safe-margin);
+  border-radius: var(--radius-md);
+  min-height: 5vh;
+}
+
+.up-next-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+
+.up-next-icon {
+  font-size: var(--font-header);
+}
+
+.up-next-title {
+  font-size: var(--font-body-large);
+  font-weight: 700;
+  display: block;
+}
+
+.up-next-sub {
+  font-size: var(--font-caption);
+  opacity: 0.9;
+  display: block;
+  margin-top: 0.25em;
+}
+
+.up-next-done {
+  font-size: var(--font-body);
+  opacity: 0.9;
+}
+
+.up-next-loading {
+  font-size: var(--font-body);
+  opacity: 0.8;
+}
+
+.timeline-card {
+  padding: var(--safe-margin);
+  background: var(--med-surface);
+  border-radius: var(--radius-md);
+}
+
+.timeline-header {
+  font-size: var(--font-caption);
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 0.5em;
+}
+
+.timeline-list {
+  font-size: var(--font-body);
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.35em 0;
+}
+
+.timeline-item-done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* Timeline bars - color-coded by type */
+.timeline-bar-med {
+  flex-shrink: 0;
+  width: 4px;
+  height: 1.5em;
+  background: var(--primary);
+  border-radius: var(--radius-pill);
+}
+
+.timeline-bar-event {
+  flex-shrink: 0;
+  width: 4px;
+  height: 1.5em;
+  background: var(--secondary);
+  border-radius: var(--radius-pill);
+}
+
+/* =============================================================================
+   FORMS
+   ============================================================================= */
+
+.form-row {
+  display: flex;
+  gap: var(--space-xs);
+  padding: calc(var(--space-xs) / 2) 0;
+}
+
+.form-row .label {
+  flex: 0 0 10.42vh;
+  font-size: var(--font-caption);
+  color: var(--text);
+}
+
+.form-row .value {
+  flex: 1;
+  font-size: var(--font-body);
+}
+
+.section-bar {
+  padding: 0.625vh var(--space-sm);
+  color: #fff;
+  font-size: var(--font-subheader);
+  font-weight: 700;
+}
+
+/* =============================================================================
+   STATE INDICATORS
+   ============================================================================= */
+
+.state-placeholder {
+  font-size: var(--font-body);
+  padding: var(--space-sm) 0;
+}
+
+.state-loading {
+  color: var(--text-muted);
+}
+
+.state-empty {
+  color: var(--text-muted);
+}
+
+.state-error {
+  color: var(--error);
+}
+
+/* =============================================================================
+   ANIMATIONS & ALERTS
+   ============================================================================= */
+
+@keyframes alert-flash {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 8px var(--warning);
+  }
+  50% {
+    box-shadow: inset 0 0 0 8px var(--warning-bright);
+  }
+}
+
+body.alert-active {
+  animation: alert-flash 0.5s infinite;
+}
+
+/* =============================================================================
+   MAP COMPONENTS
+   ============================================================================= */
+
+#map {
+  height: 20.83vh;
+  min-height: 10.42vh;
+}
+
+.map-marker-div {
+  background: transparent;
+  border: none;
+}

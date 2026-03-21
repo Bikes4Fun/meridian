@@ -2,6 +2,8 @@
  * Resolve API URL for build scripts. Tries: 1) API_URL env, 2) Railway, 3) probe localhost ports.
  * Aligns with Python config.get_server_port (default 8000, tries 20 ports).
  */
+// TODO: can this entire file be delete?
+
 function loadApiConfig() {
     const path = require('path');
     const fs = require('fs');

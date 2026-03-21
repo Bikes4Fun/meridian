@@ -124,11 +124,21 @@ final class CheckInViewController: UIViewController {
         checkInButton.isEnabled = false
         pendingCheckInSession = s
 
-        let status = locationManager.authorizationStatus
-        if status == .authorizedWhenInUse || status == .authorizedAlways {
+        switch locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
             locationManager.requestLocation()
-        } else {
+        case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            pendingCheckInSession = nil
+            statusLabel.text = "Location access denied. Enable it in Settings."
+            statusLabel.textColor = .systemRed
+            checkInButton.isEnabled = true
+        @unknown default:
+            pendingCheckInSession = nil
+            statusLabel.text = "Location unavailable"
+            statusLabel.textColor = .systemRed
+            checkInButton.isEnabled = true
         }
     }
 
@@ -166,14 +176,16 @@ final class CheckInViewController: UIViewController {
 extension CheckInViewController: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard pendingCheckInSession != nil else { return }
-        let status = manager.authorizationStatus
-        if status == .authorizedWhenInUse || status == .authorizedAlways {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()
-        } else if status == .denied || status == .restricted {
+        case .denied, .restricted:
             pendingCheckInSession = nil
-            statusLabel.text = "Location permission denied. Enable in Settings to check in."
+            statusLabel.text = "Location access denied. Enable it in Settings."
             statusLabel.textColor = .systemRed
             checkInButton.isEnabled = true
+        default:
+            break
         }
     }
 

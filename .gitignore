@@ -32,4 +32,4 @@ package/*
 
 # Swift Package Manager
 meridian-ios/.build/
-meridian-ios/.swiftpm/
+meridian-ios/.swiftpm/meridian-ios/.build/

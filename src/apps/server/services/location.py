@@ -135,7 +135,7 @@ class LocationService(DatabaseServiceMixin):
         return result
 
     def get_checkins(self, family_circle_id: str) -> ServiceResult:
-        """Get latest check-in per user in the family."""
+        """Get latest check-in per user in the family. Resolves location_name from GPS when null."""
         query = """
             SELECT c.id, c.family_circle_id, c.user_id, c.timestamp,
                    c.latitude, c.longitude, c.location_name, c.notes,
@@ -153,7 +153,17 @@ class LocationService(DatabaseServiceMixin):
             WHERE c.family_circle_id = ?
             ORDER BY c.timestamp DESC
         """
-        return self.safe_query(query, (family_circle_id, family_circle_id))
+        result = self.safe_query(query, (family_circle_id, family_circle_id))
+        if not result.success or not result.data:
+            return result
+        for row in result.data:
+            lat = row.get("latitude")
+            lon = row.get("longitude")
+            if row.get("location_name") is None and lat is not None and lon is not None:
+                resolved = self.resolve_place_name(lat, lon, family_circle_id)
+                if resolved:
+                    row["location_name"] = resolved
+        return result
 
     def get_family_members(self, family_circle_id: str) -> ServiceResult:
         """Return users in the family (for check-in dropdown)."""

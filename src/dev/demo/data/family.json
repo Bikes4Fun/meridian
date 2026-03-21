@@ -54,6 +54,6 @@
     }
   ],
   "location_checkins": [
-    {"user_id": "fm_004", "latitude": 37.005565, "longitude": -113.562030, "notes": null}
+    {"user_id": "fm_004", "latitude": 37.005556, "longitude": -113.562030, "notes": null}
   ]
 }

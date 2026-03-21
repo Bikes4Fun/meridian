@@ -228,8 +228,8 @@ body {
 
 .family-locations-layout #map {
   flex: 1 1 0;
-  min-height: 0;
-  height: auto;
+  min-height: 250px;
+  height: 100%;
 }
 
 /* =============================================================================
@@ -305,6 +305,10 @@ body {
 
 .family-locations-header-row .kiosk-header {
   margin: 0;
+}
+
+.family-locations-header-row .kiosk-button {
+  flex-shrink: 0;
 }
 
 /* Primary action buttons (Add Event, Manage Meds) */

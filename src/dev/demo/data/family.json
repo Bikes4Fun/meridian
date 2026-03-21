@@ -25,6 +25,12 @@
       "display_name": "Indigo",
       "photo_filename": "indigo gps pin.jpeg",
       "contact_id": null
+    },
+    {
+      "id": "fm_005",
+      "display_name": "Dylan",
+      "photo_filename": null,
+      "contact_id": null
     }
   ],
   "named_places": [
@@ -54,6 +60,10 @@
     }
   ],
   "location_checkins": [
-    {"user_id": "fm_004", "latitude": 37.005556, "longitude": -113.562030, "notes": null}
+    {"user_id": "fm_001", "latitude": 37.139688, "longitude": -113.503014},
+    {"user_id": "fm_002", "latitude": 37.103532, "longitude": -113.565523},
+    {"user_id": "fm_003", "latitude": 37.139688, "longitude": -113.503014},
+    {"user_id": "fm_004", "latitude": 37.139688, "longitude": -113.503014},
+    {"user_id": "fm_005", "latitude": 37.139688, "longitude": -113.503014}
   ]
 }

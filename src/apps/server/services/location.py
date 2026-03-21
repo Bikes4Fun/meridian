@@ -165,17 +165,6 @@ class LocationService(DatabaseServiceMixin):
                     row["location_name"] = resolved
         return result
 
-    def get_family_members(self, family_circle_id: str) -> ServiceResult:
-        """Return users in the family (for check-in dropdown)."""
-        query = """
-            SELECT u.id, u.display_name, u.photo_filename
-            FROM users u
-            INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
-            WHERE ufc.family_circle_id = ?
-            ORDER BY u.display_name
-        """
-        return self.safe_query(query, (family_circle_id,))
-
     def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
         """Return all family-wide named places. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""
         if not family_circle_id:

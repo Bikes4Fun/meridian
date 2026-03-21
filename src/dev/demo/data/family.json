@@ -38,30 +38,30 @@
       "location_id": "loc_001",
       "location_name": "Deanna's School",
       "gps": "37.103532,-113.565523",
-      "radius_metres": 350
+      "radius_metres": 150
     },
     {
       "location_id": "loc_003",
       "location_name": "Landon's School",
       "gps": "37.005556,-113.562030",
-      "radius_metres": 350
+      "radius_metres": 150
     },
     {
       "location_id": "loc_004",
       "location_name": "Eleanor Home",
       "gps": "37.139688,-113.503014",
-      "radius_metres": 350
+      "radius_metres": 150
     },
     {
       "location_id": "loc_005",
       "location_name": "Dean's Work",
       "gps": "37.0755,-113.3011",
-      "radius_metres": 350
+      "radius_metres": 150
     }
   ],
   "location_checkins": [
     {"user_id": "fm_001", "latitude": 37.139688, "longitude": -113.503014},
-    {"user_id": "fm_002", "latitude": 37.103532, "longitude": -113.565523},
+    {"user_id": "fm_002", "latitude": 37.139688, "longitude": -113.503014},
     {"user_id": "fm_003", "latitude": 37.139688, "longitude": -113.503014},
     {"user_id": "fm_004", "latitude": 37.139688, "longitude": -113.503014},
     {"user_id": "fm_005", "latitude": 37.139688, "longitude": -113.503014}

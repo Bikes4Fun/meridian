@@ -724,6 +724,10 @@ def create_server_app(db_path=None):
 
         @app.route("/shared/<path:path>")
         def serve_shared(path):
+            allowed_extensions = {".css", ".woff", ".woff2", ".ttf", ".otf", ".eot"}
+            _, ext = os.path.splitext(path)
+            if ext.lower() not in allowed_extensions:
+                abort(404)
             return send_from_directory(os.path.join(_src, "shared"), path)
 
         @app.route("/chatapp/")

@@ -4,15 +4,15 @@ Native Swift/UIKit app. Connects to the Meridian API (login, alert, check-in, ch
 
 ## Build and run
 
-**Option A – Command line + Xcode**
+**Option A – Command line**
 
 ```bash
 ./run_ios.sh
 ```
 
-Builds the app, then opens Xcode and Simulator. In Xcode, press **Cmd+R** to run.
+Builds the app for iOS Simulator and launches it in the iPhone 16 simulator.
 
-**Option B – Xcode only**
+**Option B – Xcode**
 
 ```bash
 open Meridian.xcodeproj

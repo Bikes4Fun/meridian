@@ -7,7 +7,7 @@ targets:
   Meridian:
     type: application
     platform: iOS
-    supportedDestinations: [iOS, macCatalyst]
+    supportedDestinations: [iOS]
     preBuildScripts:
       - script: |
           cp "$SRCROOT/../assets/app-icon.png" "$SRCROOT/Assets.xcassets/AppIcon.appiconset/AppIcon.png"

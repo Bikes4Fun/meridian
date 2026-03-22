@@ -85,3 +85,6 @@ class CareRecipientService(DatabaseServiceMixin):
             cid = f"poa_{family_circle_id}"
             if _ensure_contact(cid, poa_name or "", poa_phone):
                 _set_role("poa", cid)
+        return ServiceResult.success_result(
+            {"family_circle_id": family_circle_id, "care_recipient_user_id": care_recipient_user_id}
+        )

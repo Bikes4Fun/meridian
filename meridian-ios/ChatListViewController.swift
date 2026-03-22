@@ -54,6 +54,9 @@ final class ChatListViewController: UIViewController {
         let chatVC = ChatWebViewController()
         chatVC.loadChat(recipientSendbirdUserId: sb, recipientDisplayName: recipient.displayName, familyCircleId: s.familyCircleId)
         let nav = UINavigationController(rootViewController: chatVC)
+        if traitCollection.horizontalSizeClass == .compact {
+            nav.modalPresentationStyle = .fullScreen
+        }
         present(nav, animated: true)
     }
 }

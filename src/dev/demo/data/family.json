@@ -57,6 +57,12 @@
       "location_name": "Dean's Work",
       "gps": "37.0755,-113.3011",
       "radius_metres": 150
+    },
+    {
+      "location_id": "loc_006",
+      "location_name": "Deanna's office",
+      "gps": "37.785834,-122.406417",
+      "radius_metres": 150
     }
   ],
   "location_checkins": [

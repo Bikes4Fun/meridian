@@ -1,0 +1,155 @@
+/* =============================================================================
+   MERIDIAN CHAT – MOBILE / PHONE
+   Dynamically sized for iPhone SE through Max, webapp, kiosk webview.
+   Extends shared/base.css. Chat-specific layout and overrides only.
+   ============================================================================= */
+
+:root {
+  --chat-font-size: clamp(14px, 4vw, 16px);
+  --chat-header-size: clamp(1.1rem, 4.5vw, 1.5rem);
+  --chat-caption-size: 0.9em;
+  --chat-status-size: 13px;
+  --chat-space-sm: 8px;
+  --chat-space-md: 12px;
+  --chat-space-lg: 16px;
+  --chat-padding-safe: max(80px, env(safe-area-inset-bottom));
+  --chat-padding-top: max(12px, env(safe-area-inset-top));
+}
+
+/* =============================================================================
+   LAYOUT (chat-specific)
+   ============================================================================= */
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--chat-font-size);
+  line-height: 1.5;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--chat-padding-top) var(--chat-space-lg) var(--chat-padding-safe) var(--chat-space-lg);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* =============================================================================
+   HEADER & PARTICIPANTS
+   ============================================================================= */
+
+#chatHeader {
+  font-size: var(--chat-header-size);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+#chatParticipants {
+  margin: 0 0 var(--chat-space-sm) 0;
+  font-size: var(--chat-caption-size);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* =============================================================================
+   STATUS BANNER
+   ============================================================================= */
+
+#status {
+  margin: var(--chat-space-sm) 0;
+  padding: var(--chat-space-sm) 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--chat-status-size);
+  flex-shrink: 0;
+}
+
+#status.error {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+#status.info {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+#status.success {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+/* =============================================================================
+   MESSAGE LIST
+   ============================================================================= */
+
+#messages {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: var(--chat-space-md);
+  margin: var(--chat-space-sm) 0;
+  background: var(--bg-surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+#messages p {
+  margin: 6px 0;
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+/* =============================================================================
+   SEND ROW (INPUT + BUTTON)
+   ============================================================================= */
+
+#sendRow {
+  display: flex;
+  gap: var(--chat-space-sm);
+  margin-top: var(--chat-space-sm);
+  padding-bottom: env(safe-area-inset-bottom);
+  flex-shrink: 0;
+}
+
+#msgInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+}
+
+#sendBtn {
+  padding: 10px var(--chat-space-lg);
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+#sendBtn:disabled {
+  background: var(--primary-disabled);
+  cursor: not-allowed;
+}
+
+/* =============================================================================
+   RESPONSIVE – LARGER SCREENS
+   ============================================================================= */
+
+@media (min-width: 480px) {
+  body {
+    padding: 20px var(--chat-space-lg);
+  }
+
+  #messages {
+    min-height: 200px;
+  }
+}

@@ -15,6 +15,7 @@
 		41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640206CF5CBA2A4150B96A6E /* AlertViewController.swift */; };
 		801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */; };
 		8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6F681986AB20651305D17B /* RootViewController.swift */; };
+		9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13C91B6ED00D7322EFF6E640 /* Assets.xcassets */; };
 		B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */; };
 		BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D843BEA5D3D3871F086B2E /* LoginViewController.swift */; };
 		EF281502C91FD4197E29E2D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */; };
@@ -22,6 +23,7 @@
 
 /* Begin PBXFileReference section */
 		00D843BEA5D3D3871F086B2E /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
+		13C91B6ED00D7322EFF6E640 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabViewController.swift; sourceTree = "<group>"; };
 		32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewController.swift; sourceTree = "<group>"; };
 		37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -42,6 +44,7 @@
 				640206CF5CBA2A4150B96A6E /* AlertViewController.swift */,
 				B1F6D2321F89EFB06A10B925 /* APIService.swift */,
 				37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */,
+				13C91B6ED00D7322EFF6E640 /* Assets.xcassets */,
 				32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */,
 				D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */,
 				B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */,
@@ -63,7 +66,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		E50C28E32F6F3E72003DF3DE /* Products */ = {
+		E5BEF7F12F6F9CA90065887B /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -120,7 +123,7 @@
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = E50C28E32F6F3E72003DF3DE /* Products */;
+					ProductGroup = E5BEF7F12F6F9CA90065887B /* Products */;
 					ProjectRef = 5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */;
 				},
 			);
@@ -136,6 +139,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */,
 				1AE71D12FFD55D816A3E12AD /* Meridian.xcodeproj in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

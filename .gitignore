@@ -30,6 +30,13 @@ package/*
 
 */dist/*
 
-# Swift Package Manager
+# Swift Package Manager / Xcode build
 meridian-ios/.build/
-meridian-ios/.swiftpm/meridian-ios/.build/
+meridian-ios/.swiftpm/
+**/.build/
+
+# iOS app icon (generated from assets/app-icon.png by build script)
+meridian-ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+
+# Design source backups
+* copy.ai

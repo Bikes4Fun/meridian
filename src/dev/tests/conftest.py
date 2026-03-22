@@ -16,6 +16,7 @@ if str(src_dir) not in sys.path:
 
 from shared.config import DatabaseConfig
 from apps.server.database import DatabaseManager
+from apps.server.api import create_server_app
 from apps.kiosk.api_client import LocalTimeService
 from apps.server.services.contact import ContactService
 from apps.server.services.calendar import CalendarService
@@ -267,3 +268,11 @@ def medication_service(populated_test_db):
 def emergency_service(populated_test_db, contact_service):
     """Create an EmergencyService with test database and contact service."""
     return EmergencyService(populated_test_db, contact_service)
+
+
+@pytest.fixture
+def api_client(populated_test_db):
+    """Flask test client for the API server using populated test DB."""
+    db_path = populated_test_db.config.path
+    app = create_server_app(db_path=db_path)
+    return app.test_client()

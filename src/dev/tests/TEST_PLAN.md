@@ -4,6 +4,61 @@
 
 ---
 
+## Security gaps (backlog)
+
+| Gap | Status |
+|-----|--------|
+| CORS | ✅ `test_cors.py` — wildcard when unset, reflect legitimate origin, unlisted gets first configured. |
+| Chat token security | ✅ `test_chat_token.py` — expired, tampered signature/payload, missing exp, wrong secret. |
+| `apps/chatapp/api.py` | ✅ `test_chatapp.py` — /auth requires token, rejects invalid, accepts valid. Sendbird/token endpoint still untested. |
+| `/api/login` input validation | ✅ `test_infrastructure.py` — no body, empty user_id/family_circle_id, missing fields. Oversized input not tested. |
+| Emergency alert UI | API behavior tests exist; Playwright kiosk UI tests not implemented. |
+
+---
+
+## Cross-Platform E2E Test Plan
+
+Full-flow tests proving Kiosk ↔ API ↔ iOS/Webapp work together. Each test hits the real Flask server seeded from conftest fixtures.
+
+**API layer tests (pytest)**
+- [x] Emergency alert: POST activate → GET status reflects it (`test_e2e_emergency_alert.py`)
+- [ ] Emergency profile: PUT → GET round-trip, PDF returns `b"%PDF"` header + patient name in bytes
+- [x] Check-in: POST persists lat/lon → GET checkins returns it (`test_e2e_critical_path.py`)
+- [x] Medication: POST → GET returns it in correct time slot — note `data` is `{timed_medications, prn_medications}` (`test_e2e_critical_path.py`)
+- [ ] Chat: session URL returns valid URL, bootstrap redirects correctly
+
+**Kiosk UI tests (Playwright)**
+- [ ] Alert polling: `alert-active` CSS class appears within 5s, screen navigates to emergency
+- [ ] Emergency screen: renders name, DNR badge, allergies, patient photo after profile PUT
+- [ ] Family map: Leaflet marker appears after check-in, photo loads (`naturalWidth > 0`)
+- [ ] Home screen: newly added medication appears in correct time slot
+- [ ] Chat handoff: chatapp window opens, not a 404/500
+
+**iOS layer tests (Detox)**
+- [ ] Alert: push notification/banner appears when alert activated via API
+- [ ] Profile: emergency profile data visible in iOS app after PUT
+- [ ] Check-in: POST from iOS device persists and appears in kiosk family map
+
+**Fix weak/wrong existing tests**
+- [x] `test_happy_path` — replaced with DB-dependent calendar/events
+- [x] `test_deliberate_failure_causes_suite_to_fail` — did not exist
+- [x] `test_public_responses_do_not_expose_secrets` → `test_error_responses_do_not_expose_secret_key`
+- [x] `test_execute_update_failure` — asserts `"no such table"`
+- [x] `test_transaction_rollback_on_error` — duplicate PK constraint, asserts 1 row persisted
+
+**Security gaps (untested)**
+- [x] CORS: wildcard, reflect origin, unlisted rejected
+- [x] Chat token: expired, tampered, missing fields
+- [x] `/api/login`: empty user_id, missing fields (oversized input not tested)
+
+**Setup**
+- [x] Register `integration` marker in `pytest.ini` — already present
+- [ ] Add `e2e` marker to `pytest.ini`
+- [ ] Add `login_session()` helper to conftest
+- [ ] Create `src/dev/tests/playwright/` directory
+
+---
+
 ## Security tests
 
 - **Public routes:** `GET /api/health` no headers → 200. `GET /api/login` no auth → accessible.

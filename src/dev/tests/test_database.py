@@ -67,13 +67,13 @@ class TestDatabaseManager:
         assert result.data == 1  # rowcount
 
     def test_execute_update_failure(self, test_db_manager):
-        """Test update execution with invalid SQL."""
+        """Insert into nonexistent table returns success=False with OperationalError."""
         result = test_db_manager.execute_update(
             "INSERT INTO nonexistent_table (id) VALUES (?)", (1,)
         )
 
         assert result.success is False
-        assert "error" in result.error.lower() or "failed" in result.error.lower()
+        assert "no such table" in result.error.lower()
 
     def test_execute_many_success(self, test_db_manager):
         """Test batch execution."""
@@ -158,29 +158,21 @@ class TestDatabaseManagerIntegration:
     """Integration tests for DatabaseManager with real database operations."""
 
     def test_transaction_rollback_on_error(self, test_db_manager):
-        """Test that transactions are properly handled."""
-        # Create test table
+        """A failed batch leaves no partial data — first insert rolled back."""
         test_db_manager.execute_update(
             "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)",
             (),
         )
-
-        # Insert valid data
+        # Insert id=1 once successfully, then attempt a duplicate to force a constraint error
         test_db_manager.execute_update(
-            "INSERT INTO test_table (name) VALUES (?)", ("Valid",)
+            "INSERT INTO test_table (id, name) VALUES (?, ?)", (1, "first")
         )
-
-        # Try to insert invalid data (should fail)
         result = test_db_manager.execute_update(
-            "INSERT INTO test_table (id, name) VALUES (?, ?)",
-            ("invalid", "Test"),  # id should be integer
+            "INSERT INTO test_table (id, name) VALUES (?, ?)", (1, "duplicate")
         )
-
-        # The error should be caught and returned
         assert result.success is False
-
-        # Verify the valid data is still there
-        count_result = test_db_manager.execute_query(
+        assert "unique" in result.error.lower() or "constraint" in result.error.lower()
+        count = test_db_manager.execute_query(
             "SELECT COUNT(*) as n FROM test_table", ()
         )
-        assert count_result.success and count_result.data[0]["n"] == 1
+        assert count.data[0]["n"] == 1  # only the first insert persisted

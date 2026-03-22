@@ -68,7 +68,8 @@ Tests in `test_api.py` use `PROTECTED_GET_ROUTES` and `PROTECTED_POST_PUT_ROUTES
 Security and infrastructure only (no feature-specific tests):
 
 - `conftest.py` - Shared fixtures; fixture data is source of truth (see schema alignment there)
-- `test_api.py` - Flask API: no secrets in responses, unauthenticated URL → 401, fam_a cannot access fam_b → 403, check-in identity, photo family check, one stack check (integration)
+- `test_api.py` - Flask API security: no secrets in responses, 401/403 auth, check-in identity, photo family check (integration)
+- `test_infrastructure.py` - API infrastructure: health, login (public endpoints), calendar stack check (integration)
 - `test_database.py` - DatabaseManager: schema, persistence, invalid path (integration)
 
 Out of scope for this suite: `test_time_service.py` is empty (time formatting is not security/infrastructure).

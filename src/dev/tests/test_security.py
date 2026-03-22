@@ -1,5 +1,5 @@
 """
-Tests for the client/server API (Flask server).
+Security tests for the client/server API (Flask server).
 Uses the Flask test client; no running server required.
 
 API auth (from apps.server.api set_user_id / _require_family_access):
@@ -16,7 +16,6 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 import pytest
-from apps.server.api import create_server_app
 from dev.tests.conftest import (
     CARE_RECIPIENT_USER_ID,
     FAMILY_CIRCLE_ID,
@@ -25,15 +24,6 @@ from dev.tests.conftest import (
     OTHER_FAMILY_USER_ID,
     PATH_TRAVERSAL_USER_ID,
 )
-
-
-@pytest.fixture
-def api_client(populated_test_db):
-    """Flask test client for the API server using populated test DB."""
-    db_path = populated_test_db.config.path
-    app = create_server_app(db_path=db_path)
-    return app.test_client()
-
 
 API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
 
@@ -71,79 +61,16 @@ PROTECTED_POST_PUT_ROUTES = [
 
 # --- Security: no secrets in client-facing responses ---
 @pytest.mark.integration
-def test_api_health_no_headers(api_client):
-    """Health is public; no headers required."""
-    r = api_client.get("/api/health")
-    assert r.status_code == 200
-    assert r.get_json() == {"status": "ok"}
-
-
-@pytest.mark.integration
-def test_public_responses_do_not_expose_secrets(api_client):
-    """Assert server code (api_health, api_login) never puts secrets in response bodies.
-    We hit the real routes via api_client and check the actual response body."""
-    r = api_client.get("/api/health")
-    assert r.status_code == 200
+def test_error_responses_do_not_expose_secret_key(api_client):
+    """Auth failures must not leak SECRET_KEY in response body."""
+    r = api_client.get("/api/family_circles/x/medications")
+    assert r.status_code == 401
     body = r.get_data(as_text=True)
-    assert "SECRET" not in body.upper()
-    assert "dev-secret" not in body.lower()
-
-    r = api_client.post("/api/login", json={"user_id": "u", "family_circle_id": "fc"})
-    assert r.status_code == 200
-    body = r.get_data(as_text=True)
-    assert "SECRET" not in body.upper()
-    assert "dev-secret" not in body.lower()
-    assert "password" not in body.lower() and "api_key" not in body.lower()
-
-
-@pytest.mark.integration
-def test_api_login_accessible_without_auth(api_client):
-    """POST /api/login is public entry point."""
-    r = api_client.post("/api/login", json={"user_id": "u", "family_circle_id": "fc"})
-    assert r.status_code == 200
-    assert r.get_json().get("ok") is True
+    assert "dev-secret-change-in-production" not in body
+    assert "SECRET_KEY" not in body
 
 
 # --- Security: user types URL without being logged in → 401 (no access to protected pages) ---
-@pytest.mark.integration
-def test_api_requires_both_headers(api_client):
-    """No headers (e.g. user typed URL, not logged in) → 401; both headers → 200."""
-    path = "/api/family_circles/%s/calendar/headers" % FAMILY_CIRCLE_ID
-    r = api_client.get(path)
-    assert r.status_code == 401
-    r = api_client.get(path, headers={"X-User-Id": "u1"})
-    assert r.status_code == 401
-    r = api_client.get(path, headers=API_HEADERS)
-    assert r.status_code == 200
-
-
-@pytest.mark.integration
-def test_typed_url_without_login_protected_routes_401(api_client):
-    """User physically typing a protected URL with no session/headers cannot access data."""
-    protected_paths = [
-        "/api/family_circles/%s/calendar/headers" % FAMILY_CIRCLE_ID,
-        "/api/family_circles/%s/emergency-profile" % FAMILY_CIRCLE_ID,
-        "/api/family_circles/%s/family-members" % FAMILY_CIRCLE_ID,
-    ]
-    for path in protected_paths:
-        r = api_client.get(path)
-        assert r.status_code == 401, "path %s should require auth" % path
-
-
-@pytest.mark.integration
-def test_unauthenticated_user_cannot_access_any_protected_endpoint(api_client):
-    """Someone who is NOT logged in (no session, no X-User-Id/X-Family-Circle-Id), regardless of family, gets 401."""
-    paths_any_family = [
-        "/api/family_circles/%s/contacts" % FAMILY_CIRCLE_ID,
-        "/api/family_circles/%s/contacts" % OTHER_FAMILY_ID,
-        "/api/family_circles/%s/medications" % FAMILY_CIRCLE_ID,
-        "/api/family_circles/%s/emergency-profile" % FAMILY_CIRCLE_ID,
-    ]
-    for path in paths_any_family:
-        r = api_client.get(path)
-        assert r.status_code == 401, "unauthenticated must not access %s" % path
-
-
 @pytest.mark.integration
 def test_every_protected_get_route_requires_both_headers_401(api_client):
     """Every protected GET route returns 401 with no X-User-Id / X-Family-Circle-Id."""
@@ -184,16 +111,18 @@ def test_every_protected_post_put_route_requires_both_headers_401(api_client):
         assert r.status_code == 401, "no auth must get 401: %s %s" % (method, path)
 
 
+# --- Security: fake credentials rejected ---
 @pytest.mark.integration
-def test_api_medications_requires_auth(api_client):
-    r = api_client.get("/api/family_circles/%s/medications" % FAMILY_CIRCLE_ID)
-    assert r.status_code == 401
-
-
-@pytest.mark.integration
-def test_api_contacts_requires_auth(api_client):
-    r = api_client.get("/api/family_circles/%s/contacts" % FAMILY_CIRCLE_ID)
-    assert r.status_code == 401
+@pytest.mark.skip(
+    reason="API does not validate user/family existence; currently returns 200"
+)
+def test_fake_credentials_rejected(api_client):
+    """Headers with non-existent user/family should be rejected with 403."""
+    r = api_client.get(
+        "/api/family_circles/FAKEFAMILY/emergency-profile",
+        headers={"X-User-Id": "FAKEUSER", "X-Family-Circle-Id": "FAKEFAMILY"},
+    )
+    assert r.status_code == 403
 
 
 # --- Security: user A (fam_a) cannot access family B (fam_b) data → 403 ---
@@ -220,6 +149,26 @@ def test_fam_a_cannot_access_fam_b_data(api_client):
     for path in fam_b_paths:
         r = api_client.get(path, headers=API_HEADERS)
         assert r.status_code == 403, "fam_a must not access fam_b path %s" % path
+
+
+@pytest.mark.integration
+def test_real_user_from_other_family_cannot_access_your_family(api_client):
+    """A legitimate user authenticated against their own real family
+    cannot access a different family's data."""
+    other_family_headers = {
+        "X-User-Id": OTHER_FAMILY_USER_ID,
+        "X-Family-Circle-Id": OTHER_FAMILY_ID,
+    }
+    protected_paths = [
+        "/api/family_circles/%s/emergency-profile" % FAMILY_CIRCLE_ID,
+        "/api/family_circles/%s/medications" % FAMILY_CIRCLE_ID,
+        "/api/family_circles/%s/contacts" % FAMILY_CIRCLE_ID,
+    ]
+    for path in protected_paths:
+        r = api_client.get(path, headers=other_family_headers)
+        assert r.status_code == 403, (
+            "real user from other family must not access %s" % path
+        )
 
 
 # --- Security: check-in identity ---
@@ -267,15 +216,16 @@ def test_api_photo_404_path_traversal(api_client):
     assert r.status_code == 404
 
 
-# --- Infrastructure: one authenticated stack check (CalendarService.get_day_headers contract) ---
+# --- Security: emergency alert requires auth ---
 @pytest.mark.integration
-def test_api_calendar_headers(api_client):
-    """Proves Flask + container + DB + auth path; response matches CalendarService.get_day_headers()."""
-    r = api_client.get(
-        "/api/family_circles/%s/calendar/headers" % FAMILY_CIRCLE_ID,
-        headers=API_HEADERS,
-    )
-    assert r.status_code == 200
-    j = r.get_json()
-    assert "data" in j
-    assert j["data"] == ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+def test_alert_status_unauthorized_without_headers(api_client):
+    """GET status with no headers → 401."""
+    r = api_client.get("/api/emergency/alert/status")
+    assert r.status_code == 401
+
+
+@pytest.mark.integration
+def test_alert_activate_unauthorized_without_headers(api_client):
+    """POST activate with no headers → 401."""
+    r = api_client.post("/api/emergency/alert", json={"activated": True})
+    assert r.status_code == 401

@@ -112,11 +112,10 @@ final class ChatWebViewController: UIViewController {
         }
     }
 
-    func loadChat(recipientSendbirdUserId: String, recipientDisplayName: String, familyCircleId: String) {
+    func loadChat(recipientSendbirdUserId: String, recipientDisplayName: String) {
         Task {
             do {
                 let url = try await APIService.shared.getChatSessionURL(
-                    familyCircleId: familyCircleId,
                     recipientSendbirdUserId: recipientSendbirdUserId,
                     recipientDisplayName: recipientDisplayName
                 )

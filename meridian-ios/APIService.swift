@@ -159,7 +159,7 @@ final class APIService {
 
     // MARK: - Chat URL
 
-    func getChatSessionURL(familyCircleId: String, recipientSendbirdUserId: String, recipientDisplayName: String) async throws -> URL {
+    func getChatSessionURL(recipientSendbirdUserId: String, recipientDisplayName: String) async throws -> URL {
         var comp = URLComponents(string: baseURL + "/api/chat/chat-session-url")
         comp?.queryItems = [
             URLQueryItem(name: "recipient_sendbird_user_id", value: recipientSendbirdUserId),

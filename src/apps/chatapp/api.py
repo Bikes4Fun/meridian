@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 import time
+import traceback
 import urllib.parse
 
 import logging
@@ -52,6 +53,18 @@ def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
         return payload
     except Exception:
         return None
+
+
+def _notify_dev_error(context: str, e: Exception) -> None:
+    """Notify developers when DEV_ERROR_WEBHOOK is set. Never sends to client."""
+    webhook = os.environ.get("DEV_ERROR_WEBHOOK", "").strip()
+    if webhook:
+        try:
+            tb = traceback.format_exc()
+            payload = {"text": f"[Chatapp] {context}: {type(e).__name__}: {str(e)[:500]}\n```\n{tb[-1500:]}\n```"}
+            requests.post(webhook, json=payload, timeout=5)
+        except Exception:
+            pass
 
 
 def create_chatapp_app(static_dir: str, secret_key: str = None):
@@ -211,6 +224,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                     "detail": "Check network and SENDBIRD_APP_ID.",
                 }), 502
             logging.exception("Unexpected error while issuing Sendbird session token")
+            _notify_dev_error("Sendbird issue token failed", e)
             return jsonify({
                 "error": "Sendbird issue token failed",
                 "detail": "An internal error occurred while issuing the token.",
@@ -306,6 +320,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                     "detail": "Check network and SENDBIRD_APP_ID.",
                 }), 502
             logging.exception("Create channel failed due to unexpected error")
+            _notify_dev_error("Create channel failed", e)
             return jsonify({
                 "error": "Create channel failed",
                 "detail": "An internal error occurred while creating the channel.",
@@ -411,7 +426,8 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({"error": "Cannot reach Sendbird", "detail": "Check network."}), 502
             logging.exception("Send message failed")
-            return jsonify({"error": "Send failed", "detail": str(e)}), 502
+            _notify_dev_error("Send message failed", e)
+            return jsonify({"error": "Send failed"}), 502
         if r.status_code != 200:
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
             msg = body.get("message", r.text)
@@ -442,7 +458,8 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({"error": "Cannot reach Sendbird", "detail": "Check network."}), 502
             logging.exception("List messages failed")
-            return jsonify({"error": "List messages failed", "detail": str(e)}), 502
+            _notify_dev_error("List messages failed", e)
+            return jsonify({"error": "List messages failed"}), 502
         if r.status_code != 200:
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
             msg = body.get("message", r.text)
@@ -510,6 +527,7 @@ def register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix: s
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({"error": "Cannot reach Sendbird", "detail": "Check network and SENDBIRD_APP_ID."}), 502
             logging.exception("Unexpected error while issuing Sendbird session token")
+            _notify_dev_error("Sendbird issue token failed", e)
             return jsonify({"error": "Sendbird issue token failed", "detail": "An internal error occurred while issuing the token."}), 502
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
@@ -560,6 +578,7 @@ def register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix: s
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({"error": "Cannot reach Sendbird", "detail": "Check network and SENDBIRD_APP_ID."}), 502
             logging.exception("Create channel failed due to unexpected error")
+            _notify_dev_error("Create channel failed", e)
             return jsonify({"error": "Create channel failed", "detail": "An internal error occurred while creating the channel."}), 502
         if r.status_code != 200:
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
@@ -601,7 +620,8 @@ def register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix: s
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({"error": "Cannot reach Sendbird", "detail": "Check network."}), 502
             logging.exception("Send message failed")
-            return jsonify({"error": "Send failed", "detail": str(e)}), 502
+            _notify_dev_error("Send message failed", e)
+            return jsonify({"error": "Send failed"}), 502
         if r.status_code != 200:
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
             msg = body.get("message", r.text)
@@ -632,7 +652,8 @@ def register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix: s
             if "resolve" in err_msg.lower() or "nodename" in err_msg.lower() or "ConnectionError" in type(e).__name__:
                 return jsonify({"error": "Cannot reach Sendbird", "detail": "Check network."}), 502
             logging.exception("List messages failed")
-            return jsonify({"error": "List messages failed", "detail": str(e)}), 502
+            _notify_dev_error("List messages failed", e)
+            return jsonify({"error": "List messages failed"}), 502
         if r.status_code != 200:
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
             msg = body.get("message", r.text)

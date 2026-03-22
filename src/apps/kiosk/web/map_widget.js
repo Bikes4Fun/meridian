@@ -214,11 +214,19 @@ function initMap(markersJson, placesJson) {
         mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable (offline)</div>';
         return;
       }
-      var markers = JSON.parse(markersJson);
+      var markers = JSON.parse(markersJson) || [];
       var places = placesJson ? JSON.parse(placesJson) : [];
-      if (!markers || markers.length === 0) return;
+      var center, zoom = 11;
+      if (markers.length > 0) {
+        center = [markers[0].lat, markers[0].lon];
+      } else if (places.length > 0 && places[0].gps_latitude != null && places[0].gps_longitude != null) {
+        center = [places[0].gps_latitude, places[0].gps_longitude];
+      } else {
+        center = [37.7749, -122.4194];
+        zoom = 4;
+      }
 
-      var map = L.map('map').setView([markers[0].lat, markers[0].lon], 11);
+      var map = L.map('map').setView(center, zoom);
       window._meridianMap = map;
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -227,12 +235,13 @@ function initMap(markersJson, placesJson) {
       var markerLayer = null;
       function placeMarkers() {
         if (markerLayer) map.removeLayer(markerLayer);
+        if (markers.length === 0) return;
         var useClusters = map.getZoom() < CLUSTER_ZOOM_THRESHOLD;
         markerLayer = buildMarkerLayer(markers, useClusters);
         markerLayer.addTo(map);
       }
       placeMarkers();
-      map.on('zoomend', placeMarkers);
+      if (markers.length > 0) map.on('zoomend', placeMarkers);
       map.invalidateSize();
       map.invalidateSize();
     } catch (e) {

@@ -4,51 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Log In</title>
-    <style>
-        @font-face {
-            font-family: 'Atkinson Hyperlegible';
-            src: url('/fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype');
-            font-weight: 400;
-            font-style: normal;
-        }
-        @font-face {
-            font-family: 'Atkinson Hyperlegible';
-            src: url('/fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype');
-            font-weight: 700;
-            font-style: normal;
-        }
-        body {
-            font-family: 'Atkinson Hyperlegible', Arial, sans-serif;
-            font-size: 16px;
-            line-height: 1.6;
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 { font-size: 32px; font-weight: 700; color: #333; }
-        input, button {
-            width: 100%;
-            padding: 15px;
-            margin: 10px 0;
-            font-size: 16px;
-            border-radius: 8px;
-            border: 2px solid #ddd;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover { background: #45a049; }
-        label { display: block; text-align: left; margin-top: 15px; color: #666; }
-    </style>
+    <link rel="stylesheet" href="/shared/css/base.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="login-page">
     <h1>Log In</h1>
-    <p style="color: #666;">Select user and family circle (simulated login for demo).</p>
+    <p class="login-subtitle">Select user and family circle (simulated login for demo).</p>
     <form id="loginForm">
         <label for="familyCircleId">Family Circle ID</label>
         <input type="text" id="familyCircleId" value="F00000" required placeholder="e.g. F00000">

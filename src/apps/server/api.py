@@ -178,7 +178,7 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         # Public routes: no auth required (login page, chatapp POC, kiosk static, fonts)
-        if request.path in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css") or request.path in ("/chatapp", "/kiosk") or request.path.startswith("/chatapp/") or request.path.startswith("/kiosk/") or request.path.startswith("/fonts/"):
+        if request.path in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css") or request.path in ("/chatapp", "/kiosk") or request.path.startswith("/chatapp/") or request.path.startswith("/kiosk/") or request.path.startswith("/fonts/") or request.path.startswith("/shared/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -686,7 +686,8 @@ def create_server_app(db_path=None):
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
-    _kiosk_icons = os.path.join(_src, "apps", "kiosk", "icons")
+    _repo_root = os.path.dirname(_src)
+    _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         sendbird_svc = container.get_sendbird_service()
         db_manager = container.get_database_manager()
@@ -720,6 +721,14 @@ def create_server_app(db_path=None):
         @app.route("/fonts/<path:path>")
         def serve_fonts(path):
             return send_from_directory(os.path.join(_webapp_dist, "fonts"), path)
+
+        @app.route("/shared/<path:path>")
+        def serve_shared(path):
+            allowed_extensions = {".css", ".woff", ".woff2", ".ttf", ".otf", ".eot"}
+            _, ext = os.path.splitext(path)
+            if ext.lower() not in allowed_extensions:
+                abort(404)
+            return send_from_directory(os.path.join(_src, "shared"), path)
 
         @app.route("/chatapp/")
         @app.route("/chatapp/<path:path>")

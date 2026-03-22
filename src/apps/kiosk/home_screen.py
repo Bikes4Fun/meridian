@@ -16,13 +16,14 @@ logger = logging.getLogger(__name__)
 
 def get_time_of_day_icon(time_of_day):
     """Get the appropriate icon for the time of day. Returns empty string if file not found."""
-    _kiosk_dir = os.path.dirname(os.path.abspath(__file__))
+    _repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    _icons_dir = os.path.join(_repo_root, "assets", "icons")
     icon_map = {
-        "Morning": os.path.join(_kiosk_dir, "icons", "sunrise.png"),
-        "Noon": os.path.join(_kiosk_dir, "icons", "noon.png"),
-        "Afternoon": os.path.join(_kiosk_dir, "icons", "noon.png"),
-        "Evening": os.path.join(_kiosk_dir, "icons", "evening.png"),
-        "Night": os.path.join(_kiosk_dir, "icons", "night.png"),
+        "Morning": os.path.join(_icons_dir, "sunrise.png"),
+        "Noon": os.path.join(_icons_dir, "noon.png"),
+        "Afternoon": os.path.join(_icons_dir, "noon.png"),
+        "Evening": os.path.join(_icons_dir, "evening.png"),
+        "Night": os.path.join(_icons_dir, "night.png"),
     }
     path = icon_map.get(time_of_day)
     if path and os.path.exists(path):

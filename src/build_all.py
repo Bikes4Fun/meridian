@@ -41,7 +41,9 @@ def build_chatapp(api_url: str, src_dir: str):
         "__API_URL__", api_url
     )
     open(os.path.join(dist, "chat.js"), "w", encoding="utf-8").write(chat_js)
-    print("Chatapp built: index.html, chat.html, chat.js")
+    if os.path.isfile(os.path.join(client, "chat.css")):
+        shutil.copy2(os.path.join(client, "chat.css"), os.path.join(dist, "chat.css"))
+    print("Chatapp built: index.html, chat.html, chat.js, chat.css")
 
 
 if __name__ == "__main__":

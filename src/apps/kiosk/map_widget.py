@@ -23,7 +23,7 @@ def get_map_markers(
     if not loc_svc:
         return markers
 
-    places_result = loc_svc.get_named_places()
+    places_result = loc_svc.get_named_places(family_circle_id)
     base = api_url.rstrip("/")
 
     # Patient/self at home first (so map centers on them)
@@ -52,7 +52,7 @@ def get_map_markers(
             markers.append(patient_m)
 
     # Family check-ins
-    checkins_result = loc_svc.get_checkins()
+    checkins_result = loc_svc.get_checkins(family_circle_id)
     if checkins_result.success and checkins_result.data:
         for c in checkins_result.data:
             lat = c.get("latitude")

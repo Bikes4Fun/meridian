@@ -127,13 +127,38 @@ final class APIService {
               let arr = json["data"] as? [[String: Any]] else {
             throw APIError.invalidResponse
         }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let naiveFormats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss"
+        ]
         return arr.compactMap { row -> CheckIn? in
             guard let name = row["contact_name"] as? String else { return nil }
             let loc = row["location_name"] as? String
             let tsStr = row["timestamp"] as? String
-            let ts = tsStr.flatMap { formatter.date(from: $0) } ?? Date.distantPast
+            let ts: Date
+            if let s = tsStr {
+                if let parsed = isoFormatter.date(from: s) {
+                    ts = parsed
+                } else {
+                    let formatter = DateFormatter()
+                    formatter.locale = Locale(identifier: "en_US_POSIX")
+                    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+                    var parsed: Date?
+                    for fmt in naiveFormats {
+                        formatter.dateFormat = fmt
+                        if let p = formatter.date(from: s) {
+                            parsed = p
+                            break
+                        }
+                    }
+                    ts = parsed ?? Date.distantPast
+                }
+            } else {
+                ts = Date.distantPast
+            }
             return CheckIn(contactName: name, locationName: (loc?.isEmpty == true) ? nil : loc, timestamp: ts)
         }
     }

@@ -12,8 +12,10 @@ final class CheckInViewController: UIViewController {
     private var session: SessionInfo?
     private var pendingCheckInSession: SessionInfo?
     private var checkins: [CheckIn] = []
+    private var locationTimeoutWorkItem: DispatchWorkItem?
 
     private let locationManager = CLLocationManager()
+    private let locationTimeoutSeconds: TimeInterval = 10
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .short
@@ -124,17 +126,34 @@ final class CheckInViewController: UIViewController {
         checkInButton.isEnabled = false
         pendingCheckInSession = s
 
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                guard let self = self, self.pendingCheckInSession != nil else { return }
+                self.pendingCheckInSession = nil
+                self.statusLabel.text = "Location request timed out. Set a simulated location in Xcode (Debug → Simulate Location) or try on a device."
+                self.statusLabel.textColor = .systemRed
+                self.checkInButton.isEnabled = true
+            }
+        }
+        locationTimeoutWorkItem?.cancel()
+        locationTimeoutWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + locationTimeoutSeconds, execute: workItem)
+
         switch locationManager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             locationManager.requestLocation()
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
         case .denied, .restricted:
+            locationTimeoutWorkItem?.cancel()
+            locationTimeoutWorkItem = nil
             pendingCheckInSession = nil
             statusLabel.text = "Location access denied. Enable it in Settings."
             statusLabel.textColor = .systemRed
             checkInButton.isEnabled = true
         @unknown default:
+            locationTimeoutWorkItem?.cancel()
+            locationTimeoutWorkItem = nil
             pendingCheckInSession = nil
             statusLabel.text = "Location unavailable"
             statusLabel.textColor = .systemRed
@@ -180,6 +199,8 @@ extension CheckInViewController: CLLocationManagerDelegate {
         case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()
         case .denied, .restricted:
+            locationTimeoutWorkItem?.cancel()
+            locationTimeoutWorkItem = nil
             pendingCheckInSession = nil
             statusLabel.text = "Location access denied. Enable it in Settings."
             statusLabel.textColor = .systemRed
@@ -191,11 +212,15 @@ extension CheckInViewController: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last, let s = pendingCheckInSession else { return }
+        locationTimeoutWorkItem?.cancel()
+        locationTimeoutWorkItem = nil
         pendingCheckInSession = nil
         performCheckIn(loc: loc, session: s)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        locationTimeoutWorkItem?.cancel()
+        locationTimeoutWorkItem = nil
         pendingCheckInSession = nil
         statusLabel.text = "Location unavailable: \(error.localizedDescription)"
         statusLabel.textColor = .systemRed

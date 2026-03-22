@@ -1,13 +1,14 @@
 -- Schema for Meridian
-
+-- sendbird user id's are not enforced as unique
 
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     display_name TEXT,
     photo_filename TEXT,
     family_circle_id TEXT,
-    sendbird_user_id TEXT UNIQUE,
-    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+    sendbird_user_id TEXT,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
+    UNIQUE (family_circle_id, sendbird_user_id)
 );
 
 CREATE TABLE IF NOT EXISTS family_circles (

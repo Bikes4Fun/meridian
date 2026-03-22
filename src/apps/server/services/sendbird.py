@@ -107,12 +107,15 @@ class SendbirdService(DatabaseServiceMixin):
         expires_at = int((time.time() + 7 * 24 * 3600) * 1000)
         payload = {"expires_at": expires_at}
         encoded_user_id = urllib.parse.quote(user_id, safe="")
-        r = requests.post(
-            base + "/users/" + encoded_user_id + "/token",
-            headers=self._headers(),
-            json=payload,
-            timeout=10,
-        )
+        try:
+            r = requests.post(
+                base + "/users/" + encoded_user_id + "/token",
+                headers=self._headers(),
+                json=payload,
+                timeout=10,
+            )
+        except requests.RequestException as exc:
+            return False, "", f"Sendbird request failed: {exc}"
         if r.status_code != 200:
             body = (
                 r.json()

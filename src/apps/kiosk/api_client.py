@@ -494,9 +494,10 @@ class RemoteLocationService:
         """Fetch any photo URL; returns data URI or None."""
         return fetch_photo_b64(url, self._session, self._headers)
 
-    def get_checkins(self) -> Any:
+    def get_checkins(self, family_circle_id: Optional[str] = None) -> Any:
+        fc_id = family_circle_id if family_circle_id is not None else self._fc_id
         ok, data, err = _get(
-            f"{self._base}/api/family_circles/{self._fc_id}/get_checkins",
+            f"{self._base}/api/family_circles/{fc_id}/get_checkins",
             headers=self._headers,
             session=self._session,
         )
@@ -504,9 +505,10 @@ class RemoteLocationService:
             return ServiceResult.error_result(err or "location/latest request failed")
         return ServiceResult.success_result(data if data is not None else [])
 
-    def get_named_places(self) -> Any:
+    def get_named_places(self, family_circle_id: Optional[str] = None) -> Any:
+        fc_id = family_circle_id if family_circle_id is not None else self._fc_id
         ok, data, err = _get(
-            f"{self._base}/api/family_circles/{self._fc_id}/named-places",
+            f"{self._base}/api/family_circles/{fc_id}/named-places",
             headers=self._headers,
             session=self._session,
         )

@@ -24,11 +24,11 @@ def build_checkin_html(
     places = []
 
     if loc_svc:
-        places_result = loc_svc.get_named_places()
+        places_result = loc_svc.get_named_places(family_circle_id)
         if places_result.success and places_result.data:
             places = [{"gps_latitude": p.get("gps_latitude"), "gps_longitude": p.get("gps_longitude"), "radius_metres": p.get("radius_metres")} for p in places_result.data]
 
-        checkins_result = loc_svc.get_checkins()
+        checkins_result = loc_svc.get_checkins(family_circle_id)
         if checkins_result.success and checkins_result.data:
             lines = [f"• {c.get('contact_name', 'Unknown')}: {c.get('location_name') or 'Unknown'}" for c in checkins_result.data]
             checkins_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No check-ins")

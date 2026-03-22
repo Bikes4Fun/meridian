@@ -151,7 +151,7 @@ class EmergencyService(DatabaseServiceMixin):
             "notes": care_row["notes"] if care_row else None,
             "last_updated": None,
             "last_updated_by": None,
-            "emergency_contacts": emergency_contacts,  # TODO: include POA and proxy in e_contacts and simply seperate them by 'econtacts','poa','proxy' ?
+            "emergency_contacts": emergency_contacts,  # TODO: include POA and proxy in e_contacts and simply separate them by 'econtacts','poa','proxy' ?
         }
         return ServiceResult.success_result(data)
 

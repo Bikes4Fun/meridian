@@ -6,6 +6,11 @@
   {"id": "fm_002", "display_name": "Deanna", "photo_filename": "deanna gps pin.jpeg", "family_circle_id": "F00000", "sendbird_user_id": "deanna"},
   {"id": "fm_003", "display_name": "Eleanor", "photo_filename": "eleanor gps tag.JPG", "family_circle_id": "F00000", "sendbird_user_id": "eleanor"},
   {"id": "fm_004", "display_name": "Indigo", "photo_filename": "indigo gps pin.jpeg", "family_circle_id": "F00000"},
-  {"id": "fm_005", "display_name": "Dylan", "family_circle_id": "F00000", "sendbird_user_id": "dtzecha"},
-  {"id": "fm_care_001", "display_name": "Marian Foster", "photo_filename": "care_recipient_profile_photo.jpg", "family_circle_id": "F00000", "sendbird_user_id": "testpatient"}
+  {"id": "fm_005", "display_name": "Dylan", "photo_filename": "dylan profile photo.png", "family_circle_id": "F00000", "sendbird_user_id": "dtzecha"},
+  {"id": "fm_care_001", "display_name": "Marian Foster", "photo_filename": "care_recipient_profile_photo.jpg", "family_circle_id": "F00000", "sendbird_user_id": "testpatient"},
+  {"id": "fm_006", "display_name": "James Foster", "photo_filename": "james profile photo.jpg", "family_circle_id": "F00000"},
+  {"id": "fm_007", "display_name": "Landon", "photo_filename": "landon profile photo.jpeg", "family_circle_id": "F00000"},
+  {"id": "fm_008", "display_name": "Morgan", "photo_filename": "morgan profile photo.jpg", "family_circle_id": "F00000"},
+  {"id": "fm_009", "display_name": "Casey", "photo_filename": "casey profile photo.jpg", "family_circle_id": "F00000"},
+  {"id": "fm_010", "display_name": "Sam", "photo_filename": null, "family_circle_id": "F00000"}
 ]

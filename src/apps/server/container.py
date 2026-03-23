@@ -4,7 +4,7 @@ Used only by server/app.py. Kiosk uses api_client.create_kiosk_remote() instead.
 """
 
 try:
-    from ....shared.config import DatabaseConfig
+    from ...shared.config import DatabaseConfig
 except ImportError:
     from shared.config import DatabaseConfig
 from .database_manager import DatabaseManager

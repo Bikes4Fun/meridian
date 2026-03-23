@@ -14,7 +14,7 @@
 - [ ] Nav cut off
 - [ ] Database datatype mismatch
 - [ ] modular_display vs app_factory – both needed?
-- [ ] Combine architecture.md and todo?
+- [x] Combine architecture.md and todo?
 - [ ] Duplicate functionality to simplify?
 - [ ] Unused code to remove?
 - [x] Debug logging, calendar fixes
@@ -57,7 +57,7 @@
 - [ ] Enhanced Medical ID (name, DOB, photo, doctor)
 - [ ] ICE #3–7: Editor, PDF, Smart911, 911 trigger
 
-- [] Org/Arch ⚠️ IN PROGRESS
+- [ ] Org/Arch ⚠️ IN PROGRESS
 
 ## Week 8 (Mar 1–7): Tests ⚠️ NEXT
 - [ ] Unit tests (contact, calendar, medication, emergency, ICE)
@@ -97,10 +97,10 @@ See GitHub for details. Some issues may duplicate across repos (dementia_tv_pyth
 - [x] #9: Geofencing/Location checkin
 - [x] #11–13: Map (Data Model, Backend, Frontend) + Named Places
 - [x] #19: ICE #1 – ICE Data Model & Storage
+- [x] #20: ICE #2 – ICE Screen UI
 - [x] #2–4: Skipped (interfaces, display, schema)
 
 ### Open – ICE Screen & Smart911
-- [ ] #20: ICE #2 – ICE Screen UI
 - [ ] #21: ICE #3 – Caregiver ICE Profile Editor (Web)
 - [ ] #22: ICE #4 – Printable POLST-Formatted PDF
 - [ ] #23: Apply for Smart911 partnership/API access

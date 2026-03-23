@@ -1,6 +1,6 @@
 # Meridian
 
-![Meridian banner](assets/banner logo.png)
+![Meridian banner](assets/banner%20logo.png)
 
 
 A large-format family command center for patients living at home with mild-to-moderate cognitive decline and their families.

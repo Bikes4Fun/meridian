@@ -31,7 +31,8 @@ except ImportError:
     from shared.config import get_database_path, DatabaseConfig
 
 from ..server.database_manager import DatabaseManager
-from ..server.services.sendbird import SendbirdService
+from ..server.database_services.user import UserService
+from ..server.database_services.sendbird import SendbirdService
 
 
 def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
@@ -79,6 +80,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
     db_path = get_database_path()
     db_config = DatabaseConfig(path=db_path, create_if_missing=True)
     db_manager = DatabaseManager(db_config)
+    user_svc = UserService(db_manager)
     sendbird_svc = SendbirdService(db_manager)
 
     @app.route("/auth")
@@ -259,15 +261,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
 
-        # TODO: remove api.py queries
-        r = db_manager.execute_query(
-            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
-        )
-        display_name = (
-            (r.data[0].get("display_name") or app_user_id).strip()
-            if r.success and r.data
-            else app_user_id
-        )
+        display_name = user_svc.get_display_name(app_user_id)
         return jsonify(
             {
                 "sendbird_user_id": sendbird_user_id,
@@ -569,9 +563,8 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
 
 
 def register_chatapp_routes(
-    app, sendbird_svc, db_manager, chat_static_prefix: str = ""
+    app, sendbird_svc, user_svc, chat_static_prefix: str = ""
 ):
-    # TODO: remove api.py queries (db_manager)
     """Register chatapp API routes on an existing Flask app (for Railway all-in-one deploy).
     chat_static_prefix: e.g. '/chat' when chatapp static is at /chat/*; auth redirects there.
     """
@@ -662,15 +655,7 @@ def register_chatapp_routes(
         if not ok:
             return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
 
-        # TODO: remove api.py queries
-        r = db_manager.execute_query(
-            "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
-        )
-        display_name = (
-            (r.data[0].get("display_name") or app_user_id).strip()
-            if r.success and r.data
-            else app_user_id
-        )
+        display_name = user_svc.get_display_name(app_user_id)
         return jsonify(
             {
                 "sendbird_user_id": sendbird_user_id,

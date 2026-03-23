@@ -42,6 +42,15 @@ class MedicationService:
         self.timed_medications: List[TimedMedication] = []
         self.prn_medications: List[PRNMedication] = []
 
+    def add_medication_time(
+        self, family_circle_id: str, name: str, time_value: Optional[str] = None
+    ) -> ServiceResult:
+        """Create medication time slot for family."""
+        return self.db_manager.execute_update(
+            "INSERT OR IGNORE INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
+            (family_circle_id, name, time_value),
+        )
+
     def _get_care_recipient_user_id(self, family_circle_id: str) -> Optional[str]:
         r = self.db_manager.execute_query(
             "SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?",

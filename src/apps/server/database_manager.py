@@ -19,8 +19,10 @@ except ImportError:
 
 class DatabaseManager:
     def __init__(self, config: DatabaseConfig):
-        self.config = config @ contextmanager
+        self.config = config
+        self.logger = logging.getLogger(__name__)
 
+    @contextmanager
     def get_connection(self):
         conn = None
         try:

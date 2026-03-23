@@ -2,6 +2,8 @@
 Family service for family circle and member data.
 """
 
+from ..database_manager import DatabaseManager
+
 try:
     from ....shared.interfaces import ServiceResult
 except ImportError:
@@ -13,6 +15,22 @@ class FamilyService:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
+
+    def add_family_circle(self, family_circle_id: str) -> ServiceResult:
+        """Create family circle if not exists."""
+        return self.db_manager.execute_update(
+            "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
+            (family_circle_id,),
+        )
+
+    def add_user_to_family(
+        self, user_id: str, family_circle_id: str
+    ) -> ServiceResult:
+        """Link user to family circle."""
+        return self.db_manager.execute_update(
+            "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
+            (user_id, family_circle_id),
+        )
 
     def get_family_members(self, family_circle_id: str) -> ServiceResult:
         """Return users in the family."""

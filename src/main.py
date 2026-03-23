@@ -86,27 +86,17 @@ def main():
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
-    logging.getLogger("dev.demo.seed").setLevel(logging.INFO)
     logger = logging.getLogger(__name__)
 
     # using_local_db = where DB comes from (local file or Railway). Drives DB setup + API server.
     # use_local = --local flag; also runs local webapp/chatapp. Railway-unreachable fallback uses local DB but not webapp/chatapp.
     if using_local_db:
-        db_path = get_database_path()
-        logger.info("Database: local - %s", db_path)
+        logger.info("Database: local - %s", get_database_path())
         if not railway_reachable:
             logger.warning(
                 "Railway API not reachable (%s), using local database.",
                 get_railway_api_url(),
             )
-        from dev.demo.seed import (
-            ensure_local_database,
-            demo_seed_after_server,
-            refresh_demo_checkins,
-        )
-
-        ensure_local_database(db_path)
-        logger.info("Local DB bootstrap complete.")
         if use_local:
             src_dir = os.path.dirname(os.path.abspath(__file__))
             try:
@@ -118,9 +108,6 @@ def main():
                 logger.error("Build failed (%s).", e)
                 sys.exit(1)
         api_url = _start_local_api_server(logger)
-        if not demo_seed_after_server(api_url, db_path):
-            logger.warning("Demo seed after server failed")
-        refresh_demo_checkins(db_path)
         logger.info("Database loaded")
     else:
         api_url = get_railway_api_url()

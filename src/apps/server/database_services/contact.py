@@ -109,6 +109,40 @@ class ContactService:
         ]
         return ServiceResult.success_result(contacts)
 
+    def add_contact(
+        self,
+        contact_id: str,
+        family_circle_id: str,
+        display_name: str,
+        phone: Optional[str] = None,
+        email: Optional[str] = None,
+        birthday: Optional[str] = None,
+        relationship: Optional[str] = None,
+        emergency_priority: Optional[str] = None,
+        photo_filename: Optional[str] = None,
+        notes: Optional[str] = None,
+        sendbird_user_id: Optional[str] = None,
+    ) -> ServiceResult:
+        """Insert or replace contact."""
+        return self.db_manager.execute_update(
+            """INSERT OR REPLACE INTO contacts
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes, sendbird_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                contact_id,
+                family_circle_id,
+                display_name or "",
+                phone,
+                email,
+                birthday,
+                relationship,
+                emergency_priority,
+                photo_filename,
+                notes,
+                sendbird_user_id,
+            ),
+        )
+
     def get_contact_in_family(
         self, contact_id: str, family_circle_id: str
     ) -> ServiceResult:

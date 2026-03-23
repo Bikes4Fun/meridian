@@ -7,16 +7,16 @@ try:
     from ....shared.config import DatabaseConfig
 except ImportError:
     from shared.config import DatabaseConfig
-from ..database_manager import DatabaseManager
-from .contact import ContactService
-from .user import UserService
-from .calendar import CalendarService
-from .medical import MedicationService
-from .location import LocationService
-from .emergency import EmergencyService
-from .care_recipient import CareRecipientService
-from .family import FamilyService
-from .sendbird import SendbirdService
+from .database_manager import DatabaseManager
+from .database_services.contact import ContactService
+from .database_services.user import UserService
+from .database_services.calendar import CalendarService
+from .database_services.medical import MedicationService
+from .database_services.location import LocationService
+from .database_services.emergency import EmergencyService
+from .database_services.care_recipient import CareRecipientService
+from .database_services.family import FamilyService
+from .database_services.sendbird import SendbirdService
 
 
 class ServiceContainer:
@@ -31,6 +31,11 @@ class ServiceContainer:
                 DatabaseConfig(path=self.db_path, create_if_missing=True)
             )
         return self._db_manager
+
+    def ensure_schema(self) -> bool:
+        """Create database schema if missing. Call on server startup."""
+        r = self._get_database_manager().create_database_schema()
+        return r.success
 
     def get_contact_service(self):
         if "contact_service" not in self._services:

@@ -18,6 +18,33 @@ class UserService:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
 
+    def get_user_photo_filename(
+        self, user_id: str, family_circle_id: str
+    ) -> Optional[str]:
+        """Get photo_filename for user if they belong to family. None if not found or invalid."""
+        r = self.db_manager.execute_query(
+            "SELECT u.photo_filename FROM users u "
+            "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
+            "WHERE u.id = ? AND ufc.family_circle_id = ?",
+            (user_id, family_circle_id),
+        )
+        if not r.success or not r.data:
+            return None
+        fn = (r.data[0].get("photo_filename") or "").strip()
+        if ".." in fn or "/" in fn or "\\" in fn:
+            return None
+        return fn if fn else None
+
+    def get_display_name(self, user_id: str) -> str:
+        """Get user display_name; returns user_id if not found."""
+        r = self.db_manager.execute_query(
+            "SELECT display_name FROM users WHERE id = ?", (user_id,)
+        )
+        if r.success and r.data:
+            dn = (r.data[0].get("display_name") or "").strip()
+            return dn if dn else user_id
+        return user_id
+
     def add_user(
         self,
         user_id: str,

@@ -2,6 +2,8 @@
 Care recipient and contact role updates. Legal/medical designations (proxy, POA) are just contact roles.
 """
 
+from ..database_manager import DatabaseManager
+
 try:
     from ....shared.interfaces import ServiceResult
 except ImportError:
@@ -88,4 +90,35 @@ class CareRecipientService:
                 "family_circle_id": family_circle_id,
                 "care_recipient_user_id": care_recipient_user_id,
             }
+        )
+
+    def set_contact_role(
+        self, family_circle_id: str, role: str, contact_id: str
+    ) -> ServiceResult:
+        """Assign contact role (e.g. medical_proxy, poa) for family."""
+        return self.db_manager.execute_update(
+            "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
+            (family_circle_id, role, contact_id),
+        )
+
+    def add_allergy(
+        self, care_recipient_user_id: str, allergen: str
+    ) -> ServiceResult:
+        """Add allergy for care recipient."""
+        return self.db_manager.execute_update(
+            "INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen) VALUES (?, ?)",
+            (care_recipient_user_id, allergen),
+        )
+
+    def add_condition(
+        self,
+        care_recipient_user_id: str,
+        condition_name: str,
+        diagnosis_date=None,
+        notes=None,
+    ) -> ServiceResult:
+        """Add condition for care recipient."""
+        return self.db_manager.execute_update(
+            """INSERT OR REPLACE INTO conditions (care_recipient_user_id, condition_name, diagnosis_date, notes) VALUES (?, ?, ?, ?)""",
+            (care_recipient_user_id, condition_name, diagnosis_date, notes),
         )

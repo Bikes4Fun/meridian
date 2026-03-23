@@ -7,6 +7,8 @@ import logging
 import math
 from typing import Optional
 
+from ..database_manager import DatabaseManager
+
 DEFAULT_PLACE_RADIUS_M = 150
 
 try:
@@ -183,6 +185,23 @@ class LocationService:
                 nearest_dist = dist_between
                 nearest_name = row.get("location_name")
         return nearest_name
+
+    def add_named_place(
+        self,
+        family_circle_id: str,
+        location_id: str,
+        location_name: str,
+        gps_latitude: Optional[float] = None,
+        gps_longitude: Optional[float] = None,
+        radius_metres: int = 150,
+    ) -> ServiceResult:
+        """Insert or replace named place."""
+        return self.db_manager.execute_update(
+            """INSERT OR REPLACE INTO named_places
+            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres),
+        )
 
     def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
         """Return all family-wide named places. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""

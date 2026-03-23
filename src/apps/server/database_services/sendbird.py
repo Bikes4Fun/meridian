@@ -8,9 +8,9 @@ import json
 import os
 import time
 import urllib.parse
-
 import requests
 
+from ..database_manager import DatabaseManager
 
 class SendbirdService:
     """Service for Sendbird config, user lookups, and Platform API (session token)."""

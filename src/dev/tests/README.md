@@ -95,7 +95,7 @@ Fixtures used (in `conftest.py`): `temp_db_path`, `test_db_config`, `test_db_man
 Example:
 ```python
 import pytest
-from apps.server.services.my_service import MyService
+from apps.server.database_services.my_service import MyService
 
 @pytest.mark.unit
 class TestMyService:

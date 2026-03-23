@@ -86,6 +86,9 @@ def main():
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
+    logging.getLogger("pywebview").setLevel(logging.WARNING)
+    logging.getLogger("apps.kiosk.api_client").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.location").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
     # using_local_db = where DB comes from (local file or Railway). Drives DB setup + API server.
@@ -108,6 +111,16 @@ def main():
                 logger.error("Build failed (%s).", e)
                 sys.exit(1)
         api_url = _start_local_api_server(logger)
+        
+        try:
+            from dev.demo.seed import run_seed
+            if run_seed(api_url):
+                logger.info("Demo data seeded")
+            else:
+                logger.warning("Demo seed failed or skipped")
+        except Exception as e:
+            logger.warning("Demo seed failed: %s", e)
+            
         logger.info("Database loaded")
     else:
         api_url = get_railway_api_url()

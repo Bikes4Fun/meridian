@@ -22,6 +22,7 @@ class LocationService:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
+        self.logger = logging.getLogger(__name__)
 
     @staticmethod
     def _haversine_metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -93,7 +94,7 @@ class LocationService:
 
         location_name = self.resolve_place_name(latitude, longitude, family_circle_id)
         if location_name is not None:
-            self.logger.info("Resolved place name: %s", location_name)
+            self.logger.debug("Resolved place name: %s", location_name)
 
         query = """
             INSERT INTO location_checkins 
@@ -114,7 +115,7 @@ class LocationService:
         )
 
         if result.success:
-            self.logger.info(
+            self.logger.debug(
                 "Check-in created for user %s at (%s, %s)",
                 user_id,
                 latitude,

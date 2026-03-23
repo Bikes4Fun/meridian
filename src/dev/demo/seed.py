@@ -6,8 +6,7 @@ Uses the same endpoints as kiosk/webapp (calendar events, checkins, medications,
 import json
 import logging
 import os
-import datetime
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ def load_json_file(filename: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def _resolve_event_time(value: str, today: datetime.date) -> str:
+def _resolve_event_time(value: str, today: date) -> str:
     """Resolve TODAY_, TOMORROW_, PLUS_N_DAYS_ placeholders to ISO datetime strings."""
     if not value:
         return value
@@ -64,6 +63,17 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     fam_id = DEMO_FAMILY_CIRCLE_ID
     user_id = user_id or DEMO_USER_ID
 
+    r = requests.get(
+        f"{base}/api/family_circles/{fam_id}/medications",
+        headers=_headers(user_id, fam_id),
+        timeout=5,
+    )
+    if r.ok:
+        data = r.json()
+        if data.get("timed_medications") or data.get("prn_medications"):
+            logger.info("Demo data already present, skipping seed")
+            return True
+
     r = requests.post(
         f"{base}/api/family_circles/{fam_id}",
         json={},
@@ -79,23 +89,22 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         r = requests.post(
             f"{base}/api/users",
             json=user,
+            headers={"Content-Type": "application/json"},
             timeout=5,
         )
         if not r.ok:
             logger.error("Create user %s failed: %s", user.get("id"), r.status_code)
             return False
     for user in users:
-        uid = user.get("id")
-        fc_id = user.get("family_circle_id")
-        if fc_id and uid:
+        if user.get("family_circle_id"):
             r = requests.post(
-                f"{base}/api/family_circles/{fc_id}/users",
-                json={"user_id": uid},
+                f"{base}/api/family_circles/{fam_id}/family-members",
+                json={"id": user.get("id")},
                 headers=_headers(user_id, fam_id),
                 timeout=5,
             )
             if not r.ok:
-                logger.error("Add user %s to family failed: %s", uid, r.status_code)
+                logger.error("Add user %s to family failed: %s", user.get("id"), r.status_code)
                 return False
 
     contacts = load_json_file("contacts.json").get("contacts", [])
@@ -195,6 +204,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         if not r.ok:
             logger.debug("Named place %s failed: %s", loc.get("location_id"), r.status_code)
 
+    checkin_ok, checkin_fail = 0, 0
     for checkin in family_data.get("location_checkins", []):
         uid = checkin.get("user_id")
         if not uid or checkin.get("latitude") is None or checkin.get("longitude") is None:
@@ -210,10 +220,19 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             headers=_headers(uid, fam_id),
             timeout=5,
         )
-        if not r.ok:
+        if r.ok:
+            checkin_ok += 1
+        else:
+            checkin_fail += 1
             logger.debug("Checkin for %s failed: %s", uid, r.status_code)
+    if checkin_ok or checkin_fail:
+        logger.info(
+            "Check-ins: %d created%s",
+            checkin_ok,
+            f", {checkin_fail} failed" if checkin_fail else "",
+        )
 
-    today = datetime.datetime.now().date()
+    today = datetime.now().date()
     events = load_json_file("calendar.json").get("calendar_events", [])
     for event_data in events:
         evt_id = event_data.get("id")

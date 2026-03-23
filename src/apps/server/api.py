@@ -354,7 +354,7 @@ def create_server_app(db_path=None):
 
     @app.route("/api/users", methods=["POST"])
     def api_create_user():
-        """Create user. No auth required (new users have no credentials)."""
+        """Create or replace user. No auth (new users have no credentials)."""
         data = request.get_json() or {}
         user_id = data.get("id")
         if not user_id:
@@ -363,6 +363,7 @@ def create_server_app(db_path=None):
             user_id=user_id,
             display_name=data.get("display_name") or "",
             photo_filename=data.get("photo_filename"),
+            # TODO far future security: new users may be invited to a family and have an auth code etc but shouldn't be able to simply join a family
             family_circle_id=data.get("family_circle_id"),
             sendbird_user_id=data.get("sendbird_user_id"),
         )
@@ -371,19 +372,28 @@ def create_server_app(db_path=None):
         return jsonify({"data": r.data}), 201
 
     @app.route(
-        "/api/family_circles/<family_circle_id>/users", methods=["POST"]
+        "/api/family_circles/<family_circle_id>/family-members", methods=["GET", "POST"]
     )
-    def api_add_user_to_family(family_circle_id):
-        """Link existing user to family. Requires family access."""
+    def api_family_members(family_circle_id):
+        """GET: list family members. POST: add existing user to family."""
         _require_family_access(family_circle_id)
-        data = request.get_json() or {}
-        user_id = data.get("user_id") or data.get("id")
-        if not user_id:
-            return jsonify({"error": "user_id required"}), 400
-        r = family_svc.add_user_to_family(user_id, family_circle_id)
+        if request.method == "POST":
+            data = request.get_json() or {}
+            user_id = data.get("id") or data.get("user_id")
+            if not user_id:
+                return jsonify({"error": "id or user_id required"}), 400
+            r = family_svc.add_user_to_family(user_id, family_circle_id)
+            return jsonify({"data": True}), 201
+        r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
-        return jsonify({"data": True}), 201
+        base = request.url_root.rstrip("/")
+        members = [dict(m) for m in (r.data or [])]
+        for m in members:
+            m["photo_url"] = (
+                "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
+            )
+        return jsonify({"data": members})
 
     @app.route(
         "/api/family_circles/<family_circle_id>/contacts", methods=["GET", "POST"]
@@ -814,20 +824,6 @@ def create_server_app(db_path=None):
         """Clear session. For switching users."""
         session.clear()
         return jsonify({"ok": True})
-
-    @app.route("/api/family_circles/<family_circle_id>/family-members")
-    def api_get_family_members(family_circle_id):
-        _require_family_access(family_circle_id)
-        r = family_svc.get_family_members(family_circle_id)
-        if not r.success:
-            return jsonify({"error": r.error}), 500
-        base = request.url_root.rstrip("/")
-        members = [dict(m) for m in (r.data or [])]
-        for m in members:
-            m["photo_url"] = (
-                "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
-            )
-        return jsonify({"data": members})
 
     @app.route(
         "/api/family_circles/<family_circle_id>/create_checkin", methods=["POST"]

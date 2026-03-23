@@ -165,7 +165,7 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        webview.start(debug=True)
+        webview.start(debug=False)
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""

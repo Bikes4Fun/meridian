@@ -8,7 +8,7 @@
       "birthday": "1960-05-12",
       "relationship": "husband",
       "emergency_priority": "primary_emergency",
-      "photo_filename": "dean gps pin.jpg",
+      "photo_filename": "dean_gps_pin.jpg",
       "sendbird_user_id": "dean",
       "notes": "Primary caregiver"
     },
@@ -20,7 +20,7 @@
       "birthday": "1988-03-22",
       "relationship": "child",
       "emergency_priority": "secondary_emergency",
-      "photo_filename": "deanna gps pin.jpeg",
+      "photo_filename": "deanna_gps_pin.jpeg",
       "sendbird_user_id": "deanna"
     },
     {

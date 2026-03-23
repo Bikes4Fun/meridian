@@ -131,7 +131,11 @@ class MeridianKioskApp:
         import webview
 
         base = (self.api_url or "").rstrip("/")
-        url = f"{base}/kiosk/" if base else None
+        url = (
+            f"{base}/kiosk-auth?user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+            if base
+            else None
+        )
         if not url:
             web_dir = os.path.join(os.path.dirname(__file__), "web")
             html_path = os.path.join(web_dir, "kiosk.html")

@@ -177,7 +177,7 @@ def create_server_app(db_path=None):
     @app.before_request
     def set_user_id():
         """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
-        if request.path in ("/api/health", "/api/login", "/api/logout", "/auth"):
+        if request.path in ("/api/health", "/api/login", "/api/logout", "/auth", "/kiosk-auth"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -803,6 +803,18 @@ def create_server_app(db_path=None):
                 "family_circle_id": g.family_circle_id,
             }
         )
+
+    @app.route("/kiosk-auth", methods=["GET"])
+    def kiosk_auth():
+        """Set session from query params and redirect to /kiosk/. For kiosk auto-login."""
+        user_id = (request.args.get("user_id") or "").strip()
+        family_circle_id = (request.args.get("family_circle_id") or "").strip()
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "user_id and family_circle_id required"}), 400
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        return redirect("/kiosk/")
 
     @app.route("/api/login", methods=["POST"])
     def api_login():

@@ -1,6 +1,6 @@
 # Meridian - Project Plan & Progress
 
-**Overview:** 14-week plan Jan 11–Apr 20 (final presentation). Everything must be done before Apr 20. Weeks 1–6 done: setup, map, GPS, checkin, meds. Week 7 in progress: ICE UI done, org/arch. Weeks 8–14: tests, family, QR, safety, final polish & docs.
+**Overview:** 14-week plan Jan 11–Apr 20 (final presentation). Weeks 1–9 largely done: setup, map, GPS, checkin, meds, ICE, iOS, tests, org/arch. Remaining: QR, safety, polish & docs.
 
 | Date | Checkpoint |
 |------|------------|
@@ -10,7 +10,7 @@
 | **Apr 20** | Final presentation |
 
 ## Current Issues
-- [ ] Map populates but incorrectly. see screenshots
+- [ ] Map populates but incorrectly (see screenshots)
 - [ ] Nav cut off
 - [ ] Database datatype mismatch
 - [ ] modular_display vs app_factory – both needed?
@@ -49,29 +49,35 @@
 ## Week 6 (Feb 15–21): Medication MVP ✓ (core)
 - [x] Map displays family photos and locations
 
-## Week 7 (Feb 22–28): Emergency/ICE + Org/Arch ⚠️ IN PROGRESS
+## Week 7 (Feb 22–28): Emergency/ICE + Org/Arch ✓
 - [x] Emergency service, contacts, medical summary, ICE Profile Service
 - [x] ICE Screen UI (full-screen EMS display, DNR/proxy/POA, ICE button)
+- [x] ICE #4 – Printable POLST-Formatted PDF (#22)
 - [ ] stop flashing
 - [ ] Safety alerts, color indicators, pill-pack QR scan, ethics review
 - [ ] Enhanced Medical ID (name, DOB, photo, doctor)
-- [ ] ICE #3–7: Editor, PDF, Smart911, 911 trigger
+- [ ] ICE #3, #5–7: Editor, Smart911, 911 trigger
 
-- [ ] Org/Arch ⚠️ IN PROGRESS
+- [x] Org/Arch (#28 architecture review, #57 kiosk screen progression)
 
-## Week 8 (Mar 1–7): Tests ⚠️ NEXT
-- [ ] Unit tests (contact, calendar, medication, emergency, ICE)
-- [ ] Integration tests, framework cleanup
+## Week 8 (Mar 1–7): Tests ✓
+- [x] Define tests (#29), Create tests (#30), Load tests into GitHub (#31)
+- [x] e2e critical path, emergency (#107)
 
-## Week 9 (Mar 8–14): Family Connection MVP
+## Week 9 (Mar 8–14): Family Connection MVP ✓
 - [x] Contact service, family data model
+- [x] Kivy → HTML/CSS (#8), Sendbird (#55), chat to kiosk/webapp (#67)
+- [x] iOS mobile app (#52), TestFlight (#78), iOS login/alert/checkin (#80)
+- [x] Manage meds and events (#86, #88, #82)
+- [x] Security fixes (#36, #41), separate family id (#34)
 - [ ] Photo directory UI, Easy-touch calling, Living arrangements
 
-## Week 10 (Mar 15–21)
-*Checkpoint Mar 17*
+## Week 10 (Mar 15–21) ✓
+*Checkpoint Mar 17 – passed*
+- [x] Readme, demo data (#110)
 
 ## Week 11 (Mar 22–28)
-*Map done in week 6/7 (Named Places, circles, labels – #11–13 closed)*
+- [x] Map (#18), e2e tests (#107)
 
 ## Week 12 (Mar 29–Apr 4): QR Code
 - [ ] Setup (opencv, qrcode, pyzbar), generation, camera scanning, med verification, integration
@@ -93,27 +99,40 @@ See GitHub for details. Some issues may duplicate across repos (dementia_tv_pyth
 
 ### Closed
 - [x] #1: Remove responsive_system.py
+- [x] #2–4: Skipped (interfaces, display, schema)
 - [x] #8: Switch Kivy to HTML/CSS
 - [x] #9: Geofencing/Location checkin
 - [x] #11–13: Map (Data Model, Backend, Frontend) + Named Places
+- [x] #18: Map details and UI
 - [x] #19: ICE #1 – ICE Data Model & Storage
 - [x] #20: ICE #2 – ICE Screen UI
-- [x] #2–4: Skipped (interfaces, display, schema)
+- [x] #22: ICE #4 – Printable POLST-Formatted PDF
+- [x] #28: Architecture review part 1
+- [x] #29: Define tests | #30: Create tests | #31: Load tests into GitHub
+- [x] #32: Fix Vercel
+- [x] #34: Separate family id from user id
+- [x] #36: Fix minor bugs in sessions and security
+- [x] #41: Security issues
+- [x] #52: Mobile iOS app
+- [x] #55: Sendbird
+- [x] #57: Fix kiosk screen creation progression
+- [x] #61: Tests
+- [x] #67: Update basic chat to kiosk webapp chat
+- [x] #78: Test TestFlight
+- [x] #80: iOS login alert checkin
+- [x] #82, #86, #88: Fix/add/edit meds and events
+- [x] #110: Readme and demo data
 
 ### Open – ICE Screen & Smart911
 - [ ] #21: ICE #3 – Caregiver ICE Profile Editor (Web)
-- [ ] #22: ICE #4 – Printable POLST-Formatted PDF
-- [ ] #23: Apply for Smart911 partnership/API access
+- [ ] #23: Apply for Smart911 partnership (Not planned / skipped)
 - [ ] #24: ICE #5 – Smart911 Account Connection (Blocked)
 - [ ] #25: ICE #6 – Smart911 Auto-Sync
-- [ ] #26: ICE #7 – 911 Call Trigger + ICE Auto-Display
+- [ ] #26: ICE #7 – 911 Call Trigger (Not planned / skipped)
 
 ### Open – Other
 - [ ] #5: LAST final polish
 - [ ] #7: Consider Using a Calendar API
-- [ ] #18: Map details and UI
-- [ ] #28: Architecture review part 1
-- [ ] #29: Define tests | #30: Create tests | #31: Load tests into GitHub
 
 ---
 ---
@@ -143,7 +162,7 @@ Things we decided not to do or completely overhauled.
 - **FaceTime integration** – Phase 2; not in current roadmap
 - **One-touch 911** – LOW priority but keeping in mind; hardware-dependent
 - **Fall detection** – Far future; “if hardware available”
-- **Print functionality** – Phase 3; not in todo
+- **Print functionality** – Emergency auto-print on alert done; full print Phase 3 deferred
 - **Weather** – EXTREMELY LOW PRIORITY in clock widget
 - **Cloud backup** – Optional in proposal; not active in todo
 - **Location services** – Family member location/safety sharing; medium priority, may slip

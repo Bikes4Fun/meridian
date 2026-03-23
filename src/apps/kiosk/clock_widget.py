@@ -33,15 +33,15 @@ def build_clock_html(services) -> str:
     sprite_period = _sprite_period_from_hour(datetime.datetime.now().hour)
     icon_html = f'<div class="clock-period-sprite" data-period="{sprite_period}" title=""></div>'
 
-    clock = hp.kiosk_header(day, id_="clock-day")
-    clock += '<div style="display:flex;align-items:center;gap:16px">'
-    clock += hp.kiosk_subheader(period, id_="clock-period")
-    clock += icon_html
-    clock += "</div>"
-    clock += hp.spacer(16)
+    clock = '<div id="clock-main">'
+    clock += hp.kiosk_header(day, id_="clock-day")
     clock += hp.kiosk_hero(clock_time, id_="clock-time")
-    clock += hp.spacer(8)
     clock += hp.kiosk_subheader(date, id_="clock-date")
     clock += hp.kiosk_subheader(year, id_="clock-year")
+    clock += '</div>'
 
-    return clock
+    sprite_and_text = '<div id="sprite-and-text">'
+    sprite_and_text += icon_html
+    sprite_and_text += '</div>'
+
+    return f'<div class="clock-container">{clock}{sprite_and_text}</div>'

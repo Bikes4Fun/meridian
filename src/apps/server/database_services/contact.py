@@ -40,6 +40,8 @@ class Contact:
 
 
 class ContactService:
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
@@ -54,7 +56,7 @@ class ContactService:
             FROM contacts c
             WHERE c.family_circle_id = ?
         """
-        result = self.safe_query(query, (family_circle_id,))
+        result = self.db_manager.execute_query(query, (family_circle_id,))
         if not result.success:
             return result
         contacts = [
@@ -87,7 +89,7 @@ class ContactService:
             FROM contacts c
             WHERE c.family_circle_id = ? AND c.emergency_priority IN ('primary_emergency', 'secondary_emergency')
         """
-        result = self.safe_query(query, (family_circle_id,))
+        result = self.db_manager.execute_query(query, (family_circle_id,))
         if not result.success:
             return result
         contacts = [
@@ -115,7 +117,7 @@ class ContactService:
             SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts WHERE id = ? AND family_circle_id = ?
         """
-        result = self.safe_query(query, (contact_id, family_circle_id))
+        result = self.db_manager.execute_query(query, (contact_id, family_circle_id))
         if not result.success:
             return result
         if result.data:
@@ -140,7 +142,7 @@ class ContactService:
             SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts WHERE id = ?
         """
-        result = self.safe_query(query, (contact_id,))
+        result = self.db_manager.execute_query(query, (contact_id,))
         if not result.success:
             return result
         if result.data:

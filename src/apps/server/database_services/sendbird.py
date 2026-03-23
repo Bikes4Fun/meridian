@@ -11,11 +11,12 @@ import urllib.parse
 
 import requests
 
-from ..database_manager import DatabaseManager
-
 
 class SendbirdService:
     """Service for Sendbird config, user lookups, and Platform API (session token)."""
+
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     # --- Config (env) ---
 

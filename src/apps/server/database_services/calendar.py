@@ -36,6 +36,8 @@ class Event:
 
 
 class CalendarService:
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     def _ref(self, reference_date: Optional[datetime.date] = None) -> datetime.date:
         """Use TV's date when provided; otherwise fall back to server date (client should send ?date=)."""
@@ -169,7 +171,7 @@ class CalendarService:
                 WHERE family_circle_id = ? AND DATE(start_time) = ?
                 ORDER BY start_time
             """
-            result = self.safe_query(query, (family_circle_id, target_date_str))
+            result = self.db_manager.execute_query(query, (family_circle_id, target_date_str))
         else:
             query = """
                 SELECT id, title, start_time, end_time, description, location,
@@ -178,7 +180,7 @@ class CalendarService:
                 WHERE DATE(start_time) = ?
                 ORDER BY start_time
             """
-            result = self.safe_query(query, (target_date_str,))
+            result = self.db_manager.execute_query(query, (target_date_str,))
         if not result.success:
             return result
         events = []

@@ -14,11 +14,12 @@ try:
 except ImportError:
     from shared.interfaces import ServiceResult
 
-from ..database_manager import DatabaseManager
-
 
 class LocationService:
     """Service for managing location check-ins."""
+
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     @staticmethod
     def _haversine_metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -97,7 +98,7 @@ class LocationService:
             (family_circle_id, user_id, timestamp, latitude, longitude, location_name, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        result = self.safe_update(
+        result = self.db_manager.execute_update(
             query,
             (
                 family_circle_id,
@@ -149,7 +150,7 @@ class LocationService:
             WHERE c.family_circle_id = ?
             ORDER BY c.timestamp DESC
         """
-        result = self.safe_query(query, (family_circle_id, family_circle_id))
+        result = self.db_manager.execute_query(query, (family_circle_id, family_circle_id))
         if not result.success or not result.data:
             return result
         named_places_result = self.get_named_places(family_circle_id)
@@ -186,7 +187,7 @@ class LocationService:
     def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
         """Return all family-wide named places. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""
         if not family_circle_id:
-            return self.safe_query("SELECT 1 WHERE 0", ())
+            return self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         query = """
             SELECT location_id, location_name, gps_latitude, gps_longitude,
                    COALESCE(radius_metres, ?) as radius_metres,
@@ -195,4 +196,4 @@ class LocationService:
             WHERE family_circle_id = ?
             ORDER BY location_name
         """
-        return self.safe_query(query, (DEFAULT_PLACE_RADIUS_M, family_circle_id))
+        return self.db_manager.execute_query(query, (DEFAULT_PLACE_RADIUS_M, family_circle_id))

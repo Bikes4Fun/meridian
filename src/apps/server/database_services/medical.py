@@ -37,12 +37,13 @@ class PRNMedication:
 
 
 class MedicationService:
-
-    self.timed_medications: List[TimedMedication] = []
-    self.prn_medications: List[PRNMedication] = []
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
+        self.timed_medications: List[TimedMedication] = []
+        self.prn_medications: List[PRNMedication] = []
 
     def _get_care_recipient_user_id(self, family_circle_id: str) -> Optional[str]:
-        r = self.safe_query(
+        r = self.db_manager.execute_query(
             "SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
@@ -62,7 +63,7 @@ class MedicationService:
             WHERE m.care_recipient_user_id = ?
             ORDER BY m.name, mt.time
         """
-        result = self.safe_query(query, (care_recipient_user_id,))
+        result = self.db_manager.execute_query(query, (care_recipient_user_id,))
         if not result.success:
             self.logger.error("Failed to load medication data: %s", result.error)
             return
@@ -155,7 +156,7 @@ class MedicationService:
             return ServiceResult.error_result(result.error or "Insert failed")
         medication_id = result.data
         for time_name in medication_times:
-            r = self.safe_query(
+            r = self.db_manager.execute_query(
                 "SELECT id FROM medication_times WHERE family_circle_id = ? AND name = ?",
                 (family_circle_id, time_name),
             )
@@ -179,14 +180,14 @@ class MedicationService:
         care_recipient_user_id = self._get_care_recipient_user_id(family_circle_id)
         if not care_recipient_user_id:
             return ServiceResult.error_result("No care recipient for family circle")
-        r = self.safe_query(
+        r = self.db_manager.execute_query(
             "SELECT name, dosage FROM medications WHERE id = ? AND care_recipient_user_id = ?",
             (medication_id, care_recipient_user_id),
         )
         if not r.success or not r.data:
             return ServiceResult.error_result("Medication not found")
         row = r.data[0]
-        times_r = self.safe_query(
+        times_r = self.db_manager.execute_query(
             """SELECT mt.name FROM medication_to_time mtt
                JOIN medication_times mt ON mtt.group_id = mt.id
                WHERE mtt.medication_id = ? AND mt.family_circle_id = ?""",
@@ -218,7 +219,7 @@ class MedicationService:
             return ServiceResult.error_result("No care recipient for family circle")
         if not name or not medication_times:
             return ServiceResult.error_result("name and medication_times required")
-        r = self.safe_query(
+        r = self.db_manager.execute_query(
             "SELECT id FROM medications WHERE id = ? AND care_recipient_user_id = ?",
             (medication_id, care_recipient_user_id),
         )
@@ -232,7 +233,7 @@ class MedicationService:
             "DELETE FROM medication_to_time WHERE medication_id = ?", (medication_id,)
         )
         for time_name in medication_times:
-            tr = self.safe_query(
+            tr = self.db_manager.execute_query(
                 "SELECT id FROM medication_times WHERE family_circle_id = ? AND name = ?",
                 (family_circle_id, time_name),
             )
@@ -253,7 +254,7 @@ class MedicationService:
         care_recipient_user_id = self._get_care_recipient_user_id(family_circle_id)
         if not care_recipient_user_id:
             return ServiceResult.error_result("No care recipient for family circle")
-        r = self.safe_query(
+        r = self.db_manager.execute_query(
             "SELECT id FROM medications WHERE id = ? AND care_recipient_user_id = ?",
             (medication_id, care_recipient_user_id),
         )
@@ -315,7 +316,7 @@ class MedicationService:
     ) -> ServiceResult:
         """Mark a medication time slot as taken or not. time_slot e.g. Morning, Evening, prn. taken_today stores comma-separated list. For prn, also updates last_taken."""
         self._load_medication_data(family_circle_id)
-        r = self.safe_query(
+        r = self.db_manager.execute_query(
             "SELECT taken_today, last_taken FROM medications WHERE id = ? AND care_recipient_user_id IN (SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?)",
             (medication_id, family_circle_id),
         )

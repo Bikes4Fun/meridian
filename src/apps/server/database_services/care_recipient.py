@@ -2,8 +2,6 @@
 Care recipient and contact role updates. Legal/medical designations (proxy, POA) are just contact roles.
 """
 
-from ..database_manager import DatabaseManager
-
 try:
     from ....shared.interfaces import ServiceResult
 except ImportError:
@@ -11,6 +9,8 @@ except ImportError:
 
 
 class CareRecipientService:
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     def update_care_recipient(self, family_circle_id: str, data: dict) -> ServiceResult:
         """Update care_recipients and contact roles (proxy, POA). Data is care recipient, not session user."""
@@ -34,7 +34,7 @@ class CareRecipientService:
         if not care_recipient_user_id:
             return ServiceResult.error_result("care_recipient_user_id required")
 
-        result = self.safe_update(
+        result = self.db_manager.execute_update(
             """
             INSERT OR REPLACE INTO care_recipients (family_circle_id, care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -54,22 +54,22 @@ class CareRecipientService:
             return result
 
         def _ensure_contact(cid: str, name: str, phone: str) -> bool:
-            r = self.safe_query(
+            r = self.db_manager.execute_query(
                 "SELECT id FROM contacts WHERE id = ? AND family_circle_id = ?",
                 (cid, family_circle_id),
             )
             if r.success and r.data:
-                return self.safe_update(
+                return self.db_manager.execute_update(
                     "UPDATE contacts SET display_name=?, phone=? WHERE id=? AND family_circle_id=?",
                     (name, phone or "", cid, family_circle_id),
                 ).success
-            return self.safe_update(
+            return self.db_manager.execute_update(
                 "INSERT INTO contacts (id, family_circle_id, display_name, phone) VALUES (?, ?, ?, ?)",
                 (cid, family_circle_id, name, phone or ""),
             ).success
 
         def _set_role(role: str, contact_id: str) -> bool:
-            return self.safe_update(
+            return self.db_manager.execute_update(
                 "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
                 (family_circle_id, role, contact_id),
             ).success

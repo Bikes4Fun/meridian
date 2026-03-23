@@ -7,11 +7,12 @@ try:
 except ImportError:
     from shared.interfaces import ServiceResult
 
-from ..database_manager import DatabaseManager
-
 
 class FamilyService:
     """Service for family circle and member operations."""
+
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     def get_family_members(self, family_circle_id: str) -> ServiceResult:
         """Return users in the family."""
@@ -22,4 +23,4 @@ class FamilyService:
             WHERE ufc.family_circle_id = ?
             ORDER BY u.display_name
         """
-        return self.safe_query(query, (family_circle_id,))
+        return self.db_manager.execute_query(query, (family_circle_id,))

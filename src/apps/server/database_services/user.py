@@ -15,6 +15,8 @@ except ImportError:
 
 
 class UserService:
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
 
     def add_user(
         self,

@@ -4,12 +4,15 @@ import os
 import sys
 
 # Ensure src is on path
-_src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_src_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(os.path.join(_src_dir, "..", ".env"))
 except ImportError:
     pass
@@ -33,7 +36,11 @@ from shared.config import (
 from apps.kiosk.app import create_app
 
 KIOSK_USER_ID = os.environ.get("KIOSK_USER_ID") or "fm_care_001"
-FAMILY_CIRCLE_ID = os.environ.get("FAMILY_CIRCLE_ID") or os.environ.get("PATIENT_FAMILY_CIRCLE_ID") or "F00000"
+FAMILY_CIRCLE_ID = (
+    os.environ.get("FAMILY_CIRCLE_ID")
+    or os.environ.get("PATIENT_FAMILY_CIRCLE_ID")
+    or "F00000"
+)
 
 
 def _start_local_api_server(logger):
@@ -68,28 +75,20 @@ def main():
     logger = logging.getLogger(__name__)
 
     if using_local_db:
-        db_path = get_database_path()
-        logger.info(f"Database: local - {db_path}")
+        logger.info(f"Database: local - {get_database_path()}")
         if not railway_reachable:
             logger.warning("Railway unreachable, using local DB")
-        from dev.demo.seed import (
-            ensure_local_database,
-            demo_seed_after_server,
-            refresh_demo_checkins,
-        )
-
-        ensure_local_database(db_path)
         api_url = _start_local_api_server(logger)
-        if not demo_seed_after_server(api_url, db_path):
-            logger.warning("Demo seed after server failed")
-        refresh_demo_checkins(db_path)
     else:
         api_url = get_railway_api_url()
         logger.info(f"API: {api_url}")
         logger.info("Database: Railway (remote)")
         try:
             import urllib.request
-            with urllib.request.urlopen(f"{api_url.rstrip('/')}/api/health", timeout=3) as resp:
+
+            with urllib.request.urlopen(
+                f"{api_url.rstrip('/')}/api/health", timeout=3
+            ) as resp:
                 if resp.status == 200:
                     logger.info("Server health: ok")
                 else:

@@ -6,7 +6,7 @@ Composes from canonical sources: care_recipients, medications, allergies, condit
 
 from dataclasses import asdict
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -15,14 +15,14 @@ except ImportError:
 from .contact import ContactService
 
 
-class EmergencyService(DatabaseServiceMixin):
+class EmergencyService:
     def __init__(self, db_manager: DatabaseManager, contact_service: ContactService):
-        DatabaseServiceMixin.__init__(self, db_manager)
+        self.db_manager = db_manager
         self.contact_service = contact_service
 
     def get_emergency_profile(self, family_circle_id: str) -> ServiceResult:
         """Compose emergency profile from canonical sources. No data stored in this service."""
-        care = self.safe_query(
+        care = self.db_manager.execute_query(
             "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
@@ -32,12 +32,12 @@ class EmergencyService(DatabaseServiceMixin):
             care_row["care_recipient_user_id"] if care_row else None
         )
         conditions_result = (
-            self.safe_query(
+            self.db_manager.execute_query(
                 "SELECT condition_name FROM conditions WHERE care_recipient_user_id = ? ORDER BY condition_name",
                 (care_recipient_user_id,),
             )
             if care_recipient_user_id
-            else self.safe_query("SELECT 1 WHERE 0", ())
+            else self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         )
         conditions_list = (
             [
@@ -51,12 +51,12 @@ class EmergencyService(DatabaseServiceMixin):
         medical_conditions = ", ".join(conditions_list) if conditions_list else None
 
         allergies_result = (
-            self.safe_query(
+            self.db_manager.execute_query(
                 "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
                 (care_recipient_user_id,),
             )
             if care_recipient_user_id
-            else self.safe_query("SELECT 1 WHERE 0", ())
+            else self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         )
         allergies = (
             [a["allergen"] for a in allergies_result.data]
@@ -65,7 +65,7 @@ class EmergencyService(DatabaseServiceMixin):
         )
 
         meds_result = (
-            self.safe_query(
+            self.db_manager.execute_query(
                 """
             SELECT m.name, m.dosage, m.frequency
             FROM medications m
@@ -75,7 +75,7 @@ class EmergencyService(DatabaseServiceMixin):
                 (care_recipient_user_id,),
             )
             if care_recipient_user_id
-            else self.safe_query("SELECT 1 WHERE 0", ())
+            else self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         )
         medications = (
             [
@@ -87,7 +87,7 @@ class EmergencyService(DatabaseServiceMixin):
         )
 
         proxy_name, proxy_phone, poa_name, poa_phone = None, None, None, None
-        roles_result = self.safe_query(
+        roles_result = self.db_manager.execute_query(
             "SELECT role, contact_id FROM ice_contact_roles WHERE family_circle_id = ?",
             (family_circle_id,),
         )
@@ -95,7 +95,7 @@ class EmergencyService(DatabaseServiceMixin):
             contact_ids = [r["contact_id"] for r in roles_result.data]
             if contact_ids:
                 placeholders = ",".join("?" * len(contact_ids))
-                contacts_result = self.safe_query(
+                contacts_result = self.db_manager.execute_query(
                     f"SELECT id, display_name, phone FROM contacts WHERE id IN ({placeholders})",
                     tuple(contact_ids),
                 )

@@ -120,15 +120,3 @@ class DatabaseManager:
         except Exception as e:
             self.logger.error("Backup failed: %s", e)
             return ServiceResult.error_result("Backup failed: %s" % e)
-
-
-class DatabaseServiceMixin:
-    def __init__(self, db_manager: DatabaseManager):
-        self.db_manager = db_manager
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-    def safe_query(self, query: str, params: tuple = ()) -> ServiceResult:
-        return self.db_manager.execute_query(query, params)
-
-    def safe_update(self, query: str, params: tuple = ()) -> ServiceResult:
-        return self.db_manager.execute_update(query, params)

@@ -106,14 +106,18 @@ class KioskBridge:
     def delete_medication(self, medication_id: int) -> str:
         return self._medications.delete_medication(medication_id)
 
-    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> str:
+    def mark_medication_taken(
+        self, medication_id: int, time_slot: str, taken: bool
+    ) -> str:
         return self._medications.mark_medication_taken(medication_id, time_slot, taken)
 
 
 class MeridianKioskApp:
     """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""
 
-    def __init__(self, services, api_url: str, kiosk_user_id: str, family_circle_id: str):
+    def __init__(
+        self, services, api_url: str, kiosk_user_id: str, family_circle_id: str
+    ):
         self.services = services
         self.api_url = api_url
         self.kiosk_user_id = kiosk_user_id
@@ -151,7 +155,7 @@ class MeridianKioskApp:
             height=h,
             x=x,
             y=y,
-            resizable=False,
+            resizable=True,
             frameless=frameless,
             fullscreen=fullscreen,
             js_api=self._bridge,
@@ -161,7 +165,7 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        webview.start()
+        webview.start(debug=False)
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""
@@ -188,36 +192,57 @@ class MeridianKioskApp:
 
         if screen_name == "home":
             from .home_screen import build_home_html
-            return build_home_html(
-                self.services, self.api_url,
-                family_circle_id=self.family_circle_id,
-                kiosk_user_id=self.kiosk_user_id,
-            ), None
+
+            return (
+                build_home_html(
+                    self.services,
+                    self.api_url,
+                    family_circle_id=self.family_circle_id,
+                    kiosk_user_id=self.kiosk_user_id,
+                ),
+                None,
+            )
 
         if screen_name == "emergency":
             from .emergency_screen import build_emergency_html
+
             return build_emergency_html(self.services, self.api_url), None
 
         if screen_name == "family":
             from .checkin_screen import build_checkin_html
+
             html, markers_json, places_json = build_checkin_html(
-                self.services, self.api_url, self.family_circle_id,
+                self.services,
+                self.api_url,
+                self.family_circle_id,
                 kiosk_user_id=self.kiosk_user_id,
             )
-            return html, f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})"
+            return (
+                html,
+                f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})",
+            )
 
         if screen_name == "chat":
             from .chat_screen import build_chat_html
-            return build_chat_html(
-                self.services, self.api_url, self.kiosk_user_id, self.family_circle_id
-            ), None
+
+            return (
+                build_chat_html(
+                    self.services,
+                    self.api_url,
+                    self.kiosk_user_id,
+                    self.family_circle_id,
+                ),
+                None,
+            )
 
         if screen_name == "medications":
             from .medications_screen import build_medications_html
+
             return build_medications_html(self.services, self.api_url), None
 
         if screen_name == "schedule":
             from .events_handler import build_schedule_html
+
             return build_schedule_html(self.services, self.api_url), None
 
         return hp.error_state("Unknown screen"), None
@@ -264,7 +289,11 @@ class MeridianKioskApp:
 
     def _load_home_schedule(self):
         """Update Up Next and timeline. Fetches data via home_screen, pushes to webview."""
-        from .home_screen import build_timeline_html, build_up_next_html, load_schedule_items
+        from .home_screen import (
+            build_timeline_html,
+            build_up_next_html,
+            load_schedule_items,
+        )
 
         items, now = load_schedule_items(self.services)
         self._eval_el("up_next_content", build_up_next_html(items, now))

@@ -71,8 +71,7 @@ CREATE TABLE IF NOT EXISTS medications (
     max_daily INTEGER,
     last_taken TEXT,
     taken_today TEXT,
-    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id),
-    UNIQUE (care_recipient_user_id, name)
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS medication_to_time (

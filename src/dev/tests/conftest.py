@@ -15,13 +15,13 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 from shared.config import DatabaseConfig
-from apps.server.database import DatabaseManager
+from apps.server.database_manager import DatabaseManager
 from apps.server.api import create_server_app
 from apps.kiosk.api_client import LocalTimeService
-from apps.server.services.contact import ContactService
-from apps.server.services.calendar import CalendarService
-from apps.server.services.medical import MedicationService
-from apps.server.services.emergency import EmergencyService
+from apps.server.database_services.contact import ContactService
+from apps.server.database_services.calendar import CalendarService
+from apps.server.database_services.medical import MedicationService
+from apps.server.database_services.emergency import EmergencyService
 
 
 @pytest.fixture

@@ -39,7 +39,11 @@ def get_map_markers(
         lat = home_place.get("gps_latitude")
         lon = home_place.get("gps_longitude")
         if lat is not None and lon is not None:
-            photo_src = loc_svc.fetch_photo(f"{base}/api/users/{kiosk_user_id}/photo") if base else None
+            photo_src = (
+                loc_svc.fetch_photo(f"{base}/api/users/{kiosk_user_id}/photo")
+                if base
+                else None
+            )
             patient_m = {
                 "lat": lat,
                 "lon": lon,
@@ -62,7 +66,11 @@ def get_map_markers(
             name = c.get("contact_name", "Unknown")
             loc = c.get("location_name") or ""
             user_id = c.get("user_id") or ""
-            photo_src = loc_svc.fetch_photo(f"{base}/api/users/{user_id}/photo") if base and user_id else None
+            photo_src = (
+                loc_svc.fetch_photo(f"{base}/api/users/{user_id}/photo")
+                if base and user_id
+                else None
+            )
             m = {"lat": lat, "lon": lon, "name": name, "location_name": loc}
             if photo_src:
                 m["photo_src"] = photo_src

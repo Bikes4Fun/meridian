@@ -12,9 +12,10 @@ from . import html_primitives as hp
 
 logger = logging.getLogger(__name__)
 
+
 def get_event_form_overlay_html() -> str:
     """Event add/edit modal overlay only. Home adds its own Add Event button."""
-    return '''<div id="eventFormOverlay" class="event-overlay" style="display:none;">
+    return """<div id="eventFormOverlay" class="event-overlay" style="display:none;">
 <div class="event-modal" onclick="event.stopPropagation()">
 <h3 id="eventFormTitle" class="event-modal-title">Add Event</h3>
 <form id="eventForm">
@@ -27,14 +28,14 @@ def get_event_form_overlay_html() -> str:
 <div class="event-form-actions">
 <button type="submit" class="event-btn event-btn-primary">Save</button>
 <button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
-</div></form></div></div>'''
+</div></form></div></div>"""
 
 
 def get_event_modal_html() -> str:
     """Add Event button + overlay (for schedule screen)."""
-    return '''<div class="home-action-row" style="margin-top:16px;">
+    return """<div class="home-action-row" style="margin-top:16px;">
 <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
-</div>''' + get_event_form_overlay_html()
+</div>""" + get_event_form_overlay_html()
 
 
 def build_schedule_html(services, api_url: str) -> str:
@@ -58,12 +59,14 @@ def build_schedule_html(services, api_url: str) -> str:
                     dt = datetime.datetime.fromisoformat(dt_str)
                 except Exception:
                     dt = datetime.datetime.now()
-                items.append({
-                    "type": "med",
-                    "dt": dt,
-                    "title": m.get("name", "?"),
-                    "done": m.get("status") == "done",
-                })
+                items.append(
+                    {
+                        "type": "med",
+                        "dt": dt,
+                        "title": m.get("name", "?"),
+                        "done": m.get("status") == "done",
+                    }
+                )
     if cal_svc:
         if not today:
             today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -75,19 +78,23 @@ def build_schedule_html(services, api_url: str) -> str:
                 dt = now
                 if st:
                     try:
-                        dt = datetime.datetime.fromisoformat(str(st).replace("Z", "+00:00"))
+                        dt = datetime.datetime.fromisoformat(
+                            str(st).replace("Z", "+00:00")
+                        )
                         if dt.tzinfo:
                             dt = dt.replace(tzinfo=None)
                     except Exception:
                         pass
-                items.append({
-                    "type": "event",
-                    "dt": dt,
-                    "title": e.get("display", e.get("title", "?")),
-                    "done": False,
-                    "event_id": e.get("id"),
-                    "event_data": e,
-                })
+                items.append(
+                    {
+                        "type": "event",
+                        "dt": dt,
+                        "title": e.get("display", e.get("title", "?")),
+                        "done": False,
+                        "event_id": e.get("id"),
+                        "event_data": e,
+                    }
+                )
     items.sort(key=lambda x: x["dt"])
 
     parts = [hp.kiosk_header("Full Schedule"), hp.spacer(16)]
@@ -96,7 +103,9 @@ def build_schedule_html(services, api_url: str) -> str:
     else:
         for it in items:
             done = it.get("done")
-            bar_class = "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+            bar_class = (
+                "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+            )
             time_str = it["dt"].strftime("%I:%M %p")
             check = " ✓" if done else ""
             cls = "timeline-item timeline-item-done" if done else "timeline-item"
@@ -104,7 +113,9 @@ def build_schedule_html(services, api_url: str) -> str:
             extra = ""
             if it.get("type") == "event" and it.get("event_id"):
                 eid = html_module.escape(str(it["event_id"]))
-                edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
+                edata = html_module.escape(
+                    json.dumps(it.get("event_data", {})), quote=True
+                )
                 extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
             parts.append(
                 f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
@@ -141,7 +152,9 @@ class EventsHandler:
         self._editing_event_id = data.get("id")
         st = data.get("start_time") or ""
         et = data.get("end_time") or ""
-        date = st[:10] if len(st) >= 10 else datetime.datetime.now().strftime("%Y-%m-%d")
+        date = (
+            st[:10] if len(st) >= 10 else datetime.datetime.now().strftime("%Y-%m-%d")
+        )
         start_time = st[11:16] if len(st) >= 16 else "09:00"
         end_time = et[11:16] if len(et) >= 16 else ""
         title = json.dumps(data.get("title") or "")

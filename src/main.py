@@ -9,6 +9,7 @@ import sys
 # Load .env from repo root if python-dotenv is available (SENDBIRD_APP_ID, etc.)
 try:
     from dotenv import load_dotenv
+
     _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
     load_dotenv(_env_path)
 except ImportError:
@@ -85,40 +86,41 @@ def main():
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
-    logging.getLogger("dev.demo.seed").setLevel(logging.INFO)
+    logging.getLogger("pywebview").setLevel(logging.WARNING)
+    logging.getLogger("apps.kiosk.api_client").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.location").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
     # using_local_db = where DB comes from (local file or Railway). Drives DB setup + API server.
     # use_local = --local flag; also runs local webapp/chatapp. Railway-unreachable fallback uses local DB but not webapp/chatapp.
     if using_local_db:
-        db_path = get_database_path()
-        logger.info("Database: local - %s", db_path)
+        logger.info("Database: local - %s", get_database_path())
         if not railway_reachable:
             logger.warning(
                 "Railway API not reachable (%s), using local database.",
                 get_railway_api_url(),
             )
-        from dev.demo.seed import (
-            ensure_local_database,
-            demo_seed_after_server,
-            refresh_demo_checkins,
-        )
-
-        ensure_local_database(db_path)
-        logger.info("Local DB bootstrap complete.")
         if use_local:
             src_dir = os.path.dirname(os.path.abspath(__file__))
             try:
                 from build_all import build_webapp, build_chatapp
+
                 build_webapp("", src_dir)
                 build_chatapp("", src_dir)
             except Exception as e:
                 logger.error("Build failed (%s).", e)
                 sys.exit(1)
         api_url = _start_local_api_server(logger)
-        if not demo_seed_after_server(api_url, db_path):
-            logger.warning("Demo seed after server failed")
-        refresh_demo_checkins(db_path)
+        
+        try:
+            from dev.demo.seed import run_seed
+            if run_seed(api_url):
+                logger.info("Demo data seeded")
+            else:
+                logger.warning("Demo seed failed or skipped")
+        except Exception as e:
+            logger.warning("Demo seed failed: %s", e)
+            
         logger.info("Database loaded")
     else:
         api_url = get_railway_api_url()

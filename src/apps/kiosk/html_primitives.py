@@ -20,7 +20,8 @@ import json
 
 def nav_html(buttons):
     """Navigation bar: row of buttons with data-screen. kiosk.html delegates clicks to pywebview.api.navigate(screen).
-    buttons: [{"text": "Home", "screen": "home"}, ...]. Uses data-screen to avoid onclick escaping issues."""
+    buttons: [{"text": "Home", "screen": "home"}, ...]. Uses data-screen to avoid onclick escaping issues.
+    """
     parts = []
     for b in buttons:
         text = html.escape(str(b.get("text", "")))
@@ -31,17 +32,23 @@ def nav_html(buttons):
 
 def loading_state(label="Loading..."):
     """Loading placeholder. Design: Status Indicators—never color alone. Used by every screen."""
-    return f'<div class="state-placeholder state-loading">{html.escape(str(label))}</div>'
+    return (
+        f'<div class="state-placeholder state-loading">{html.escape(str(label))}</div>'
+    )
 
 
 def empty_state(message):
     """Empty state. Design: Status Indicators—text label. "No events today", "No medications", etc."""
-    return f'<div class="state-placeholder state-empty">{html.escape(str(message))}</div>'
+    return (
+        f'<div class="state-placeholder state-empty">{html.escape(str(message))}</div>'
+    )
 
 
 def error_state(message):
     """Error/fallback state. Design: Status Indicators—icon + text. Used when fetch fails."""
-    return f'<div class="state-placeholder state-error">{html.escape(str(message))}</div>'
+    return (
+        f'<div class="state-placeholder state-error">{html.escape(str(message))}</div>'
+    )
 
 
 def _wrap_typed(text, class_name, id_=None):
@@ -82,7 +89,7 @@ def kiosk_caption(text, id_=None):
 
 def panel(inner_html, class_name=""):
     """Container. Design: safe margins 40-48px, padding 16-24px. class_name: med-panel, events-panel, etc."""
-    cls = f' {html.escape(class_name)}' if class_name else ""
+    cls = f" {html.escape(class_name)}" if class_name else ""
     return f'<div class="kiosk-panel{cls}">{inner_html}</div>'
 
 
@@ -109,7 +116,8 @@ def avatar_img(avatar_src, alt=""):
 def kiosk_button(text, onclick_js, no_feedback=False, small=False):
     """Primary button. Design: 160×160px min, text 24px min, rounded 12-16px. Used by: Emergency (Print).
     Standard: press feedback (scale + darker color). no_feedback=True disables it. small=True: compact, no min size.
-    onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it."""
+    onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it.
+    """
     parts = ["kiosk-button"]
     if no_feedback:
         parts.append("kiosk-button--no-feedback")
@@ -119,12 +127,18 @@ def kiosk_button(text, onclick_js, no_feedback=False, small=False):
     return f'<button class="{cls}" onclick="{onclick_js}">{html.escape(str(text))}</button>'
 
 
-def contact_tile(avatar_src, name, onclick_js=None, relationship="", data_sb_uid="", data_name=""):
+def contact_tile(
+    avatar_src, name, onclick_js=None, relationship="", data_sb_uid="", data_name=""
+):
     """Person/contact card. avatar_src = data URI from fetch_photo_b64. Uses data-sb-uid/data-name for chat when provided."""
     initial = (name or "?")[0].upper()
     name_escaped = html.escape(str(name or "Contact"))
     img_tag = avatar_img(avatar_src, name)
-    rel_part = f'<div class="contact-relationship">{html.escape(str(relationship))}</div>' if relationship else ""
+    rel_part = (
+        f'<div class="contact-relationship">{html.escape(str(relationship))}</div>'
+        if relationship
+        else ""
+    )
     avatar_block = f'<div class="avatar-wrapper"><div class="contact-initial">{html.escape(initial)}</div>{img_tag}</div>'
     if data_sb_uid or data_name:
         sb = f' data-sb-uid="{html.escape(str(data_sb_uid))}"' if data_sb_uid else ""

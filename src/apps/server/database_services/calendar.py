@@ -9,7 +9,7 @@ import datetime
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -35,9 +35,9 @@ class Event:
         return f"• {self.title}"
 
 
-class CalendarService(DatabaseServiceMixin):
+class CalendarService:
     def __init__(self, db_manager: DatabaseManager):
-        DatabaseServiceMixin.__init__(self, db_manager)
+        self.db_manager = db_manager
 
     def _ref(self, reference_date: Optional[datetime.date] = None) -> datetime.date:
         """Use TV's date when provided; otherwise fall back to server date (client should send ?date=)."""
@@ -68,9 +68,15 @@ class CalendarService(DatabaseServiceMixin):
         )
 
     def add_event(
-        self, family_circle_id: str, event_id: str, title: str, start_time: str,
-        description: Optional[str] = None, location: Optional[str] = None,
-        end_time: Optional[str] = None, **kwargs
+        self,
+        family_circle_id: str,
+        event_id: str,
+        title: str,
+        start_time: str,
+        description: Optional[str] = None,
+        location: Optional[str] = None,
+        end_time: Optional[str] = None,
+        **kwargs,
     ) -> ServiceResult:
         """Insert a new calendar event. event_id required (client-generated UUID or slug)."""
         query = """
@@ -79,10 +85,17 @@ class CalendarService(DatabaseServiceMixin):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            event_id, family_circle_id, title, description or None, start_time,
-            end_time or None, location or None,
-            kwargs.get("driver_name"), kwargs.get("driver_contact_id"),
-            kwargs.get("pickup_time"), kwargs.get("leave_time"),
+            event_id,
+            family_circle_id,
+            title,
+            description or None,
+            start_time,
+            end_time or None,
+            location or None,
+            kwargs.get("driver_name"),
+            kwargs.get("driver_contact_id"),
+            kwargs.get("pickup_time"),
+            kwargs.get("leave_time"),
         )
         result = self.db_manager.execute_update(query, params)
         if not result.success:
@@ -90,9 +103,15 @@ class CalendarService(DatabaseServiceMixin):
         return ServiceResult.success_result({"id": event_id})
 
     def update_event(
-        self, family_circle_id: str, event_id: str, title: Optional[str] = None,
-        description: Optional[str] = None, start_time: Optional[str] = None,
-        end_time: Optional[str] = None, location: Optional[str] = None, **kwargs
+        self,
+        family_circle_id: str,
+        event_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
+        location: Optional[str] = None,
+        **kwargs,
     ) -> ServiceResult:
         """Update an existing calendar event."""
         # Build dynamic UPDATE
@@ -136,7 +155,9 @@ class CalendarService(DatabaseServiceMixin):
             return ServiceResult.error_result(result.error or "Delete failed")
         return ServiceResult.success_result(True)
 
-    def get_events_for_date(self, date: str, family_circle_id: Optional[str] = None) -> ServiceResult:
+    def get_events_for_date(
+        self, date: str, family_circle_id: Optional[str] = None
+    ) -> ServiceResult:
         try:
             target_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         except ValueError:
@@ -150,7 +171,7 @@ class CalendarService(DatabaseServiceMixin):
                 WHERE family_circle_id = ? AND DATE(start_time) = ?
                 ORDER BY start_time
             """
-            result = self.safe_query(query, (family_circle_id, target_date_str))
+            result = self.db_manager.execute_query(query, (family_circle_id, target_date_str))
         else:
             query = """
                 SELECT id, title, start_time, end_time, description, location,
@@ -159,7 +180,7 @@ class CalendarService(DatabaseServiceMixin):
                 WHERE DATE(start_time) = ?
                 ORDER BY start_time
             """
-            result = self.safe_query(query, (target_date_str,))
+            result = self.db_manager.execute_query(query, (target_date_str,))
         if not result.success:
             return result
         events = []
@@ -175,19 +196,21 @@ class CalendarService(DatabaseServiceMixin):
             display = row["title"]
             if start_time:
                 display = f"{row['title']} ({start_time.strftime('%I:%M %p')})"
-            events.append({
-                "id": row.get("id"),
-                "title": row["title"],
-                "start_time": row.get("start_time"),
-                "end_time": row.get("end_time"),
-                "description": row.get("description"),
-                "location": row.get("location"),
-                "driver_name": row.get("driver_name"),
-                "driver_contact_id": row.get("driver_contact_id"),
-                "pickup_time": row.get("pickup_time"),
-                "leave_time": row.get("leave_time"),
-                "display": display,
-            })
+            events.append(
+                {
+                    "id": row.get("id"),
+                    "title": row["title"],
+                    "start_time": row.get("start_time"),
+                    "end_time": row.get("end_time"),
+                    "description": row.get("description"),
+                    "location": row.get("location"),
+                    "driver_name": row.get("driver_name"),
+                    "driver_contact_id": row.get("driver_contact_id"),
+                    "pickup_time": row.get("pickup_time"),
+                    "leave_time": row.get("leave_time"),
+                    "display": display,
+                }
+            )
         return ServiceResult.success_result(events)
 
     def get_today_events(

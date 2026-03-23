@@ -17,7 +17,9 @@ def _section_bar_html(title: str, bar_color_hex: str = "#4080d9") -> str:
     import html
 
     title_esc = html.escape(str(title or ""))
-    return f'<div class="section-bar" style="background:{bar_color_hex}">{title_esc}</div>'
+    return (
+        f'<div class="section-bar" style="background:{bar_color_hex}">{title_esc}</div>'
+    )
 
 
 def build_emergency_html(services, api_url: str) -> str:
@@ -41,12 +43,16 @@ def build_emergency_html(services, api_url: str) -> str:
         contact_svc = services.get("contact_service")
         if contact_svc and getattr(contact_svc, "fetch_photo", None):
             base = api_url.rstrip("/")
-            patient_photo_src = contact_svc.fetch_photo(f"{base}/api/users/{care_recipient_user_id}/photo")
+            patient_photo_src = contact_svc.fetch_photo(
+                f"{base}/api/users/{care_recipient_user_id}/photo"
+            )
     e_contacts = {
         "contacts": e_data.get("emergency_contacts") or [],
         "poa_name": e_data.get("poa_name"),
         "poa_phone": e_data.get("poa_phone"),
-        "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get("name"),
+        "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get(
+            "name"
+        ),
         "medical_proxy_phone": e_data.get("medical_proxy_phone"),
     }
 
@@ -57,17 +63,20 @@ def build_emergency_html(services, api_url: str) -> str:
         patient_name = patient_data.get("name") or "Patient"
         initial = (patient_name or "?")[0].upper()
         import html as html_mod
+
         html_parts.append(
             f'<div class="emergency-patient-photo">'
             f'<div class="avatar-wrapper"><div class="contact-initial">{html_mod.escape(initial)}</div>'
-            f'{hp.avatar_img(patient_photo_src, patient_name)}</div></div>'
+            f"{hp.avatar_img(patient_photo_src, patient_name)}</div></div>"
         )
     html_parts.append(_form_row_html("FULL NAME", patient_data.get("name")))
     html_parts.append(_form_row_html("DOB", patient_data.get("dob")))
     dnr = medical_data.get("dnr", False)
     html_parts.append(_form_row_html("CODE STATUS", "DNR" if dnr else "FULL CODE"))
     allergies = medical_data.get("allergies") or []
-    html_parts.append(_form_row_html("ALLERGIES", ", ".join(allergies) if allergies else None))
+    html_parts.append(
+        _form_row_html("ALLERGIES", ", ".join(allergies) if allergies else None)
+    )
     meds = medical_data.get("medications") or []
     med_strs = []
     for m in meds:
@@ -77,7 +86,9 @@ def build_emergency_html(services, api_url: str) -> str:
         if dosage or freq:
             n += " " + " ".join([dosage, freq]).strip()
         med_strs.append(n)
-    html_parts.append(_form_row_html("MEDICATIONS", ", ".join(med_strs) if med_strs else None))
+    html_parts.append(
+        _form_row_html("MEDICATIONS", ", ".join(med_strs) if med_strs else None)
+    )
     html_parts.append(_form_row_html("HEALTH", medical_data.get("conditions")))
 
     html_parts.append(_section_bar_html("EMERGENCY CONTACTS", "#c03333"))

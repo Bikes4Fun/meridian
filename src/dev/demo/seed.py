@@ -1,355 +1,33 @@
 """
-Demo functions for loading JSON data into SQLite database.
-
-WHERE THIS IS USED: main.main() calls demo_main(user_id) when demo_mode is True to seed the
-local SQLite database (contacts, medications, calendar, display settings, etc.).
-
-RELOCATION/REMOVAL: In a strict client/server deployment, data lives on the server. Run demo
-once against the server's DB (or use a separate migration/seed step on the server). The client
-does not need this package if it never seeds data; it can be omitted from the client deployment
-or relocated to a server-only / admin script.
+Demo seed: API-only client. Reads JSON files and POSTs to server API.
+Uses the same endpoints as kiosk/webapp (calendar events, checkins, medications, etc.).
 """
 
 import json
 import logging
 import os
-import datetime
+from datetime import date, datetime, timedelta
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
-from datetime import datetime, timedelta
-import sys
-
-try:
-    from src.apps.server.database import DatabaseManager
-    from src.apps.server.services.user import UserService
-    from src.shared.config import DatabaseConfig, get_database_path
-except ImportError:
-    from apps.server.database import DatabaseManager
-    from apps.server.services.user import UserService
-    from shared.config import DatabaseConfig, get_database_path
-
 
 DEMO_FAMILY_CIRCLE_ID = "F00000"
-DEMO_USER_ID = "fm_001"  # Primary demo user; matches main.DEMO_USER_ID
+DEMO_USER_ID = "fm_001"
 
 
-def get_data_dir():
+def get_data_dir() -> str:
     """Get the path to the demo data directory."""
     return os.path.join(os.path.dirname(__file__), "data")
 
 
-_db_manager_cache = {}
-
-
-def get_database_manager(db_path: str) -> DatabaseManager:
-    """Get a DatabaseManager instance for the SQLite database (cached per path)."""
-    if db_path not in _db_manager_cache:
-        db_config = DatabaseConfig(path=db_path, create_if_missing=True)
-        _db_manager_cache[db_path] = DatabaseManager(db_config)
-    return _db_manager_cache[db_path]
-
-
 def load_json_file(filename: str) -> Dict[str, Any]:
-    """Load a JSON file from the demo_data directory."""
+    """Load a JSON file from the demo data directory."""
     file_path = os.path.join(get_data_dir(), filename)
     with open(file_path, "r") as f:
         return json.load(f)
 
 
-def load_demo_contacts_from_json_into_db(db_manager, family_circle_id: str):
-    """Load contacts from JSON. Can have photo_filename, notes, sendbird_user_id for contact card and chat."""
-    contacts_data = load_json_file("contacts.json")
-    contacts = contacts_data.get("contacts", [])
-    names = [c.get("display_name") for c in contacts if c.get("display_name")]
-    if names:
-        logger.info("Contacts: %s", ", ".join(names))
-
-    for contact in contacts:
-        query = """
-            INSERT OR REPLACE INTO contacts 
-            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes, sendbird_user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        params = (
-            contact.get("id"),
-            family_circle_id,
-            contact.get("display_name"),
-            contact.get("phone"),
-            contact.get("email"),
-            contact.get("birthday"),
-            contact.get("relationship"),
-            contact.get("emergency_priority"),
-            contact.get("photo_filename"),
-            contact.get("notes"),
-            contact.get("sendbird_user_id"),
-        )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d contacts" % len(contacts))
-
-
-def load_demo_family_circles_from_json_into_db(db_manager):
-    """Load family circles from family.json."""
-    data = load_json_file("family.json")
-    family_members = data.get("family_members", [])
-    names = [m.get("display_name") for m in family_members if m.get("display_name")]
-    if names:
-        logger.info("Family members: %s", ", ".join(names))
-    circles = data.get("family_circles", [])
-    if not circles and data.get("family_circle_id"):
-        circles = [{"id": data.get("family_circle_id")}]
-    if not circles:
-        raise ValueError("family.json missing family_circles or family_circle_id")
-    for circle in circles:
-        fc_id = circle.get("id") if isinstance(circle, dict) else circle
-        if fc_id:
-            db_manager.execute_update(
-                "INSERT OR IGNORE INTO family_circles (id) VALUES (?)",
-                (fc_id,),
-            )
-    logger.debug("  Loaded %d family circles" % len(circles))
-
-
-def _link_users_to_family_circles(db_manager, users):
-    """Link users to family circles via user_family_circle."""
-    for user in users:
-        uid = user.get("id")
-        fc_id = user.get("family_circle_id")
-        if fc_id:
-            db_manager.execute_update(
-                "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",
-                (uid, fc_id),
-            )
-
-
-def load_demo_users_from_json_into_db(db_manager):
-    """Load all users from users.json. sendbird_user_id is used for chat (maps app user to Sendbird user).
-    Uses UserService so SQLite enforces sendbird_user_id uniqueness; returns errors on constraint violation."""
-    users = load_json_file("users.json")
-    user_svc = UserService(db_manager)
-    for user in users:
-        r = user_svc.add_user(
-            user_id=user.get("id"),
-            display_name=user.get("display_name"),
-            photo_filename=user.get("photo_filename"),
-            family_circle_id=user.get("family_circle_id"),
-            sendbird_user_id=user.get("sendbird_user_id"),
-        )
-        if not r.success:
-            raise ValueError(r.error or "Failed to load user")
-    _link_users_to_family_circles(db_manager, users)
-    logger.debug("  Loaded %d users" % len(users))
-
-
-def load_demo_medication_times_from_json_into_db(db_manager, family_circle_id: str):
-    """Load medication times from medical.json."""
-    data = load_json_file("medical.json").get("medication_times", {})
-    for name, td in data.items():
-        t = td.get("time") if isinstance(td, dict) else None
-        if t == "null":
-            t = None
-        db_manager.execute_update(
-            "INSERT OR IGNORE INTO medication_times (family_circle_id, name, time) VALUES (?, ?, ?)",
-            (family_circle_id, name, t),
-        )
-    logger.debug("  Loaded medication times for family %s", family_circle_id)
-
-
-def load_demo_medications_data_from_json_to_db(
-    db_manager, family_circle_id: str, care_recipient_user_id: str
-):
-    """Load medications from JSON into SQLite. Used by demo_main when server not running."""
-    medical_data = load_json_file("medical.json")
-    medications = medical_data.get("medications", [])
-
-    with db_manager.get_connection() as conn:
-        cursor = conn.cursor()
-
-        for med in medications:
-            cursor.execute(
-                """
-                INSERT OR REPLACE INTO medications
-                (care_recipient_user_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    care_recipient_user_id,
-                    med.get("name"),
-                    med.get("dosage"),
-                    med.get("frequency"),
-                    med.get("notes"),
-                    med.get("max_daily"),
-                    med.get("last_taken"),
-                    med.get("taken"),
-                ),
-            )
-            medication_id = cursor.lastrowid
-
-            for time_name in med.get("medication_times", []):
-                cursor.execute(
-                    "SELECT id FROM medication_times WHERE family_circle_id = ? AND name = ?",
-                    (family_circle_id, time_name),
-                )
-                row = cursor.fetchone()
-                if row:
-                    cursor.execute(
-                        "INSERT OR IGNORE INTO medication_to_time (medication_id, group_id) VALUES (?, ?)",
-                        (medication_id, row[0]),
-                    )
-
-        conn.commit()
-    logger.debug("  Loaded %d medications" % len(medications))
-
-
-def seed_medications_via_api(
-    api_url: str, family_circle_id: str, user_id: str, db_path: str = None
-) -> bool:
-    """Add demo medications via POST API. Skips meds that already exist (preserves user edits)."""
-    try:
-        import requests
-    except ImportError:
-        logger.error("requests required for medication API seed")
-        return False
-
-    medical_data = load_json_file("medical.json")
-    medications = medical_data.get("medications", [])
-    care_recipient_user_id = medical_data.get("care_recipient", {}).get("user_id")
-
-    existing = set()
-    if db_path and care_recipient_user_id:
-        try:
-            db = get_database_manager(db_path)
-            r = db.execute_query(
-                "SELECT name FROM medications WHERE care_recipient_user_id = ?",
-                (care_recipient_user_id,),
-            )
-            if r.success and r.data:
-                existing = {row["name"] for row in r.data}
-        except Exception as e:
-            logger.debug("Could not query existing medications: %s", e)
-
-    base = api_url.rstrip("/")
-    headers = {
-        "Content-Type": "application/json",
-        "X-User-Id": user_id,
-        "X-Family-Circle-Id": family_circle_id,
-    }
-    url = f"{base}/api/family_circles/{family_circle_id}/medications"
-
-    added = 0
-    for med in medications:
-        name = (med.get("name") or "").strip()
-        times = med.get("medication_times") or []
-        if not name or not times:
-            continue
-        if name in existing:
-            continue
-        payload = {
-            "name": name,
-            "medication_times": times,
-            "dosage": med.get("dosage"),
-            "frequency": med.get("frequency"),
-            "notes": med.get("notes"),
-            "max_daily": med.get("max_daily"),
-        }
-        r = requests.post(url, json=payload, headers=headers, timeout=5)
-        if r.ok:
-            added += 1
-            existing.add(name)
-
-    logger.debug("  Seeded %d medications via API" % added)
-    return True
-
-
-def load_allergies_data(db_manager, care_recipient_user_id: str):
-    """Load allergies from JSON into SQLite database. care_recipient_user_id = person allergies belong to."""
-    medical_data = load_json_file("medical.json")
-    allergies = medical_data.get("allergies", [])
-
-    for allergy in allergies:
-        query = """
-            INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen)
-            VALUES (?, ?)
-        """
-        db_manager.execute_update(
-            query, (care_recipient_user_id, allergy.get("allergen"))
-        )
-    logger.debug("  Loaded %d allergies" % len(allergies))
-
-
-def load_demo_care_recipient_data(db_manager, family_circle_id: str):
-    """Load care recipient and contact roles (proxy, POA) from care_recipient section. Legal/medical data, not ICE-specific."""
-    medical_data = load_json_file("medical.json")
-    cr_data = medical_data.get("care_recipient", {})
-    if not cr_data:
-        return
-
-    care_recipient_user_id = cr_data.get("user_id")
-    if not care_recipient_user_id:
-        raise ValueError("care_recipient requires user_id")
-
-    profile = cr_data.get("profile") or {}
-    medical = cr_data.get("medical") or {}
-    name = profile.get("name")
-    dob = profile.get("dob")
-    medical_dnr = 1 if medical.get("dnr") else 0
-    notes = cr_data.get("notes")
-
-    db_manager.execute_update(
-        """
-        INSERT OR REPLACE INTO care_recipients (family_circle_id, care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            family_circle_id,
-            care_recipient_user_id,
-            name,
-            dob,
-            None,
-            medical_dnr,
-            None,
-            notes,
-        ),
-    )
-
-    # Assign proxy/POA roles to existing contacts (contacts must be in contacts.json).
-    proxy_contact_id = cr_data.get("proxy_contact_id")
-    poa_contact_id = cr_data.get("poa_contact_id")
-    if proxy_contact_id:
-        db_manager.execute_update(
-            "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
-            (family_circle_id, "medical_proxy", proxy_contact_id),
-        )
-    if poa_contact_id:
-        db_manager.execute_update(
-            "INSERT OR REPLACE INTO ice_contact_roles (family_circle_id, role, contact_id) VALUES (?, ?, ?)",
-            (family_circle_id, "poa", poa_contact_id),
-        )
-    logger.debug("  Loaded care recipient and contact roles")
-
-
-def load_conditions_data(db_manager, care_recipient_user_id: str):
-    """Load medical conditions from JSON into SQLite database. care_recipient_user_id = person conditions belong to."""
-    medical_data = load_json_file("medical.json")
-    conditions = medical_data.get("conditions", [])
-
-    for condition in conditions:
-        query = """
-            INSERT OR REPLACE INTO conditions 
-            (care_recipient_user_id, condition_name, diagnosis_date, notes)
-            VALUES (?, ?, ?, ?)
-        """
-        params = (
-            care_recipient_user_id,
-            condition.get("condition"),
-            condition.get("diagnosis_date"),
-            condition.get("notes"),
-        )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d conditions" % len(conditions))
-
-
-def _resolve_event_time(value: str, today: datetime.date) -> str:
+def _resolve_event_time(value: str, today: date) -> str:
     """Resolve TODAY_, TOMORROW_, PLUS_N_DAYS_ placeholders to ISO datetime strings."""
     if not value:
         return value
@@ -357,71 +35,209 @@ def _resolve_event_time(value: str, today: datetime.date) -> str:
         return f"{today}T{value.replace('TODAY_', '')}"
     if value.startswith("TOMORROW_"):
         return f"{today + timedelta(days=1)}T{value.replace('TOMORROW_', '')}"
-    for n, prefix in enumerate(["PLUS_2_DAYS_", "PLUS_3_DAYS_", "PLUS_4_DAYS_", "PLUS_5_DAYS_"], 2):
+    for n, prefix in enumerate(
+        ["PLUS_2_DAYS_", "PLUS_3_DAYS_", "PLUS_4_DAYS_", "PLUS_5_DAYS_"], 2
+    ):
         if value.startswith(prefix):
             return f"{today + timedelta(days=n)}T{value.replace(prefix, '')}"
     return value
 
 
-def load_calendar_events_data(db_manager, family_circle_id: str):
-    """Load calendar events from JSON into SQLite database. Used by standalone seed (python -m apps.server seed)."""
-    today = datetime.now().date()
-    calendar_data = load_json_file("calendar.json")
-    events = calendar_data.get("calendar_events", [])
-
-    for event_data in events:
-        start_time = _resolve_event_time(event_data.get("start_time"), today)
-        end_time = _resolve_event_time(event_data.get("end_time"), today)
-
-        query = """
-            INSERT OR REPLACE INTO calendar_events 
-            (id, family_circle_id, title, description, start_time, end_time, location, driver_name, driver_contact_id, pickup_time, leave_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        params = (
-            event_data.get("id"),
-            family_circle_id,
-            event_data.get("title"),
-            event_data.get("description"),
-            start_time,
-            end_time,
-            event_data.get("location"),
-            event_data.get("driver_name"),
-            event_data.get("driver_contact_id"),
-            event_data.get("pickup_time"),
-            event_data.get("leave_time"),
-        )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d calendar events" % len(events))
-
-
-def seed_calendar_events_via_api(
-    api_url: str, family_circle_id: str, user_id: str
-) -> bool:
-    """Load calendar events from JSON via POST /api/family_circles/.../calendar/events. Requires server running.
-    Idempotent: deletes existing demo events by id before posting."""
-    try:
-        import requests
-    except ImportError:
-        logger.error("requests required for API seed")
-        return False
-
-    today = datetime.now().date()
-    calendar_data = load_json_file("calendar.json")
-    events = calendar_data.get("calendar_events", [])
-    base = api_url.rstrip("/")
-    headers = {
+def _headers(user_id: str, family_circle_id: str) -> dict:
+    return {
         "Content-Type": "application/json",
         "X-User-Id": user_id,
         "X-Family-Circle-Id": family_circle_id,
     }
 
+
+def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
+    """Seed data via API. Server must be running. Uses standard endpoints (users, contacts, medications, calendar, checkins)."""
+    try:
+        import requests
+    except ImportError:
+        logger.error("requests required for demo seed")
+        return False
+
+    base = api_url.rstrip("/")
+    fam_id = DEMO_FAMILY_CIRCLE_ID
+    user_id = user_id or DEMO_USER_ID
+
+    r = requests.get(
+        f"{base}/api/family_circles/{fam_id}/medications",
+        headers=_headers(user_id, fam_id),
+        timeout=5,
+    )
+    if r.ok:
+        data = r.json()
+        if data.get("timed_medications") or data.get("prn_medications"):
+            logger.info("Demo data already present, skipping seed")
+            return True
+
+    r = requests.post(
+        f"{base}/api/family_circles/{fam_id}",
+        json={},
+        headers=_headers(user_id, fam_id),
+        timeout=5,
+    )
+    if not r.ok and r.status_code != 409:
+        logger.error("Create family failed: %s %s", r.status_code, r.text)
+        return False
+
+    users = load_json_file("users.json")
+    for user in users:
+        r = requests.post(
+            f"{base}/api/users",
+            json=user,
+            headers={"Content-Type": "application/json"},
+            timeout=5,
+        )
+        if not r.ok:
+            logger.error("Create user %s failed: %s", user.get("id"), r.status_code)
+            return False
+    for user in users:
+        if user.get("family_circle_id"):
+            r = requests.post(
+                f"{base}/api/family_circles/{fam_id}/family-members",
+                json={"id": user.get("id")},
+                headers=_headers(user_id, fam_id),
+                timeout=5,
+            )
+            if not r.ok:
+                logger.error("Add user %s to family failed: %s", user.get("id"), r.status_code)
+                return False
+
+    contacts = load_json_file("contacts.json").get("contacts", [])
+    for contact in contacts:
+        r = requests.post(
+            f"{base}/api/family_circles/{fam_id}/contacts",
+            json=contact,
+            headers=_headers(user_id, fam_id),
+            timeout=5,
+        )
+        if not r.ok:
+            logger.error("Add contact %s failed: %s", contact.get("id"), r.status_code)
+            return False
+
+    medical = load_json_file("medical.json")
+    cr = medical.get("care_recipient", {})
+    if cr:
+        r = requests.put(
+            f"{base}/api/family_circles/{fam_id}/care-recipient",
+            json=cr,
+            headers=_headers(user_id, fam_id),
+            timeout=5,
+        )
+        if not r.ok:
+            logger.error("Care recipient failed: %s", r.status_code)
+            return False
+        for role, cid in [("medical_proxy", cr.get("proxy_contact_id")), ("poa", cr.get("poa_contact_id"))]:
+            if cid:
+                requests.post(
+                    f"{base}/api/family_circles/{fam_id}/contact-roles",
+                    json={"role": role, "contact_id": cid},
+                    headers=_headers(user_id, fam_id),
+                    timeout=5,
+                )
+
+    for name, mt in (medical.get("medication_times") or {}).items():
+        t = mt.get("time") if isinstance(mt, dict) else None
+        r = requests.post(
+            f"{base}/api/family_circles/{fam_id}/medication-times",
+            json={"name": name, "time": t},
+            headers=_headers(user_id, fam_id),
+            timeout=5,
+        )
+        if not r.ok:
+            logger.debug("Medication time %s failed: %s", name, r.status_code)
+
+    for med in medical.get("medications", []):
+        r = requests.post(
+            f"{base}/api/family_circles/{fam_id}/medications",
+            json={
+                "name": med.get("name"),
+                "medication_times": med.get("medication_times", []),
+                "dosage": med.get("dosage"),
+                "frequency": med.get("frequency"),
+                "notes": med.get("notes"),
+                "max_daily": med.get("max_daily"),
+            },
+            headers=_headers(user_id, fam_id),
+            timeout=5,
+        )
+        if not r.ok:
+            logger.warning("Medication %s failed: %s", med.get("name"), r.status_code)
+
+    care_recipient_user_id = cr.get("user_id") if cr else None
+    for a in medical.get("allergies", []):
+        allergen = a.get("allergen") if isinstance(a, dict) else a
+        if allergen and care_recipient_user_id:
+            requests.post(
+                f"{base}/api/family_circles/{fam_id}/allergies",
+                json={"care_recipient_user_id": care_recipient_user_id, "allergen": allergen},
+                headers=_headers(user_id, fam_id),
+                timeout=5,
+            )
+    for c in medical.get("conditions", []):
+        cond = c.get("condition") if isinstance(c, dict) else c
+        if cond and care_recipient_user_id:
+            requests.post(
+                f"{base}/api/family_circles/{fam_id}/conditions",
+                json={
+                    "care_recipient_user_id": care_recipient_user_id,
+                    "condition": cond,
+                    "diagnosis_date": c.get("diagnosis_date") if isinstance(c, dict) else None,
+                    "notes": c.get("notes") if isinstance(c, dict) else None,
+                },
+                headers=_headers(user_id, fam_id),
+                timeout=5,
+            )
+
+    family_data = load_json_file("family.json")
+    for loc in family_data.get("named_places", []):
+        r = requests.post(
+            f"{base}/api/family_circles/{fam_id}/named-places",
+            json=loc,
+            headers=_headers(user_id, fam_id),
+            timeout=5,
+        )
+        if not r.ok:
+            logger.debug("Named place %s failed: %s", loc.get("location_id"), r.status_code)
+
+    checkin_ok, checkin_fail = 0, 0
+    for checkin in family_data.get("location_checkins", []):
+        uid = checkin.get("user_id")
+        if not uid or checkin.get("latitude") is None or checkin.get("longitude") is None:
+            continue
+        r = requests.post(
+            f"{base}/api/family_circles/{fam_id}/create_checkin",
+            json={
+                "user_id": uid,
+                "latitude": checkin["latitude"],
+                "longitude": checkin["longitude"],
+                "notes": checkin.get("notes"),
+            },
+            headers=_headers(uid, fam_id),
+            timeout=5,
+        )
+        if r.ok:
+            checkin_ok += 1
+        else:
+            checkin_fail += 1
+            logger.debug("Checkin for %s failed: %s", uid, r.status_code)
+    if checkin_ok or checkin_fail:
+        logger.info(
+            "Check-ins: %d created%s",
+            checkin_ok,
+            f", {checkin_fail} failed" if checkin_fail else "",
+        )
+
+    today = datetime.now().date()
+    events = load_json_file("calendar.json").get("calendar_events", [])
     for event_data in events:
         evt_id = event_data.get("id")
-        evt_url = f"{base}/api/family_circles/{family_circle_id}/calendar/events/{evt_id}"
-        requests.delete(evt_url, headers=headers, timeout=5)
-
-    events_url = f"{base}/api/family_circles/{family_circle_id}/calendar/events"
+        evt_url = f"{base}/api/family_circles/{fam_id}/calendar/events/{evt_id}"
+        requests.delete(evt_url, headers=_headers(user_id, fam_id), timeout=5)
     for event_data in events:
         start_time = _resolve_event_time(event_data.get("start_time"), today)
         end_time = _resolve_event_time(event_data.get("end_time"), today)
@@ -437,178 +253,28 @@ def seed_calendar_events_via_api(
             "pickup_time": event_data.get("pickup_time"),
             "leave_time": event_data.get("leave_time"),
         }
-        r = requests.post(events_url, json=payload, headers=headers, timeout=5)
+        r = requests.post(
+            f"{base}/api/family_circles/{fam_id}/calendar/events",
+            json=payload,
+            headers=_headers(user_id, fam_id),
+            timeout=5,
+        )
         if not r.ok:
-            logger.error("Calendar API POST failed: %s %s", r.status_code, r.text)
-            return False
-
-    logger.debug("  Seeded %d calendar events via API" % len(events))
-    return True
-
-
-def load_user_locations_data(db_manager, family_circle_id: str):
-    """Load named places from JSON into SQLite database."""
-    family_data = load_json_file("family.json")
-    locations = family_data.get("named_places") or []
-
-    for location in locations:
-        # Parse GPS coordinates
-        gps_lat = None
-        gps_lng = None
-        if location.get("gps"):
-            gps_parts = location["gps"].split(",")
-            if len(gps_parts) == 2:
-                gps_lat = float(gps_parts[0])
-                gps_lng = float(gps_parts[1])
-
-        query = """
-            INSERT OR REPLACE INTO named_places
-            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """
-        params = (
-            location.get("location_id"),
-            family_circle_id,
-            location.get("location_name"),
-            gps_lat,
-            gps_lng,
-            location.get("radius_metres", 150),
-        )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d named places" % len(locations))
-
-
-def load_location_checkins_data(db_manager, family_circle_id: str):
-    """Load location check-ins from JSON into location_checkins table."""
-    family_data = load_json_file("family.json")
-    checkins = family_data.get("location_checkins", [])
-
-    now = datetime.now().isoformat()
-    for checkin in checkins:
-        uid = checkin.get("user_id")
-        if not uid:
-            raise ValueError("location_checkins entry missing user_id")
-        query = """
-            INSERT INTO location_checkins
-            (family_circle_id, user_id, timestamp, latitude, longitude, location_name, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        params = (
-            family_circle_id,
-            uid,
-            now,
-            checkin.get("latitude"),
-            checkin.get("longitude"),
-            checkin.get("location_name"),
-            checkin.get("notes"),
-        )
-        db_manager.execute_update(query, params)
-    logger.debug("  Loaded %d location check-ins" % len(checkins))
-
-
-def refresh_demo_checkins(db_path: str) -> None:
-    """Refresh demo location check-ins. Logs and continues on failure (e.g. old schema)."""
-    try:
-        load_location_checkins_data(
-            get_database_manager(db_path), family_circle_id=DEMO_FAMILY_CIRCLE_ID
-        )
-    except Exception as e:
-        logger.debug("Demo checkins refresh skipped (old schema?): %s", e)
-
-
-def demo_bootstrap(db_path: str) -> bool:
-    """Schema + minimal data (users, circles, contacts, care_recipient, medication_times) required for FKs.
-    Call before starting the server. Remaining data goes via demo_seed_after_server."""
-    db = get_database_manager(db_path)
-    result = db.create_database_schema()
-    if not result.success:
-        logger.error("Local database setup failed")
-        raise RuntimeError("Local database setup failed")
-    load_demo_users_from_json_into_db(db)
-    load_demo_family_circles_from_json_into_db(db)
-    load_demo_contacts_from_json_into_db(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-    care_recipient_user_id = (
-        load_json_file("medical.json").get("care_recipient", {}).get("user_id")
-    )
-    if not care_recipient_user_id:
-        raise ValueError("medical.json care_recipient must have user_id")
-    load_demo_medication_times_from_json_into_db(
-        db, family_circle_id=DEMO_FAMILY_CIRCLE_ID
-    )
-    load_demo_care_recipient_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-    load_demo_medications_data_from_json_to_db(
-        db,
-        family_circle_id=DEMO_FAMILY_CIRCLE_ID,
-        care_recipient_user_id=care_recipient_user_id,
-    )
-    logger.debug("Demo bootstrap complete")
-    return True
-
-
-def demo_seed_after_server(api_url: str, db_path: str) -> bool:
-    """Seed remaining demo data. Server must be running. Calendar via API; rest via direct DB.
-    Eventually all entities will use API when endpoints exist."""
-    db = get_database_manager(db_path)
-    care_recipient_user_id = (
-        load_json_file("medical.json").get("care_recipient", {}).get("user_id")
-    )
-    if not care_recipient_user_id:
-        raise ValueError("medical.json care_recipient must have user_id")
-
-    # Medications loaded in demo_bootstrap. API seed skipped (direct DB is authoritative for demo).
-    load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
-    load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
-    load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-    load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-
-    # Via API
-    if not seed_calendar_events_via_api(api_url, DEMO_FAMILY_CIRCLE_ID, DEMO_USER_ID):
-        logger.warning("Calendar API seed failed")
-        return False
+            logger.warning("Calendar event failed: %s", r.status_code)
 
     logger.info("Demo data loaded successfully!")
     return True
 
 
-def ensure_local_database(db_path: str) -> bool:
-    """Create schema + bootstrap data. Caller must start server then demo_seed_after_server(api_url, db_path)."""
-    if not demo_bootstrap(db_path):
-        raise RuntimeError("Local database bootstrap failed")
-    return True
-
-
-def demo_main(user_id, db_path=None) -> bool:
-    """Load all JSON demo data into the database (direct DB). Run via: python -m apps.server seed.
-    Used when server is not running. Main/kiosk use demo_bootstrap + demo_seed_after_server instead."""
-    logger.debug("Loading demo data into database...")
-    if db_path is None:
-        db_path = get_database_path()
-
+if __name__ == "__main__":
+    import sys
     try:
-        demo_bootstrap(db_path)
-        db = get_database_manager(db_path)
-        care_recipient_user_id = (
-            load_json_file("medical.json").get("care_recipient", {}).get("user_id")
-        )
-        if not care_recipient_user_id:
-            raise ValueError("medical.json care_recipient must have user_id")
-        load_demo_medications_data_from_json_to_db(
-            db,
-            family_circle_id=DEMO_FAMILY_CIRCLE_ID,
-            care_recipient_user_id=care_recipient_user_id,
-        )
-        load_allergies_data(db, care_recipient_user_id=care_recipient_user_id)
-        load_conditions_data(db, care_recipient_user_id=care_recipient_user_id)
-        load_calendar_events_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_user_locations_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-        load_location_checkins_data(db, family_circle_id=DEMO_FAMILY_CIRCLE_ID)
-
-        logger.info("Demo data loaded successfully!")
-        return True
-
-    except Exception as e:
-        logger.error("Error loading demo data: %s", e)
-        import traceback
-
-        traceback.print_exc()
-        return False
+        from shared.config import get_server_host, get_server_port
+        host = "127.0.0.1" if get_server_host() == "0.0.0.0" else get_server_host()
+        default_url = f"http://{host}:{get_server_port()}"
+    except ImportError:
+        default_url = "http://127.0.0.1:8000"
+    api_url = os.environ.get("API_URL", default_url)
+    logging.basicConfig(level=logging.INFO)
+    ok = run_seed(api_url)
+    sys.exit(0 if ok else 1)

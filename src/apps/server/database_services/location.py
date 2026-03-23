@@ -7,6 +7,8 @@ import logging
 import math
 from typing import Optional
 
+from ..database_manager import DatabaseManager
+
 DEFAULT_PLACE_RADIUS_M = 150
 
 try:
@@ -14,14 +16,12 @@ try:
 except ImportError:
     from shared.interfaces import ServiceResult
 
-from ..database import DatabaseManager, DatabaseServiceMixin
 
-
-class LocationService(DatabaseServiceMixin):
+class LocationService:
     """Service for managing location check-ins."""
 
     def __init__(self, db_manager: DatabaseManager):
-        super().__init__(db_manager)
+        self.db_manager = db_manager
         self.logger = logging.getLogger(__name__)
 
     @staticmethod
@@ -94,14 +94,14 @@ class LocationService(DatabaseServiceMixin):
 
         location_name = self.resolve_place_name(latitude, longitude, family_circle_id)
         if location_name is not None:
-            self.logger.info("Resolved place name: %s", location_name)
+            self.logger.debug("Resolved place name: %s", location_name)
 
         query = """
             INSERT INTO location_checkins 
             (family_circle_id, user_id, timestamp, latitude, longitude, location_name, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        result = self.safe_update(
+        result = self.db_manager.execute_update(
             query,
             (
                 family_circle_id,
@@ -115,7 +115,7 @@ class LocationService(DatabaseServiceMixin):
         )
 
         if result.success:
-            self.logger.info(
+            self.logger.debug(
                 "Check-in created for user %s at (%s, %s)",
                 user_id,
                 latitude,
@@ -153,7 +153,7 @@ class LocationService(DatabaseServiceMixin):
             WHERE c.family_circle_id = ?
             ORDER BY c.timestamp DESC
         """
-        result = self.safe_query(query, (family_circle_id, family_circle_id))
+        result = self.db_manager.execute_query(query, (family_circle_id, family_circle_id))
         if not result.success or not result.data:
             return result
         named_places_result = self.get_named_places(family_circle_id)
@@ -187,10 +187,27 @@ class LocationService(DatabaseServiceMixin):
                 nearest_name = row.get("location_name")
         return nearest_name
 
+    def add_named_place(
+        self,
+        family_circle_id: str,
+        location_id: str,
+        location_name: str,
+        gps_latitude: Optional[float] = None,
+        gps_longitude: Optional[float] = None,
+        radius_metres: int = 150,
+    ) -> ServiceResult:
+        """Insert or replace named place."""
+        return self.db_manager.execute_update(
+            """INSERT OR REPLACE INTO named_places
+            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres),
+        )
+
     def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
         """Return all family-wide named places. location_id, location_name, gps_latitude, gps_longitude, radius_metres, safe, ordered by name."""
         if not family_circle_id:
-            return self.safe_query("SELECT 1 WHERE 0", ())
+            return self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         query = """
             SELECT location_id, location_name, gps_latitude, gps_longitude,
                    COALESCE(radius_metres, ?) as radius_metres,
@@ -199,4 +216,4 @@ class LocationService(DatabaseServiceMixin):
             WHERE family_circle_id = ?
             ORDER BY location_name
         """
-        return self.safe_query(query, (DEFAULT_PLACE_RADIUS_M, family_circle_id))
+        return self.db_manager.execute_query(query, (DEFAULT_PLACE_RADIUS_M, family_circle_id))

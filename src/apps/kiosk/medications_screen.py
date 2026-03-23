@@ -15,11 +15,19 @@ def build_medications_html(services, api_url: str) -> str:
     """Build medications screen HTML: timed meds by group, then PRN."""
     med_svc = services.get("medication_service")
     if not med_svc:
-        return hp.kiosk_header("Medications") + hp.spacer(16) + hp.error_state("Medications unavailable")
+        return (
+            hp.kiosk_header("Medications")
+            + hp.spacer(16)
+            + hp.error_state("Medications unavailable")
+        )
 
     result = med_svc.get_medication_data()
     if not result.success:
-        return hp.kiosk_header("Medications") + hp.spacer(16) + hp.error_state("Error loading medications")
+        return (
+            hp.kiosk_header("Medications")
+            + hp.spacer(16)
+            + hp.error_state("Error loading medications")
+        )
 
     data = result.data or {}
     time_groups = {}
@@ -27,7 +35,9 @@ def build_medications_html(services, api_url: str) -> str:
         t = m.get("time", "Unknown")
         time_groups.setdefault(t, []).append(m)
     group_times = data.get("medication_time_groups", {})
-    sorted_times = sorted(time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59"))
+    sorted_times = sorted(
+        time_groups.keys(), key=lambda x: group_times.get(x, "23:59:59")
+    )
 
     parts = [hp.kiosk_header("Medications"), hp.spacer(16)]
     for t in sorted_times:
@@ -41,10 +51,17 @@ def build_medications_html(services, api_url: str) -> str:
             med_id = m.get("id")
             btns = ""
             if med_id is not None:
-                med_data = html_module.escape(json.dumps({"id": med_id, "name": m.get("name"), "time": t}), quote=True)
+                med_data = html_module.escape(
+                    json.dumps({"id": med_id, "name": m.get("name"), "time": t}),
+                    quote=True,
+                )
                 btns = f' <button type="button" class="med-edit-btn" data-med="{med_data}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="med-delete-btn" data-med-id="{med_id}" style="font-size:11px;padding:2px 6px;">Delete</button>'
-            items_html.append(f'<div class="timeline-item"><span class="timeline-bar-med"></span><span>{name} • {status}</span>{btns}</div>')
-        parts.append(f'<div class="timeline-card"><div class="timeline-header">{html_module.escape(t)}</div><div class="timeline-list">{"".join(items_html)}</div></div>')
+            items_html.append(
+                f'<div class="timeline-item"><span class="timeline-bar-med"></span><span>{name} • {status}</span>{btns}</div>'
+            )
+        parts.append(
+            f'<div class="timeline-card"><div class="timeline-header">{html_module.escape(t)}</div><div class="timeline-list">{"".join(items_html)}</div></div>'
+        )
         parts.append(hp.spacer(12))
 
     prn = data.get("prn_medications", [])
@@ -58,11 +75,17 @@ def build_medications_html(services, api_url: str) -> str:
             med_id = m.get("id")
             btns = ""
             if med_id is not None:
-                med_data = html_module.escape(json.dumps({"id": med_id, "name": m.get("name")}), quote=True)
+                med_data = html_module.escape(
+                    json.dumps({"id": med_id, "name": m.get("name")}), quote=True
+                )
                 take_lbl = "Uncheck" if taken else "Take"
                 btns = f' <button type="button" class="med-taken-btn" data-med-id="{med_id}" data-med-time="prn" data-med-done="{str(taken).lower()}" style="font-size:11px;padding:2px 6px;">{take_lbl}</button> <button type="button" class="med-edit-btn" data-med="{med_data}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="med-delete-btn" data-med-id="{med_id}" style="font-size:11px;padding:2px 6px;">Delete</button>'
-            prn_html.append(f'<div class="timeline-item"><span class="timeline-bar-event"></span><span>{name} • {last}</span>{btns}</div>')
-        parts.append(f'<div class="timeline-card"><div class="timeline-header">PRN (As Needed)</div><div class="timeline-list">{"".join(prn_html)}</div></div>')
+            prn_html.append(
+                f'<div class="timeline-item"><span class="timeline-bar-event"></span><span>{name} • {last}</span>{btns}</div>'
+            )
+        parts.append(
+            f'<div class="timeline-card"><div class="timeline-header">PRN (As Needed)</div><div class="timeline-list">{"".join(prn_html)}</div></div>'
+        )
 
     if not sorted_times and not prn:
         parts.append(hp.empty_state("No medications"))
@@ -82,7 +105,7 @@ def _build_add_medication_modal(time_names):
             f'<label><input type="checkbox" name="med_time" value="{html_module.escape(name)}"> {html_module.escape(lbl)}</label>'
         )
     cb_html = "".join(f'<span style="margin-right:12px">{c}</span>' for c in checkboxes)
-    return f'''
+    return f"""
 <div class="home-action-row" style="margin-top:16px;">
 <button type="button" class="add-event-btn" id="addMedicationBtn">+ Add Medication</button>
 </div>
@@ -97,7 +120,7 @@ def _build_add_medication_modal(time_names):
 <div class="event-form-actions">
 <button type="submit" class="event-btn event-btn-primary">Save</button>
 <button type="button" id="medFormCancel" class="event-btn event-btn-secondary" onclick="var o=document.getElementById('medFormOverlay');if(o)o.style.display='none'">Cancel</button>
-</div></form></div></div>'''
+</div></form></div></div>"""
 
 
 class MedicationsHandler:
@@ -159,11 +182,13 @@ class MedicationsHandler:
         med_svc = self._app.services.get("medication_service")
         if not med_svc:
             return "medication service unavailable"
-        r = med_svc.add_medication({
-            "name": name,
-            "medication_times": medication_times,
-            "dosage": data.get("dosage") or None,
-        })
+        r = med_svc.add_medication(
+            {
+                "name": name,
+                "medication_times": medication_times,
+                "dosage": data.get("dosage") or None,
+            }
+        )
         if r.success:
             self._app._navigate_to("medications")
             return "ok"
@@ -184,11 +209,14 @@ class MedicationsHandler:
         med_svc = self._app.services.get("medication_service")
         if not med_svc:
             return "medication service unavailable"
-        r = med_svc.update_medication(medication_id, {
-            "name": name,
-            "medication_times": medication_times,
-            "dosage": data.get("dosage") or None,
-        })
+        r = med_svc.update_medication(
+            medication_id,
+            {
+                "name": name,
+                "medication_times": medication_times,
+                "dosage": data.get("dosage") or None,
+            },
+        )
         if r.success:
             self._app._navigate_to("medications")
             return "ok"
@@ -205,7 +233,9 @@ class MedicationsHandler:
             return "ok"
         return r.error or "failed"
 
-    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> str:
+    def mark_medication_taken(
+        self, medication_id: int, time_slot: str, taken: bool
+    ) -> str:
         """Mark medication time slot taken or not. Returns 'ok' or error."""
         med_svc = self._app.services.get("medication_service")
         if not med_svc:

@@ -5,30 +5,60 @@
     {
       "id": "fm_001",
       "display_name": "Dean",
-      "photo_filename": "dean gps pin.jpg",
+      "photo_filename": "dean_gps_pin.jpg",
       "contact_id": "contact_001"
     },
     {
       "id": "fm_002",
       "display_name": "Deanna",
-      "photo_filename": "deanna gps pin.jpeg",
+      "photo_filename": "deanna_gps_pin.jpeg",
       "contact_id": "contact_002"
     },
     {
       "id": "fm_003",
       "display_name": "Eleanor",
-      "photo_filename": "eleanor gps tag.JPG",
+      "photo_filename": "eleanor_gps_tag.JPG",
       "contact_id": null
     },
     {
       "id": "fm_004",
       "display_name": "Indigo",
-      "photo_filename": "indigo gps pin.jpeg",
+      "photo_filename": "indigo_gps_pin.jpeg",
       "contact_id": null
     },
     {
       "id": "fm_005",
       "display_name": "Dylan",
+      "photo_filename": "dylan_profile_photo.png",
+      "contact_id": null
+    },
+    {
+      "id": "fm_006",
+      "display_name": "James Foster",
+      "photo_filename": "james_profile_photo.jpg",
+      "contact_id": "contact_james_foster"
+    },
+    {
+      "id": "fm_007",
+      "display_name": "Landon",
+      "photo_filename": "landon_profile_photo.jpeg",
+      "contact_id": null
+    },
+    {
+      "id": "fm_008",
+      "display_name": "Morgan",
+      "photo_filename": "morgan_profile_photo.jpg",
+      "contact_id": null
+    },
+    {
+      "id": "fm_009",
+      "display_name": "Casey",
+      "photo_filename": "casey_profile_photo.jpg",
+      "contact_id": null
+    },
+    {
+      "id": "fm_010",
+      "display_name": "Sam",
       "photo_filename": null,
       "contact_id": null
     }
@@ -70,6 +100,11 @@
     {"user_id": "fm_002", "latitude": 37.0755, "longitude": -113.3011},
     {"user_id": "fm_003", "latitude": 37.139688, "longitude": -113.503014},
     {"user_id": "fm_004", "latitude": 37.139688, "longitude": -113.503014},
-    {"user_id": "fm_005", "latitude": 37.139688, "longitude": -113.503014}
+    {"user_id": "fm_005", "latitude": 37.139688, "longitude": -113.503014},
+    {"user_id": "fm_006", "latitude": 37.785834, "longitude": -122.406417},
+    {"user_id": "fm_007", "latitude": 37.005556, "longitude": -113.562030},
+    {"user_id": "fm_008", "latitude": 37.0755, "longitude": -113.3011},
+    {"user_id": "fm_009", "latitude": 37.103532, "longitude": -113.565523},
+    {"user_id": "fm_010", "latitude": 37.785834, "longitude": -122.406417}
   ]
 }

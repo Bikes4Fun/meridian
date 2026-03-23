@@ -245,15 +245,27 @@ def _calendar_request(
     try:
         client = session if session else requests
         if method == "POST":
-            r = client.post(url, json=json_body, headers={**headers, "Content-Type": "application/json"}, timeout=5)
+            r = client.post(
+                url,
+                json=json_body,
+                headers={**headers, "Content-Type": "application/json"},
+                timeout=5,
+            )
         elif method == "PUT":
-            r = client.put(url, json=json_body, headers={**headers, "Content-Type": "application/json"}, timeout=5)
+            r = client.put(
+                url,
+                json=json_body,
+                headers={**headers, "Content-Type": "application/json"},
+                timeout=5,
+            )
         elif method == "DELETE":
             r = client.delete(url, headers=headers, timeout=5)
         else:
             return ServiceResult.error_result(f"unsupported method {method}")
         if r.ok:
-            return ServiceResult.success_result(r.json().get("data") if r.content else True)
+            return ServiceResult.success_result(
+                r.json().get("data") if r.content else True
+            )
         try:
             err = r.json().get("error", r.text)
         except Exception:
@@ -323,7 +335,9 @@ class RemoteMedicationService:
             self._session,
         )
 
-    def mark_medication_taken(self, medication_id: int, time_slot: str, taken: bool) -> Any:
+    def mark_medication_taken(
+        self, medication_id: int, time_slot: str, taken: bool
+    ) -> Any:
         return _calendar_request(
             "POST",
             f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}/mark-taken",

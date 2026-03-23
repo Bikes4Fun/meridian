@@ -348,6 +348,48 @@ body {
   min-width: 10em;
 }
 
+/* Clock (debug: thin black borders) */
+.clock-container {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  gap: 1em;
+}
+#clock-main {
+  flex: 1 1 70%;
+  min-width: 0;
+}
+#sprite-and-text {
+  flex: 1 1 30%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+/* Prevent flex stretch: sprite and period row items keep intrinsic size */
+.clock-container .clock-period-sprite,
+.clock-container [id="clock-period"] {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* Clock time-of-day sprite (4 frames: morning, noon, evening, night) */
+.clock-period-sprite {
+  width: 100px;
+  height: 75px;
+  min-height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-image: url('icons/time-of-day-sprite.png');
+  background-repeat: no-repeat;
+  background-size: 400% auto;
+  background-position: 0 0;
+}
+.clock-period-sprite[data-period="morning"] { background-position: 0% 0; }
+.clock-period-sprite[data-period="noon"] { background-position: 33.333% 0; }
+.clock-period-sprite[data-period="evening"] { background-position: 66.666% 0; }
+.clock-period-sprite[data-period="night"] { background-position: 100% 0; }
+
 /* Timeline view button */
 .timeline-view-btn {
   font-size: var(--font-caption);

@@ -11,7 +11,7 @@ REMOVAL: Required on server (used by emergency_service). Can be omitted from cli
 from typing import List, Optional
 from dataclasses import dataclass
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -39,9 +39,9 @@ class Contact:
         return f"• {self.display_name} - {self.phone}\n  {self.relationship}"
 
 
-class ContactService(DatabaseServiceMixin):
+class ContactService:
     def __init__(self, db_manager: DatabaseManager):
-        DatabaseServiceMixin.__init__(self, db_manager)
+        self.db_manager = db_manager
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
@@ -56,7 +56,7 @@ class ContactService(DatabaseServiceMixin):
             FROM contacts c
             WHERE c.family_circle_id = ?
         """
-        result = self.safe_query(query, (family_circle_id,))
+        result = self.db_manager.execute_query(query, (family_circle_id,))
         if not result.success:
             return result
         contacts = [
@@ -89,7 +89,7 @@ class ContactService(DatabaseServiceMixin):
             FROM contacts c
             WHERE c.family_circle_id = ? AND c.emergency_priority IN ('primary_emergency', 'secondary_emergency')
         """
-        result = self.safe_query(query, (family_circle_id,))
+        result = self.db_manager.execute_query(query, (family_circle_id,))
         if not result.success:
             return result
         contacts = [
@@ -109,6 +109,40 @@ class ContactService(DatabaseServiceMixin):
         ]
         return ServiceResult.success_result(contacts)
 
+    def add_contact(
+        self,
+        contact_id: str,
+        family_circle_id: str,
+        display_name: str,
+        phone: Optional[str] = None,
+        email: Optional[str] = None,
+        birthday: Optional[str] = None,
+        relationship: Optional[str] = None,
+        emergency_priority: Optional[str] = None,
+        photo_filename: Optional[str] = None,
+        notes: Optional[str] = None,
+        sendbird_user_id: Optional[str] = None,
+    ) -> ServiceResult:
+        """Insert or replace contact."""
+        return self.db_manager.execute_update(
+            """INSERT OR REPLACE INTO contacts
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes, sendbird_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                contact_id,
+                family_circle_id,
+                display_name or "",
+                phone,
+                email,
+                birthday,
+                relationship,
+                emergency_priority,
+                photo_filename,
+                notes,
+                sendbird_user_id,
+            ),
+        )
+
     def get_contact_in_family(
         self, contact_id: str, family_circle_id: str
     ) -> ServiceResult:
@@ -117,7 +151,7 @@ class ContactService(DatabaseServiceMixin):
             SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts WHERE id = ? AND family_circle_id = ?
         """
-        result = self.safe_query(query, (contact_id, family_circle_id))
+        result = self.db_manager.execute_query(query, (contact_id, family_circle_id))
         if not result.success:
             return result
         if result.data:
@@ -142,7 +176,7 @@ class ContactService(DatabaseServiceMixin):
             SELECT id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, sendbird_user_id
             FROM contacts WHERE id = ?
         """
-        result = self.safe_query(query, (contact_id,))
+        result = self.db_manager.execute_query(query, (contact_id,))
         if not result.success:
             return result
         if result.data:

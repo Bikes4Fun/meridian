@@ -26,18 +26,44 @@ def build_checkin_html(
     if loc_svc:
         places_result = loc_svc.get_named_places(family_circle_id)
         if places_result.success and places_result.data:
-            places = [{"gps_latitude": p.get("gps_latitude"), "gps_longitude": p.get("gps_longitude"), "radius_metres": p.get("radius_metres")} for p in places_result.data]
+            places = [
+                {
+                    "gps_latitude": p.get("gps_latitude"),
+                    "gps_longitude": p.get("gps_longitude"),
+                    "radius_metres": p.get("radius_metres"),
+                }
+                for p in places_result.data
+            ]
 
         checkins_result = loc_svc.get_checkins(family_circle_id)
         if checkins_result.success and checkins_result.data:
-            lines = [f"• {c.get('contact_name', 'Unknown')}: {c.get('location_name') or 'Unknown'}" for c in checkins_result.data]
-            checkins_html = hp.kiosk_body("\n".join(lines)) if lines else hp.empty_state("No check-ins")
+            lines = [
+                f"• {c.get('contact_name', 'Unknown')}: {c.get('location_name') or 'Unknown'}"
+                for c in checkins_result.data
+            ]
+            checkins_html = (
+                hp.kiosk_body("\n".join(lines))
+                if lines
+                else hp.empty_state("No check-ins")
+            )
         else:
             checkins_html = hp.empty_state("No check-ins yet")
 
-    checkins_panel = hp.panel(hp.kiosk_subheader("Check-ins") + hp.spacer(16) + checkins_html)
-    refresh_btn = hp.kiosk_button("Refresh", "pywebview.api.refresh_screen('family')", no_feedback=True, small=True)
-    header_row = '<div class="family-locations-header-row">' + hp.kiosk_header("Family Locations") + refresh_btn + '</div>'
+    checkins_panel = hp.panel(
+        hp.kiosk_subheader("Check-ins") + hp.spacer(16) + checkins_html
+    )
+    refresh_btn = hp.kiosk_button(
+        "Refresh",
+        "pywebview.api.refresh_screen('family')",
+        no_feedback=True,
+        small=True,
+    )
+    header_row = (
+        '<div class="family-locations-header-row">'
+        + hp.kiosk_header("Family Locations")
+        + refresh_btn
+        + "</div>"
+    )
     top_content = header_row + hp.spacer(16) + checkins_panel + hp.spacer(16)
     map_html = map_widget.map_container_html()
     markers = map_widget.get_map_markers(
@@ -45,8 +71,10 @@ def build_checkin_html(
     )
     layout = (
         '<div class="family-locations-layout">'
-        '<div class="family-locations-top">' + top_content + '</div>'
-        + map_html +
-        '</div>'
+        '<div class="family-locations-top">'
+        + top_content
+        + "</div>"
+        + map_html
+        + "</div>"
     )
     return layout, json.dumps(markers), json.dumps(places)

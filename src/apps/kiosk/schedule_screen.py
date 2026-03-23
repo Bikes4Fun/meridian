@@ -35,12 +35,14 @@ def build_schedule_html(services, api_url: str) -> str:
                     dt = datetime.datetime.fromisoformat(dt_str)
                 except Exception:
                     dt = datetime.datetime.now()
-                items.append({
-                    "type": "med",
-                    "dt": dt,
-                    "title": m.get("name", "?"),
-                    "done": m.get("status") == "done",
-                })
+                items.append(
+                    {
+                        "type": "med",
+                        "dt": dt,
+                        "title": m.get("name", "?"),
+                        "done": m.get("status") == "done",
+                    }
+                )
     if cal_svc:
         import datetime
 
@@ -54,19 +56,23 @@ def build_schedule_html(services, api_url: str) -> str:
                 dt = now
                 if st:
                     try:
-                        dt = datetime.datetime.fromisoformat(str(st).replace("Z", "+00:00"))
+                        dt = datetime.datetime.fromisoformat(
+                            str(st).replace("Z", "+00:00")
+                        )
                         if dt.tzinfo:
                             dt = dt.replace(tzinfo=None)
                     except Exception:
                         pass
-                items.append({
-                    "type": "event",
-                    "dt": dt,
-                    "title": e.get("display", e.get("title", "?")),
-                    "done": False,
-                    "event_id": e.get("id"),
-                    "event_data": e,
-                })
+                items.append(
+                    {
+                        "type": "event",
+                        "dt": dt,
+                        "title": e.get("display", e.get("title", "?")),
+                        "done": False,
+                        "event_id": e.get("id"),
+                        "event_data": e,
+                    }
+                )
     items.sort(key=lambda x: x["dt"])
 
     parts = [hp.kiosk_header("Full Schedule"), hp.spacer(16)]
@@ -75,7 +81,9 @@ def build_schedule_html(services, api_url: str) -> str:
     else:
         for it in items:
             done = it.get("done")
-            bar_class = "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+            bar_class = (
+                "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+            )
             time_str = it["dt"].strftime("%I:%M %p")
             check = " ✓" if done else ""
             cls = "timeline-item timeline-item-done" if done else "timeline-item"
@@ -83,7 +91,9 @@ def build_schedule_html(services, api_url: str) -> str:
             extra = ""
             if it.get("type") == "event" and it.get("event_id"):
                 eid = html_module.escape(str(it["event_id"]))
-                edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
+                edata = html_module.escape(
+                    json.dumps(it.get("event_data", {})), quote=True
+                )
                 extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
             parts.append(
                 f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'

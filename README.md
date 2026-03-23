@@ -1,37 +1,92 @@
-## Summary
-TV-based digital assistant for dementia patients and families. Provides daily orientation (large date/time, appointments), medication reminders with safety features, emergency medical info, and photo-based family directory. Target: mild-moderate dementia, living at home.
+# Meridian
 
+![Meridian banner](assets/banner_logo.png)
+
+
+A large-format family command center for patients living at home with mild-to-moderate cognitive decline and their families.
+
+Meridian is intended to run as a wall-mounted fixture (such as a touch-screen TV or monitor):
+
+- **Stays put** — no losing it like phones and chargers  
+- **Visible from across the room** — always in place  
+- **Accessible** — large formatting for low-vision users and those prone to disorientation
+
+It aims to provide benefits and services such as anxiety relief for common dementia/Alzheimer's symptoms, time and location orientation, healthcare management, and connection features that reduce caregiver burden and help patients maintain independence longer.
+
+---
+
+## ⚠️ Development Data Security Risk / Not for production use
+
+**Meridian is in active development. If you explore the webapp or kiosk, enter test/demo data ONLY.**
+
+- **Do not enter private data** — anything you would not want accessible to anyone who can see this repository or navigate to the webapp, server URL, DB URL, etc. (real names, medical info, phone numbers, etc.).
+- **Nothing is encrypted and there is no true authentication yet.**
+
+---
+
+## Why Meridian?
+
+Patients with cognitive decline face daily challenges such as stress and confusion, time orientation, medication management, cognitive overload and feeling connected to family. Caregivers face anxiety about safety, missed medications, and emergency
+preparedness. Meridian addresses both sides:
+
+- **For patients** — large, simple UI with familiar faces, clear time/date, and medication reminders
+- **For caregivers** — real-time family location, emergency profile always up to date, one-button alert
+- **For first responders** — printable POLST/ICE document with DNR status, medications, and contacts
+
+## Who It's For
+
+🙋‍♀️🙋‍♂️🧓 Primary user: patients with mild-to-moderate progressive cognitive decline living at home.
+While typically these care-recipients are elderly and aging, this is not always the case.
+As such, anyone with progressive cognitive decline who is still living at home is a potential user.
+🙋‍♀️🙋‍♂️🚑 Secondary users: adult children, family caregivers, and in an emergency, first responders.
+
+## Screenshots
+
+Development status as of March 22, 2026
+
+**Kiosk home screen**
+
+![image of Kiosk home](assets/kiosk%20home%20march%2022.png)
+
+**Emergency / ICE screen and webapp alert**
+
+![image of Emergency alert](assets/kiosk%20running%20emergency%20alert%20with%20webapp%20button%20displayed.png)
+
+**Family chat**
+
+![image of Family chat](assets/kiosk%20family%20chat%20screen.png)
+
+> *Printed POLST PDF* (coming soon)
+
+> *iOS app* (coming soon)
+
+---
+
+## Discussions & Polls
+
+GitHub Discussions for design decisions. Please engage in our current open polls:
+
+- 💬 [Emergency Profile / POLST — Feature Priorities](https://github.com/Bikes4Fun/meridian/discussions/109#discussion-9723470)
+- 💬 [Kiosk Chat Window](https://github.com/Bikes4Fun/meridian/discussions/108#discussion-9723391)
+
+---
 
 ## Technical Stack
-- **Language**: Python
-- **UI**: pywebview + HTML/CSS/JS (TV-sized touch interface)
-- **Database**: SQLite
-- **Libraries**: Pillow (images), Requests (APIs), Leaflet (map)
-- **Deployment**: Raspberry Pi, local network, optional cloud backup
+- **UI and mobile**: pywebview + HTML/CSS/JS, Swift (iOS)
+- **Server**: Python (Flask), SQLite
+- **Libraries and APIs**: Pillow, Requests, Leaflet, ReportLab, Sendbird
 
+---
 
-## Run
+## Run and Tests
 ```bash
 pip install -r requirements.txt
-PYTHONPATH=src python -m apps.kiosk
+PYTHONPATH=src python src/main.py           # --local for local DB/server; omit for Railway.
+PYTHONPATH=src pytest src/dev/tests         # -v for verbose;
 ```
-Or via main entry: `PYTHONPATH=src python src/main.py`
 
-## Tests
-```bash
-PYTHONPATH=src pytest src/dev/tests     # All tests
-PYTHONPATH=src pytest src/dev/tests -v  # Verbose
-PYTHONPATH=src pytest src/dev/tests/test_contact.py   # Specific file
-PYTHONPATH=src pytest src/dev/tests --cov=apps --cov=shared --cov-report=html
-```
-See `src/dev/tests/README.md` for fixtures, markers, and test structure.
+---
 
-## Architecture
-- **shared/config.py** – ConfigManager, DatabaseConfig; environment-based config
-- **shared/interfaces.py** – ServiceResult, service contracts
-- **apps/server/** – Flask API (api.py), database (database.py), services (container, calendar, contact, etc.)
-- **apps/kiosk/** – pywebview TV UI (app.py, web/, html_primitives, api_client, *_screen.py)
-- **main.py** – Entry point; starts API server and pywebview kiosk
 
 ## Project Structure
 ```
@@ -49,55 +104,21 @@ meridian/
 │   │   │   ├── api.py
 │   │   │   ├── database.py
 │   │   │   ├── schema.sql
-│   │   │   ├── ice_profile.json
 │   │   │   └── services/
-│   │   │       ├── container.py
-│   │   │       ├── calendar.py
-│   │   │       ├── contact.py
-│   │   │       ├── emergency.py
-│   │   │       ├── ice_profile.py
-│   │   │       ├── location.py
-│   │   │       └── medication.py
-│   │   └── webapp/             # Web client (checkin, map)
-│   │       ├── web_client/
-│   │       │   ├── checkin.html
-│   │       │   └── checkin.js
-│   │       └── web_server/
-│   │           ├── build.js
-│   │           ├── package.json
+│   │   ├── chatapp/            # Sendbird chat integration
+│   │   └── webapp/             # Caregiver web client
 │   ├── dev/
-│   │   ├── main.py             # Entry point
-│   │   ├── demo/
-│   │   │   ├── seed.py
-│   │   │   └── data/
-│   │   │       ├── calendar.json
-│   │   │       ├── contacts.json
-│   │   │       ├── family.json
-│   │   │       ├── medical.json
-│   │   │       ├── kiosk_settings.json
-│   │   │       └── family_img/
-│   │   └── tests/
-│   │       ├── conftest.py
-│   │       ├── pytest.ini
-│   │       ├── test_api.py
-│   │       ├── test_calendar.py
-│   │       ├── test_contact.py
-│   │       ├── test_database.py
-│   │       ├── test_medication.py
-│   │       └── test_time_service.py
+│   │   ├── demo/               # Seed demo data
+│   │   └── tests/              # README.md
+│   ├── main.py                 # Entry point (API + kiosk)
 │   └── shared/
 │       ├── config.py
 │       └── interfaces.py
-├── info/
-│   ├── assignments/
-│   ├── git_issue_generation.sh
-│   └── third party documentation and research/
 ├── requirements.txt
-├── README.md
-└── todo.md
+└── README.md
 ```
 
+---
 
-Railway:
-Vercel:
-Notes: Almost all of the written content in issues, milestone, and many other areas of documentation have been generated entirely by, or with assistance from Cursor Agent.
+Almost all written content in issues, milestones, and documentation has been generated entirely
+by, or with assistance from, Cursor Agent and Claude (Anthropic).

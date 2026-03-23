@@ -9,6 +9,7 @@ import sys
 # Load .env from repo root if python-dotenv is available (SENDBIRD_APP_ID, etc.)
 try:
     from dotenv import load_dotenv
+
     _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
     load_dotenv(_env_path)
 except ImportError:
@@ -110,6 +111,7 @@ def main():
             src_dir = os.path.dirname(os.path.abspath(__file__))
             try:
                 from build_all import build_webapp, build_chatapp
+
                 build_webapp("", src_dir)
                 build_chatapp("", src_dir)
             except Exception as e:

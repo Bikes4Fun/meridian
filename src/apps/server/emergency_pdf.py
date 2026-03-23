@@ -15,7 +15,11 @@ def build_pdf(profile_data=None):
 
     c.setFont("Helvetica", 24)
     c.drawString(72, height - 72, "Emergency Profile")
-    c.drawString(72, height - 100, f"Generated for printing. {date.today()} {datetime.now().strftime('%H:%M')}")
+    c.drawString(
+        72,
+        height - 100,
+        f"Generated for printing. {date.today()} {datetime.now().strftime('%H:%M')}",
+    )
     c.showPage()
     c.save()
     buf.seek(0)

@@ -4,7 +4,7 @@ Integration tests for DatabaseManager (DB required). Infrastructure: schema, per
 
 import os
 import pytest
-from apps.server.database import DatabaseManager
+from apps.server.database_manager import DatabaseManager
 from shared.config import DatabaseConfig
 from shared.interfaces import ServiceResult
 

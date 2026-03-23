@@ -14,7 +14,9 @@ from . import events_handler
 logger = logging.getLogger(__name__)
 
 
-def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = "") -> str:
+def build_home_html(
+    services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = ""
+) -> str:
     """Option 5: Up Next + What's Next Today + side-by-side action buttons."""
     from . import html_primitives as hp
 
@@ -23,16 +25,25 @@ def build_home_html(services, api_url: str, family_circle_id: str = "", kiosk_us
     up_next_html = build_up_next_html(items, now)
     timeline_html = build_timeline_html(items)
     up_next = f'<div class="up-next-card" id="up_next_content">{up_next_html}</div>'
-    timeline = f'''<div class="timeline-card">
+    timeline = f"""<div class="timeline-card">
         <div class="timeline-header">WHAT'S NEXT TODAY</div>
         <div id="timeline_content" class="timeline-list">{timeline_html}</div>
         <button type="button" class="timeline-view-btn" data-screen="schedule">View Full Schedule</button>
-    </div>'''
-    actions = '''<div class="home-action-row">
+    </div>"""
+    actions = """<div class="home-action-row">
         <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
         <button type="button" class="manage-meds-btn" data-screen="medications">Manage Medications</button>
-    </div>'''
-    return clock + hp.spacer(24) + up_next + hp.spacer(16) + timeline + hp.spacer(16) + actions + events_handler.get_event_form_overlay_html()
+    </div>"""
+    return (
+        clock
+        + hp.spacer(24)
+        + up_next
+        + hp.spacer(16)
+        + timeline
+        + hp.spacer(16)
+        + actions
+        + events_handler.get_event_form_overlay_html()
+    )
 
 
 def load_schedule_items(services) -> tuple[list, object]:
@@ -58,23 +69,27 @@ def load_schedule_items(services) -> tuple[list, object]:
                     dt = datetime.datetime.fromisoformat(dt_str)
                 except Exception:
                     dt = now
-                items.append({
-                    "type": "med",
-                    "dt": dt,
-                    "title": m.get("name", "?"),
-                    "done": m.get("status") == "done",
-                    "med_id": m.get("id"),
-                    "time_slot": t,
-                })
+                items.append(
+                    {
+                        "type": "med",
+                        "dt": dt,
+                        "title": m.get("name", "?"),
+                        "done": m.get("status") == "done",
+                        "med_id": m.get("id"),
+                        "time_slot": t,
+                    }
+                )
             for m in data.get("prn_medications", []):
-                items.append({
-                    "type": "prn",
-                    "dt": now,
-                    "title": m.get("name", "?"),
-                    "done": m.get("status") == "taken",
-                    "med_id": m.get("id"),
-                    "time_slot": "prn",
-                })
+                items.append(
+                    {
+                        "type": "prn",
+                        "dt": now,
+                        "title": m.get("name", "?"),
+                        "done": m.get("status") == "taken",
+                        "med_id": m.get("id"),
+                        "time_slot": "prn",
+                    }
+                )
     if cal_svc:
         result = cal_svc.get_events_for_date(today)
         if result.success and result.data:
@@ -83,20 +98,24 @@ def load_schedule_items(services) -> tuple[list, object]:
                 dt = now
                 if st:
                     try:
-                        dt = datetime.datetime.fromisoformat(str(st).replace("Z", "+00:00"))
+                        dt = datetime.datetime.fromisoformat(
+                            str(st).replace("Z", "+00:00")
+                        )
                         if dt.tzinfo:
                             dt = dt.replace(tzinfo=None)
                     except Exception:
                         pass
-                items.append({
-                    "type": "event",
-                    "dt": dt,
-                    "title": e.get("title", "?"),
-                    "done": False,
-                    "display": e.get("display", e.get("title", "?")),
-                    "event_id": e.get("id"),
-                    "event_data": e,
-                })
+                items.append(
+                    {
+                        "type": "event",
+                        "dt": dt,
+                        "title": e.get("title", "?"),
+                        "done": False,
+                        "display": e.get("display", e.get("title", "?")),
+                        "event_id": e.get("id"),
+                        "event_data": e,
+                    }
+                )
     items.sort(key=lambda x: x["dt"])
     return items, now
 
@@ -127,7 +146,9 @@ def build_up_next_html(items: list, now) -> str:
 def build_timeline_html(items: list) -> str:
     """Build What's Next Today list: 1-2 done, 1-3 upcoming, in chronological order."""
     if not items:
-        return '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
+        return (
+            '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
+        )
     done_count = 0
     upcoming_count = 0
     shown = []
@@ -144,8 +165,12 @@ def build_timeline_html(items: list) -> str:
     result = []
     for it in shown:
         done = it.get("done")
-        bar_class = "timeline-bar-med" if it["type"] in ("med", "prn") else "timeline-bar-event"
-        time_str = "As needed" if it.get("type") == "prn" else it["dt"].strftime("%I:%M %p")
+        bar_class = (
+            "timeline-bar-med" if it["type"] in ("med", "prn") else "timeline-bar-event"
+        )
+        time_str = (
+            "As needed" if it.get("type") == "prn" else it["dt"].strftime("%I:%M %p")
+        )
         check = " ✓" if done else ""
         cls = "timeline-item timeline-item-done" if done else "timeline-item"
         title = it.get("display", it.get("title", "?"))
@@ -154,11 +179,17 @@ def build_timeline_html(items: list) -> str:
         if (it.get("type") in ("med", "prn")) and it.get("med_id") is not None:
             mid = html_module.escape(str(it["med_id"]))
             slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
-            lbl = "Uncheck" if done else ("Take" if it.get("type") == "prn" else "Check took")
+            lbl = (
+                "Uncheck"
+                if done
+                else ("Take" if it.get("type") == "prn" else "Check took")
+            )
             extra = f' <button type="button" class="med-taken-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}" style="font-size:11px;padding:2px 6px;">{lbl}</button>'
         elif it.get("type") == "event" and it.get("event_id"):
             eid = html_module.escape(str(it["event_id"]))
             edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
             extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
-        result.append(f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>')
+        result.append(
+            f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
+        )
     return "\n".join(result)

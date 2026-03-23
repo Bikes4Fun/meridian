@@ -7,14 +7,11 @@ try:
 except ImportError:
     from shared.interfaces import ServiceResult
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 
-class FamilyService(DatabaseServiceMixin):
+class FamilyService:
     """Service for family circle and member operations."""
-
-    def __init__(self, db_manager: DatabaseManager):
-        super().__init__(db_manager)
 
     def get_family_members(self, family_circle_id: str) -> ServiceResult:
         """Return users in the family."""

@@ -6,7 +6,7 @@ Read/write users. SQLite enforces sendbird_user_id uniqueness per family.
 import sqlite3
 from typing import Optional
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -14,9 +14,7 @@ except ImportError:
     from shared.interfaces import ServiceResult
 
 
-class UserService(DatabaseServiceMixin):
-    def __init__(self, db_manager: DatabaseManager):
-        DatabaseServiceMixin.__init__(self, db_manager)
+class UserService:
 
     def add_user(
         self,
@@ -36,7 +34,13 @@ class UserService(DatabaseServiceMixin):
                     (id, display_name, photo_filename, family_circle_id, sendbird_user_id)
                     VALUES (?, ?, ?, ?, ?)
                     """,
-                    (user_id, display_name, photo_filename, family_circle_id, sendbird_user_id),
+                    (
+                        user_id,
+                        display_name,
+                        photo_filename,
+                        family_circle_id,
+                        sendbird_user_id,
+                    ),
                 )
                 conn.commit()
             return ServiceResult.success_result({"id": user_id})

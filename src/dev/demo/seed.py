@@ -21,11 +21,11 @@ from datetime import datetime, timedelta
 import sys
 
 try:
-    from src.apps.server.database import DatabaseManager
+    from src.apps.server.database_manager import DatabaseManager
     from src.apps.server.services.user import UserService
     from src.shared.config import DatabaseConfig, get_database_path
 except ImportError:
-    from apps.server.database import DatabaseManager
+    from apps.server.database_manager import DatabaseManager
     from apps.server.services.user import UserService
     from shared.config import DatabaseConfig, get_database_path
 
@@ -124,7 +124,8 @@ def _link_users_to_family_circles(db_manager, users):
 
 def load_demo_users_from_json_into_db(db_manager):
     """Load all users from users.json. sendbird_user_id is used for chat (maps app user to Sendbird user).
-    Uses UserService so SQLite enforces sendbird_user_id uniqueness; returns errors on constraint violation."""
+    Uses UserService so SQLite enforces sendbird_user_id uniqueness; returns errors on constraint violation.
+    """
     users = load_json_file("users.json")
     user_svc = UserService(db_manager)
     for user in users:
@@ -357,7 +358,9 @@ def _resolve_event_time(value: str, today: datetime.date) -> str:
         return f"{today}T{value.replace('TODAY_', '')}"
     if value.startswith("TOMORROW_"):
         return f"{today + timedelta(days=1)}T{value.replace('TOMORROW_', '')}"
-    for n, prefix in enumerate(["PLUS_2_DAYS_", "PLUS_3_DAYS_", "PLUS_4_DAYS_", "PLUS_5_DAYS_"], 2):
+    for n, prefix in enumerate(
+        ["PLUS_2_DAYS_", "PLUS_3_DAYS_", "PLUS_4_DAYS_", "PLUS_5_DAYS_"], 2
+    ):
         if value.startswith(prefix):
             return f"{today + timedelta(days=n)}T{value.replace(prefix, '')}"
     return value
@@ -418,7 +421,9 @@ def seed_calendar_events_via_api(
 
     for event_data in events:
         evt_id = event_data.get("id")
-        evt_url = f"{base}/api/family_circles/{family_circle_id}/calendar/events/{evt_id}"
+        evt_url = (
+            f"{base}/api/family_circles/{family_circle_id}/calendar/events/{evt_id}"
+        )
         requests.delete(evt_url, headers=headers, timeout=5)
 
     events_url = f"{base}/api/family_circles/{family_circle_id}/calendar/events"
@@ -579,7 +584,8 @@ def ensure_local_database(db_path: str) -> bool:
 
 def demo_main(user_id, db_path=None) -> bool:
     """Load all JSON demo data into the database (direct DB). Run via: python -m apps.server seed.
-    Used when server is not running. Main/kiosk use demo_bootstrap + demo_seed_after_server instead."""
+    Used when server is not running. Main/kiosk use demo_bootstrap + demo_seed_after_server instead.
+    """
     logger.debug("Loading demo data into database...")
     if db_path is None:
         db_path = get_database_path()

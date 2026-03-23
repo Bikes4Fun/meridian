@@ -14,15 +14,11 @@ try:
 except ImportError:
     from shared.interfaces import ServiceResult
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 
-class LocationService(DatabaseServiceMixin):
+class LocationService:
     """Service for managing location check-ins."""
-
-    def __init__(self, db_manager: DatabaseManager):
-        super().__init__(db_manager)
-        self.logger = logging.getLogger(__name__)
 
     @staticmethod
     def _haversine_metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

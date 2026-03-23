@@ -6,7 +6,7 @@ Composes from canonical sources: care_recipients, medications, allergies, condit
 
 from dataclasses import asdict
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -15,9 +15,9 @@ except ImportError:
 from .contact import ContactService
 
 
-class EmergencyService(DatabaseServiceMixin):
+class EmergencyService:
     def __init__(self, db_manager: DatabaseManager, contact_service: ContactService):
-        DatabaseServiceMixin.__init__(self, db_manager)
+
         self.contact_service = contact_service
 
     def get_emergency_profile(self, family_circle_id: str) -> ServiceResult:

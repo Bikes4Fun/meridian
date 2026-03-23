@@ -4,12 +4,15 @@ import os
 import sys
 
 # Ensure src is on path
-_src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_src_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(os.path.join(_src_dir, "..", ".env"))
 except ImportError:
     pass
@@ -33,7 +36,11 @@ from shared.config import (
 from apps.kiosk.app import create_app
 
 KIOSK_USER_ID = os.environ.get("KIOSK_USER_ID") or "fm_care_001"
-FAMILY_CIRCLE_ID = os.environ.get("FAMILY_CIRCLE_ID") or os.environ.get("PATIENT_FAMILY_CIRCLE_ID") or "F00000"
+FAMILY_CIRCLE_ID = (
+    os.environ.get("FAMILY_CIRCLE_ID")
+    or os.environ.get("PATIENT_FAMILY_CIRCLE_ID")
+    or "F00000"
+)
 
 
 def _start_local_api_server(logger):
@@ -89,7 +96,10 @@ def main():
         logger.info("Database: Railway (remote)")
         try:
             import urllib.request
-            with urllib.request.urlopen(f"{api_url.rstrip('/')}/api/health", timeout=3) as resp:
+
+            with urllib.request.urlopen(
+                f"{api_url.rstrip('/')}/api/health", timeout=3
+            ) as resp:
                 if resp.status == 200:
                     logger.info("Server health: ok")
                 else:

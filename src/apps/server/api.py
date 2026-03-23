@@ -118,6 +118,8 @@ def create_server_app(db_path=None):
     """Create Flask app and register API routes.
     Functionality is provided by container (via create_service_container).
     Kiosk uses api_client.create_kiosk_remote() to call this API."""
+
+    # TODO: if we are using container, should we ever be using database manager functions alone?
     db_path = db_path or get_database_path()
     container = create_service_container(db_path)
 
@@ -178,7 +180,15 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         # Public routes: no auth required (login page, chatapp POC, kiosk static, fonts)
-        if request.path in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css") or request.path in ("/chatapp", "/kiosk") or request.path.startswith("/chatapp/") or request.path.startswith("/kiosk/") or request.path.startswith("/fonts/") or request.path.startswith("/shared/"):
+        if (
+            request.path
+            in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css")
+            or request.path in ("/chatapp", "/kiosk")
+            or request.path.startswith("/chatapp/")
+            or request.path.startswith("/kiosk/")
+            or request.path.startswith("/fonts/")
+            or request.path.startswith("/shared/")
+        ):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -287,7 +297,9 @@ def create_server_app(db_path=None):
         payload = _verify_chat_entry_token(app.secret_key, token)
         if not payload:
             return jsonify({"error": "Invalid or expired token"}), 403
-        chatapp_url = (os.environ.get("CHATAPP_URL") or request.url_root.rstrip("/")).rstrip("/")
+        chatapp_url = (
+            os.environ.get("CHATAPP_URL") or request.url_root.rstrip("/")
+        ).rstrip("/")
         if not chatapp_url:
             return (
                 jsonify(
@@ -325,8 +337,11 @@ def create_server_app(db_path=None):
 
     @app.route("/api/users/<user_id>/photo")
     def api_serve_photo(user_id):
+        # TODO: remove api.py queries and maybe even database_manager? (user container?)
         """Serve user photo. User must be in requester's family. Rejects path traversal in filename."""
         db = container.get_database_manager()
+
+        # TODO: remove api.py queries and maybe even database_manager? (user container?)
         r = db.execute_query(
             "SELECT u.photo_filename FROM users u "
             "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
@@ -375,7 +390,9 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/family_circles/<family_circle_id>/calendar/events", methods=["POST"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/calendar/events", methods=["POST"]
+    )
     def api_calendar_events_post(family_circle_id):
         _require_family_access(family_circle_id)
         data = request.get_json() or {}
@@ -401,7 +418,10 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/family_circles/<family_circle_id>/calendar/events/<event_id>", methods=["PUT"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/calendar/events/<event_id>",
+        methods=["PUT"],
+    )
     def api_calendar_event_put(family_circle_id, event_id):
         _require_family_access(family_circle_id)
         data = request.get_json() or {}
@@ -422,7 +442,10 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/family_circles/<family_circle_id>/calendar/events/<event_id>", methods=["DELETE"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/calendar/events/<event_id>",
+        methods=["DELETE"],
+    )
     def api_calendar_event_delete(family_circle_id, event_id):
         _require_family_access(family_circle_id)
         r = calendar_svc.delete_event(family_circle_id, event_id)
@@ -430,7 +453,9 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": True})
 
-    @app.route("/api/family_circles/<family_circle_id>/medications", methods=["GET", "POST"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/medications", methods=["GET", "POST"]
+    )
     def api_medications(family_circle_id):
         _require_family_access(family_circle_id)
         if request.method == "GET":
@@ -458,7 +483,10 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data}), 201
 
-    @app.route("/api/family_circles/<family_circle_id>/medications/<int:medication_id>", methods=["GET", "PUT", "DELETE"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/medications/<int:medication_id>",
+        methods=["GET", "PUT", "DELETE"],
+    )
     def api_medication(family_circle_id, medication_id):
         _require_family_access(family_circle_id)
         if request.method == "GET":
@@ -489,7 +517,10 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 404
         return jsonify({"data": True})
 
-    @app.route("/api/family_circles/<family_circle_id>/medications/<int:medication_id>/mark-taken", methods=["POST"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/medications/<int:medication_id>/mark-taken",
+        methods=["POST"],
+    )
     def api_medication_mark_taken(family_circle_id, medication_id):
         _require_family_access(family_circle_id)
         body = request.get_json() or {}
@@ -629,7 +660,9 @@ def create_server_app(db_path=None):
             )
         return jsonify({"data": members})
 
-    @app.route("/api/family_circles/<family_circle_id>/create_checkin", methods=["POST"])
+    @app.route(
+        "/api/family_circles/<family_circle_id>/create_checkin", methods=["POST"]
+    )
     def api_create_checkin(family_circle_id):
         """Create a new location check-in."""
         # TODO: use userid for this, not family circle. allowing the user to checkin to multiple families if needed?
@@ -690,8 +723,12 @@ def create_server_app(db_path=None):
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         sendbird_svc = container.get_sendbird_service()
+
+        # TODO: remove api.py queries and maybe even database_manager? (user container?)
         db_manager = container.get_database_manager()
-        register_chatapp_routes(app, sendbird_svc, db_manager, chat_static_prefix="/chatapp")
+        register_chatapp_routes(
+            app, sendbird_svc, db_manager, chat_static_prefix="/chatapp"
+        )
 
         @app.route("/")
         @app.route("/index.html")
@@ -738,6 +775,7 @@ def create_server_app(db_path=None):
             return send_from_directory(_chatapp_dist, path)
 
         if os.path.isdir(_kiosk_web):
+
             @app.route("/kiosk/")
             @app.route("/kiosk/<path:path>")
             def serve_kiosk(path=""):

@@ -11,7 +11,7 @@ REMOVAL: Required on server (used by emergency_service). Can be omitted from cli
 from typing import List, Optional
 from dataclasses import dataclass
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -39,9 +39,7 @@ class Contact:
         return f"• {self.display_name} - {self.phone}\n  {self.relationship}"
 
 
-class ContactService(DatabaseServiceMixin):
-    def __init__(self, db_manager: DatabaseManager):
-        DatabaseServiceMixin.__init__(self, db_manager)
+class ContactService:
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """

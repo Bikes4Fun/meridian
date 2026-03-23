@@ -8,7 +8,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -36,11 +36,10 @@ class PRNMedication:
     id: Optional[int] = None
 
 
-class MedicationService(DatabaseServiceMixin):
-    def __init__(self, db_manager: DatabaseManager):
-        DatabaseServiceMixin.__init__(self, db_manager)
-        self.timed_medications: List[TimedMedication] = []
-        self.prn_medications: List[PRNMedication] = []
+class MedicationService:
+
+    self.timed_medications: List[TimedMedication] = []
+    self.prn_medications: List[PRNMedication] = []
 
     def _get_care_recipient_user_id(self, family_circle_id: str) -> Optional[str]:
         r = self.safe_query(
@@ -96,7 +95,11 @@ class MedicationService(DatabaseServiceMixin):
                 )
                 med_id = med_data.get("id")
                 if is_prn:
-                    taken_slots = [s.strip() for s in (med_data.get("taken_today") or "").split(",") if s.strip()]
+                    taken_slots = [
+                        s.strip()
+                        for s in (med_data.get("taken_today") or "").split(",")
+                        if s.strip()
+                    ]
                     prn_taken = "prn" in taken_slots or "as needed" in taken_slots
                     self.prn_medications.append(
                         PRNMedication(
@@ -107,7 +110,11 @@ class MedicationService(DatabaseServiceMixin):
                         )
                     )
                 else:
-                    taken_slots = [s.strip() for s in (med_data["taken_today"] or "").split(",") if s.strip()]
+                    taken_slots = [
+                        s.strip()
+                        for s in (med_data["taken_today"] or "").split(",")
+                        if s.strip()
+                    ]
                     for group in med_data["groups"]:
                         slot_done = group["name"] in taken_slots
                         self.timed_medications.append(
@@ -185,13 +192,17 @@ class MedicationService(DatabaseServiceMixin):
                WHERE mtt.medication_id = ? AND mt.family_circle_id = ?""",
             (medication_id, family_circle_id),
         )
-        time_names = [t["name"] for t in (times_r.data or [])] if times_r.success else []
-        return ServiceResult.success_result({
-            "id": medication_id,
-            "name": row["name"],
-            "dosage": row["dosage"] or "",
-            "medication_times": time_names,
-        })
+        time_names = (
+            [t["name"] for t in (times_r.data or [])] if times_r.success else []
+        )
+        return ServiceResult.success_result(
+            {
+                "id": medication_id,
+                "name": row["name"],
+                "dosage": row["dosage"] or "",
+                "medication_times": time_names,
+            }
+        )
 
     def update_medication(
         self,
@@ -321,7 +332,9 @@ class MedicationService(DatabaseServiceMixin):
             if slot_key not in slots:
                 slots.append(slot_key)
         else:
-            slots = [s for s in slots if s.lower() != slot_key and s.lower() != "as needed"]
+            slots = [
+                s for s in slots if s.lower() != slot_key and s.lower() != "as needed"
+            ]
         new_taken_today = ",".join(slots) if slots else None
         now_str = datetime.now().strftime("%I:%M %p")
         if slot_key == "prn" and taken:

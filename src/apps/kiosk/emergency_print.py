@@ -43,8 +43,14 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
         if sys.platform in ("darwin", "linux"):
             r = subprocess.run(["lp", path], capture_output=True, text=True, timeout=10)
             if r.returncode != 0:
-                err_detail = (r.stderr or "").strip() or (r.stdout or "").strip() or "Print command failed"
-                logger.warning(f"Emergency print: lp failed (rc={r.returncode}) {err_detail}")
+                err_detail = (
+                    (r.stderr or "").strip()
+                    or (r.stdout or "").strip()
+                    or "Print command failed"
+                )
+                logger.warning(
+                    f"Emergency print: lp failed (rc={r.returncode}) {err_detail}"
+                )
                 return False, err_detail, None
             job_id = _parse_lp_job_id(r.stdout or "")
             if job_id:
@@ -83,7 +89,9 @@ def _run_emergency_print(emergency_svc, status_label=None) -> None:
         if status_label is not None:
             status_label.text = "Print failed: no PDF data"
         return
-    logger.info(f"Emergency print: PDF fetched ({len(result.data)} bytes), sending to printer...")
+    logger.info(
+        f"Emergency print: PDF fetched ({len(result.data)} bytes), sending to printer..."
+    )
     ok, msg, job_id = _print_pdf_bytes(result.data)
     if status_label is not None:
         status_label.text = msg if ok else f"Print failed: {msg}"

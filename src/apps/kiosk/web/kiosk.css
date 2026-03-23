@@ -376,9 +376,10 @@ body {
 /* Clock time-of-day sprite (4 frames: morning, noon, evening, night) */
 .clock-period-sprite {
   width: 100px;
-  height: auto;
+  height: 75px;
   min-height: 0;
   overflow: hidden;
+  flex-shrink: 0;
   background-image: url('icons/time-of-day-sprite.png');
   background-repeat: no-repeat;
   background-size: 400% auto;

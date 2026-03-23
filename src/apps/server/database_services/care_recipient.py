@@ -2,7 +2,7 @@
 Care recipient and contact role updates. Legal/medical designations (proxy, POA) are just contact roles.
 """
 
-from ..database import DatabaseManager, DatabaseServiceMixin
+from ..database_manager import DatabaseManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -10,9 +10,7 @@ except ImportError:
     from shared.interfaces import ServiceResult
 
 
-class CareRecipientService(DatabaseServiceMixin):
-    def __init__(self, db_manager: DatabaseManager):
-        DatabaseServiceMixin.__init__(self, db_manager)
+class CareRecipientService:
 
     def update_care_recipient(self, family_circle_id: str, data: dict) -> ServiceResult:
         """Update care_recipients and contact roles (proxy, POA). Data is care recipient, not session user."""
@@ -86,5 +84,8 @@ class CareRecipientService(DatabaseServiceMixin):
             if _ensure_contact(cid, poa_name or "", poa_phone):
                 _set_role("poa", cid)
         return ServiceResult.success_result(
-            {"family_circle_id": family_circle_id, "care_recipient_user_id": care_recipient_user_id}
+            {
+                "family_circle_id": family_circle_id,
+                "care_recipient_user_id": care_recipient_user_id,
+            }
         )

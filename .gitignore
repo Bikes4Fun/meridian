@@ -20,6 +20,8 @@ src/apps/kiosk/cache/
 *.env
 
 .cursor/*
+src/.cursor/*
+*/.cursor/*
 
 package/*
 *package*

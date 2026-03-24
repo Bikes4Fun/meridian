@@ -1,0 +1,375 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05A769A3D9789D3800BD5ED5 /* ChatWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */; };
+		218F14669C843A6D0BCC1368 /* ChatListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */; };
+		31E41F9A5077F75E4A63F823 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516554ACFC2387E32EE80CF6 /* Config.swift */; };
+		3E8A86CB961A7EDE167B6773 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F6D2321F89EFB06A10B925 /* APIService.swift */; };
+		41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640206CF5CBA2A4150B96A6E /* AlertViewController.swift */; };
+		801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */; };
+		8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6F681986AB20651305D17B /* RootViewController.swift */; };
+		9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13C91B6ED00D7322EFF6E640 /* Assets.xcassets */; };
+		C3F0A5E4D3F6927180C5D6E7F /* LocationRefreshHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */; };
+		D4A1B6F5E4A7038291D6E7F80 /* PendingLocationRequestPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */; };
+		B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */; };
+		BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D843BEA5D3D3871F086B2E /* LoginViewController.swift */; };
+		EF281502C91FD4197E29E2D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		00D843BEA5D3D3871F086B2E /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
+		13C91B6ED00D7322EFF6E640 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabViewController.swift; sourceTree = "<group>"; };
+		32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewController.swift; sourceTree = "<group>"; };
+		37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		516554ACFC2387E32EE80CF6 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Meridian.xcodeproj; sourceTree = "<group>"; };
+		640206CF5CBA2A4150B96A6E /* AlertViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertViewController.swift; sourceTree = "<group>"; };
+		9E6F681986AB20651305D17B /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
+		B1F6D2321F89EFB06A10B925 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInViewController.swift; sourceTree = "<group>"; };
+		A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationRefreshHandler.swift; sourceTree = "<group>"; };
+		B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingLocationRequestPrompt.swift; sourceTree = "<group>"; };
+		C41A18C072EB83280908C1C6 /* MeridianFamily.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeridianFamily.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWebViewController.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		24033E7AED383B4F5EC7307B /* meridian-ios */ = {
+			isa = PBXGroup;
+			children = (
+				640206CF5CBA2A4150B96A6E /* AlertViewController.swift */,
+				B1F6D2321F89EFB06A10B925 /* APIService.swift */,
+				37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */,
+				13C91B6ED00D7322EFF6E640 /* Assets.xcassets */,
+				32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */,
+				D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */,
+				B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */,
+				516554ACFC2387E32EE80CF6 /* Config.swift */,
+				00D843BEA5D3D3871F086B2E /* LoginViewController.swift */,
+				A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */,
+				303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */,
+				5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */,
+				B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */,
+				9E6F681986AB20651305D17B /* RootViewController.swift */,
+			);
+			name = "meridian-ios";
+			path = .;
+			sourceTree = "<group>";
+		};
+		7803CBE62EB976D9B793229A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C41A18C072EB83280908C1C6 /* MeridianFamily.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E5BEF7F12F6F9CA90065887B /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FEBFECAEA643DE58B0A3FDBC = {
+			isa = PBXGroup;
+			children = (
+				24033E7AED383B4F5EC7307B /* meridian-ios */,
+				7803CBE62EB976D9B793229A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2682F6917222B9DDE8175A4E /* MeridianFamily */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0CB223B80553CCAAA0D2799 /* Build configuration list for PBXNativeTarget "MeridianFamily" */;
+			buildPhases = (
+				23B3F5428B677948DDDE7EB9 /* Sources */,
+				D290A9B93AB6221E263EA9D5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MeridianFamily;
+			packageProductDependencies = (
+			);
+			productName = MeridianFamily;
+			productReference = C41A18C072EB83280908C1C6 /* MeridianFamily.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		EDC04DD90A5399D60F59D2D6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+			};
+			buildConfigurationList = 63DB0E1EF39921BE6B3BDE53 /* Build configuration list for PBXProject "MeridianFamily" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = FEBFECAEA643DE58B0A3FDBC;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 7803CBE62EB976D9B793229A /* Products */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = E5BEF7F12F6F9CA90065887B /* Products */;
+					ProjectRef = 5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				2682F6917222B9DDE8175A4E /* MeridianFamily */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D290A9B93AB6221E263EA9D5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		23B3F5428B677948DDDE7EB9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E8A86CB961A7EDE167B6773 /* APIService.swift in Sources */,
+				41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */,
+				EF281502C91FD4197E29E2D9 /* AppDelegate.swift in Sources */,
+				218F14669C843A6D0BCC1368 /* ChatListViewController.swift in Sources */,
+				05A769A3D9789D3800BD5ED5 /* ChatWebViewController.swift in Sources */,
+				B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */,
+				31E41F9A5077F75E4A63F823 /* Config.swift in Sources */,
+				BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */,
+				C3F0A5E4D3F6927180C5D6E7F /* LocationRefreshHandler.swift in Sources */,
+				801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */,
+				D4A1B6F5E4A7038291D6E7F80 /* PendingLocationRequestPrompt.swift in Sources */,
+				8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		098D76A360A80A1F53F6B382 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V2KY58YNP3;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				NEW_SETTING = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.MeridianFamily;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4EF46C0B3D29F328C45007A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		819C0BED3AE4B8A7D5D7301D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		FDCE4F5AEA6B0DAB1C90512E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V2KY58YNP3;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				NEW_SETTING = "";
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.MeridianFamily;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		63DB0E1EF39921BE6B3BDE53 /* Build configuration list for PBXProject "MeridianFamily" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				819C0BED3AE4B8A7D5D7301D /* Debug */,
+				4EF46C0B3D29F328C45007A5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A0CB223B80553CCAAA0D2799 /* Build configuration list for PBXNativeTarget "MeridianFamily" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDCE4F5AEA6B0DAB1C90512E /* Debug */,
+				098D76A360A80A1F53F6B382 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = EDC04DD90A5399D60F59D2D6 /* Project object */;
+}

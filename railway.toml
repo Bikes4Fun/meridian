@@ -7,6 +7,6 @@ buildCommand = "cd src && python build_all.py"
 watchPatterns = ["/src/**"]
 
 [deploy]
-startCommand = "python -m src.apps.server seed && python -m src.apps.server"
+startCommand = "PYTHONPATH=src python -m src.apps.server seed && PYTHONPATH=src python -m src.apps.server"
 healthcheckPath = "/api/health"
 restartPolicyType = "ON_FAILURE"

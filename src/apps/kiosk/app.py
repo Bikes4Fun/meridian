@@ -24,6 +24,7 @@ from shared.config import (
 
 from .api_client import create_kiosk_remote
 from .chat_screen import ChatHandler
+from .checkin_screen import LocationHandler
 from .events_handler import EventsHandler
 from .medications_screen import MedicationsHandler
 
@@ -45,6 +46,7 @@ class KioskBridge:
         self._chat = ChatHandler(app)
         self._events = EventsHandler(app)
         self._medications = MedicationsHandler(app)
+        self._location = LocationHandler(app)
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
@@ -111,6 +113,9 @@ class KioskBridge:
     ) -> str:
         return self._medications.mark_medication_taken(medication_id, time_slot, taken)
 
+    def where_is_everyone(self) -> str:
+        return self._location.where_is_everyone()
+
 
 class MeridianKioskApp:
     """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""
@@ -131,7 +136,11 @@ class MeridianKioskApp:
         import webview
 
         base = (self.api_url or "").rstrip("/")
-        url = f"{base}/kiosk/" if base else None
+        url = (
+            f"{base}/kiosk-auth?user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+            if base
+            else None
+        )
         if not url:
             web_dir = os.path.join(os.path.dirname(__file__), "web")
             html_path = os.path.join(web_dir, "kiosk.html")

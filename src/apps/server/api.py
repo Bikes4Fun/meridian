@@ -177,7 +177,7 @@ def create_server_app(db_path=None):
     @app.before_request
     def set_user_id():
         """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
-        if request.path in ("/api/health", "/api/login", "/api/logout", "/auth"):
+        if request.path in ("/api/health", "/api/login", "/api/logout", "/auth", "/kiosk-auth"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -804,6 +804,18 @@ def create_server_app(db_path=None):
             }
         )
 
+    @app.route("/kiosk-auth", methods=["GET"])
+    def kiosk_auth():
+        """Set session from query params and redirect to /kiosk/. For kiosk auto-login."""
+        user_id = (request.args.get("user_id") or "").strip()
+        family_circle_id = (request.args.get("family_circle_id") or "").strip()
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "user_id and family_circle_id required"}), 400
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        return redirect("/kiosk/")
+
     @app.route("/api/login", methods=["POST"])
     def api_login():
         """Fake login: set session from user_id and family_circle_id. For demo/simulated auth."""
@@ -870,6 +882,20 @@ def create_server_app(db_path=None):
             uid = row.get("user_id")
             row["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
         return jsonify({"data": data})
+
+    @app.route(
+        "/api/family_circles/<family_circle_id>/where-is-everyone",
+        methods=["POST"],
+    )
+    def api_where_is_everyone(family_circle_id):
+        """Request family members to refresh location. Sends push (stub for now)."""
+        _require_family_access(family_circle_id)
+        push_svc = container.get_push_notification_service()
+        r = push_svc.request_location_update(family_circle_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        data = r.data or {}
+        return jsonify({"ok": True, "requested_count": data.get("requested_count", 0)})
 
     # Chatapp routes + static (webapp, chatapp, kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

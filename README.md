@@ -78,6 +78,9 @@ GitHub Discussions for design decisions. Please engage in our current open polls
 - **Server**: Python (Flask), SQLite
 - **Libraries and APIs**: Pillow, Requests, Leaflet, ReportLab, Sendbird
 
+**Push notifications (Where is everyone?)**  
+Without APNs config, the server logs requests but does not send pushes. To enable real push on a physical device, set: `APNS_AUTH_KEY_PATH` (path to .p8 key), `APNS_KEY_ID`, `APNS_TEAM_ID`. Optional: `APNS_BUNDLE_ID` (default com.meridian.Meridian), `APNS_USE_SANDBOX=1` for dev.
+
 ---
 
 ## Run and Tests

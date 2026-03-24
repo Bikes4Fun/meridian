@@ -83,6 +83,7 @@ final class LoginViewController: UIViewController {
                     loginButton.isEnabled = true
                     statusLabel.text = "Success"
                     statusLabel.textColor = .systemGreen
+                    (UIApplication.shared.delegate as? AppDelegate)?.tryRegisterDeviceToken()
                     onLoginSuccess?()
                 }
             } catch {

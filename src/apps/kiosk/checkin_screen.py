@@ -75,8 +75,8 @@ def build_checkin_html(
     where_btn = hp.kiosk_button(
         "Where is everyone?",
         "var m=pywebview.api.where_is_everyone();"
-        "if(m&&typeof m.then==='function')m.then(function(msg){if(msg)alert(msg);});"
-        "else if(m)alert(m);",
+        "if(m&&typeof m.then==='function')m.then(function(msg){if(msg)showToast(msg);});"
+        "else if(m)showToast(m);",
         no_feedback=False,
         small=True,
     )

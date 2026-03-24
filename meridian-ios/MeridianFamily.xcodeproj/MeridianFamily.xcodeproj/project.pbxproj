@@ -32,7 +32,7 @@
 		9E6F681986AB20651305D17B /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
 		B1F6D2321F89EFB06A10B925 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInViewController.swift; sourceTree = "<group>"; };
-		C41A18C072EB83280908C1C6 /* Meridian.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Meridian.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C41A18C072EB83280908C1C6 /* MeridianFamily.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeridianFamily.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWebViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -60,7 +60,7 @@
 		7803CBE62EB976D9B793229A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C41A18C072EB83280908C1C6 /* Meridian.app */,
+				C41A18C072EB83280908C1C6 /* MeridianFamily.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -81,9 +81,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2682F6917222B9DDE8175A4E /* Meridian */ = {
+		2682F6917222B9DDE8175A4E /* MeridianFamily */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A0CB223B80553CCAAA0D2799 /* Build configuration list for PBXNativeTarget "Meridian" */;
+			buildConfigurationList = A0CB223B80553CCAAA0D2799 /* Build configuration list for PBXNativeTarget "MeridianFamily" */;
 			buildPhases = (
 				23B3F5428B677948DDDE7EB9 /* Sources */,
 				D290A9B93AB6221E263EA9D5 /* Resources */,
@@ -92,11 +92,11 @@
 			);
 			dependencies = (
 			);
-			name = Meridian;
+			name = MeridianFamily;
 			packageProductDependencies = (
 			);
-			productName = Meridian;
-			productReference = C41A18C072EB83280908C1C6 /* Meridian.app */;
+			productName = MeridianFamily;
+			productReference = C41A18C072EB83280908C1C6 /* MeridianFamily.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -106,9 +106,10 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 			};
-			buildConfigurationList = 63DB0E1EF39921BE6B3BDE53 /* Build configuration list for PBXProject "Meridian" */;
+			buildConfigurationList = 63DB0E1EF39921BE6B3BDE53 /* Build configuration list for PBXProject "MeridianFamily" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -128,7 +129,7 @@
 			);
 			projectRoot = "";
 			targets = (
-				2682F6917222B9DDE8175A4E /* Meridian */,
+				2682F6917222B9DDE8175A4E /* MeridianFamily */,
 			);
 		};
 /* End PBXProject section */
@@ -171,19 +172,22 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V2KY58YNP3;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.Meridian;
+				NEW_SETTING = "";
+				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.MeridianFamily;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -315,20 +319,23 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V2KY58YNP3;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				NEW_SETTING = "";
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.Meridian;
+				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.MeridianFamily;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -336,7 +343,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		63DB0E1EF39921BE6B3BDE53 /* Build configuration list for PBXProject "Meridian" */ = {
+		63DB0E1EF39921BE6B3BDE53 /* Build configuration list for PBXProject "MeridianFamily" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				819C0BED3AE4B8A7D5D7301D /* Debug */,
@@ -345,7 +352,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		A0CB223B80553CCAAA0D2799 /* Build configuration list for PBXNativeTarget "Meridian" */ = {
+		A0CB223B80553CCAAA0D2799 /* Build configuration list for PBXNativeTarget "MeridianFamily" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				FDCE4F5AEA6B0DAB1C90512E /* Debug */,

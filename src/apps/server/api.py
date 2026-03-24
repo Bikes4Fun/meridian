@@ -883,6 +883,22 @@ def create_server_app(db_path=None):
             row["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
         return jsonify({"data": data})
 
+    @app.route("/api/device-token", methods=["POST"])
+    def api_register_device_token():
+        """Register APNs/FCM device token for push. Requires session."""
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "no data provided"}), 400
+        token = (data.get("token") or "").strip()
+        platform = (data.get("platform") or "ios").strip().lower()
+        if not token:
+            return jsonify({"error": "token required"}), 400
+        push_svc = container.get_push_notification_service()
+        r = push_svc.register_device_token(g.user_id, token, platform)
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"ok": True})
+
     @app.route(
         "/api/family_circles/<family_circle_id>/where-is-everyone",
         methods=["POST"],

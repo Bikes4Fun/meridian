@@ -161,3 +161,20 @@ function updateEl(id, content) {
   var el = document.getElementById(id);
   if (el) el.innerHTML = content;
 }
+
+function showToast(msg) {
+  if (!msg) return;
+  var toast = document.getElementById('kiosk-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'kiosk-toast';
+    toast.className = 'kiosk-toast kiosk-toast--hidden';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.remove('kiosk-toast--hidden');
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(function() {
+    toast.classList.add('kiosk-toast--hidden');
+  }, 3500);
+}

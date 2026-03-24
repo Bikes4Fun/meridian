@@ -737,6 +737,29 @@ body.alert-active {
   animation: alert-flash 0.5s infinite;
 }
 
+/* Non-blocking toast feedback */
+.kiosk-toast {
+  position: fixed;
+  bottom: var(--safe-margin);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-body);
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 200;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.kiosk-toast--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* =============================================================================
    MAP COMPONENTS
    ============================================================================= */

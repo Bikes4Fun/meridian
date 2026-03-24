@@ -15,8 +15,6 @@
 		801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */; };
 		8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6F681986AB20651305D17B /* RootViewController.swift */; };
 		9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13C91B6ED00D7322EFF6E640 /* Assets.xcassets */; };
-		C3F0A5E4D3F6927180C5D6E7F /* LocationRefreshHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */; };
-		D4A1B6F5E4A7038291D6E7F80 /* PendingLocationRequestPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */; };
 		B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */; };
 		BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D843BEA5D3D3871F086B2E /* LoginViewController.swift */; };
 		EF281502C91FD4197E29E2D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */; };
@@ -34,8 +32,6 @@
 		9E6F681986AB20651305D17B /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
 		B1F6D2321F89EFB06A10B925 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInViewController.swift; sourceTree = "<group>"; };
-		A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationRefreshHandler.swift; sourceTree = "<group>"; };
-		B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingLocationRequestPrompt.swift; sourceTree = "<group>"; };
 		C41A18C072EB83280908C1C6 /* MeridianFamily.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeridianFamily.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWebViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -53,10 +49,8 @@
 				B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */,
 				516554ACFC2387E32EE80CF6 /* Config.swift */,
 				00D843BEA5D3D3871F086B2E /* LoginViewController.swift */,
-				A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */,
 				303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */,
 				5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */,
-				B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */,
 				9E6F681986AB20651305D17B /* RootViewController.swift */,
 			);
 			name = "meridian-ios";
@@ -164,9 +158,7 @@
 				B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */,
 				31E41F9A5077F75E4A63F823 /* Config.swift in Sources */,
 				BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */,
-				C3F0A5E4D3F6927180C5D6E7F /* LocationRefreshHandler.swift in Sources */,
 				801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */,
-				D4A1B6F5E4A7038291D6E7F80 /* PendingLocationRequestPrompt.swift in Sources */,
 				8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

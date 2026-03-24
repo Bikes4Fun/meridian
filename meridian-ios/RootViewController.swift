@@ -19,7 +19,10 @@ final class RootViewController: UIViewController {
         Task {
             do {
                 _ = try await APIService.shared.getSession()
-                await MainActor.run { showMain() }
+                await MainActor.run {
+                    showMain()
+                    PendingLocationRequestPrompt.presentIfNeeded(window: (UIApplication.shared.delegate as? AppDelegate)?.window)
+                }
             } catch {
                 await MainActor.run { showLogin() }
             }
@@ -32,6 +35,7 @@ final class RootViewController: UIViewController {
         let login = LoginViewController()
         login.onLoginSuccess = { [weak self] in
             self?.showMain()
+            PendingLocationRequestPrompt.presentIfNeeded(window: (UIApplication.shared.delegate as? AppDelegate)?.window)
         }
         addChild(login)
         view.addSubview(login.view)

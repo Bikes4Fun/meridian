@@ -1,0 +1,68 @@
+
+Showing Recent Messages
+
+Launch Meridian
+
+Platform: iOS Simulator
+
+Device Identifier: 86F27878-923B-4356-8A6C-E3F858B05287
+
+Operating System Version: 18.3.1 (22D8075)
+
+Model: iPhone SE (3rd generation) (iPhone14,6)
+
+Target Architecture: arm64
+
+Install Actions
+Installing on iPhone SE (3rd generation)
+
+Successfully installed
+
+Environment variables:
+__XPC_DYLD_FRAMEWORK_PATH=/Users/turtlesoup/Library/Developer/Xcode/DerivedData/Meridian-cfstnotpxcvbxsgsbecqvykhbcnf/Build/Products/Debug-iphonesimulator
+CA_ASSERT_MAIN_THREAD_TRANSACTIONS=0
+SWIFTUI_VIEW_DEBUG=287
+LLVM_PROFILE_FILE=/dev/null
+IDE_DISABLED_OS_ACTIVITY_DT_MODE=1
+__XPC_DYLD_LIBRARY_PATH=/Users/turtlesoup/Library/Developer/Xcode/DerivedData/Meridian-cfstnotpxcvbxsgsbecqvykhbcnf/Build/Products/Debug-iphonesimulator
+OS_ACTIVITY_TOOLS_OVERSIZE=YES
+METAL_DEBUG_ERROR_MODE=0
+OS_ACTIVITY_TOOLS_PRIVACY=YES
+CFLOG_FORCE_DISABLE_STDERR=1
+OS_LOG_DT_HOOK_MODE=0x07
+__XCODE_BUILT_PRODUCTS_DIR_PATHS=/Users/turtlesoup/Library/Developer/Xcode/DerivedData/Meridian-cfstnotpxcvbxsgsbecqvykhbcnf/Build/Products/Debug-iphonesimulator
+PERFC_ENABLE_AGPC_CHECKS=1
+DYLD_INSERT_LIBRARIES=/Library/Developer/CoreSimulator/Volumes/iOS_22D8075/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.3.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libLogRedirect.dylib:/Library/Developer/CoreSimulator/Volumes/iOS_22D8075/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.3.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libBacktraceRecording.dylib:/Library/Developer/CoreSimulator/Volumes/iOS_22D8075/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.3.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libMainThreadChecker.dylib:/usr/lib/libRPAC.dylib:/Library/Developer/CoreSimulator/Volumes/iOS_22D8075/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.3.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libViewDebuggerSupport.dylib
+DYLD_FRAMEWORK_PATH=/Users/turtlesoup/Library/Developer/Xcode/DerivedData/Meridian-cfstnotpxcvbxsgsbecqvykhbcnf/Build/Products/Debug-iphonesimulator
+DYLD_LIBRARY_PATH=/Users/turtlesoup/Library/Developer/Xcode/DerivedData/Meridian-cfstnotpxcvbxsgsbecqvykhbcnf/Build/Products/Debug-iphonesimulator:/Library/Developer/CoreSimulator/Volumes/iOS_22D8075/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.3.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/introspection
+OS_LOG_DT_HOOK_PREFIX=OSLOG-85F3D0AF-8AFB-4433-8CF6-C85CD4DD136B
+SQLITE_ENABLE_THREAD_ASSERTIONS=1
+OS_LOG_TRANSLATE_PRINT_MODE=0x80
+PERFC_ENABLE_AGPC_DISKWRITES_LAUNCH_CHECKS=1
+PERFC_SUPPRESS_SYSTEM_REPORTS=1
+NSUnbufferedIO=YES
+CA_DEBUG_TRANSACTIONS=0
+__XPC_LLVM_PROFILE_FILE=/dev/null
+TERM=dumb
+METAL_DEVICE_WRAPPER_TYPE=1
+PERFC_ENABLE_EXTENDED_DIAGNOSTIC_FORMAT=1
+
+Launching debugserver and waiting for com.meridian.Meridian to attach
+
+Launching suspended and the debugger is responsible for resuming.
+
+Successfully launched Meridian
+
+Console logging policy: Synchronously obtain os_logs via libLogRedirect, and read stdio from File Descriptors
+
+View debugging: enabled
+Insert view debugging dylib on launch: enabled
+Queue debugging: enabled
+Memory graph on resource exception: disabled
+Address sanitizer: disabled
+Thread sanitizer: disabled
+
+Using LLDBRPC. The LLDB framework is from /Applications/Xcode.app/Contents/SharedFrameworks
+
+Attached to process with pid 57324
+

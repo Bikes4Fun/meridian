@@ -167,6 +167,31 @@ def get_railway_api_url() -> str:
     return url
 
 
+# APNs (Apple Push Notifications) for "Where is everyone?"
+# Set APNS_AUTH_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID to enable. APNS_BUNDLE_ID defaults to com.meridian.Meridian.
+# APNS_USE_SANDBOX=1 for dev/sandbox, 0 for production.
+def get_apns_auth_key_path() -> str:
+    """Path to .p8 APNs auth key. Empty = push disabled (stub mode)."""
+    return (os.getenv("APNS_AUTH_KEY_PATH") or "").strip()
+
+
+def get_apns_key_id() -> str:
+    return (os.getenv("APNS_KEY_ID") or "").strip()
+
+
+def get_apns_team_id() -> str:
+    return (os.getenv("APNS_TEAM_ID") or "").strip()
+
+
+def get_apns_bundle_id() -> str:
+    return (os.getenv("APNS_BUNDLE_ID") or "com.meridian.Meridian").strip()
+
+
+def get_apns_use_sandbox() -> bool:
+    val = os.getenv("APNS_USE_SANDBOX", "1").lower()
+    return val in ("1", "true", "yes")
+
+
 def is_railway_reachable(timeout: float = 3.0) -> bool:
     """Return True if Railway API /api/health responds successfully."""
     try:

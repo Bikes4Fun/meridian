@@ -182,6 +182,18 @@ final class APIService {
         }.filter { $0.sendbirdUserId != nil && !($0.sendbirdUserId?.isEmpty ?? true) }
     }
 
+    // MARK: - Device token (push)
+
+    func registerDeviceToken(token: String, platform: String = "ios") async throws {
+        let (_, res) = try await request("/api/device-token", method: "POST", body: [
+            "token": token,
+            "platform": platform
+        ])
+        if res.statusCode != 200 {
+            throw APIError.serverError("Device token registration failed")
+        }
+    }
+
     // MARK: - Chat URL
 
     func getChatSessionURL(recipientSendbirdUserId: String, recipientDisplayName: String) async throws -> URL {

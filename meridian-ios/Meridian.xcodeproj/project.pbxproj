@@ -20,6 +20,7 @@
 		B1BE433181767389304E924C /* meridian-square widget.png in Resources */ = {isa = PBXBuildFile; fileRef = E72C42B8CE73996B91D36E11 /* meridian-square widget.png */; };
 		B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */; };
 		BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D843BEA5D3D3871F086B2E /* LoginViewController.swift */; };
+		F1E2D3C4B5A69788796A5B4C3 /* PendingLocationRequestPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D3C4B5A69788796A5B4C3D2 /* PendingLocationRequestPrompt.swift */; };
 		EF281502C91FD4197E29E2D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
@@ -28,6 +29,7 @@
 		13C91B6ED00D7322EFF6E640 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1637DA2E297A2B96ACBF2395 /* Meridian.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Meridian.entitlements; sourceTree = "<group>"; };
 		303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabViewController.swift; sourceTree = "<group>"; };
+		E2D3C4B5A69788796A5B4C3D2 /* PendingLocationRequestPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingLocationRequestPrompt.swift; sourceTree = "<group>"; };
 		32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewController.swift; sourceTree = "<group>"; };
 		37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		516554ACFC2387E32EE80CF6 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
@@ -57,6 +59,7 @@
 				B7BF01913070F34D882ED1FB /* LocationRefreshHandler.swift */,
 				00D843BEA5D3D3871F086B2E /* LoginViewController.swift */,
 				303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */,
+				E2D3C4B5A69788796A5B4C3D2 /* PendingLocationRequestPrompt.swift */,
 				E72C42B8CE73996B91D36E11 /* meridian-square widget.png */,
 				1637DA2E297A2B96ACBF2395 /* Meridian.entitlements */,
 				5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */,
@@ -192,6 +195,7 @@
 				5C86B66E86468FCF324EB4DE /* LocationRefreshHandler.swift in Sources */,
 				BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */,
 				801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */,
+				F1E2D3C4B5A69788796A5B4C3 /* PendingLocationRequestPrompt.swift in Sources */,
 				8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -209,7 +213,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.Meridian;
+				PRODUCT_BUNDLE_IDENTIFIER = com.deanna.Meridian;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -349,7 +353,7 @@
 					"@executable_path/Frameworks",
 				);
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meridian.Meridian;
+				PRODUCT_BUNDLE_IDENTIFIER = com.deanna.Meridian;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

@@ -19,7 +19,7 @@ if [ -d "$APP_PATH" ]; then
   echo "Build succeeded. Launching Simulator and installing app..."
   xcrun simctl boot "iPhone SE (3rd generation)" 2>/dev/null || true
   xcrun simctl install booted "$APP_PATH"
-  xcrun simctl launch booted com.meridian.Meridian
+  xcrun simctl launch booted com.deanna.Meridian
 else
   echo "Build may have succeeded but app not found at $APP_PATH"
 fi

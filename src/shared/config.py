@@ -168,7 +168,7 @@ def get_railway_api_url() -> str:
 
 
 # APNs (Apple Push Notifications) for "Where is everyone?"
-# Set APNS_AUTH_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID to enable. APNS_BUNDLE_ID defaults to com.meridian.Meridian.
+# Set APNS_AUTH_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID to enable. APNS_BUNDLE_ID defaults to com.deanna.Meridian.
 # APNS_USE_SANDBOX=1 for dev/sandbox, 0 for production.
 def get_apns_auth_key_path() -> str:
     """Path to .p8 APNs auth key. Empty = push disabled (stub mode)."""
@@ -184,7 +184,7 @@ def get_apns_team_id() -> str:
 
 
 def get_apns_bundle_id() -> str:
-    return (os.getenv("APNS_BUNDLE_ID") or "com.meridian.Meridian").strip()
+    return (os.getenv("APNS_BUNDLE_ID") or "com.deanna.Meridian").strip()
 
 
 def get_apns_use_sandbox() -> bool:

@@ -20,6 +20,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         return true
     }
 
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        PendingLocationRequestPrompt.presentIfNeeded(window: window)
+    }
+
     private var deviceToken: String?
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -53,6 +57,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 
 extension AppDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        PendingLocationRequestPrompt.recordIfLocationRefreshForeground(userInfo: notification.request.content.userInfo)
         completionHandler([.banner, .sound, .badge])
     }
 

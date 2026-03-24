@@ -3,6 +3,11 @@
 import os
 import sys
 
+# Ensure src is on path for Railway/deploy (shared is at src/shared)
+_src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+if _src not in sys.path:
+    sys.path.insert(0, _src)
+
 
 def main():
     from ...shared.config import (

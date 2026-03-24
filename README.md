@@ -66,6 +66,8 @@ Development status as of March 22, 2026
 
 GitHub Discussions for design decisions. Please engage in our current open polls:
 
+- 💬 [What's Next?](https://github.com/Bikes4Fun/meridian/discussions/113)
+
 - 💬 [Emergency Profile / POLST — Feature Priorities](https://github.com/Bikes4Fun/meridian/discussions/109#discussion-9723470)
 - 💬 [Kiosk Chat Window](https://github.com/Bikes4Fun/meridian/discussions/108#discussion-9723391)
 

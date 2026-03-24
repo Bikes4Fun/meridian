@@ -4,7 +4,7 @@ Used only by server/app.py. Kiosk uses api_client.create_kiosk_remote() instead.
 """
 
 try:
-    from ....shared.config import DatabaseConfig
+    from ...shared.config import DatabaseConfig
 except ImportError:
     from shared.config import DatabaseConfig
 from .database_manager import DatabaseManager
@@ -16,6 +16,7 @@ from .database_services.location import LocationService
 from .database_services.emergency import EmergencyService
 from .database_services.care_recipient import CareRecipientService
 from .database_services.family import FamilyService
+from .database_services.push_notification import PushNotificationService
 from .database_services.sendbird import SendbirdService
 
 
@@ -91,6 +92,13 @@ class ServiceContainer:
                 self._get_database_manager()
             )
         return self._services["family_service"]
+
+    def get_push_notification_service(self):
+        if "push_notification_service" not in self._services:
+            self._services["push_notification_service"] = PushNotificationService(
+                self._get_database_manager()
+            )
+        return self._services["push_notification_service"]
 
     def get_sendbird_service(self):
         if "sendbird_service" not in self._services:

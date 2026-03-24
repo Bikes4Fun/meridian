@@ -8,6 +8,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class LocationHandler:
+    """Handler for Family/Location screen bridge methods."""
+
+    def __init__(self, app):
+        self._app = app
+
+    def where_is_everyone(self) -> str:
+        """Request family to refresh location. Returns message for user."""
+        loc = self._app.services.get("location_service")
+        if not loc or not hasattr(loc, "where_is_everyone"):
+            return "Location request not available."
+        return loc.where_is_everyone()
+
+
 def build_checkin_html(
     services,
     api_url: str,
@@ -58,10 +72,17 @@ def build_checkin_html(
         no_feedback=True,
         small=True,
     )
+    where_btn = hp.kiosk_button(
+        "Where is everyone?",
+        "var m=pywebview.api.where_is_everyone(); if(m) alert(m);",
+        no_feedback=False,
+        small=True,
+    )
     header_row = (
         '<div class="family-locations-header-row">'
         + hp.kiosk_header("Family Locations")
         + refresh_btn
+        + where_btn
         + "</div>"
     )
     top_content = header_row + hp.spacer(16) + checkins_panel + hp.spacer(16)

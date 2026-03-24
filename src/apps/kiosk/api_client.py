@@ -9,6 +9,7 @@ import os
 import urllib.parse
 from datetime import datetime
 from typing import Any, Optional, Tuple
+import requests
 
 try:
     from shared.interfaces import ServiceResult
@@ -82,6 +83,41 @@ def _get(
         return True, j, None
     except Exception as e:
         logger.info(f"API {url} -> failed: {e}")
+        return False, None, str(e)
+
+
+def _request(
+    method: str,
+    url: str,
+    timeout: int = 5,
+    headers: Optional[dict] = None,
+    session: Optional["requests.Session"] = None,
+    json_body: Optional[dict] = None,
+) -> Tuple[bool, Any, Optional[str]]:
+    """Shared HTTP request. Returns (ok, data, err). Used by _calendar_request and location/checkin."""
+    try:
+        import requests
+    except ImportError:
+        return False, None, "requests not installed"
+    try:
+        logger.info(f"API {method} {url}")
+        client = session if session else requests
+        req_headers = {**(headers or {}), "Content-Type": "application/json"}
+        if method == "POST":
+            r = client.post(url, json=json_body or {}, headers=req_headers, timeout=timeout)
+        elif method == "PUT":
+            r = client.put(url, json=json_body or {}, headers=req_headers, timeout=timeout)
+        elif method == "DELETE":
+            r = client.delete(url, headers=headers or {}, timeout=timeout)
+        else:
+            return False, None, f"unsupported method {method}"
+        r.raise_for_status()
+        j = r.json() if r.content else {}
+        if isinstance(j, dict) and "error" in j:
+            return False, None, j["error"]
+        return True, j, None
+    except Exception as e:
+        logger.info(f"API {method} {url} -> failed: {e}")
         return False, None, str(e)
 
 
@@ -238,41 +274,11 @@ def _calendar_request(
     json_body: Optional[dict] = None,
 ) -> Any:
     """Shared helper for calendar API write operations."""
-    try:
-        import requests
-    except ImportError:
-        return ServiceResult.error_result("requests not installed")
-    try:
-        client = session if session else requests
-        if method == "POST":
-            r = client.post(
-                url,
-                json=json_body,
-                headers={**headers, "Content-Type": "application/json"},
-                timeout=5,
-            )
-        elif method == "PUT":
-            r = client.put(
-                url,
-                json=json_body,
-                headers={**headers, "Content-Type": "application/json"},
-                timeout=5,
-            )
-        elif method == "DELETE":
-            r = client.delete(url, headers=headers, timeout=5)
-        else:
-            return ServiceResult.error_result(f"unsupported method {method}")
-        if r.ok:
-            return ServiceResult.success_result(
-                r.json().get("data") if r.content else True
-            )
-        try:
-            err = r.json().get("error", r.text)
-        except Exception:
-            err = r.text
-        return ServiceResult.error_result(err or f"HTTP {r.status_code}")
-    except Exception as e:
-        return ServiceResult.error_result(str(e))
+    ok, resp, err = _request(method, url, headers=headers, session=session, json_body=json_body)
+    if ok:
+        data = (resp.get("data", True) if (resp and isinstance(resp, dict)) else True)
+        return ServiceResult.success_result(data)
+    return ServiceResult.error_result(err or "request failed")
 
 
 class RemoteMedicationService:
@@ -530,6 +536,22 @@ class RemoteLocationService:
             return ServiceResult.error_result(err or "location/places request failed")
         return ServiceResult.success_result(data if data is not None else [])
 
+    def where_is_everyone(self, family_circle_id: Optional[str] = None) -> str:
+        """Request family to refresh location. Returns user-facing message."""
+        fc_id = family_circle_id if family_circle_id is not None else self._fc_id
+        ok, data, err = _request(
+            "POST",
+            f"{self._base}/api/family_circles/{fc_id}/where-is-everyone",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return f"Could not send: {err}"
+        count = (data or {}).get("requested_count", 0)
+        if count > 0:
+            return "Request sent! Your family will update their locations."
+        return "No family members to notify."
+
     def create_checkin(
         self,
         contact_id: str,
@@ -538,34 +560,23 @@ class RemoteLocationService:
         notes: Optional[str] = None,
     ) -> Any:
         """Create check-in. location_name resolved from GPS. notes = user message."""
-        try:
-            import requests
-        except ImportError:
-            return ServiceResult.error_result("requests not installed")
-        try:
-            payload = {
-                "contact_id": contact_id,
-                "latitude": latitude,
-                "longitude": longitude,
-            }
-            if notes:
-                payload["notes"] = notes
-
-            client = self._session if self._session else requests
-            r = client.post(
-                f"{self._base}/api/family_circles/{self._fc_id}/create_checkin",
-                json=payload,
-                headers=self._headers,
-                timeout=5,
-            )
-            r.raise_for_status()
-            j = r.json()
-            if "error" in j:
-                return ServiceResult.error_result(j["error"])
-            return ServiceResult.success_result(j.get("data"))
-        except Exception as e:
-            logger.debug(f"Check-in request failed: {e}")
-            return ServiceResult.error_result(str(e))
+        payload = {
+            "contact_id": contact_id,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+        if notes:
+            payload["notes"] = notes
+        ok, data, err = _request(
+            "POST",
+            f"{self._base}/api/family_circles/{self._fc_id}/create_checkin",
+            headers=self._headers,
+            session=self._session,
+            json_body=payload,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "create_checkin failed")
+        return ServiceResult.success_result(data.get("data") if isinstance(data, dict) else data)
 
     def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
         """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present. user_id = whose photo (any family member)."""

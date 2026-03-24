@@ -24,6 +24,7 @@ from shared.config import (
 
 from .api_client import create_kiosk_remote
 from .chat_screen import ChatHandler
+from .checkin_screen import LocationHandler
 from .events_handler import EventsHandler
 from .medications_screen import MedicationsHandler
 
@@ -45,6 +46,7 @@ class KioskBridge:
         self._chat = ChatHandler(app)
         self._events = EventsHandler(app)
         self._medications = MedicationsHandler(app)
+        self._location = LocationHandler(app)
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
@@ -110,6 +112,9 @@ class KioskBridge:
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
         return self._medications.mark_medication_taken(medication_id, time_slot, taken)
+
+    def where_is_everyone(self) -> str:
+        return self._location.where_is_everyone()
 
 
 class MeridianKioskApp:

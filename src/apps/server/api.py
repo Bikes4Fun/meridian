@@ -883,6 +883,20 @@ def create_server_app(db_path=None):
             row["photo_url"] = "%s/api/users/%s/photo" % (base, uid) if uid else None
         return jsonify({"data": data})
 
+    @app.route(
+        "/api/family_circles/<family_circle_id>/where-is-everyone",
+        methods=["POST"],
+    )
+    def api_where_is_everyone(family_circle_id):
+        """Request family members to refresh location. Sends push (stub for now)."""
+        _require_family_access(family_circle_id)
+        push_svc = container.get_push_notification_service()
+        r = push_svc.request_location_update(family_circle_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        data = r.data or {}
+        return jsonify({"ok": True, "requested_count": data.get("requested_count", 0)})
+
     # Chatapp routes + static (webapp, chatapp, kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")

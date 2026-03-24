@@ -178,3 +178,13 @@ CREATE TABLE IF NOT EXISTS location_checkins (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- For future APNS (iOS) and FCM (Android) push
+CREATE TABLE IF NOT EXISTS user_push_tokens (
+    user_id TEXT NOT NULL,
+    device_token TEXT NOT NULL,
+    platform TEXT NOT NULL CHECK (platform IN ('ios','android')),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, device_token),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+

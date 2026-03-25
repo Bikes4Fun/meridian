@@ -6,7 +6,21 @@ import UIKit
 final class RootViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(apiBaseURLDidChange),
+            name: Config.apiBaseURLDidChangeNotification,
+            object: nil
+        )
         checkSessionAndShowAppropriateScreen()
+    }
+
+    @objc private func apiBaseURLDidChange() {
+        showLogin()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidAppear(_ animated: Bool) {

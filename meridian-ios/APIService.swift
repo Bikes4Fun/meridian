@@ -39,16 +39,20 @@ struct CheckIn {
 
 final class APIService {
     static let shared = APIService()
-    private let baseURL: String
+    private var baseURL: String { Config.resolvedApiBaseURL }
     private let session: URLSession
 
-    init(baseURL: String = Config.apiBaseURL) {
-        self.baseURL = baseURL
+    private init() {
         let config = URLSessionConfiguration.default
         config.httpCookieStorage = HTTPCookieStorage.shared
         config.httpShouldSetCookies = true
         config.httpCookieAcceptPolicy = .always
         self.session = URLSession(configuration: config)
+    }
+
+    /// Call after changing API base URL so session cookies do not target the old host.
+    func clearHttpCookies() {
+        HTTPCookieStorage.shared.cookies?.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
     }
 
     private func url(_ path: String) -> URL? {

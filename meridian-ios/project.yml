@@ -8,10 +8,6 @@ targets:
     type: application
     platform: iOS
     supportedDestinations: [iOS]
-    preBuildScripts:
-      - script: |
-          cp "$SRCROOT/../assets/app-icon.png" "$SRCROOT/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
-        name: Copy shared app icon
     sources:
       - path: .
         excludes:

@@ -9,7 +9,8 @@ final class MainTabViewController: UITabBarController {
         viewControllers = [
             wrapped(AlertViewController(), title: "Alert", image: UIImage(systemName: "exclamationmark.triangle.fill")),
             wrapped(CheckInViewController(), title: "Check-In", image: UIImage(systemName: "location.fill")),
-            wrapped(ChatListViewController(), title: "Chat", image: UIImage(systemName: "message.fill"))
+            wrapped(ChatListViewController(), title: "Chat", image: UIImage(systemName: "message.fill")),
+            wrapped(DeveloperViewController(), title: "Developer", image: UIImage(systemName: "hammer.fill"))
         ]
     }
 

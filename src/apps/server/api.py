@@ -968,7 +968,7 @@ def create_server_app(db_path=None):
         @app.route("/chatapp/<path:path>")
         def serve_chat(path=""):
             if not path:
-                path = "index.html"
+                path = "chat.html"
             return send_from_directory(_chatapp_dist, path)
 
         if os.path.isdir(_kiosk_web):
@@ -990,6 +990,12 @@ def run_server(host=None, port=None):
     app = create_server_app()
     if app is None:
         raise RuntimeError("create_server_app() returned None")
+    try:
+        import flask.cli
+
+        flask.cli.show_server_banner = lambda *_args: None
+    except Exception:
+        pass
     host = host if host is not None else get_server_host()
     port = port if port is not None else get_server_port()
     app.run(host=host, port=port, debug=False)

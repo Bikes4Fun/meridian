@@ -1,4 +1,4 @@
-src/api_config.json
+#src/shared/api_config.json
 
 dist/*
 # Xcode user state

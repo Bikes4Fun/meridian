@@ -159,10 +159,10 @@ def get_railway_api_url() -> str:
     url = (cfg.get("railway_api_url") or "").strip()
     if not url:
         _logger.warning(
-            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json"
+            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/api_config.json"
         )
         raise RuntimeError(
-            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json"
+            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/api_config.json"
         )
     return url
 

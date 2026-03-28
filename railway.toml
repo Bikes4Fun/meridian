@@ -3,10 +3,9 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "cd src && python build_all.py"
+buildCommand = "python -m src.apps.webapp && python -m src.apps.chatapp"
 watchPatterns = ["/src/**"]
-
 [deploy]
-startCommand = "PYTHONPATH=src python -m src.apps.server seed && PYTHONPATH=src python -m src.apps.server"
+startCommand = "python -m src.apps.server"
 healthcheckPath = "/api/health"
 restartPolicyType = "ON_FAILURE"

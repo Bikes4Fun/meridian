@@ -23,9 +23,7 @@ class FamilyService:
             (family_circle_id,),
         )
 
-    def add_user_to_family(
-        self, user_id: str, family_circle_id: str
-    ) -> ServiceResult:
+    def add_user_to_family(self, user_id: str, family_circle_id: str) -> ServiceResult:
         """Link user to family circle."""
         return self.db_manager.execute_update(
             "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",

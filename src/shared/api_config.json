@@ -1,5 +1,4 @@
 {
-  "railway_api_url": "https://meridian-production-3734.up.railway.app",
-  "local_network_urls": [],
-  "fallback_api_url": "http://127.0.0.1:8000"
+  "railway_api_url": "https://meridian-development.up.railway.app",
+  "local_network_urls": []
 }

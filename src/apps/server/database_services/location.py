@@ -153,7 +153,9 @@ class LocationService:
             WHERE c.family_circle_id = ?
             ORDER BY c.timestamp DESC
         """
-        result = self.db_manager.execute_query(query, (family_circle_id, family_circle_id))
+        result = self.db_manager.execute_query(
+            query, (family_circle_id, family_circle_id)
+        )
         if not result.success or not result.data:
             return result
         named_places_result = self.get_named_places(family_circle_id)
@@ -201,7 +203,14 @@ class LocationService:
             """INSERT OR REPLACE INTO named_places
             (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres)
             VALUES (?, ?, ?, ?, ?, ?)""",
-            (location_id, family_circle_id, location_name, gps_latitude, gps_longitude, radius_metres),
+            (
+                location_id,
+                family_circle_id,
+                location_name,
+                gps_latitude,
+                gps_longitude,
+                radius_metres,
+            ),
         )
 
     def get_named_places(self, family_circle_id: Optional[str] = None) -> ServiceResult:
@@ -216,4 +225,6 @@ class LocationService:
             WHERE family_circle_id = ?
             ORDER BY location_name
         """
-        return self.db_manager.execute_query(query, (DEFAULT_PLACE_RADIUS_M, family_circle_id))
+        return self.db_manager.execute_query(
+            query, (DEFAULT_PLACE_RADIUS_M, family_circle_id)
+        )

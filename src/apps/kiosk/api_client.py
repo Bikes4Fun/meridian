@@ -104,9 +104,13 @@ def _request(
         client = session if session else requests
         req_headers = {**(headers or {}), "Content-Type": "application/json"}
         if method == "POST":
-            r = client.post(url, json=json_body or {}, headers=req_headers, timeout=timeout)
+            r = client.post(
+                url, json=json_body or {}, headers=req_headers, timeout=timeout
+            )
         elif method == "PUT":
-            r = client.put(url, json=json_body or {}, headers=req_headers, timeout=timeout)
+            r = client.put(
+                url, json=json_body or {}, headers=req_headers, timeout=timeout
+            )
         elif method == "DELETE":
             r = client.delete(url, headers=headers or {}, timeout=timeout)
         else:
@@ -274,9 +278,11 @@ def _calendar_request(
     json_body: Optional[dict] = None,
 ) -> Any:
     """Shared helper for calendar API write operations."""
-    ok, resp, err = _request(method, url, headers=headers, session=session, json_body=json_body)
+    ok, resp, err = _request(
+        method, url, headers=headers, session=session, json_body=json_body
+    )
     if ok:
-        data = (resp.get("data", True) if (resp and isinstance(resp, dict)) else True)
+        data = resp.get("data", True) if (resp and isinstance(resp, dict)) else True
         return ServiceResult.success_result(data)
     return ServiceResult.error_result(err or "request failed")
 
@@ -576,7 +582,9 @@ class RemoteLocationService:
         )
         if not ok:
             return ServiceResult.error_result(err or "create_checkin failed")
-        return ServiceResult.success_result(data.get("data") if isinstance(data, dict) else data)
+        return ServiceResult.success_result(
+            data.get("data") if isinstance(data, dict) else data
+        )
 
     def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
         """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present. user_id = whose photo (any family member)."""

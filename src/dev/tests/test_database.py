@@ -157,8 +157,8 @@ class TestDatabaseManager:
 class TestDatabaseManagerIntegration:
     """Integration tests for DatabaseManager with real database operations."""
 
-    def test_transaction_rollback_on_error(self, test_db_manager):
-        """A failed batch leaves no partial data — first insert rolled back."""
+    def test_constraint_error_keeps_consistent_state(self, test_db_manager):
+        """Duplicate PK insert fails while previously committed rows remain intact."""
         test_db_manager.execute_update(
             "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)",
             (),
@@ -172,7 +172,8 @@ class TestDatabaseManagerIntegration:
         )
         assert result.success is False
         assert "unique" in result.error.lower() or "constraint" in result.error.lower()
-        count = test_db_manager.execute_query(
+        count_result = test_db_manager.execute_query(
             "SELECT COUNT(*) as n FROM test_table", ()
         )
-        assert count.data[0]["n"] == 1  # only the first insert persisted
+        assert count_result.success is True
+        assert count_result.data[0]["n"] == 1  # only the first insert persisted

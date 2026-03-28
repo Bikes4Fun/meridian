@@ -25,9 +25,9 @@ DEMO_USER_ID = "fm_001"
 def _get_railway_base_url():
     """Get Railway URL; return None if not configured."""
     try:
-        from shared.config import get_railway_api_url
+        from shared.config import get_api_base_url
 
-        return get_railway_api_url().rstrip("/")
+        return get_api_base_url().rstrip("/")
     except Exception:
         return None
 

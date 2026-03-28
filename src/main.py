@@ -118,7 +118,7 @@ if "--fullscreen" in sys.argv:
 from shared.config import (
     get_log_level,
     get_database_path,
-    get_railway_api_url,
+    get_api_base_url,
     get_server_host,
     get_server_port,
     find_available_port,
@@ -191,7 +191,7 @@ def run_local_server_and_db(logger):
 
 
 def use_railway_api_and_db(logger):
-    api_url = get_railway_api_url()
+    api_url = get_api_base_url()
     logger.info(f"Database: Railway (remote) - {api_url}")
     webapp_url = os.environ.get("WEBAPP_URL", "").strip()
     chatapp_url = os.environ.get("CHATAPP_URL", "").strip()
@@ -251,12 +251,15 @@ def main():
             logger.error(f"Railway API setup failed: {e}")
             raise
 
-        logger.debug("Starting Meridian Kiosk...")
+        src_dir = os.path.dirname(os.path.abspath(__file__))
         try:
-            run_kiosk(logger, api_url)
+            build_webapp(logger, api_url, src_dir)
+            build_chatapp(logger, api_url, src_dir)
         except Exception as e:
-            logger.error(f"Meridian startup failed: {e}")
+            logger.error(f"Meridian's Railway build prep failed: {e}")
             raise
+        logger.info("Railway run prep complete; skipping kiosk startup")
+        return
 
     if not api_url:
         logger.error("No API URL; aborting.")

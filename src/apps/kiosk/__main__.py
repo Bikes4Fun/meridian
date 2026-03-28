@@ -27,7 +27,7 @@ import time
 from shared.config import (
     get_log_level,
     get_database_path,
-    get_railway_api_url,
+    get_api_base_url,
     get_server_host,
     get_server_port,
     find_available_port,
@@ -80,7 +80,7 @@ def main():
             logger.warning("Railway unreachable, using local DB")
         api_url = _start_local_api_server(logger)
     else:
-        api_url = get_railway_api_url()
+        api_url = get_api_base_url()
         logger.info(f"API: {api_url}")
         logger.info("Database: Railway (remote)")
         try:

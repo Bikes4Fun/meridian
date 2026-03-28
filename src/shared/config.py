@@ -139,7 +139,7 @@ def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
 
 
 def _load_api_config():
-    """Load api_config.json. Used by get_railway_api_url."""
+    """Load api_config.json. Used by get_api_base_url."""
     import json
 
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api_config.json")
@@ -150,8 +150,8 @@ def _load_api_config():
         return {}
 
 
-def get_railway_api_url() -> str:
-    """Get Railway API base URL for remote DB. RAILWAY_API_URL env overrides api_config.json."""
+def get_api_base_url() -> str:
+    """Get API base URL. RAILWAY_API_URL env overrides api_config.json."""
     url = (os.getenv("RAILWAY_API_URL") or "").strip()
     if url:
         return url
@@ -159,12 +159,17 @@ def get_railway_api_url() -> str:
     url = (cfg.get("railway_api_url") or "").strip()
     if not url:
         _logger.warning(
-            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/api_config.json"
+            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to info/shared/api_config.json"
         )
         raise RuntimeError(
-            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/api_config.json"
+            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json"
         )
     return url
+
+
+def get_railway_api_url() -> str:
+    """Compatibility wrapper for legacy call sites."""
+    return get_api_base_url()
 
 
 # APNs (Apple Push Notifications) for "Where is everyone?"
@@ -197,7 +202,7 @@ def is_railway_reachable(timeout: float = 3.0) -> bool:
     try:
         import urllib.request
 
-        url = get_railway_api_url().rstrip("/") + "/api/health"
+        url = get_api_base_url().rstrip("/") + "/api/health"
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status == 200

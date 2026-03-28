@@ -1,13 +1,15 @@
-"""Build chatapp static assets: python -m src.apps.chatapp."""
+"""Build chatapp static assets: python -m src.apps.chatapp (or python src/apps/chatapp from repo root)."""
 
 import logging
 import os
 import shutil
+import sys
 
-try:
-    from ...shared.config import get_log_level, get_server_host, get_server_port
-except ImportError:
-    from shared.config import get_log_level, get_server_host, get_server_port
+_src_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _src_root not in sys.path:
+    sys.path.insert(0, _src_root)
+
+from shared.config import get_log_level, get_server_host, get_server_port
 
 
 def _set_logging() -> logging.Logger:

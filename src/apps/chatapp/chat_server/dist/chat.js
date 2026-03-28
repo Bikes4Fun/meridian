@@ -2,12 +2,12 @@
  * Chatapp client – proxy approach. No Sendbird SDK.
  * Uses /api/chat/send and /api/chat/messages (polling).
  * Used by webapp, kiosk, mobile.
- * API_URL replaced at build (http://127.0.0.1:8000).
+ * API_URL replaced at build (https://meridian-development.up.railway.app).
  */
 (function () {
     'use strict';
 
-    var _u = 'http://127.0.0.1:8000';
+    var _u = 'https://meridian-development.up.railway.app';
     var API_URL = (_u.startsWith('http') ? _u : '').replace(/\/$/, '');
 
     var channelUrl = null;

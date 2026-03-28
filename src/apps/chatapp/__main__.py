@@ -5,9 +5,9 @@ import os
 import shutil
 
 try:
-    from ...shared.config import get_api_base_url, get_log_level
+    from ...shared.config import get_log_level, get_server_host, get_server_port
 except ImportError:
-    from shared.config import get_api_base_url, get_log_level
+    from shared.config import get_log_level, get_server_host, get_server_port
 
 
 def _set_logging() -> logging.Logger:
@@ -43,9 +43,25 @@ def build_chatapp(logger, api_url: str, src_dir: str) -> None:
     logger.info("Chatapp build complete")
 
 
+def _chatapp_bake_api_url() -> str:
+    """URL embedded in chat.js. CHATAPP_API_URL overrides; on Railway use RAILWAY_PUBLIC_DOMAIN; else local API."""
+    override = (os.getenv("CHATAPP_API_URL") or "").strip()
+    if override:
+        return override.rstrip("/")
+    domain = (os.getenv("RAILWAY_PUBLIC_DOMAIN") or "").strip()
+    if domain:
+        if "://" in domain:
+            return domain.rstrip("/")
+        return f"https://{domain}".rstrip("/")
+    host = get_server_host()
+    if host == "0.0.0.0":
+        host = "127.0.0.1"
+    return f"http://{host}:{get_server_port()}"
+
+
 def main() -> None:
     logger = _set_logging()
-    api_url = get_api_base_url()
+    api_url = _chatapp_bake_api_url()
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     build_chatapp(logger, api_url, src_dir)
 

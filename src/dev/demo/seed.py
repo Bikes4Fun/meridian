@@ -149,7 +149,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             timeout=5,
         )
         if not r.ok:
-            logger.debug("Medication time %s failed: %s", name, r.status_code)
+            logger.debug(f"Medication time seed request failed with status {r.status_code}")
 
     for med in medical.get("medications", []):
         r = requests.post(
@@ -166,7 +166,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             timeout=5,
         )
         if not r.ok:
-            logger.warning("Medication %s failed: %s", med.get("name"), r.status_code)
+            logger.warning(f"Medication seed request failed with status {r.status_code}")
 
     care_recipient_user_id = cr.get("user_id") if cr else None
     for a in medical.get("allergies", []):

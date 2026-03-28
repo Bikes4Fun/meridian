@@ -86,7 +86,7 @@ Without APNs config, the server logs requests but does not send pushes. To enabl
 ## Run and Tests
 ```bash
 pip install -r requirements.txt
-PYTHONPATH=src python src/main.py           # --local for local DB/server; omit for Railway.
+PYTHONPATH=src python src/main.py           # local DB/server (default); add --railway-run to test remote API on Railway
 PYTHONPATH=src pytest src/dev/tests         # -v for verbose;
 ```
 

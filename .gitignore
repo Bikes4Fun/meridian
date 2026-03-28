@@ -1,3 +1,5 @@
+src/api_config.json
+
 dist/*
 # Xcode user state
 **/xcuserdata/

@@ -185,7 +185,7 @@ def run_local_server_and_db(logger):
 
     logger.info(f"API/DB: {local_api_url}")
     logger.info(f"Webapp: {local_api_url}")
-    logger.debug(f"Chatapp: {local_api_url + "/chatapp"}")
+    logger.debug(f"Chatapp: {local_api_url}/chatapp")
 
     return local_api_url
 
@@ -240,10 +240,16 @@ def main():
     else:
         logger.info("Obtaining remote railway API, webapp, and chatapp")
         try:
-            use_railway_api_and_db(logger)
-            api_url = run_local_server_and_db(logger)
+            api_url = use_railway_api_and_db(logger)
         except Exception as e:
             logger.error(f"Railway API setup failed: {e}")
+            raise
+
+        logger.debug("Starting Meridian Kiosk...")
+        try:
+            run_kiosk(logger, api_url)
+        except Exception as e:
+            logger.error(f"Meridian startup failed: {e}")
             raise
 
     if not api_url:

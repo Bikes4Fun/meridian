@@ -3,10 +3,10 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "cd src && python build_all.py"
+buildCommand = "cd src && python main.py --railway-run"
 watchPatterns = ["/src/**"]
 
 [deploy]
-startCommand = "PYTHONPATH=src python -m src.apps.server"
+startCommand = "s"
 healthcheckPath = "/api/health"
 restartPolicyType = "ON_FAILURE"

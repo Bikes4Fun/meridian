@@ -104,7 +104,9 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
                 timeout=5,
             )
             if not r.ok:
-                logger.error("Add user %s to family failed: %s", user.get("id"), r.status_code)
+                logger.error(
+                    "Add user %s to family failed: %s", user.get("id"), r.status_code
+                )
                 return False
 
     contacts = load_json_file("contacts.json").get("contacts", [])
@@ -131,7 +133,10 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         if not r.ok:
             logger.error("Care recipient failed: %s", r.status_code)
             return False
-        for role, cid in [("medical_proxy", cr.get("proxy_contact_id")), ("poa", cr.get("poa_contact_id"))]:
+        for role, cid in [
+            ("medical_proxy", cr.get("proxy_contact_id")),
+            ("poa", cr.get("poa_contact_id")),
+        ]:
             if cid:
                 requests.post(
                     f"{base}/api/family_circles/{fam_id}/contact-roles",
@@ -149,7 +154,9 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             timeout=5,
         )
         if not r.ok:
-            logger.debug("Medication time %s failed: %s", name, r.status_code)
+            logger.debug(
+                f"Medication time seed request for {name!r} (time={t!r}) failed with status {r.status_code}"
+            )
 
     for med in medical.get("medications", []):
         r = requests.post(
@@ -166,7 +173,9 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             timeout=5,
         )
         if not r.ok:
-            logger.warning("Medication %s failed: %s", med.get("name"), r.status_code)
+            logger.warning(
+                f"Medication seed request for {med.get('name')!r} failed with status {r.status_code}"
+            )
 
     care_recipient_user_id = cr.get("user_id") if cr else None
     for a in medical.get("allergies", []):
@@ -174,7 +183,10 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         if allergen and care_recipient_user_id:
             requests.post(
                 f"{base}/api/family_circles/{fam_id}/allergies",
-                json={"care_recipient_user_id": care_recipient_user_id, "allergen": allergen},
+                json={
+                    "care_recipient_user_id": care_recipient_user_id,
+                    "allergen": allergen,
+                },
                 headers=_headers(user_id, fam_id),
                 timeout=5,
             )
@@ -186,7 +198,9 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
                 json={
                     "care_recipient_user_id": care_recipient_user_id,
                     "condition": cond,
-                    "diagnosis_date": c.get("diagnosis_date") if isinstance(c, dict) else None,
+                    "diagnosis_date": (
+                        c.get("diagnosis_date") if isinstance(c, dict) else None
+                    ),
                     "notes": c.get("notes") if isinstance(c, dict) else None,
                 },
                 headers=_headers(user_id, fam_id),
@@ -202,12 +216,18 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             timeout=5,
         )
         if not r.ok:
-            logger.debug("Named place %s failed: %s", loc.get("location_id"), r.status_code)
+            logger.debug(
+                "Named place %s failed: %s", loc.get("location_id"), r.status_code
+            )
 
     checkin_ok, checkin_fail = 0, 0
     for checkin in family_data.get("location_checkins", []):
         uid = checkin.get("user_id")
-        if not uid or checkin.get("latitude") is None or checkin.get("longitude") is None:
+        if (
+            not uid
+            or checkin.get("latitude") is None
+            or checkin.get("longitude") is None
+        ):
             continue
         r = requests.post(
             f"{base}/api/family_circles/{fam_id}/create_checkin",
@@ -268,8 +288,10 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
 
 if __name__ == "__main__":
     import sys
+
     try:
         from shared.config import get_server_host, get_server_port
+
         host = "127.0.0.1" if get_server_host() == "0.0.0.0" else get_server_host()
         default_url = f"http://{host}:{get_server_port()}"
     except ImportError:

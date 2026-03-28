@@ -13,9 +13,6 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 import pytest
-from dev.tests.conftest import FAMILY_CIRCLE_ID, TEST_USER_ID
-
-API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
 
 
 @pytest.mark.integration

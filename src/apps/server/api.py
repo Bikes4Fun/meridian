@@ -122,7 +122,7 @@ def create_server_app(db_path=None):
     # TODO: if we are using container, should we ever be using database manager functions alone?
     db_path = db_path or get_database_path()
     container = create_service_container(db_path)
-    # TODO: whats the point here if it isn't being checked? 
+    # TODO: whats the point here if it isn't being checked?
     container.ensure_schema()
 
     app = Flask(__name__)
@@ -177,7 +177,13 @@ def create_server_app(db_path=None):
     @app.before_request
     def set_user_id():
         """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
-        if request.path in ("/api/health", "/api/login", "/api/logout", "/auth", "/kiosk-auth"):
+        if request.path in (
+            "/api/health",
+            "/api/login",
+            "/api/logout",
+            "/auth",
+            "/kiosk-auth",
+        ):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -343,9 +349,7 @@ def create_server_app(db_path=None):
     def api_health():
         return jsonify({"status": "ok"})
 
-    @app.route(
-        "/api/family_circles/<family_circle_id>", methods=["POST"]
-    )
+    @app.route("/api/family_circles/<family_circle_id>", methods=["POST"])
     def api_create_family_circle(family_circle_id):
         """Create family circle if not exists."""
         _require_family_access(family_circle_id)
@@ -426,9 +430,7 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": [asdict(c) for c in (r.data or [])]})
 
-    @app.route(
-        "/api/family_circles/<family_circle_id>/care-recipient", methods=["PUT"]
-    )
+    @app.route("/api/family_circles/<family_circle_id>/care-recipient", methods=["PUT"])
     def api_update_care_recipient(family_circle_id):
         """Update care recipient profile. Use set_contact_role for proxy/poa."""
         _require_family_access(family_circle_id)
@@ -438,9 +440,7 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route(
-        "/api/family_circles/<family_circle_id>/contact-roles", methods=["POST"]
-    )
+    @app.route("/api/family_circles/<family_circle_id>/contact-roles", methods=["POST"])
     def api_set_contact_role(family_circle_id):
         """Assign contact role (medical_proxy, poa)."""
         _require_family_access(family_circle_id)
@@ -467,29 +467,31 @@ def create_server_app(db_path=None):
         r = medication_svc.add_medication_time(family_circle_id, name, t)
         return jsonify({"data": True}), 201
 
-    @app.route(
-        "/api/family_circles/<family_circle_id>/allergies", methods=["POST"]
-    )
+    @app.route("/api/family_circles/<family_circle_id>/allergies", methods=["POST"])
     def api_add_allergy(family_circle_id):
         _require_family_access(family_circle_id)
         data = request.get_json() or {}
         care_recipient_user_id = data.get("care_recipient_user_id")
         allergen = data.get("allergen")
         if not care_recipient_user_id or not allergen:
-            return jsonify({"error": "care_recipient_user_id and allergen required"}), 400
+            return (
+                jsonify({"error": "care_recipient_user_id and allergen required"}),
+                400,
+            )
         r = care_recipient_svc.add_allergy(care_recipient_user_id, allergen)
         return jsonify({"data": True}), 201
 
-    @app.route(
-        "/api/family_circles/<family_circle_id>/conditions", methods=["POST"]
-    )
+    @app.route("/api/family_circles/<family_circle_id>/conditions", methods=["POST"])
     def api_add_condition(family_circle_id):
         _require_family_access(family_circle_id)
         data = request.get_json() or {}
         care_recipient_user_id = data.get("care_recipient_user_id")
         condition = data.get("condition")
         if not care_recipient_user_id or not condition:
-            return jsonify({"error": "care_recipient_user_id and condition required"}), 400
+            return (
+                jsonify({"error": "care_recipient_user_id and condition required"}),
+                400,
+            )
         r = care_recipient_svc.add_condition(
             care_recipient_user_id,
             condition,
@@ -968,7 +970,7 @@ def create_server_app(db_path=None):
         @app.route("/chatapp/<path:path>")
         def serve_chat(path=""):
             if not path:
-                path = "index.html"
+                path = "chat.html"
             return send_from_directory(_chatapp_dist, path)
 
         if os.path.isdir(_kiosk_web):
@@ -990,6 +992,12 @@ def run_server(host=None, port=None):
     app = create_server_app()
     if app is None:
         raise RuntimeError("create_server_app() returned None")
+    try:
+        import flask.cli
+
+        flask.cli.show_server_banner = lambda *_args: None
+    except Exception:
+        pass
     host = host if host is not None else get_server_host()
     port = port if port is not None else get_server_port()
     app.run(host=host, port=port, debug=False)

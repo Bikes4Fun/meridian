@@ -1,5 +1,5 @@
 """
-Family Locations screen. Layout: header, two columns (places, check-ins), map widget.
+Family Locations screen. Layout: header, check-ins panel, map widget.
 """
 
 import json

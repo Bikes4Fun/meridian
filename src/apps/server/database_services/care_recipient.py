@@ -101,9 +101,7 @@ class CareRecipientService:
             (family_circle_id, role, contact_id),
         )
 
-    def add_allergy(
-        self, care_recipient_user_id: str, allergen: str
-    ) -> ServiceResult:
+    def add_allergy(self, care_recipient_user_id: str, allergen: str) -> ServiceResult:
         """Add allergy for care recipient."""
         return self.db_manager.execute_update(
             "INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen) VALUES (?, ?)",

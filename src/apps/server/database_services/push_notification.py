@@ -108,11 +108,15 @@ class PushNotificationService:
             WHERE ufc.family_circle_id = ? AND u.id != ?
             ORDER BY u.display_name
         """
-        r = self.db_manager.execute_query(query, (family_circle_id, requested_by_user_id))
+        r = self.db_manager.execute_query(
+            query, (family_circle_id, requested_by_user_id)
+        )
         if not r.success:
             return r
         members = r.data or []
-        device_tokens = list({m["device_token"] for m in members if m.get("device_token")})
+        device_tokens = list(
+            {m["device_token"] for m in members if m.get("device_token")}
+        )
         seen_ids = set()
         auth_path = get_apns_auth_key_path()
         key_id = get_apns_key_id()

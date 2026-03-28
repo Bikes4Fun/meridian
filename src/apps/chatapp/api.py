@@ -259,7 +259,16 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                 502,
             )
         if not ok:
-            return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
+            logging.warning(f"Sendbird issue token failed: {err}")
+            return (
+                jsonify(
+                    {
+                        "error": "Sendbird issue token failed",
+                        "detail": "Failed to issue token from Sendbird.",
+                    }
+                ),
+                502,
+            )
 
         display_name = user_svc.get_display_name(app_user_id)
         return jsonify(
@@ -387,50 +396,7 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
                 ),
                 502,
             )
-        # Automatic "wants to chat" message to Deanna — commented out
-        # TODO: remove api.py queries
-        # r = db_manager.execute_query(
-        #     "SELECT display_name FROM users WHERE id = ?", (app_user_id,)
-        # )
-        # display_name = (
-        #     (r.data[0].get("display_name") or app_user_id).strip()
-        #     if r.success and r.data
-        #     else app_user_id
-        # )
-        # msg_body = {
-        #     "message_type": "MESG",
-        #     "user_id": sendbird_user_id,
-        #     "message": (display_name or "Someone") + " wants to chat.",
-        # }
-        #
-        # msg_url = base + "/group_channels/" + channel_url + "/messages"
-        # try:
-        #     r2 = requests.post(
-        #         msg_url, headers=sendbird_svc._headers(), json=msg_body, timeout=10
-        #     )
-        #     if r2.status_code == 200:
-        #         resp_data = (
-        #             r2.json()
-        #             if r2.headers.get("content-type", "").startswith("application/json")
-        #             else {}
-        #         )
-        #         msg_id = resp_data.get("message_id") or resp_data.get("id")
-        #         if msg_id is not None:
-        #             print(
-        #                 "[chatapp] wants-to-chat → sent (Sendbird confirmed msg_id: %s)"
-        #                 % msg_id
-        #             )
-        #         else:
-        #             print(
-        #                 "[chatapp] wants-to-chat → sent (Sendbird 200, no msg_id in response)"
-        #             )
-        #     else:
-        #         print(
-        #             "[chatapp] wants-to-chat → %s %s"
-        #             % (r2.status_code, r2.text[:100] if r2.text else "")
-        #         )
-        # except Exception as e:
-        #     print("[chatapp] wants-to-chat → error: %s" % e)
+
         return jsonify({"channel_url": channel_url})
 
     @app.route("/api/chat/send", methods=["POST"])
@@ -555,16 +521,14 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         """Serve static files from dist."""
         if not path:
             if not session.get("user_id") or not session.get("family_circle_id"):
-                return redirect("/index.html")
-            path = "index.html"
+                return redirect("/chat.html")
+            path = "chat.html"
         return send_from_directory(static_dir, path)
 
     return app
 
 
-def register_chatapp_routes(
-    app, sendbird_svc, user_svc, chat_static_prefix: str = ""
-):
+def register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix: str = ""):
     """Register chatapp API routes on an existing Flask app (for Railway all-in-one deploy).
     chat_static_prefix: e.g. '/chat' when chatapp static is at /chat/*; auth redirects there.
     """
@@ -653,7 +617,16 @@ def register_chatapp_routes(
                 502,
             )
         if not ok:
-            return jsonify({"error": "Sendbird issue token failed", "detail": err}), 502
+            logging.warning(f"Sendbird issue token failed: {err}")
+            return (
+                jsonify(
+                    {
+                        "error": "Sendbird issue token failed",
+                        "detail": "Failed to issue token from Sendbird.",
+                    }
+                ),
+                502,
+            )
 
         display_name = user_svc.get_display_name(app_user_id)
         return jsonify(

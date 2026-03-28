@@ -22,11 +22,15 @@ from dev.tests.conftest import (
 @pytest.fixture(autouse=True)
 def reset_alert_state(api_client):
     """Ensure clean alert state before and after test."""
-    api_client.post(
+    r = api_client.post(
         "/api/emergency/alert",
         headers={"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID},
         json={"activated": False},
     )
+    assert r.status_code == 200, f"Alert setup failed: {r.status_code}"
+    setup_data = r.get_json().get("data") or {}
+    if "activated" in setup_data:
+        assert setup_data["activated"] is False
     yield
     r = api_client.post(
         "/api/emergency/alert",
@@ -43,7 +47,7 @@ PROFILE_NAME = "E2E Critical Path Profile"
 
 
 @pytest.mark.integration
-def test_full_pipeline_login_med_alert_profile_checkin(api_client):
+def test_full_pipeline_med_alert_profile_checkin(api_client):
     """Full pipeline: add med → fetch meds → alert → profile PUT/GET → checkin → get checkins."""
     # 1. Add medication
     r = api_client.post(

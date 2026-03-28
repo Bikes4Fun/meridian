@@ -1,5 +1,5 @@
 """
-Chatapp API tests: /auth token verification, /api/chat/config, /api/chat/token.
+Chatapp API tests: /auth token verification.
 Requires chatapp routes registered (webapp + chatapp dist dirs exist).
 """
 
@@ -12,9 +12,7 @@ if str(src_dir) not in sys.path:
 
 import pytest
 from apps.server.api import _create_chat_entry_token, create_server_app
-from dev.tests.conftest import CARE_RECIPIENT_USER_ID, FAMILY_CIRCLE_ID, TEST_USER_ID
-
-API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
+from dev.tests.conftest import FAMILY_CIRCLE_ID, TEST_USER_ID
 
 
 def _has_chatapp_routes(app):

@@ -171,7 +171,9 @@ class CalendarService:
                 WHERE family_circle_id = ? AND DATE(start_time) = ?
                 ORDER BY start_time
             """
-            result = self.db_manager.execute_query(query, (family_circle_id, target_date_str))
+            result = self.db_manager.execute_query(
+                query, (family_circle_id, target_date_str)
+            )
         else:
             query = """
                 SELECT id, title, start_time, end_time, description, location,

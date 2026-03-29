@@ -151,20 +151,42 @@ def _load_api_config():
 
 
 def get_api_base_url() -> str:
-    """Get API base URL. RAILWAY_API_URL env overrides api_config.json."""
-    url = (os.getenv("RAILWAY_API_URL") or "").strip()
-    if url:
-        return url
+    """Single source for the public API base URL (baked into webapp/chatapp/kiosk and used at runtime).
+
+    Precedence:
+      1. RAILWAY_API_URL — explicit override
+      2. CHATAPP_API_URL — legacy alias for the same override (prefer RAILWAY_API_URL)
+      3. RAILWAY_PUBLIC_DOMAIN — set by Railway per deployment
+      4. railway_api_url in src/shared/api_config.json
+      5. http://127.0.0.1:<PORT> — local all-in-one when nothing else is configured
+    """
+    for env_var in ("RAILWAY_API_URL", "CHATAPP_API_URL"):
+        url = (os.getenv(env_var) or "").strip()
+        if url:
+            # Normalize env overrides similarly to RAILWAY_PUBLIC_DOMAIN:
+            # if no scheme is provided, default to https://.
+            if "://" not in url:
+                url = f"https://{url}"
+            return url.rstrip("/")
+    domain = (os.getenv("RAILWAY_PUBLIC_DOMAIN") or "").strip()
+    if domain:
+        if "://" in domain:
+            return domain.rstrip("/")
+        return f"https://{domain}".rstrip("/")
     cfg = _load_api_config()
     url = (cfg.get("railway_api_url") or "").strip()
-    if not url:
-        _logger.warning(
-            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to info/shared/api_config.json"
-        )
-        raise RuntimeError(
-            "Railway API URL not configured. Set RAILWAY_API_URL or add railway_api_url to src/shared/api_config.json"
-        )
-    return url
+    if url:
+        if "://" not in url:
+            url = f"https://{url}"
+        return url.rstrip("/")
+    host = get_server_host()
+    if host == "0.0.0.0":
+        host = "127.0.0.1"
+    fallback = f"http://{host}:{get_server_port()}"
+    _logger.warning(
+        f"No API URL in env or api_config; using local fallback {fallback}"
+    )
+    return fallback.rstrip("/")
 
 
 def get_railway_api_url() -> str:

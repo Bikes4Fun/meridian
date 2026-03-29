@@ -27,6 +27,7 @@ from .chat_screen import ChatHandler
 from .checkin_screen import LocationHandler
 from .events_handler import EventsHandler
 from .medications_screen import MedicationsHandler
+from .temperature_sensor import TemperatureSensor
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,10 @@ class KioskBridge:
     ) -> str:
         return self._medications.mark_medication_taken(medication_id, time_slot, taken)
 
+    def snooze_stove_temp(self) -> None:
+        """Snooze stove warnings and clear emergency alert (same POST as webapp cancel)."""
+        self._app._snooze_stove_temp()
+
     def where_is_everyone(self) -> str:
         return self._location.where_is_everyone()
 
@@ -130,6 +135,8 @@ class MeridianKioskApp:
         self._window = None
         self._bridge = None
         self._alert_was_activated = False
+        self._temp_sensor = None
+        self._stove_alert_armed = False
 
     def run(self):
         """Create window, wire bridge, start webview loop."""
@@ -268,7 +275,10 @@ class MeridianKioskApp:
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()
+        self._temp_sensor = TemperatureSensor()
+        self._temp_sensor.start()
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
+        threading.Thread(target=self._start_temp_push, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
 
     def _refresh_clock(self):
@@ -295,6 +305,46 @@ class MeridianKioskApp:
                 continue
             self._eval_el("clock-time", time_svc.get_time())
             self._eval_el("clock-period", time_svc.get_am_pm().upper())
+
+    def _start_temp_push(self):
+        """Push stove temperature to UI and post/clear emergency alert via server (same as webapp)."""
+        while True:
+            time.sleep(2)
+            if self._temp_sensor:
+                reading = self._temp_sensor.get_display()
+                self._eval_el("stove-temp", reading)
+                self._maybe_stove_emergency_alert()
+
+    def _maybe_stove_emergency_alert(self) -> None:
+        sensor = self._temp_sensor
+        alert_svc = self.services.get("alert_service")
+        if not sensor or not alert_svc or not getattr(
+            alert_svc, "set_alert_activated", None
+        ):
+            return
+        if sensor.should_activate_stove_emergency():
+            if not self._stove_alert_armed:
+                r = alert_svc.set_alert_activated(True)
+                if r.success:
+                    self._stove_alert_armed = True
+                    logger.info("Stove temperature sustained over threshold; alert activated")
+            return
+        if self._stove_alert_armed and sensor.reading_below_threshold_c():
+            r = alert_svc.set_alert_activated(False)
+            if r.success:
+                logger.info("Stove temperature normalized; alert cleared")
+                self._stove_alert_armed = False
+
+    def _snooze_stove_temp(self) -> None:
+        if self._temp_sensor:
+            self._temp_sensor.snooze()
+        alert_svc = self.services.get("alert_service")
+        if alert_svc and getattr(alert_svc, "set_alert_activated", None):
+            r = alert_svc.set_alert_activated(False)
+            if r.success:
+                self._stove_alert_armed = False
+        else:
+            self._stove_alert_armed = False
 
     def _load_home_schedule(self):
         """Update Up Next and timeline. Fetches data via home_screen, pushes to webview."""

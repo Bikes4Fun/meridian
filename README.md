@@ -1,6 +1,6 @@
 # Meridian
 
-![Meridian banner](assets/banner_logo.png)
+![Meridian banner](assets/icons/banner_logo.png)
 
 
 A large-format family command center for patients living at home with mild-to-moderate cognitive decline and their families.
@@ -46,15 +46,15 @@ Development status as of March 22, 2026
 
 **Kiosk home screen**
 
-![image of Kiosk home](assets/kiosk%20home%20march%2022.png)
+![image of Kiosk home](assets/examples/kiosk%20home%20march%2022.png)
 
 **Emergency / ICE screen and webapp alert**
 
-![image of Emergency alert](assets/kiosk%20running%20emergency%20alert%20with%20webapp%20button%20displayed.png)
+![image of Emergency alert](assets/examples/kiosk%20running%20emergency%20alert%20with%20webapp%20button%20displayed.png)
 
 **Family chat**
 
-![image of Family chat](assets/kiosk%20family%20chat%20screen.png)
+![image of Family chat](assets/examples/kiosk%20family%20chat%20screen.png)
 
 > *Printed POLST PDF* (coming soon)
 

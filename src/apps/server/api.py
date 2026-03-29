@@ -144,6 +144,9 @@ def create_server_app(db_path=None):
 
     @app.after_request
     def add_cors(resp):
+        # Security: with Allow-Credentials, only reflect Origin when allowlisted (CORS_ORIGIN).
+        # Do not add a blind elif req_origin: echo Origin—that enables credentialed cross-origin
+        # abuse from untrusted sites when cookies are sent (e.g. SameSite=None).
         origins = [
             o.strip()
             for o in (os.environ.get("CORS_ORIGIN") or "").split(",")

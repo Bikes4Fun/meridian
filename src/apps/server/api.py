@@ -144,6 +144,9 @@ def create_server_app(db_path=None):
 
     @app.after_request
     def add_cors(resp):
+        # Security: with Allow-Credentials, only reflect Origin when allowlisted (CORS_ORIGIN).
+        # Do not add a blind elif req_origin: echo Origin—that enables credentialed cross-origin
+        # abuse from untrusted sites when cookies are sent (e.g. SameSite=None).
         origins = [
             o.strip()
             for o in (os.environ.get("CORS_ORIGIN") or "").split(",")
@@ -155,6 +158,11 @@ def create_server_app(db_path=None):
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         elif origins:
             resp.headers["Access-Control-Allow-Origin"] = origins[0]
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        elif req_origin:
+            # Browsers reject Access-Control-Allow-Origin: * when fetch uses credentials: 'include'
+            # (e.g. webapp login). Reflecting Origin matches that case; prefer explicit CORS_ORIGIN in production.
+            resp.headers["Access-Control-Allow-Origin"] = req_origin
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         else:
             resp.headers["Access-Control-Allow-Origin"] = "*"

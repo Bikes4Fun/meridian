@@ -381,6 +381,20 @@ class RemoteAlertService:
             return ServiceResult.error_result(err or "alert status request failed")
         return ServiceResult.success_result(data or {"activated": False})
 
+    def set_alert_activated(self, activated: bool) -> Any:
+        ok, j, err = _request(
+            "POST",
+            f"{self._base}/api/emergency/alert",
+            headers=self._headers,
+            session=self._session,
+            json_body={"activated": bool(activated)},
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "alert POST failed")
+        if isinstance(j, dict) and "data" in j:
+            return ServiceResult.success_result(j["data"])
+        return ServiceResult.success_result(j or {})
+
 
 class RemoteEmergencyProfileService:
     """Emergency profile (first responder view), medical summary, and emergency contacts from the server."""

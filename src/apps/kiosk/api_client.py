@@ -160,13 +160,22 @@ class LocalTimeService:
     def get_dayof_week(self) -> str:
         return datetime.now().strftime("%A")
 
+    def get_day_period(self) -> tuple[str, str]:
+        """Human label + sprite key (morning|noon|evening|night); same buckets as clock art."""
+        h = datetime.now().hour
+        if 5 <= h < 11:
+            return ("Morning", "morning")
+        if 11 <= h < 14:
+            return ("Midday", "noon")
+        if 14 <= h < 18:
+            return ("Evening", "evening")
+        return ("Night", "night")
+
     def get_am_pm(self) -> str:
-        hour = datetime.now().hour
-        if hour < 12:
-            return "Morning"
-        if hour < 17:
-            return "Afternoon"
-        return "Evening"
+        return self.get_day_period()[0]
+
+    def get_clock_date_line(self) -> str:
+        return f"{self.get_month_day()}, {self.get_year()}"
 
     def get_date(self) -> str:
         return datetime.now().strftime("%B %-d, %Y").replace(" 0", " ").lstrip()

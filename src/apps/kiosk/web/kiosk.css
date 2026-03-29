@@ -5,13 +5,15 @@
 
 :root {
   /* ===== TYPOGRAPHY SCALE (vh-based for responsive scaling) ===== */
-  --font-hero: 3.75vh;        /* ~72px at 1920px height */
+  /* Clock time: primary focal; slightly above prior scale (~80px @ 1920) */
+  --font-hero: 4.2vh;
   --font-header: 2.92vh;      /* ~56px */
   --font-subheader: 2.08vh;   /* ~40px */
   --font-body-large: 1.67vh;  /* ~32px */
   --font-body: 1.46vh;        /* ~28px */
   --font-caption: 1.25vh;     /* ~24px */
-  --font-nav: 1.67vh;         /* ~32px */
+  /* Nav chrome slightly smaller than body content (hierarchy vs clock/cards) */
+  --font-nav: 1.35vh;         /* ~26px */
   --line-height: 1.6;
 
   /* ===== SPACING SCALE (vh-based) ===== */
@@ -19,7 +21,10 @@
   --space-sm: 0.83vh;   /* ~16px */
   --space-md: 1.25vh;   /* ~24px */
   --space-lg: 2.08vh;   /* ~40px - safe margin for kiosk edges */
+  --section-gap: 2.5vh;   /* ~48px — design: 32–48px between major home blocks */
   --safe-margin: 2.08vh; /* Alias for clarity in kiosk context */
+  --content-pad-y: 2.5vh;
+  --content-pad-x: 2.08vh;
 
   /* ===== SIZING ===== */
   --touch-min: 6.25vh;      /* ~120px - minimum touch target */
@@ -34,10 +39,10 @@
   --radius-full: 50%;
 
   /* ===== COLOR PALETTE ===== */
-  /* Neutrals & Background */
-  --bg: #f2f2ee;
-  --text: #1a1a1a;
-  --text-muted: #666;
+  /* Neutrals & Background (Warm & Familiar — design system base) */
+  --bg: #faf8f3;
+  --text: #4a4a4a;
+  --text-muted: #545454;
   --border: #ddd;
   --border-light: #ccc;
 
@@ -120,20 +125,22 @@ body {
    LAYOUT COMPONENTS
    ============================================================================= */
 
-/* Navigation */
+/* Navigation — min 24px gap between targets (kiosk motor spec) */
 #kiosk-nav {
   display: flex;
   min-height: var(--touch-min);
   padding: 0 var(--safe-margin);
-  gap: 0;
+  gap: var(--space-md);
   background: var(--bg);
   border-bottom: 2px solid var(--border);
 }
 
 .nav-tab {
   flex: 1;
+  min-width: 0;
   font-size: var(--font-nav);
   font-family: inherit;
+  font-weight: 500;
   min-height: var(--touch-min);
   border: none;
   background: transparent;
@@ -151,16 +158,103 @@ body {
   background: var(--overlay-medium);
 }
 
-/* Screen content area */
-#screen-content {
-  flex: 1;
-  overflow: auto;
-  padding: var(--safe-margin);
+/* Current screen — orientation: “where am I” (design system) */
+#kiosk-nav .nav-tab--active {
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(46, 125, 155, 0.08);
+  box-shadow: inset 0 -4px 0 0 var(--primary);
 }
 
-/* Panel containers */
+#kiosk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: var(--touch-min);
+  padding: 0 var(--safe-margin);
+  gap: var(--space-md);
+  background: var(--bg);
+  border-top: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Caption scale: 24px min, weight 500 (TV kiosk typography) */
+#kiosk-footer .nav-tab {
+  font-size: var(--font-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+#kiosk-footer .nav-tab--footer-wide {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+#kiosk-footer .nav-tab--active {
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(46, 125, 155, 0.08);
+  box-shadow: inset 0 -4px 0 0 var(--primary);
+}
+
+/* Small emergency control: large hit target, compact glyph */
+.footer-emergency-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  padding: 0;
+  border: 2px solid var(--error);
+  border-radius: var(--radius-md);
+  background: var(--error);
+  color: #fff;
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.footer-emergency-btn:hover {
+  filter: brightness(1.06);
+}
+
+.footer-emergency-btn:active {
+  transform: scale(var(--active-scale));
+}
+
+.footer-emergency-btn__icon {
+  width: 40%;
+  height: 40%;
+  max-width: 44px;
+  max-height: 44px;
+}
+
+.footer-emergency-btn.nav-tab--active {
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.5);
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* Screen content area — vertical padding matches section rhythm */
+#screen-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--content-pad-y) var(--content-pad-x);
+}
+
+/* Home: one column, equal major gaps (replaces ad-hoc spacers) */
+.home-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  min-height: 100%;
+}
+
+/* Panel containers — tighter vertical padding than full safe margin */
 .kiosk-panel {
-  padding: var(--safe-margin);
+  padding: var(--space-md) var(--space-lg);
 }
 
 .kiosk-panel.med-panel {
@@ -311,9 +405,8 @@ body {
   flex-shrink: 0;
 }
 
-/* Primary action buttons (Add Event, Manage Meds) */
-.add-event-btn,
-.manage-meds-btn {
+/* Primary action (Add Event on home) */
+.add-event-btn {
   font-size: var(--font-body);
   font-family: inherit;
   min-height: var(--touch-min);
@@ -326,13 +419,11 @@ body {
   transition: var(--transition-press);
 }
 
-.add-event-btn:hover,
-.manage-meds-btn:hover {
+.add-event-btn:hover {
   background: var(--primary-hover);
 }
 
-.add-event-btn:active,
-.manage-meds-btn:active {
+.add-event-btn:active {
   transform: scale(var(--active-scale));
 }
 
@@ -340,20 +431,40 @@ body {
   display: flex;
   gap: 1em;
   flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: var(--space-sm);
 }
 
-.home-action-row .add-event-btn,
-.home-action-row .manage-meds-btn {
+.home-action-row .add-event-btn {
   flex: 1;
   min-width: 10em;
+  min-height: max(6.8vh, 104px);
+  font-size: var(--font-caption);
 }
 
-/* Clock (debug: thin black borders) */
+/* Clock — time is dominant; weekday/date/year step down in scale */
 .clock-container {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   text-align: center;
-  gap: 1em;
+  gap: var(--space-lg);
+}
+
+.clock-container #clock-day {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.clock-container #clock-time {
+  margin: var(--space-md) 0 var(--space-sm);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.clock-container #clock-date {
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .temp-widget-row {
@@ -374,23 +485,33 @@ body {
   min-width: 0;
 }
 #sprite-and-text {
-  flex: 1 1 30%;
+  flex: 0 0 auto;
   min-width: 0;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
 }
 
-/* Prevent flex stretch: sprite and period row items keep intrinsic size */
-.clock-container .clock-period-sprite,
-.clock-container [id="clock-period"] {
-  align-self: center;
+.clock-container .clock-period-sprite {
   flex-shrink: 0;
 }
 
-/* Clock time-of-day sprite (4 frames: morning, noon, evening, night) */
+.clock-container [id="clock-period"] {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Clock time-of-day sprite — scale with viewport (~1.25× previous vs hero text) */
 .clock-period-sprite {
-  width: 100px;
-  height: 75px;
+  width: 12.5vh;
+  height: 9.4vh;
+  max-width: 140px;
+  max-height: 105px;
   min-height: 0;
   overflow: hidden;
   flex-shrink: 0;
@@ -600,9 +721,10 @@ body {
 .up-next-card {
   background: var(--primary);
   color: #fff;
-  padding: var(--safe-margin);
+  padding: var(--space-lg) var(--safe-margin);
   border-radius: var(--radius-md);
-  min-height: 5vh;
+  min-height: 12vh;
+  border: 2px solid var(--primary-dark);
 }
 
 .up-next-card-inner {
@@ -616,8 +738,9 @@ body {
 }
 
 .up-next-title {
-  font-size: var(--font-body-large);
+  font-size: var(--font-subheader);
   font-weight: 700;
+  line-height: 1.35;
   display: block;
 }
 
@@ -639,9 +762,10 @@ body {
 }
 
 .timeline-card {
-  padding: var(--safe-margin);
+  padding: var(--space-lg) var(--safe-margin);
   background: var(--med-surface);
   border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
 }
 
 .timeline-header {
@@ -660,6 +784,102 @@ body {
   align-items: center;
   gap: 0.75em;
   padding: 0.35em 0;
+}
+
+.timeline-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.timeline-action-btn {
+  font-family: inherit;
+  font-size: var(--font-caption);
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0.35em 0.85em;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.timeline-action-btn:hover {
+  background: var(--surface-hover);
+}
+
+.timeline-action-btn:active {
+  transform: scale(var(--active-scale));
+}
+
+.med-manage-row {
+  align-items: center;
+}
+
+.med-manage-row .med-select {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  cursor: pointer;
+}
+
+.med-batch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.med-batch-count {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 6em;
+}
+
+.med-batch-delete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.med-batch-delete:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+  background: rgba(204, 0, 0, 0.06);
+}
+
+.timeline-header--med-batch {
+  display: flex;
+  align-items: center;
+}
+
+.med-group-select-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-size: var(--font-caption);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.med-group-select-label input {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .timeline-item-done {

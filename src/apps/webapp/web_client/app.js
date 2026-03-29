@@ -9,13 +9,14 @@
     var API_URL = (_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
     var _userId = null;
+    var _mobileChatLoaded = false;
 
     function init() {
         if (document.getElementById('loginForm')) {
             initLogin();
             return;
         }
-        if (document.getElementById('checkinBtn')) {
+        if (document.getElementById('appNav')) {
             var apiBase = (API_URL || '').replace(/\/$/, '');
             fetch(apiBase + '/api/session', { credentials: 'include' })
                 .then(function (r) {
@@ -33,11 +34,17 @@
                     _familyCircleId = session.family_circle_id;
                     _userId = session.user_id;
                     document.body.classList.remove('pending');
-                    if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = '';
-                    if (document.getElementById('contactsGrid')) initChatContacts();
+                    var topLogin = document.querySelector('.app-topbar-login');
+                    if (topLogin) topLogin.style.display = 'none';
+                    if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = 'inline';
                     initNav();
+                    initKioskAlertShortcut();
                     initCheckin();
                     initLogoutLink();
+                    var apiRoot = (API_URL || '').replace(/\/$/, '');
+                    if (window.MeridianMedications) {
+                        MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
+                    }
                 })
                 .catch(function () { window.location.href = '/login.html'; });
             return;
@@ -167,7 +174,7 @@
                 });
             })
             .then(function () {
-                showStatus('Alert mode activated. TV should switch to emergency screen.', 'success');
+                showStatus('Alert mode activated. The kiosk should show the emergency screen.', 'success');
             })
             .catch(function (err) {
                 showStatus('Alert failed: ' + (err.message || String(err)), 'error');
@@ -203,7 +210,12 @@
             var btn = e.target.closest('.nav-btn');
             if (!btn || !btn.dataset.page) return;
             var pageId = btn.dataset.page;
-            var pageMap = { checkin: 'pageCheckin', events: 'pageEvents', medications: 'pageMedications', alert: 'pageAlert' };
+            var pageMap = {
+                mobile: 'pageMobile',
+                events: 'pageEvents',
+                health: 'pageHealth',
+                settings: 'pageSettings'
+            };
             var targetId = pageMap[pageId];
             if (!targetId) return;
             [].forEach.call(nav.querySelectorAll('.nav-btn'), function (b) { b.classList.remove('active'); });
@@ -211,12 +223,31 @@
             btn.classList.add('active');
             var target = document.getElementById(targetId);
             if (target) target.classList.add('active');
+            var apiRoot = (API_URL || '').replace(/\/$/, '');
             if (pageId === 'events' && window.MeridianEvents) {
-                MeridianEvents.init((API_URL || '').replace(/\/$/, ''), _familyCircleId, showStatus);
+                MeridianEvents.init(apiRoot, _familyCircleId, showStatus);
             }
-            if (pageId === 'medications' && window.MeridianMedications) {
-                MeridianMedications.init((API_URL || '').replace(/\/$/, ''), _familyCircleId, showStatus);
+            if (pageId === 'health' && window.MeridianMedications) {
+                MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
             }
+            if (pageId === 'mobile' && !_mobileChatLoaded) {
+                _mobileChatLoaded = true;
+                initChatContacts();
+            }
+        });
+    }
+
+    function initKioskAlertShortcut() {
+        var shortcut = document.getElementById('kioskAlertShortcutBtn');
+        if (!shortcut) return;
+        shortcut.addEventListener('click', function () {
+            var nav = document.getElementById('appNav');
+            var healthBtn = nav && nav.querySelector('.nav-btn[data-page="health"]');
+            if (healthBtn) healthBtn.click();
+            setTimeout(function () {
+                var el = document.getElementById('healthKioskAlert');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 50);
         });
     }
 
@@ -240,7 +271,7 @@
                 if (!data || !data.data) return;
                 var chatContacts = data.data.filter(function (c) { return (c.sendbird_user_id || '').trim(); });
                 if (chatContacts.length === 0) {
-                    grid.innerHTML = '<p style="font-size: 13px; color: #666;">No contacts with chat.</p>';
+                    grid.innerHTML = '<p class="muted">No contacts with chat.</p>';
                     return;
                 }
                 grid.innerHTML = '';
@@ -249,46 +280,28 @@
                     var sb = (c.sendbird_user_id || '').trim();
                     var tile = document.createElement('div');
                     tile.className = 'contact-tile';
-                    tile.style.display = 'flex';
-                    tile.style.flexDirection = 'column';
-                    tile.style.alignItems = 'center';
-                    var avatarSize = 96;
+                    tile.setAttribute('tabindex', '0');
+                    tile.setAttribute('role', 'button');
+                    tile.setAttribute('aria-label', 'Open chat with ' + name);
+                    var inner = document.createElement('div');
+                    inner.className = 'contact-tile-inner';
                     var avatar = document.createElement('div');
                     avatar.className = 'contact-avatar';
-                    avatar.style.width = avatarSize + 'px';
-                    avatar.style.height = avatarSize + 'px';
-                    avatar.style.borderRadius = '50%';
-                    avatar.style.marginBottom = '10px';
-                    avatar.style.display = 'flex';
-                    avatar.style.alignItems = 'center';
-                    avatar.style.justifyContent = 'center';
-                    avatar.style.backgroundColor = '#b0b0b0';
-                    avatar.style.color = '#fff';
-                    avatar.style.fontSize = '40px';
-                    avatar.style.fontWeight = 'bold';
                     avatar.textContent = (name || '?').charAt(0).toUpperCase();
                     if (c.user_id) {
                         var img = document.createElement('img');
                         img.src = apiBase + '/api/users/' + c.user_id + '/photo';
                         img.alt = name;
-                        img.style.position = 'absolute';
-                        img.style.top = '0';
-                        img.style.left = '0';
-                        img.style.width = '100%';
-                        img.style.height = '100%';
-                        img.style.objectFit = 'cover';
                         img.onerror = function () { img.style.display = 'none'; };
-                        avatar.style.position = 'relative';
-                        avatar.style.overflow = 'hidden';
                         avatar.appendChild(img);
                     }
-                    tile.appendChild(avatar);
+                    inner.appendChild(avatar);
                     var label = document.createElement('span');
                     label.className = 'contact-name';
-                    label.style.fontSize = '20px';
                     label.textContent = name;
-                    tile.appendChild(label);
-                    tile.addEventListener('click', function () {
+                    inner.appendChild(label);
+                    tile.appendChild(inner);
+                    function openChatWindow() {
                         if (statusEl) statusEl.textContent = 'Opening chat…';
                         var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);
                         fetch(apiBase + '/api/chat/chat-session-url' + qs, { credentials: 'include' })
@@ -305,6 +318,13 @@
                             .catch(function (err) {
                                 if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not open chat');
                             });
+                    }
+                    tile.addEventListener('click', openChatWindow);
+                    tile.addEventListener('keydown', function (ev) {
+                        if (ev.key === 'Enter' || ev.key === ' ') {
+                            ev.preventDefault();
+                            openChatWindow();
+                        }
                     });
                     grid.appendChild(tile);
                 });

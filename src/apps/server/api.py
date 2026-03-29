@@ -946,6 +946,11 @@ def create_server_app(db_path=None):
         def serve_login():
             return send_from_directory(_webapp_dist, "login.html")
 
+        @app.route("/ice-editor")
+        @app.route("/ice_editor.html")
+        def serve_ice_editor():
+            return send_from_directory(_webapp_dist, "ice_editor.html")
+
         @app.route("/app.js")
         def serve_app_js():
             return send_from_directory(_webapp_dist, "app.js")
@@ -958,9 +963,26 @@ def create_server_app(db_path=None):
         def serve_medications_js():
             return send_from_directory(_webapp_dist, "medications.js")
 
+        @app.route("/ice_editor.js")
+        def serve_ice_editor_js():
+            return send_from_directory(_webapp_dist, "ice_editor.js")
+
         @app.route("/style.css")
         def serve_style_css():
             return send_from_directory(_webapp_dist, "style.css")
+
+        _webapp_brand = os.path.join(_webapp_dist, "brand")
+
+        @app.route("/brand/<path:path>")
+        def serve_webapp_brand(path):
+            if not os.path.isdir(_webapp_brand):
+                abort(404)
+            if path.startswith("/") or ".." in path:
+                abort(404)
+            _, ext = os.path.splitext(path)
+            if ext.lower() not in {".png", ".svg", ".webp", ".ico"}:
+                abort(404)
+            return send_from_directory(_webapp_brand, path)
 
         @app.route("/fonts/<path:path>")
         def serve_fonts(path):

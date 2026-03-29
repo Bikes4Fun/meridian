@@ -25,9 +25,11 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
     for filename in (
         "login.html",
         "index.html",
+        "ice_editor.html",
         "app.js",
         "events.js",
         "medications.js",
+        "ice_editor.js",
     ):
         src_path = os.path.join(client, filename)
         dst_path = os.path.join(dist, filename)
@@ -51,6 +53,18 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
             src_path = os.path.join(font_src, filename)
             if os.path.isfile(src_path):
                 shutil.copy2(src_path, os.path.join(font_dst, filename))
+
+    repo_root = os.path.abspath(os.path.join(src_dir, ".."))
+    brand_src = os.path.join(repo_root, "assets", "icons")
+    brand_dst = os.path.join(dist, "brand")
+    os.makedirs(brand_dst, exist_ok=True)
+    for src_name, dst_name in (
+        ("original_banner_logo.png", "logo-banner.png"),
+        ("app-icon.png", "logo-mark.png"),
+    ):
+        src_path = os.path.join(brand_src, src_name)
+        if os.path.isfile(src_path):
+            shutil.copy2(src_path, os.path.join(brand_dst, dst_name))
 
     logger.info("Webapp build complete")
 

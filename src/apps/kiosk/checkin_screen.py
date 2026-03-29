@@ -68,7 +68,7 @@ def build_checkin_html(
     )
     refresh_btn = hp.kiosk_button(
         "Refresh",
-        "pywebview.api.refresh_screen('family')",
+        "pywebview.api.reload_screen('family')",
         no_feedback=True,
         small=True,
     )

@@ -1,7 +1,53 @@
-document.getElementById('kiosk-nav').addEventListener('click', function(e) {
-  var btn = e.target.closest('[data-screen]');
-  if (btn && typeof pywebview !== 'undefined' && pywebview.api) {
-    pywebview.api.navigate(btn.dataset.screen);
+// Top nav (#kiosk-nav) and footer (#kiosk-footer): any click on a [data-screen] button calls Python navigate().
+function bindScreenNav(container) {
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-screen]');
+    if (btn && typeof pywebview !== 'undefined' && pywebview.api) {
+      pywebview.api.navigate(btn.dataset.screen);
+    }
+  });
+}
+bindScreenNav(document.getElementById('kiosk-nav'));
+bindScreenNav(document.getElementById('kiosk-footer'));
+
+function updateMedBatchBar() {
+  var cntEl = document.getElementById('medBatchCount');
+  var delBtn = document.getElementById('medBatchDeleteBtn');
+  if (!cntEl || !delBtn) return;
+  var n = document.querySelectorAll('.med-select:checked').length;
+  cntEl.textContent = n === 1 ? '1 selected' : (n + ' selected');
+  delBtn.disabled = n === 0;
+}
+
+function syncMedGroupHeaderCheckboxes() {
+  document.querySelectorAll('.med-group-select').forEach(function(gc) {
+    var card = gc.closest('.timeline-card');
+    if (!card) return;
+    var boxes = card.querySelectorAll('.med-select');
+    if (boxes.length === 0) return;
+    var n = 0;
+    boxes.forEach(function(b) { if (b.checked) n += 1; });
+    gc.checked = n === boxes.length;
+    gc.indeterminate = n > 0 && n < boxes.length;
+  });
+}
+
+document.getElementById('screen-content').addEventListener('change', function(e) {
+  var t = e.target;
+  if (t.classList && t.classList.contains('med-group-select')) {
+    var card = t.closest('.timeline-card');
+    if (card) {
+      var on = t.checked;
+      card.querySelectorAll('.med-select').forEach(function(c) { c.checked = on; });
+    }
+    updateMedBatchBar();
+    syncMedGroupHeaderCheckboxes();
+    return;
+  }
+  if (t.classList && t.classList.contains('med-select')) {
+    updateMedBatchBar();
+    syncMedGroupHeaderCheckboxes();
   }
 });
 
@@ -28,6 +74,29 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     pywebview.api.open_add_medication_modal();
     return;
   }
+  if (e.target.id === 'medBatchClearBtn') {
+    document.querySelectorAll('.med-select, .med-group-select').forEach(function(c) {
+      c.checked = false;
+      c.indeterminate = false;
+    });
+    updateMedBatchBar();
+    return;
+  }
+  if (e.target.id === 'medBatchDeleteBtn' && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.delete_medications_batch) {
+    var ids = [];
+    document.querySelectorAll('.med-select:checked').forEach(function(cb) {
+      var id = parseInt(cb.dataset.medId, 10);
+      if (!isNaN(id)) ids.push(id);
+    });
+    var seen = {};
+    ids = ids.filter(function(x) { if (seen[x]) return false; seen[x] = true; return true; });
+    if (ids.length === 0) return;
+    if (!confirm('Delete ' + ids.length + ' medication(s)? This cannot be undone.')) return;
+    var res = pywebview.api.delete_medications_batch(JSON.stringify(ids));
+    function done(r) { if (r !== 'ok') alert(r || 'Failed'); }
+    (res && res.then) ? res.then(done).catch(function(x) { alert(String(x)); }) : done(res);
+    return;
+  }
   var medEditBtn = e.target.closest('.med-edit-btn');
   if (medEditBtn && medEditBtn.dataset.med && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_edit_medication_modal) {
     var m = JSON.parse(medEditBtn.dataset.med);
@@ -52,8 +121,8 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     function done(r) {
       if (r === 'ok') {
         var screen = (document.body && document.body.dataset.screen) || 'home';
-        if (pywebview.api.refresh_screen) pywebview.api.refresh_screen(screen);
-        else pywebview.api.refresh_events();
+        if (pywebview.api.reload_screen) pywebview.api.reload_screen(screen);
+        else if (pywebview.api.refresh_events) pywebview.api.refresh_events();
       } else if (r) alert(r);
     }
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
@@ -149,17 +218,37 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
   (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);
 });
 
+function updateNavActiveState(screenName) {
+  var tabs = document.querySelectorAll('#kiosk-nav [data-screen], #kiosk-footer [data-screen]');
+  tabs.forEach(function(btn) {
+    btn.classList.remove('nav-tab--active');
+    btn.removeAttribute('aria-current');
+    if (btn.dataset.screen === screenName) {
+      btn.classList.add('nav-tab--active');
+      btn.setAttribute('aria-current', 'page');
+    }
+  });
+}
+
 function showScreen(name, html) {
   var el = document.getElementById('screen-content');
   if (el) {
     el.innerHTML = html;
     document.body.dataset.screen = name;
+    updateNavActiveState(name);
+    updateMedBatchBar();
   }
 }
 
 function updateEl(id, content) {
   var el = document.getElementById(id);
   if (el) el.innerHTML = content;
+}
+
+function updateClockPeriod(periodUpper, spritePeriod) {
+  updateEl('clock-period', periodUpper);
+  var sp = document.querySelector('.clock-period-sprite');
+  if (sp) sp.setAttribute('data-period', spritePeriod);
 }
 
 function showToast(msg) {

@@ -2,9 +2,6 @@
 Emergency screen: fetches data, shapes contacts, builds form-style layout.
 """
 
-from .temperature_sensor import STOVE_SNOOZE_MINUTES
-
-
 def _form_row_html(label_text: str, value_text: str) -> str:
     """One labeled row for HTML. label (caption), value (body_large)."""
     import html
@@ -104,13 +101,5 @@ def build_emergency_html(services, api_url: str) -> str:
 
     print_js = "pywebview.api.print_emergency()"
     html_parts.append(hp.kiosk_button("Print Emergency Document", print_js))
-
-    html_parts.append(
-        hp.kiosk_button(
-            f"Stove false alarm — snooze {STOVE_SNOOZE_MINUTES}m",
-            "pywebview.api.snooze_stove_temp()",
-            small=True,
-        )
-    )
 
     return hp.panel("".join(html_parts))

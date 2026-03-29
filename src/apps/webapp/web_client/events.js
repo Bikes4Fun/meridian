@@ -11,13 +11,13 @@
     var _initialized = false;
 
     function buildEventsHTML() {
-        return '<h2>Events</h2>' +
-            '<p style="font-size: 14px; color: #666;">Today\'s schedule</p>' +
+        return '<h2 class="page-section-title">Events</h2>' +
+            '<p class="muted page-lead">Today\'s schedule</p>' +
             '<div id="eventsList">Loading…</div>' +
-            '<button id="addEventBtn" type="button">Add Event</button>' +
+            '<button id="addEventBtn" type="button" class="btn-add">Add event</button>' +
             '<div id="eventFormModal">' +
             '<div class="modal-inner">' +
-            '<h3 id="eventFormTitle">Add Event</h3>' +
+            '<h3 id="eventFormTitle">Add event</h3>' +
             '<form id="eventForm">' +
             '<input type="text" id="eventTitle" placeholder="Title" required class="event-input">' +
             '<input type="date" id="eventDate" required class="event-input">' +
@@ -41,20 +41,23 @@
             .then(function (data) {
                 if (!list) return;
                 if (!data || !data.data || data.data.length === 0) {
-                    list.innerHTML = '<p style="color: #666; margin: 0;">No events today</p>';
+                    list.innerHTML = '<p class="muted">No events today</p>';
                     return;
                 }
                 var items = data.data.map(function (e) {
                     var id = (e.id || '').replace(/"/g, '&quot;');
                     var title = (e.display || e.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '\'>' +
-                        '<span>' + title + '</span> ' +
-                        '<button type="button" class="event-edit-btn" style="font-size:12px;padding:2px 8px;margin-left:4px;">Edit</button> ' +
-                        '<button type="button" class="event-delete-btn" style="font-size:12px;padding:2px 8px;">Delete</button></li>';
+                    return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '">' +
+                        '<article class="event-card">' +
+                        '<p class="event-card__title">' + title + '</p>' +
+                        '<div class="event-card__actions">' +
+                        '<button type="button" class="event-edit-btn btn-inline btn-edit">Edit</button>' +
+                        '<button type="button" class="event-delete-btn btn-inline btn-delete">Delete</button>' +
+                        '</div></article></li>';
                 });
-                list.innerHTML = '<ul style="margin: 0; padding-left: 20px; list-style: none;">' + items.join('') + '</ul>';
+                list.innerHTML = '<ul class="list-panel">' + items.join('') + '</ul>';
             })
-            .catch(function () { if (list) list.innerHTML = '<p style="color: #999;">Could not load events</p>'; });
+            .catch(function () { if (list) list.innerHTML = '<p class="muted">Could not load events</p>'; });
     }
 
     function initEvents() {
@@ -78,7 +81,7 @@
         function openForAdd() {
             editingEventId = null;
             var titleEl = document.getElementById('eventFormTitle');
-            if (titleEl) titleEl.textContent = 'Add Event';
+            if (titleEl) titleEl.textContent = 'Add event';
             var today = new Date().toISOString().slice(0, 10);
             document.getElementById('eventTitle').value = '';
             document.getElementById('eventDate').value = today;
@@ -86,13 +89,13 @@
             document.getElementById('eventEndTime').value = '';
             document.getElementById('eventLocation').value = '';
             document.getElementById('eventDescription').value = '';
-            if (modal) modal.style.display = 'flex';
+            if (modal) modal.classList.add('visible');
         }
 
         function openForEdit(eventData) {
             editingEventId = eventData.id;
             var titleEl = document.getElementById('eventFormTitle');
-            if (titleEl) titleEl.textContent = 'Edit Event';
+            if (titleEl) titleEl.textContent = 'Edit event';
             var st = eventData.start_time || '';
             var et = eventData.end_time || '';
             var date = st ? st.slice(0, 10) : new Date().toISOString().slice(0, 10);
@@ -104,7 +107,7 @@
             document.getElementById('eventEndTime').value = endTime;
             document.getElementById('eventLocation').value = eventData.location || '';
             document.getElementById('eventDescription').value = eventData.description || '';
-            if (modal) modal.style.display = 'flex';
+            if (modal) modal.classList.add('visible');
         }
 
         if (addBtn) addBtn.addEventListener('click', openForAdd);
@@ -138,8 +141,8 @@
             });
         }
 
-        if (cancelBtn) cancelBtn.addEventListener('click', function () { if (modal) modal.style.display = 'none'; });
-        if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) modal.style.display = 'none'; });
+        if (cancelBtn) cancelBtn.addEventListener('click', function () { if (modal) modal.classList.remove('visible'); });
+        if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) modal.classList.remove('visible'); });
 
         if (form) {
             form.addEventListener('submit', function (e) {
@@ -173,7 +176,7 @@
                 })
                     .then(function (r) {
                         if (r.ok) {
-                            if (modal) modal.style.display = 'none';
+                            if (modal) modal.classList.remove('visible');
                             var wasEdit = !!editingEventId;
                             editingEventId = null;
                             _showStatus(wasEdit ? '\u2713 Event updated' : '\u2713 Event added', 'success');

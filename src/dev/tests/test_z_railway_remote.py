@@ -23,13 +23,14 @@ DEMO_USER_ID = "fm_001"
 
 
 def _get_railway_base_url():
-    """Get Railway URL; return None if not configured."""
-    try:
-        from shared.config import get_api_base_url
+    """Get Railway URL; return None if only local fallback is configured."""
+    from shared.config import get_api_base_url
 
-        return get_api_base_url().rstrip("/")
-    except Exception:
+    base = get_api_base_url().rstrip("/")
+    low = base.lower()
+    if "127.0.0.1" in base or low.startswith("http://localhost"):
         return None
+    return base
 
 
 @pytest.mark.remote
@@ -38,7 +39,7 @@ def test_railway_api_health():
     base = _get_railway_base_url()
     if not base:
         pytest.skip(
-            "Railway API URL not configured (api_config.json or RAILWAY_API_URL)"
+            "Remote API URL not configured (use api_config, RAILWAY_API_URL, or RAILWAY_PUBLIC_DOMAIN; not localhost)"
         )
     url = base + "/api/health"
     req = urllib.request.Request(url)

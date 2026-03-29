@@ -62,9 +62,7 @@ def _start_local_api_server(logger):
 
 
 def main():
-    use_local = "--local" in sys.argv
-    railway_reachable = is_railway_reachable()
-    using_local_db = use_local or not railway_reachable
+    use_remote_api = "--railway-run" in sys.argv and is_railway_reachable()
 
     logging.basicConfig(
         level=getattr(logging, get_log_level().upper()),
@@ -74,15 +72,12 @@ def main():
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
-    if using_local_db:
+    if not use_remote_api:
         logger.info(f"Database: local - {get_database_path()}")
-        if not railway_reachable:
-            logger.warning("Railway unreachable, using local DB")
         api_url = _start_local_api_server(logger)
     else:
         api_url = get_api_base_url()
-        logger.info(f"API: {api_url}")
-        logger.info("Database: Railway (remote)")
+        logger.info(f"Remote API: {api_url}")
         try:
             import urllib.request
 

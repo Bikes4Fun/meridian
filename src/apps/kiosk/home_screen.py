@@ -10,6 +10,7 @@ import logging
 
 from . import clock_widget
 from . import events_handler
+from .temperature_sensor import STOVE_SNOOZE_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,13 @@ def build_home_html(
         <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
         <button type="button" class="manage-meds-btn" data-screen="medications">Manage Medications</button>
     </div>"""
+    temp_widget = (
+        f'<div class="temp-widget-row"><div class="temp-widget">🌡 Stove: <span id="stove-temp">—</span></div>'
+        f'{hp.kiosk_button(f"Ignore stove ({STOVE_SNOOZE_MINUTES}m)", "pywebview.api.snooze_stove_temp()", small=True)}</div>'
+    )
     return (
         clock
+        + temp_widget
         + hp.spacer(24)
         + up_next
         + hp.spacer(16)

@@ -159,6 +159,11 @@ def create_server_app(db_path=None):
         elif origins:
             resp.headers["Access-Control-Allow-Origin"] = origins[0]
             resp.headers["Access-Control-Allow-Credentials"] = "true"
+        elif req_origin:
+            # Browsers reject Access-Control-Allow-Origin: * when fetch uses credentials: 'include'
+            # (e.g. webapp login). Reflecting Origin matches that case; prefer explicit CORS_ORIGIN in production.
+            resp.headers["Access-Control-Allow-Origin"] = req_origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
         else:
             resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"

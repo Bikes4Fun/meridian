@@ -1,6 +1,7 @@
 /* Webapp – Warm & Familiar (meridian-design-plan Direction 1) */
 
-.app-dashboard {
+/* Warm / web tokens once on :root — inherited everywhere (dashboard, ICE, kiosk). */
+:root {
     --warm-base: #faf8f3;
     --warm-cream: #f5efe7;
     --warm-text: #4a4a4a;
@@ -1067,6 +1068,289 @@ body.login-page button[type="submit"]:hover {
 
 .ice-readonly-list li {
     margin: 4px 0;
+}
+
+.med-card__rxcui {
+    font-size: 12px;
+    color: var(--web-muted);
+}
+
+.ice-medications-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin: 8px 0 var(--space-sm);
+}
+
+/* Same density on webapp and kiosk (kiosk global .event-input uses a large --touch-min). */
+.ice-medications-editor .event-input {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 14px;
+    margin-bottom: 0;
+    box-sizing: border-box;
+}
+
+.ice-med-toolbar-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.ice-med-autosave-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--web-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.ice-med-autosave-cb {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--warm-sage);
+}
+
+.ice-med-delete-selected-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-weight: 700;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 2px 4px rgba(45, 28, 22, 0.2);
+}
+
+.ice-med-delete-selected-btn__icon {
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+.ice-med-save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 10px 20px;
+    min-height: 44px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    background: var(--warm-sage);
+    color: #fff;
+    border: 2px solid var(--warm-sage-hover);
+    box-shadow: 0 2px 6px rgba(74, 122, 70, 0.25);
+}
+
+.ice-med-save-btn:hover {
+    background: var(--warm-sage-hover);
+    border-color: var(--warm-sage-hover);
+}
+
+.ice-med-save-btn__icon {
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+.ice-med-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    align-items: center;
+    margin-top: var(--space-sm);
+}
+
+.ice-med-select-all-btn {
+    background: var(--web-surface);
+    color: var(--web-body);
+    border: 2px solid var(--warm-border-strong);
+}
+
+.ice-med-select-all-btn:hover {
+    background: var(--warm-input-bg);
+    border-color: var(--warm-border-strong);
+}
+
+.ice-med-block-actions .ice-add-med-btn {
+    margin-top: 0;
+}
+
+.ice-med-row {
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--warm-border);
+}
+
+.ice-med-row:last-of-type {
+    border-bottom: none;
+}
+
+.ice-med-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+@media (max-width: 36rem) {
+    .ice-med-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ice-med-fields .event-input {
+    width: 100%;
+}
+
+.ice-med-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.ice-med-actions-row .ice-med-times-row {
+    flex: 1 1 auto;
+    min-width: min(100%, 10rem);
+    margin-bottom: 0;
+}
+
+.ice-med-delete-cell {
+    flex: 0 0 auto;
+}
+
+.ice-med-select-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--warm-muted);
+    user-select: none;
+}
+
+.ice-med-select-label:hover {
+    color: var(--warm-delete);
+}
+
+.ice-med-select {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--warm-delete);
+}
+
+.ice-med-select__trash {
+    display: flex;
+    line-height: 0;
+    color: var(--warm-delete);
+}
+
+.ice-med-times-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: center;
+    font-size: 13px;
+}
+
+.ice-med-time-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.ice-med-time-opt input {
+    width: auto;
+    margin: 0;
+    accent-color: var(--warm-terracotta);
+}
+
+/* Wide viewports: one row of four fields; times + select/trash share the next line. */
+@media (min-width: 52rem) {
+    .ice-medications-editor {
+        margin-top: 4px;
+        margin-bottom: var(--space-xs);
+    }
+
+    .ice-med-row {
+        padding: 6px 0;
+    }
+
+    .ice-med-fields {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+        margin-bottom: 4px;
+        gap: 6px 10px;
+    }
+
+    .ice-med-actions-row {
+        flex-wrap: nowrap;
+        gap: var(--space-sm);
+    }
+
+    .ice-med-times-row {
+        flex-wrap: nowrap;
+        gap: 8px 14px;
+        font-size: 12px;
+    }
+}
+
+.ice-add-med-btn {
+    margin-top: 4px;
+}
+
+.ice-emergency-contacts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin: 8px 0 var(--space-sm);
+}
+
+.ice-ec-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: start;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--warm-border);
+}
+
+.ice-ec-row:last-of-type {
+    border-bottom: none;
+}
+
+.ice-ec-row .ice-ec-priority {
+    grid-column: 1 / -1;
+}
+
+.ice-ec-row .ice-ec-remove {
+    grid-column: 1 / -1;
+    justify-self: start;
+    font-size: 13px;
+}
+
+@media (max-width: 36rem) {
+    .ice-ec-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ice-ec-row .event-input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ice-add-ec-btn {
+    margin-top: 4px;
 }
 
 .ice-toggle {

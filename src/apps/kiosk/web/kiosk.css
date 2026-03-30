@@ -1152,3 +1152,30 @@ body.alert-active {
 .map-popup-name {
   font-weight: 700;
 }
+
+.kiosk-meds-actions {
+  margin-top: var(--space-md);
+}
+
+.kiosk-meds-actions .btn-add {
+  min-height: max(2.5vh, 48px);
+}
+
+.kiosk-meds-actions .ice-med-delete-selected-btn {
+  min-height: max(2.5vh, 48px);
+}
+
+.kiosk-meds-actions .ice-med-save-btn {
+  min-height: max(2.5vh, 52px);
+  flex: 1;
+}
+
+#kioskMedsEditorRoot .ice-med-toolbar-top .ice-med-select-all-btn,
+#kioskMedsEditorRoot .ice-med-autosave-label {
+  min-height: max(2.5vh, 44px);
+}
+
+#kioskMedsEditorRoot .ice-med-autosave-cb {
+  width: 20px;
+  height: 20px;
+}

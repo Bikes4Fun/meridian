@@ -40,6 +40,12 @@ PROTECTED_GET_ROUTES = [
     ("/api/family_circles/%s/medical-summary", True),
     ("/api/family_circles/%s/emergency-profile", True),
     ("/api/family_circles/%s/emergency-profile/pdf", True),
+    (
+        "/api/family_circles/%s/care-recipients/"
+        + CARE_RECIPIENT_USER_ID
+        + "/dnr-document",
+        True,
+    ),
     ("/api/family_circles/%s/family-members", True),
     ("/api/family_circles/%s/named-places", True),
     ("/api/family_circles/%s/get_checkins", True),
@@ -54,6 +60,18 @@ PROTECTED_POST_PUT_ROUTES = [
         "PUT",
         True,
         {"json": {"user_id": CARE_RECIPIENT_USER_ID, "name": "x"}},
+    ),
+    (
+        "/api/family_circles/%s/care-recipient-photo",
+        "POST",
+        True,
+        {"data": {}},
+    ),
+    (
+        "/api/family_circles/%s/care-recipient-dnr-document",
+        "POST",
+        True,
+        {"data": {}},
     ),
 ]
 # (path_template, method, is_family_scoped, kwargs for request)

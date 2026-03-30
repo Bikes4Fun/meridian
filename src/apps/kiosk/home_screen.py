@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def build_home_html(
     services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = ""
 ) -> str:
-    """Up Next, today's timeline, and add-event (Health lives in footer)."""
+    """Up Next, today's timeline, (Health lives in footer)."""
     from . import html_primitives as hp
 
     clock = clock_widget.build_clock_html(services)
@@ -29,14 +29,10 @@ def build_home_html(
         <div class="timeline-header">WHAT'S NEXT TODAY</div>
         <div id="timeline_content" class="timeline-list">{timeline_html}</div>
     </div>"""
-    actions = """<div class="home-action-row">
-        <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
-    </div>"""
     inner = (
         clock
         + up_next
         + timeline
-        + actions
         + events_handler.get_event_form_overlay_html()
     )
     return f'<div class="home-screen">{inner}</div>'

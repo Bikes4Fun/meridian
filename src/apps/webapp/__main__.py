@@ -5,9 +5,9 @@ import os
 import shutil
 
 try:
-    from ...shared.config import get_api_base_url, get_log_level
+    from ...shared.config import get_log_level, get_webapp_baked_api_url
 except ImportError:
-    from shared.config import get_api_base_url, get_log_level
+    from shared.config import get_log_level, get_webapp_baked_api_url
 
 
 def _set_logging() -> logging.Logger:
@@ -16,6 +16,14 @@ def _set_logging() -> logging.Logger:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     return logging.getLogger(__name__)
+
+
+def _inject_webapp_api_url(content: str, api_url: str) -> str:
+    needle = "var _u = '__API_URL__';"
+    if needle in content:
+        esc = api_url.replace("\\", "\\\\").replace("'", "\\'")
+        return content.replace(needle, f"var _u = '{esc}';")
+    return content.replace("__API_URL__", api_url)
 
 
 def build_webapp(logger, api_url: str, src_dir: str) -> None:
@@ -28,6 +36,7 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
         "ice_editor.html",
         "app.js",
         "events.js",
+        "meridian_medications_inline.js",
         "medications.js",
         "ice_editor.js",
     ):
@@ -36,7 +45,10 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
         with open(src_path, encoding="utf-8") as f:
             content = f.read()
         with open(dst_path, "w", encoding="utf-8") as f:
-            f.write(content.replace("__API_URL__", api_url))
+            f.write(_inject_webapp_api_url(content, api_url))
+    base_js = os.path.join(client, "meridian_api_base.js")
+    if os.path.isfile(base_js):
+        shutil.copy2(base_js, os.path.join(dist, "meridian_api_base.js"))
     if os.path.isfile(os.path.join(client, "style.css")):
         shutil.copy2(os.path.join(client, "style.css"), os.path.join(dist, "style.css"))
 
@@ -71,7 +83,7 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
 
 def main() -> None:
     logger = _set_logging()
-    api_url = get_api_base_url()
+    api_url = get_webapp_baked_api_url()
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     build_webapp(logger, api_url, src_dir)
 

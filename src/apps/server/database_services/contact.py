@@ -76,7 +76,7 @@ class ContactService:
         ]
         return ServiceResult.success_result(contacts)
 
-    def c_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
+    def get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
         query = """
             SELECT c.id, c.display_name, c.phone, c.email, c.birthday, c.relationship,
                    c.emergency_priority, c.photo_filename, c.sendbird_user_id,

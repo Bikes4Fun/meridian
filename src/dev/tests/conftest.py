@@ -188,14 +188,14 @@ def populated_test_db(test_db_manager, sample_contacts_data):
     afternoon_id = time_ids[1] if len(time_ids) > 1 else 2
 
     db.execute_update(
-        """INSERT INTO medications (care_recipient_user_id, name, dosage, frequency, taken_today)
-           VALUES (?, ?, ?, ?, 0)""",
-        (CARE_RECIPIENT_USER_ID, "Lisinopril", "10 mg", "daily"),
+        """INSERT INTO medications (care_recipient_user_id, name, dosage, frequency, fda_rxcui, taken_today)
+           VALUES (?, ?, ?, ?, ?, 0)""",
+        (CARE_RECIPIENT_USER_ID, "Lisinopril", "10 mg", "daily", "29046"),
     )
     db.execute_update(
-        """INSERT INTO medications (care_recipient_user_id, name, dosage, frequency, taken_today)
-           VALUES (?, ?, ?, ?, 0)""",
-        (CARE_RECIPIENT_USER_ID, "Metformin", "500 mg", "twice daily"),
+        """INSERT INTO medications (care_recipient_user_id, name, dosage, frequency, fda_rxcui, taken_today)
+           VALUES (?, ?, ?, ?, ?, 0)""",
+        (CARE_RECIPIENT_USER_ID, "Metformin", "500 mg", "twice daily", None),
     )
     med_r = db.execute_query(
         "SELECT id FROM medications WHERE care_recipient_user_id = ? ORDER BY name",

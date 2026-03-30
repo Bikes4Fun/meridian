@@ -36,6 +36,7 @@ def build_chat_html(
 ) -> str:
     """Build chat screen HTML for pywebview. Contact tiles use data-sb-uid/data-name; kiosk.js delegates open_chat."""
     from . import html_primitives as hp
+    from .api_client import fetch_photo_b64
 
     contact_svc = services.get("contact_service")
     if not contact_svc or not family_circle_id:
@@ -68,10 +69,16 @@ def build_chat_html(
         contact_id = c.get("id") or ""
         avatar_src = None
         if user_id:
-            avatar_src = contact_svc.fetch_photo(f"{base}/api/users/{user_id}/photo")
+            avatar_src = fetch_photo_b64(
+                f"{base}/api/users/{user_id}/photo",
+                contact_svc._session,
+                contact_svc._headers,
+            )
         if not avatar_src and contact_id:
-            avatar_src = contact_svc.fetch_photo(
-                f"{base}/api/family_circles/{family_circle_id}/contacts/{contact_id}/photo"
+            avatar_src = fetch_photo_b64(
+                f"{base}/api/family_circles/{family_circle_id}/contacts/{contact_id}/photo",
+                contact_svc._session,
+                contact_svc._headers,
             )
         tiles.append(
             hp.contact_tile(avatar_src, name, data_sb_uid=sb_uid, data_name=name)

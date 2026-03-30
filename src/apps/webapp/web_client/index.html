@@ -46,19 +46,11 @@
                     <h2 class="page-section-title">POLST &amp; emergency (ICE)</h2>
                     <p class="muted page-lead page-lead--tight">Legal preferences, contacts, and the printable emergency document.</p>
                     <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
-                </section>
-                <section id="healthKioskAlert" class="card card--pad alert-panel alert-panel--compact">
-                    <h2 class="page-section-title page-section-title--minor">Kiosk emergency alert</h2>
-                    <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
-                    <div class="alert-actions alert-actions--compact">
-                        <button id="alertBtn" type="button" class="btn-alert btn-alert--sm">Alert mode</button>
-                        <button id="cancelAlertBtn" type="button" class="btn-secondary-lg btn-secondary-lg--sm">Cancel alert</button>
+                    <div class="event-card__actions">
+                        <button id="healthManageMedsBtn" type="button" class="btn-inline">Manage medications</button>
+                        <button id="healthKioskControlsBtn" type="button" class="btn-inline">Kiosk controls</button>
+
                     </div>
-                </section>
-                <section class="card card--pad health-section">
-                    <h2 class="page-section-title">Medications</h2>
-                    <p class="muted page-lead page-lead--tight">Mark doses taken, add or edit the med list, and keep the kiosk schedule accurate.</p>
-                    <div id="healthMedsEditor"></div>
                 </section>
                 <section class="card card--pad health-section health-section--placeholder">
                     <h2 class="page-section-title">Medication history</h2>
@@ -83,7 +75,19 @@
                     <section class="settings-card card card--pad">
                         <h2 class="settings-card__title">Kiosk &amp; TV</h2>
                         <p class="settings-card__body muted">What the person at home can open on the kiosk (screens, chat, map, emergency), brightness or idle behavior, and safe defaults.</p>
-                        <span class="settings-card__badge">Coming later</span>
+                        <section id="settingsKioskAlert" class="alert-panel alert-panel--compact">
+                            <h3 class="page-section-title page-section-title--minor">Kiosk emergency alert</h3>
+                            <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
+                            <div class="alert-actions alert-actions--compact">
+                                <button id="alertBtn" type="button" class="btn-alert btn-alert--sm">Alert mode</button>
+                                <button id="cancelAlertBtn" type="button" class="btn-secondary-lg btn-secondary-lg--sm">Cancel alert</button>
+                            </div>
+                        </section>
+                    </section>
+                    <section class="settings-card card card--pad">
+                        <h2 class="settings-card__title">Medications</h2>
+                        <p class="settings-card__body muted">Add, remove, or change meds, dosage, frequency, times, and RxCUI. Saves sync with the ICE profile and the kiosk schedule.</p>
+                        <div id="settingsMedsEditor"></div>
                     </section>
                 </div>
             </div>
@@ -116,6 +120,8 @@
         </main>
     </div>
 
+    <script src="/meridian_api_base.js"></script>
+    <script src="/meridian_medications_inline.js"></script>
     <script src="/events.js"></script>
     <script src="/medications.js"></script>
     <script src="/app.js"></script>

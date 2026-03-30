@@ -25,7 +25,7 @@ from shared.config import (
 from .api_client import create_kiosk_remote
 from .chat_screen import ChatHandler
 from .checkin_screen import LocationHandler
-from .events_handler import EventsHandler
+from .events_handler import EventsHandler, build_schedule_html
 from .health_screen import HealthHandler
 from .temperature_sensor import TemperatureSensor
 
@@ -64,7 +64,7 @@ class KioskBridge:
         self._app._print_emergency()
 
     def refresh_events(self):
-        """Refresh home schedule. Called from JS after event change."""
+        """Refresh home Up Next and timeline. Called from JS after event change."""
         self._app._load_home_schedule()
 
     def reload_screen(self, screen_id: str) -> None:
@@ -79,6 +79,7 @@ class KioskBridge:
             "family",
             "chat",
             "settings",
+            "medications",
             "emergency",
         ):
             self._app._navigate_to(sid)
@@ -100,24 +101,6 @@ class KioskBridge:
 
     def delete_event(self, event_id: str) -> str:
         return self._events.delete_event(event_id)
-
-    def open_add_medication_modal(self) -> None:
-        self._health.open_add_medication_modal()
-
-    def open_edit_medication_modal(self, medication_id: int) -> None:
-        self._health.open_edit_medication_modal(medication_id)
-
-    def add_medication(self, payload_json: str) -> str:
-        return self._health.add_medication(payload_json)
-
-    def update_medication(self, medication_id: int, payload_json: str) -> str:
-        return self._health.update_medication(medication_id, payload_json)
-
-    def delete_medication(self, medication_id: int) -> str:
-        return self._health.delete_medication(medication_id)
-
-    def delete_medications_batch(self, medication_ids_json: str) -> str:
-        return self._health.delete_medications_batch(medication_ids_json)
 
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
@@ -267,14 +250,17 @@ class MeridianKioskApp:
             return build_health_html(self.services, self.api_url), None
 
         if screen_name == "schedule":
-            from .events_handler import build_schedule_html
-
             return build_schedule_html(self.services, self.api_url), None
 
         if screen_name == "settings":
             from .settings_screen import build_settings_html
 
             return build_settings_html(self.services, self.api_url), None
+
+        if screen_name == "medications":
+            from .medications_screen import build_medications_html
+
+            return build_medications_html(self.services, self.api_url), None
 
         return hp.error_state("Unknown screen"), None
 

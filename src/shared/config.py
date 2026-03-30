@@ -189,6 +189,21 @@ def get_api_base_url() -> str:
     return fallback.rstrip("/")
 
 
+def get_webapp_baked_api_url() -> str:
+    """Value baked into webapp JS as __API_URL__. Empty string means same-origin /api.
+
+    Flask serves the webapp and API together; a non-empty URL that does not match the
+    browser's host (e.g. RAILWAY_PUBLIC_DOMAIN vs custom domain) drops session cookies on fetch.
+    Set WEBAPP_API_URL_BAKE when static is served from another origin than the API.
+    """
+    bake = (os.getenv("WEBAPP_API_URL_BAKE") or "").strip()
+    if not bake:
+        return ""
+    if "://" not in bake:
+        bake = f"https://{bake}"
+    return bake.rstrip("/")
+
+
 def get_railway_api_url() -> str:
     """Compatibility wrapper for legacy call sites."""
     return get_api_base_url()

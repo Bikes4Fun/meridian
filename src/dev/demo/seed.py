@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 DEMO_FAMILY_CIRCLE_ID = "F00000"
 DEMO_USER_ID = "fm_001"
 
+try:
+    from ...shared.config import get_uploads_dir
+except ImportError:
+    from shared.config import get_uploads_dir
+
 
 def get_data_dir() -> str:
     """Get the path to the demo data directory."""
@@ -51,6 +56,41 @@ def _headers(user_id: str, family_circle_id: str) -> dict:
     }
 
 
+def _make_photo_filename_resolver():
+    uploads = get_uploads_dir()
+    try:
+        names = [
+            n for n in os.listdir(uploads) if os.path.isfile(os.path.join(uploads, n))
+        ]
+    except OSError:
+        names = []
+    if not names:
+        return lambda fn: fn
+
+    by_exact = {n: n for n in names}
+    by_lower = {n.lower(): n for n in names}
+    by_stem_lower = {}
+    for n in names:
+        stem = os.path.splitext(n)[0].lower()
+        if stem and stem not in by_stem_lower:
+            by_stem_lower[stem] = n
+
+    def _resolve(fn):
+        if not fn:
+            return fn
+        if fn in by_exact:
+            return by_exact[fn]
+        low = str(fn).lower()
+        if low in by_lower:
+            return by_lower[low]
+        stem = os.path.splitext(str(fn))[0].lower()
+        if stem in by_stem_lower:
+            return by_stem_lower[stem]
+        return fn
+
+    return _resolve
+
+
 def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     """Seed data via API. Server must be running. Uses standard endpoints (users, contacts, medications, calendar, checkins)."""
     try:
@@ -62,6 +102,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     base = api_url.rstrip("/")
     fam_id = DEMO_FAMILY_CIRCLE_ID
     user_id = user_id or DEMO_USER_ID
+    resolve_photo_filename = _make_photo_filename_resolver()
 
     r = requests.get(
         f"{base}/api/family_circles/{fam_id}/medications",
@@ -85,6 +126,8 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         return False
 
     users = load_json_file("users.json")
+    for user in users:
+        user["photo_filename"] = resolve_photo_filename(user.get("photo_filename"))
     for user in users:
         r = requests.post(
             f"{base}/api/users",
@@ -110,6 +153,10 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
                 return False
 
     contacts = load_json_file("contacts.json").get("contacts", [])
+    for contact in contacts:
+        contact["photo_filename"] = resolve_photo_filename(
+            contact.get("photo_filename")
+        )
     for contact in contacts:
         r = requests.post(
             f"{base}/api/family_circles/{fam_id}/contacts",

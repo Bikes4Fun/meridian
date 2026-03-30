@@ -1,12 +1,12 @@
 /**
  * Webapp client – single JS file. Handles login, check-in, and chat.
- * API_URL replaced by server (__API_URL__).
+ * __API_URL__ replaced at build; meridian_api_base.js (shared helpers) required first.
  */
 (function () {
     'use strict';
 
     var _u = '__API_URL__';
-    var API_URL = (_u.startsWith('http') ? _u : '');
+    var API_BASE = meridianApiBaseForFetch(_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
     var _userId = null;
     var _mobileChatLoaded = false;
@@ -17,18 +17,18 @@
             return;
         }
         if (document.getElementById('appNav')) {
-            var apiBase = (API_URL || '').replace(/\/$/, '');
+            var apiBase = API_BASE || '';
             fetch(apiBase + '/api/session', { credentials: 'include' })
                 .then(function (r) {
                     if (r.status === 401) {
-                        window.location.href = '/login.html';
+                        window.location.href = meridianLoginPageWithReturn();
                         return null;
                     }
                     return r.ok ? r.json() : null;
                 })
                 .then(function (session) {
                     if (!session || !session.family_circle_id || !session.user_id) {
-                        window.location.href = '/login.html';
+                        window.location.href = meridianLoginPageWithReturn();
                         return;
                     }
                     _familyCircleId = session.family_circle_id;
@@ -39,14 +39,15 @@
                     if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = 'inline';
                     initNav();
                     initKioskAlertShortcut();
+                    initHealthShortcuts();
                     initCheckin();
                     initLogoutLink();
-                    var apiRoot = (API_URL || '').replace(/\/$/, '');
+                    var apiRoot = API_BASE || '';
                     if (window.MeridianMedications) {
                         MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
                     }
                 })
-                .catch(function () { window.location.href = '/login.html'; });
+                .catch(function () { window.location.href = meridianLoginPageWithReturn(); });
             return;
         }
         initLogoutLink();
@@ -58,8 +59,8 @@
             var familyCircleId = document.getElementById('familyCircleId').value.trim();
             var userId = document.getElementById('userId').value.trim();
             if (!familyCircleId || !userId) return;
-            var apiBase = API_URL || '';
-            fetch((apiBase ? apiBase.replace(/\/$/, '') : '') + '/api/login', {
+            var apiBase = API_BASE || '';
+            fetch(apiBase + '/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -70,7 +71,7 @@
                 return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
             })
             .then(function () {
-                window.location.href = '/';
+                window.location.href = meridianPostLoginRedirectTarget();
             })
             .catch(function (err) {
                 alert(err.message || 'Login failed');
@@ -119,7 +120,7 @@
                     btn.disabled = false;
                     return;
                 }
-                fetch(API_URL + '/api/family_circles/' + fcId + '/create_checkin', {
+                fetch((API_BASE || '') + '/api/family_circles/' + fcId + '/create_checkin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -160,7 +161,7 @@
     }
 
     function activateAlert() {
-        var url = (API_URL || '').replace(/\/$/, '') + '/api/emergency/alert';
+        var url = (API_BASE || '') + '/api/emergency/alert';
         fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -182,7 +183,7 @@
     }
 
     function cancelAlert() {
-        var url = (API_URL || '').replace(/\/$/, '') + '/api/emergency/alert';
+        var url = (API_BASE || '') + '/api/emergency/alert';
         fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -223,11 +224,14 @@
             btn.classList.add('active');
             var target = document.getElementById(targetId);
             if (target) target.classList.add('active');
-            var apiRoot = (API_URL || '').replace(/\/$/, '');
+            var apiRoot = API_BASE || '';
             if (pageId === 'events' && window.MeridianEvents) {
                 MeridianEvents.init(apiRoot, _familyCircleId, showStatus);
             }
-            if (pageId === 'health' && window.MeridianMedications) {
+            if (
+                (pageId === 'health' || pageId === 'settings') &&
+                window.MeridianMedications
+            ) {
                 MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
             }
             if (pageId === 'mobile' && !_mobileChatLoaded) {
@@ -242,13 +246,40 @@
         if (!shortcut) return;
         shortcut.addEventListener('click', function () {
             var nav = document.getElementById('appNav');
-            var healthBtn = nav && nav.querySelector('.nav-btn[data-page="health"]');
-            if (healthBtn) healthBtn.click();
+            var settingsBtn = nav && nav.querySelector('.nav-btn[data-page="settings"]');
+            if (settingsBtn) settingsBtn.click();
             setTimeout(function () {
-                var el = document.getElementById('healthKioskAlert');
+                var el = document.getElementById('settingsKioskAlert');
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 50);
         });
+    }
+
+    function initHealthShortcuts() {
+        var nav = document.getElementById('appNav');
+        if (!nav) return;
+        var healthMedsBtn = document.getElementById('healthManageMedsBtn');
+        if (healthMedsBtn) {
+            healthMedsBtn.addEventListener('click', function () {
+                var settingsBtn = nav.querySelector('.nav-btn[data-page="settings"]');
+                if (settingsBtn) settingsBtn.click();
+                setTimeout(function () {
+                    var el = document.getElementById('settingsMedsEditor');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 50);
+            });
+        }
+        var healthKioskBtn = document.getElementById('healthKioskControlsBtn');
+        if (healthKioskBtn) {
+            healthKioskBtn.addEventListener('click', function () {
+                var settingsBtn = nav.querySelector('.nav-btn[data-page="settings"]');
+                if (settingsBtn) settingsBtn.click();
+                setTimeout(function () {
+                    var el = document.getElementById('settingsKioskAlert');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 50);
+            });
+        }
     }
 
     function initCheckin() {
@@ -264,7 +295,7 @@
         var grid = document.getElementById('contactsGrid');
         var statusEl = document.getElementById('openChatStatus');
         if (!grid || !_familyCircleId) return;
-        var apiBase = (API_URL || '').replace(/\/$/, '');
+        var apiBase = API_BASE || '';
         fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/contacts', { credentials: 'include' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
@@ -337,7 +368,7 @@
         if (!link) return;
         link.addEventListener('click', function (e) {
             e.preventDefault();
-            var apiBase = (API_URL || '').replace(/\/$/, '');
+            var apiBase = API_BASE || '';
             fetch(apiBase + '/api/logout', { method: 'POST', credentials: 'include' })
                 .then(function () { window.location.href = '/login.html'; })
                 .catch(function () { window.location.href = '/login.html'; });

@@ -6,6 +6,8 @@ Reusable across screens (Family Locations, future map views).
 import json
 import logging
 
+from .api_client import fetch_photo_b64
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +42,11 @@ def get_map_markers(
         lon = home_place.get("gps_longitude")
         if lat is not None and lon is not None:
             photo_src = (
-                loc_svc.fetch_photo(f"{base}/api/users/{kiosk_user_id}/photo")
+                fetch_photo_b64(
+                    f"{base}/api/users/{kiosk_user_id}/photo",
+                    loc_svc._session,
+                    loc_svc._headers,
+                )
                 if base
                 else None
             )
@@ -67,7 +73,11 @@ def get_map_markers(
             loc = c.get("location_name") or ""
             user_id = c.get("user_id") or ""
             photo_src = (
-                loc_svc.fetch_photo(f"{base}/api/users/{user_id}/photo")
+                fetch_photo_b64(
+                    f"{base}/api/users/{user_id}/photo",
+                    loc_svc._session,
+                    loc_svc._headers,
+                )
                 if base and user_id
                 else None
             )

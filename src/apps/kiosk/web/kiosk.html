@@ -6,19 +6,33 @@
   <title>Meridian Kiosk</title>
   <link rel="stylesheet" href="/shared/css/base.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="kiosk.css">
 </head>
 <body>
-  <nav id="kiosk-nav">
-    <button class="nav-tab" data-screen="home">Home</button>
-    <button class="nav-tab" data-screen="emergency">Emergency</button>
-    <button class="nav-tab" data-screen="family">Family</button>
-    <button class="nav-tab" data-screen="chat">Chat</button>
+  <nav id="kiosk-nav" aria-label="Main">
+    <button type="button" class="nav-tab" data-screen="home">Home</button>
+    <button type="button" class="nav-tab" data-screen="schedule">Schedule</button>
+    <button type="button" class="nav-tab" data-screen="family">Family</button>
+    <button type="button" class="nav-tab" data-screen="chat">Chat</button>
   </nav>
-  <div id="screen-content"><!-- Python injects screen HTML here --></div>
+  <div id="screen-content" role="main"><!-- Python injects screen HTML here --></div>
+  <nav id="kiosk-footer" aria-label="More">
+    <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="settings">Settings</button>
+    <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="health">Health</button>
+    <button type="button" class="footer-emergency-btn" data-screen="emergency" aria-label="Emergency" title="Emergency">
+      <svg class="footer-emergency-btn__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </button>
+  </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="/meridian_medications_inline.js"></script>
   <script src="map_widget.js"></script>
+  <script src="kiosk_medications_embed.js"></script>
   <script src="kiosk.js"></script>
 </body>
 </html>

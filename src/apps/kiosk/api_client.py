@@ -12,7 +12,7 @@ from typing import Any, Optional, Tuple
 import requests
 
 try:
-    from shared.interfaces import ServiceResult
+    from ...shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
 
@@ -64,10 +64,6 @@ def _get(
     session: Optional["requests.Session"] = None,
 ) -> Tuple[bool, Any, Optional[str]]:
     try:
-        import requests
-    except ImportError:
-        return False, None, "requests not installed"
-    try:
         logger.info(f"API GET {url}")
         client = session if session else requests
         r = client.get(url, timeout=timeout, headers=headers or {})
@@ -94,11 +90,7 @@ def _request(
     session: Optional["requests.Session"] = None,
     json_body: Optional[dict] = None,
 ) -> Tuple[bool, Any, Optional[str]]:
-    """Shared HTTP request. Returns (ok, data, err). Used by _calendar_request and location/checkin."""
-    try:
-        import requests
-    except ImportError:
-        return False, None, "requests not installed"
+    """Shared HTTP request. Returns (ok, data, err). Used by _api_write_request and location/checkin."""
     try:
         logger.info(f"API {method} {url}")
         client = session if session else requests
@@ -133,10 +125,6 @@ def _get_raw(
 ) -> Tuple[bool, Optional[bytes], Optional[str]]:
     """GET URL and return response body as bytes (e.g. for PDF)."""
     try:
-        import requests
-    except ImportError:
-        return False, None, "requests not installed"
-    try:
         logger.info(f"API GET {url} (bytes)")
         client = session if session else requests
         r = client.get(url, timeout=timeout, headers=headers or {})
@@ -152,7 +140,7 @@ class LocalTimeService:
     """Time from the device (no server call)."""
 
     def __init__(self, base_url: str):
-        self._base = base_url.rstrip("/")
+        pass
 
     def get_time(self) -> str:
         return datetime.now().strftime("%-I:%M %p").replace(" 0", " ").lstrip()
@@ -160,13 +148,22 @@ class LocalTimeService:
     def get_dayof_week(self) -> str:
         return datetime.now().strftime("%A")
 
+    def get_day_period(self) -> tuple[str, str]:
+        """Human label + sprite key (morning|noon|evening|night); same buckets as clock art."""
+        h = datetime.now().hour
+        if 5 <= h < 11:
+            return ("Morning", "morning")
+        if 11 <= h < 14:
+            return ("Midday", "noon")
+        if 14 <= h < 18:
+            return ("Evening", "evening")
+        return ("Night", "night")
+
     def get_am_pm(self) -> str:
-        hour = datetime.now().hour
-        if hour < 12:
-            return "Morning"
-        if hour < 17:
-            return "Afternoon"
-        return "Evening"
+        return self.get_day_period()[0]
+
+    def get_clock_date_line(self) -> str:
+        return f"{self.get_month_day()}, {self.get_year()}"
 
     def get_date(self) -> str:
         return datetime.now().strftime("%B %-d, %Y").replace(" 0", " ").lstrip()
@@ -240,7 +237,7 @@ class RemoteCalendarService:
 
     def add_event(self, payload: dict) -> Any:
         """POST new event. Shared by kiosk, future mobile client, etc."""
-        return _calendar_request(
+        return _api_write_request(
             "POST",
             f"{self._base}/api/family_circles/{self._fc_id}/calendar/events",
             self._headers,
@@ -251,7 +248,7 @@ class RemoteCalendarService:
     def update_event(self, event_id: str, payload: dict) -> Any:
         """PUT event. Shared by kiosk, webapp, mobile, etc."""
         quoted = urllib.parse.quote(event_id, safe="")
-        return _calendar_request(
+        return _api_write_request(
             "PUT",
             f"{self._base}/api/family_circles/{self._fc_id}/calendar/events/{quoted}",
             self._headers,
@@ -262,7 +259,7 @@ class RemoteCalendarService:
     def delete_event(self, event_id: str) -> Any:
         """DELETE event. Shared by kiosk, webapp, mobile, etc."""
         quoted = urllib.parse.quote(event_id, safe="")
-        return _calendar_request(
+        return _api_write_request(
             "DELETE",
             f"{self._base}/api/family_circles/{self._fc_id}/calendar/events/{quoted}",
             self._headers,
@@ -270,7 +267,7 @@ class RemoteCalendarService:
         )
 
 
-def _calendar_request(
+def _api_write_request(
     method: str,
     url: str,
     headers: dict,
@@ -312,7 +309,7 @@ class RemoteMedicationService:
 
     def add_medication(self, payload: dict) -> Any:
         """POST new medication. Payload: name, medication_times, dosage?"""
-        return _calendar_request(
+        return _api_write_request(
             "POST",
             f"{self._base}/api/family_circles/{self._fc_id}/medications",
             self._headers,
@@ -331,7 +328,7 @@ class RemoteMedicationService:
         return ServiceResult.success_result(data)
 
     def update_medication(self, medication_id: int, payload: dict) -> Any:
-        return _calendar_request(
+        return _api_write_request(
             "PUT",
             f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
             self._headers,
@@ -340,7 +337,7 @@ class RemoteMedicationService:
         )
 
     def delete_medication(self, medication_id: int) -> Any:
-        return _calendar_request(
+        return _api_write_request(
             "DELETE",
             f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}",
             self._headers,
@@ -350,7 +347,7 @@ class RemoteMedicationService:
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
     ) -> Any:
-        return _calendar_request(
+        return _api_write_request(
             "POST",
             f"{self._base}/api/family_circles/{self._fc_id}/medications/{medication_id}/mark-taken",
             self._headers,
@@ -512,10 +509,6 @@ class RemoteContactService:
             return ServiceResult.error_result(err or "contacts request failed")
         return ServiceResult.success_result(data if data is not None else [])
 
-    def fetch_photo(self, url: str) -> Optional[str]:
-        """Fetch any photo URL; returns data URI or None."""
-        return fetch_photo_b64(url, self._session, self._headers)
-
 
 class RemoteLocationService:
     def __init__(
@@ -529,10 +522,6 @@ class RemoteLocationService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
-
-    def fetch_photo(self, url: str) -> Optional[str]:
-        """Fetch any photo URL; returns data URI or None."""
-        return fetch_photo_b64(url, self._session, self._headers)
 
     def get_checkins(self, family_circle_id: Optional[str] = None) -> Any:
         fc_id = family_circle_id if family_circle_id is not None else self._fc_id

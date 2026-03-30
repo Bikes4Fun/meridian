@@ -25,15 +25,15 @@ from shared.config import (
 from .api_client import create_kiosk_remote
 from .chat_screen import ChatHandler
 from .checkin_screen import LocationHandler
-from .events_handler import EventsHandler
-from .medications_screen import MedicationsHandler
+from .events_handler import EventsHandler, build_schedule_html
+from .health_screen import HealthHandler
 from .temperature_sensor import TemperatureSensor
 
 logger = logging.getLogger(__name__)
 
 NAV_BUTTONS = [
     {"text": "Home", "screen": "home"},
-    {"text": "Emergency", "screen": "emergency"},
+    {"text": "Schedule", "screen": "schedule"},
     {"text": "Family", "screen": "family"},
     {"text": "Chat", "screen": "chat"},
 ]
@@ -46,7 +46,7 @@ class KioskBridge:
         self._app = app
         self._chat = ChatHandler(app)
         self._events = EventsHandler(app)
-        self._medications = MedicationsHandler(app)
+        self._health = HealthHandler(app)
         self._location = LocationHandler(app)
 
     def navigate(self, screen_name: str):
@@ -64,17 +64,25 @@ class KioskBridge:
         self._app._print_emergency()
 
     def refresh_events(self):
-        """Refresh home schedule. Called from JS after event change."""
+        """Refresh home Up Next and timeline. Called from JS after event change."""
         self._app._load_home_schedule()
 
-    def refresh_screen(self, screen_name: str):
-        """Refresh current screen (home, medications, family). Called from JS after med taken or Refresh button."""
-        if screen_name == "home":
+    def reload_screen(self, screen_id: str) -> None:
+        """Rebuild screen HTML from the server (same ids as data-screen on top nav or footer—no separate footer API)."""
+        sid = (screen_id or "").strip()
+        if sid == "home":
             self._app._load_home_schedule()
-        elif screen_name == "medications":
-            self._app._navigate_to("medications")
-        elif screen_name == "family":
-            self._app._navigate_to("family")
+            return
+        if sid in (
+            "health",
+            "schedule",
+            "family",
+            "chat",
+            "settings",
+            "medications",
+            "emergency",
+        ):
+            self._app._navigate_to(sid)
 
     def open_add_event_modal(self) -> None:
         self._events.open_add_event_modal()
@@ -94,25 +102,10 @@ class KioskBridge:
     def delete_event(self, event_id: str) -> str:
         return self._events.delete_event(event_id)
 
-    def open_add_medication_modal(self) -> None:
-        self._medications.open_add_medication_modal()
-
-    def open_edit_medication_modal(self, medication_id: int) -> None:
-        self._medications.open_edit_medication_modal(medication_id)
-
-    def add_medication(self, payload_json: str) -> str:
-        return self._medications.add_medication(payload_json)
-
-    def update_medication(self, medication_id: int, payload_json: str) -> str:
-        return self._medications.update_medication(medication_id, payload_json)
-
-    def delete_medication(self, medication_id: int) -> str:
-        return self._medications.delete_medication(medication_id)
-
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
-        return self._medications.mark_medication_taken(medication_id, time_slot, taken)
+        return self._health.mark_medication_taken(medication_id, time_slot, taken)
 
     def snooze_stove_temp(self) -> None:
         """Snooze stove warnings and clear emergency alert (same POST as webapp cancel)."""
@@ -251,15 +244,23 @@ class MeridianKioskApp:
                 None,
             )
 
+        if screen_name == "health":
+            from .health_screen import build_health_html
+
+            return build_health_html(self.services, self.api_url), None
+
+        if screen_name == "schedule":
+            return build_schedule_html(self.services, self.api_url), None
+
+        if screen_name == "settings":
+            from .settings_screen import build_settings_html
+
+            return build_settings_html(self.services, self.api_url), None
+
         if screen_name == "medications":
             from .medications_screen import build_medications_html
 
             return build_medications_html(self.services, self.api_url), None
-
-        if screen_name == "schedule":
-            from .events_handler import build_schedule_html
-
-            return build_schedule_html(self.services, self.api_url), None
 
         return hp.error_state("Unknown screen"), None
 
@@ -282,15 +283,29 @@ class MeridianKioskApp:
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
 
     def _refresh_clock(self):
-        """Full clock update: day, date, year, time, time-of-day."""
+        """Full clock update: day, date line, time, period label + sprite."""
         time_svc = self.services.get("time_service")
         if not time_svc:
             return
         self._eval_el("clock-day", time_svc.get_dayof_week().upper())
-        self._eval_el("clock-date", time_svc.get_month_day())
-        self._eval_el("clock-year", time_svc.get_year())
+        if getattr(time_svc, "get_clock_date_line", None):
+            self._eval_el("clock-date", time_svc.get_clock_date_line())
+        else:
+            self._eval_el(
+                "clock-date",
+                f"{time_svc.get_month_day()}, {time_svc.get_year()}",
+            )
         self._eval_el("clock-time", time_svc.get_time())
-        self._eval_el("clock-period", time_svc.get_am_pm().upper())
+        self._eval_clock_period(time_svc)
+
+    def _eval_clock_period(self, time_svc) -> None:
+        if getattr(time_svc, "get_day_period", None):
+            label, sprite = time_svc.get_day_period()
+            self._eval(
+                f"updateClockPeriod({json.dumps(label.upper())}, {json.dumps(sprite)})"
+            )
+        else:
+            self._eval_el("clock-period", time_svc.get_am_pm().upper())
 
     def _eval_el(self, el_id: str, content: str):
         """Update element by id."""
@@ -304,7 +319,7 @@ class MeridianKioskApp:
             if not time_svc:
                 continue
             self._eval_el("clock-time", time_svc.get_time())
-            self._eval_el("clock-period", time_svc.get_am_pm().upper())
+            self._eval_clock_period(time_svc)
 
     def _start_temp_push(self):
         """Push stove temperature to UI and post/clear emergency alert via server (same as webapp)."""

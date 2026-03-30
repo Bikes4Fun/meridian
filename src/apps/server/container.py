@@ -18,6 +18,7 @@ from .database_services.care_recipient import CareRecipientService
 from .database_services.family import FamilyService
 from .database_services.push_notification import PushNotificationService
 from .database_services.sendbird import SendbirdService
+from .database_services.photo_upload_service import PhotoUploadService
 
 
 class ServiceContainer:
@@ -106,6 +107,13 @@ class ServiceContainer:
                 self._get_database_manager()
             )
         return self._services["sendbird_service"]
+
+    def get_photo_upload_service(self):
+        if "photo_upload_service" not in self._services:
+            self._services["photo_upload_service"] = PhotoUploadService(
+                self.get_user_service()
+            )
+        return self._services["photo_upload_service"]
 
 
 def create_service_container(db_path: str = "meridian_kiosk.db") -> ServiceContainer:

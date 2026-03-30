@@ -2,9 +2,6 @@
 Emergency screen: fetches data, shapes contacts, builds form-style layout.
 """
 
-from .temperature_sensor import STOVE_SNOOZE_MINUTES
-
-
 def _form_row_html(label_text: str, value_text: str) -> str:
     """One labeled row for HTML. label (caption), value (body_large)."""
     import html
@@ -26,7 +23,11 @@ def _section_bar_html(title: str, bar_color_hex: str = "#4080d9") -> str:
 
 def build_emergency_html(services, api_url: str) -> str:
     """Build emergency screen HTML for pywebview."""
+    import html as html_mod
+    import urllib.parse
+
     from . import html_primitives as hp
+    from .api_client import fetch_photo_b64
 
     emergency_svc = services.get("emergency_service")
     if not emergency_svc:
@@ -43,10 +44,12 @@ def build_emergency_html(services, api_url: str) -> str:
     patient_photo_src = None
     if care_recipient_user_id:
         contact_svc = services.get("contact_service")
-        if contact_svc and getattr(contact_svc, "fetch_photo", None):
+        if contact_svc:
             base = api_url.rstrip("/")
-            patient_photo_src = contact_svc.fetch_photo(
-                f"{base}/api/users/{care_recipient_user_id}/photo"
+            patient_photo_src = fetch_photo_b64(
+                f"{base}/api/users/{care_recipient_user_id}/photo",
+                contact_svc._session,
+                contact_svc._headers,
             )
     e_contacts = {
         "contacts": e_data.get("emergency_contacts") or [],
@@ -64,7 +67,6 @@ def build_emergency_html(services, api_url: str) -> str:
     if patient_photo_src:
         patient_name = patient_data.get("name") or "Patient"
         initial = (patient_name or "?")[0].upper()
-        import html as html_mod
 
         html_parts.append(
             f'<div class="emergency-patient-photo">'
@@ -75,6 +77,19 @@ def build_emergency_html(services, api_url: str) -> str:
     html_parts.append(_form_row_html("DOB", patient_data.get("dob")))
     dnr = medical_data.get("dnr", False)
     html_parts.append(_form_row_html("CODE STATUS", "DNR" if dnr else "FULL CODE"))
+    fc_id = (e_data.get("family_circle_id") or "").strip()
+    dnr_doc = (e_data.get("dnr_document_path") or "").strip()
+    if dnr_doc and care_recipient_user_id and fc_id:
+        base = api_url.rstrip("/")
+        doc_url = (
+            f"{base}/api/family_circles/{urllib.parse.quote(fc_id, safe='')}"
+            f"/care-recipients/{urllib.parse.quote(care_recipient_user_id, safe='')}/dnr-document"
+        )
+        url_esc = html_mod.escape(doc_url, quote=True)
+        html_parts.append(
+            f'<div class="form-row"><div class="label">POLST / DNR DOCUMENT:</div>'
+            f'<div class="value kiosk-body-large"><a href="{url_esc}" target="_blank" rel="noopener">Open document</a></div></div>'
+        )
     allergies = medical_data.get("allergies") or []
     html_parts.append(
         _form_row_html("ALLERGIES", ", ".join(allergies) if allergies else None)
@@ -104,13 +119,5 @@ def build_emergency_html(services, api_url: str) -> str:
 
     print_js = "pywebview.api.print_emergency()"
     html_parts.append(hp.kiosk_button("Print Emergency Document", print_js))
-
-    html_parts.append(
-        hp.kiosk_button(
-            f"Stove false alarm — snooze {STOVE_SNOOZE_MINUTES}m",
-            "pywebview.api.snooze_stove_temp()",
-            small=True,
-        )
-    )
 
     return hp.panel("".join(html_parts))

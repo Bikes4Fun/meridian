@@ -1,6 +1,8 @@
 # Meridian
 
-![Meridian banner](assets/icons/banner_logo.png)
+<p align="center">
+  <img src="assets/icons/banner_logo.png" alt="Meridian banner" width="420">
+</p>
 
 
 A large-format family command center for patients living at home with mild-to-moderate cognitive decline and their families.
@@ -44,17 +46,23 @@ As such, anyone with progressive cognitive decline who is still living at home i
 
 Development status as of March 22, 2026
 
-**Kiosk home screen**
+### Kiosk home screen
 
-![image of Kiosk home](assets/examples/kiosk%20home%20march%2022.png)
+<p align="center">
+  <img src="assets/examples/kiosk%20home%20march%2022.png" alt="Kiosk home screen" width="400">
+</p>
 
-**Emergency / ICE screen and webapp alert**
+### Emergency / ICE screen and webapp alert
 
-![image of Emergency alert](assets/examples/kiosk%20running%20emergency%20alert%20with%20webapp%20button%20displayed.png)
+<p align="center">
+  <img src="assets/examples/kiosk%20running%20emergency%20alert%20with%20webapp%20button%20displayed.png" alt="Emergency ICE screen with webapp alert controls" width="680">
+</p>
 
-**Family chat**
+### Family chat
 
-![image of Family chat](assets/examples/kiosk%20family%20chat%20screen.png)
+<p align="center">
+  <img src="assets/examples/kiosk%20family%20chat%20screen.png" alt="Family chat screen" width="400">
+</p>
 
 > *Printed POLST PDF* (coming soon)
 

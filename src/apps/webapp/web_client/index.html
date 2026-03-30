@@ -1,55 +1,127 @@
 <!DOCTYPE html>
+<!-- Home page: main caregiver dashboard after sign-in (default route /). -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Check-In</title>
+    <title>Meridian · Family care</title>
     <link rel="stylesheet" href="/shared/css/base.css">
     <link rel="stylesheet" href="/style.css">
 </head>
-<body class="pending">
+<body class="pending app-dashboard">
     <div id="appPending">Checking session…</div>
-    <div id="appContent">
-    <nav id="appNav" class="app-nav">
-        <button type="button" class="nav-btn active" data-page="checkin">Check-In</button>
-        <button type="button" class="nav-btn" data-page="events">Events</button>
-        <button type="button" class="nav-btn" data-page="medications">Medications</button>
-        <button type="button" class="nav-btn" data-page="alert">Alert</button>
-    </nav>
-    <div id="pageCheckin" class="page active">
-    <div id="chatSection">
-        <h2>Chat</h2>
-        <p style="font-size: 14px; color: #666;">Choose a contact to chat with. Opens in a separate window.</p>
-        <div id="contactsSection">
-            <div id="contactsGrid"></div>
-        </div>
-        <p id="openChatStatus"></p>
-        <div id="messages"></div>
-        <div id="chatSendRow">
-            <input type="text" id="chatMsgInput" placeholder="Type a message…">
-            <button type="button" id="chatSendBtn">Send</button>
-        </div>
+    <div id="appContent" class="app-shell">
+        <header class="app-masthead">
+            <div class="masthead-inner">
+                <div class="masthead-top">
+                    <div class="masthead-brand-row">
+                        <a href="/" class="masthead-logo-link" aria-label="Meridian home">
+                            <img src="/brand/logo-banner.png" alt="Meridian" class="masthead-logo">
+                        </a>
+                        <button type="button" id="kioskAlertShortcutBtn" class="kiosk-alert-shortcut" aria-label="Jump to kiosk emergency alert" title="Kiosk emergency alert"></button>
+                    </div>
+                    <div class="masthead-session">
+                        <span class="masthead-session__note">Signed in</span>
+                        <a href="/login.html" class="app-link app-topbar-login">Log in</a>
+                        <span class="masthead-session__sep" aria-hidden="true">·</span>
+                        <a href="#" id="logoutLink" class="app-link app-link--muted">Log out</a>
+                    </div>
+                </div>
+                <nav id="appNav" class="app-nav app-nav--tabs" aria-label="Main sections">
+                    <div class="app-nav__primary">
+                        <button type="button" class="nav-btn active" data-page="health">Patient health data</button>
+                        <button type="button" class="nav-btn" data-page="events">Events</button>
+                        <button type="button" class="nav-btn" data-page="settings">Settings</button>
+                        <button type="button" class="nav-btn" data-page="mobile">Mobile</button>
+                    </div>
+                </nav>
+            </div>
+        </header>
+        <main class="app-main">
+            <div class="app-page-stack">
+            <div id="pageHealth" class="page active">
+                <h1 class="page-title">Patient health data</h1>
+                <p class="muted page-lead">POLST / emergency info, medications, and related records in one place.</p>
+                <section class="card card--pad health-section">
+                    <h2 class="page-section-title">POLST &amp; emergency (ICE)</h2>
+                    <p class="muted page-lead page-lead--tight">Legal preferences, contacts, and the printable emergency document.</p>
+                    <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
+                    <div class="event-card__actions">
+                        <button id="healthManageMedsBtn" type="button" class="btn-inline">Manage medications</button>
+                        <button id="healthKioskControlsBtn" type="button" class="btn-inline">Kiosk controls</button>
+
+                    </div>
+                </section>
+                <section class="card card--pad health-section health-section--placeholder">
+                    <h2 class="page-section-title">Medication history</h2>
+                    <p class="muted">A log of when doses were recorded will go here.</p>
+                </section>
+            </div>
+            <div id="pageEvents" class="page"></div>
+            <div id="pageSettings" class="page">
+                <h1 class="page-title">Settings</h1>
+                <p class="muted page-lead">Account controls for the primary family manager. Sections below are placeholders until each area is built.</p>
+                <div class="settings-grid">
+                    <section class="settings-card card card--pad">
+                        <h2 class="settings-card__title">Permissions &amp; family access</h2>
+                        <p class="settings-card__body muted">Invite and remove members, roles (manager vs viewer), and who can edit meds, calendar, or trigger alerts.</p>
+                        <span class="settings-card__badge">Coming later</span>
+                    </section>
+                    <section class="settings-card card card--pad">
+                        <h2 class="settings-card__title">HIPAA &amp; activity log</h2>
+                        <p class="settings-card__body muted">Exportable access and change history for compliance (who viewed or changed health-related data and when).</p>
+                        <span class="settings-card__badge">Coming later</span>
+                    </section>
+                    <section class="settings-card card card--pad">
+                        <h2 class="settings-card__title">Kiosk &amp; TV</h2>
+                        <p class="settings-card__body muted">What the person at home can open on the kiosk (screens, chat, map, emergency), brightness or idle behavior, and safe defaults.</p>
+                        <section id="settingsKioskAlert" class="alert-panel alert-panel--compact">
+                            <h3 class="page-section-title page-section-title--minor">Kiosk emergency alert</h3>
+                            <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
+                            <div class="alert-actions alert-actions--compact">
+                                <button id="alertBtn" type="button" class="btn-alert btn-alert--sm">Alert mode</button>
+                                <button id="cancelAlertBtn" type="button" class="btn-secondary-lg btn-secondary-lg--sm">Cancel alert</button>
+                            </div>
+                        </section>
+                    </section>
+                    <section class="settings-card card card--pad">
+                        <h2 class="settings-card__title">Medications</h2>
+                        <p class="settings-card__body muted">Add, remove, or change meds, dosage, frequency, times, and RxCUI. Saves sync with the ICE profile and the kiosk schedule.</p>
+                        <div id="settingsMedsEditor"></div>
+                    </section>
+                </div>
+            </div>
+            <div id="pageMobile" class="page">
+                <p class="mobile-strip-intro muted">For use on a phone — same features will live in the mobile app.</p>
+                <section class="checkin-block card card--pad card--hero">
+                    <h1 class="page-title">Family Check-In</h1>
+                    <p class="muted page-lead">Share your location so the family map on the kiosk stays up to date.</p>
+                    <label class="field-label visually-hidden" for="notes">Notes for family (optional)</label>
+                    <input type="text" id="notes" placeholder="Details / notes (optional, e.g. note for family)" autocomplete="off">
+                    <button id="checkinBtn" type="button" class="btn-primary-lg">Check in now</button>
+                </section>
+                <section id="chatSection" class="card card--pad card--secondary">
+                    <h2 class="page-section-title page-section-title--minor">Chat</h2>
+                    <p class="muted page-lead page-lead--tight">Opens in a separate window.</p>
+                    <div id="contactsSection">
+                        <div id="contactsGrid"></div>
+                    </div>
+                    <p id="openChatStatus" class="open-chat-status"></p>
+                    <div id="messages"></div>
+                    <div id="chatSendRow">
+                        <input type="text" id="chatMsgInput" placeholder="Type a message…" aria-label="Message text">
+                        <button type="button" id="chatSendBtn" class="btn-chat-send">Send</button>
+                    </div>
+                </section>
+            </div>
+            </div>
+
+            <div id="status" class="status-stack" role="status" aria-live="polite"></div>
+        </main>
     </div>
 
-    <h1>📍 Family Check-In</h1>
-    <p style="font-size: 14px; color: #666;"><a href="/login.html">Log in</a> · <a href="#" id="logoutLink" style="display: none;">Log out</a></p>
-    
-    <input type="text" id="notes" placeholder="Details / Notes (optional, e.g. note for family)">
-    
-    <button id="checkinBtn" type="button">Check In Now</button>
-    </div>
-    <div id="pageEvents" class="page"></div>
-    <div id="pageMedications" class="page"></div>
-    <div id="pageAlert" class="page">
-    <h2>Alert TV</h2>
-    <p style="color: #666; font-size: 14px;">Force the TV to show the emergency screen with flashing border.</p>
-    <button id="alertBtn" type="button">Alert Mode</button>
-    <button id="cancelAlertBtn" type="button">Cancel Alert</button>
-    </div>
-
-    <div id="status"></div>
-    </div>
-
+    <script src="/meridian_api_base.js"></script>
+    <script src="/meridian_medications_inline.js"></script>
     <script src="/events.js"></script>
     <script src="/medications.js"></script>
     <script src="/app.js"></script>

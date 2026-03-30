@@ -67,7 +67,7 @@ class EmergencyService:
         meds_result = (
             self.db_manager.execute_query(
                 """
-            SELECT m.name, m.dosage, m.frequency
+            SELECT m.id, m.name, m.dosage, m.frequency, m.fda_rxcui
             FROM medications m
             WHERE m.care_recipient_user_id = ?
             ORDER BY m.name
@@ -77,14 +77,37 @@ class EmergencyService:
             if care_recipient_user_id
             else self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         )
-        medications = (
-            [
-                {"name": m["name"], "dosage": m["dosage"], "frequency": m["frequency"]}
-                for m in meds_result.data
-            ]
-            if meds_result.success and meds_result.data
-            else []
-        )
+        med_rows = meds_result.data if meds_result.success and meds_result.data else []
+        times_by_med: dict = {}
+        if med_rows:
+            med_ids = [m["id"] for m in med_rows]
+            placeholders = ",".join("?" * len(med_ids))
+            times_r = self.db_manager.execute_query(
+                f"""
+            SELECT mtt.medication_id, mt.name AS time_name
+            FROM medication_to_time mtt
+            JOIN medication_times mt ON mtt.group_id = mt.id
+            WHERE mtt.medication_id IN ({placeholders})
+            """,
+                tuple(med_ids),
+            )
+            if times_r.success and times_r.data:
+                for row in times_r.data:
+                    mid = row["medication_id"]
+                    nm = row.get("time_name")
+                    if nm:
+                        times_by_med.setdefault(mid, []).append(nm)
+        medications = [
+            {
+                "id": m["id"],
+                "name": m["name"],
+                "dosage": m["dosage"],
+                "frequency": m["frequency"],
+                "fda_rxcui": m.get("fda_rxcui"),
+                "medication_times": times_by_med.get(m["id"], []),
+            }
+            for m in med_rows
+        ]
 
         proxy_name, proxy_phone, poa_name, poa_phone = None, None, None, None
         roles_result = self.db_manager.execute_query(
@@ -124,7 +147,7 @@ class EmergencyService:
         ):
             return ServiceResult.success_result(None)
 
-        ec_r = self.contact_service.c_service_get_emergency_contacts(family_circle_id)
+        ec_r = self.contact_service.get_emergency_contacts(family_circle_id)
         emergency_contacts = (
             [asdict(c) for c in (ec_r.data or [])] if ec_r.success else []
         )
@@ -188,7 +211,7 @@ class EmergencyService:
         return ServiceResult.success_result("\n".join(lines))
 
     def e_service_get_emergency_contacts(self, family_circle_id: str) -> ServiceResult:
-        return self.contact_service.c_service_get_emergency_contacts(family_circle_id)
+        return self.contact_service.get_emergency_contacts(family_circle_id)
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:
         return self.contact_service.get_all_contacts(family_circle_id)

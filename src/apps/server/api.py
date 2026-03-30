@@ -21,11 +21,16 @@ import base64
 import hashlib
 import hmac
 import json
+import mimetypes
 import os
 import time
+import uuid
 import datetime
 import urllib.parse
 from dataclasses import asdict
+from pathlib import Path
+
+from werkzeug.utils import secure_filename
 from flask import (
     Flask,
     abort,
@@ -51,7 +56,7 @@ except ImportError:
         get_server_host,
         get_server_port,
     )
-from .emergency_pdf import build_pdf
+from .emergency_profile_pdf import build_pdf
 from .container import create_service_container
 
 try:
@@ -67,6 +72,11 @@ except ImportError:
 _alert_activated = False
 
 _ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
+
+_MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
+_DNR_UPLOAD_EXTS = frozenset(
+    {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
+)
 
 
 def _create_chat_entry_token(
@@ -135,7 +145,10 @@ def create_server_app(db_path=None):
         )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
-    app.config["SESSION_SERVER_ID"] = str(time.time())
+    # Must be identical on every worker (Railway/gunicorn); per-process time.time() breaks sessions across workers.
+    app.config["SESSION_SERVER_ID"] = hashlib.sha256(
+        (app.secret_key + ":meridian_web_session").encode()
+    ).hexdigest()[:32]
 
     def _session_valid():
         """Session is valid only if it matches current server instance (invalidates on restart)."""
@@ -182,6 +195,23 @@ def create_server_app(db_path=None):
         if request.method == "OPTIONS":
             return Response(status=204)
 
+    def _webapp_public_path(path: str) -> bool:
+        """Paths that need no session (static assets, login page, chatapp/kiosk shells)."""
+        if path in (
+            "/login.html",
+            "/app.js",
+            "/meridian_api_base.js",
+            "/style.css",
+        ):
+            return True
+        if path in ("/chatapp", "/kiosk"):
+            return True
+        if path.startswith(
+            ("/chatapp/", "/kiosk/", "/fonts/", "/shared/", "/brand/")
+        ):
+            return True
+        return False
+
     @app.before_request
     def set_user_id():
         """Resolve user_id and family_circle_id from headers or session. Fail if missing."""
@@ -199,86 +229,85 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        # Public routes: no auth required (login page, chatapp POC, kiosk static, fonts)
-        if (
-            request.path
-            in ("/login.html", "/app.js", "/events.js", "/medications.js", "/style.css")
-            or request.path in ("/chatapp", "/kiosk")
-            or request.path.startswith("/chatapp/")
-            or request.path.startswith("/kiosk/")
-            or request.path.startswith("/fonts/")
-            or request.path.startswith("/shared/")
-        ):
-            g.user_id = None
-            g.family_circle_id = None
-            return
-        # / and /index.html: require session, redirect to login if missing
-        if request.path in ("/", "/index.html"):
-            if not _session_valid():
-                session.clear()
-                return redirect("/login.html")
-            uid = session.get("user_id")
-            fid = session.get("family_circle_id")
-            if not uid or not fid:
-                return redirect("/login.html")
-            g.user_id = uid
-            g.family_circle_id = fid
-            return
-
-        # chat-session-bootstrap: new webview (kiosk, mobile) opens URL from chat-session-url; no prior cookie. Token verified in handler.
-        if request.path == "/api/chat/chat-session-bootstrap":
+        if _webapp_public_path(request.path):
             g.user_id = None
             g.family_circle_id = None
             return
 
-        # /api/session: session only.
-        if request.path == "/api/session":
-            if not _session_valid():
-                session.clear()
-                abort(401, "Not logged in")
-            uid = session.get("user_id")
-            fid = session.get("family_circle_id")
-            if not uid or not fid:
-                abort(401, "Not logged in")
-            g.user_id = uid
-            g.family_circle_id = fid
-            return
+        # All /api/*: JSON clients — 401 if unauthenticated (no redirect)
+        if request.path.startswith("/api"):
+            # chat-session-bootstrap: new webview; token verified in handler.
+            if request.path == "/api/chat/chat-session-bootstrap":
+                g.user_id = None
+                g.family_circle_id = None
+                return
 
-        # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
-        if request.path == "/api/chat/chat-session-url":
-            uid = request.headers.get("X-User-Id")
-            fid = request.headers.get("X-Family-Circle-Id")
-            if (not uid or not fid) and _session_valid():
-                uid = uid or session.get("user_id")
-                fid = fid or session.get("family_circle_id")
-            elif not uid or not fid:
-                session.clear()
-            if not uid or not fid:
-                abort(
-                    401,
-                    "Log in at /login first or provide X-User-Id and X-Family-Circle-Id",
-                )
-            g.user_id = uid
-            g.family_circle_id = fid
-            return
-        # API: headers or session
-        user_id = request.headers.get("X-User-Id")
-        family_circle_id = request.headers.get("X-Family-Circle-Id")
-        if not user_id or not family_circle_id:
-            if _session_valid():
+            # /api/session: session only.
+            if request.path == "/api/session":
+                if not _session_valid():
+                    session.clear()
+                    abort(401, "Not logged in")
                 uid = session.get("user_id")
                 fid = session.get("family_circle_id")
-                if uid and fid:
-                    user_id = uid
-                    family_circle_id = fid
-            else:
-                session.clear()
-        if not user_id:
-            abort(401, "X-User-Id header required")
-        if not family_circle_id:
-            abort(401, "X-Family-Circle-Id header required")
-        g.user_id = user_id
-        g.family_circle_id = family_circle_id
+                if not uid or not fid:
+                    abort(401, "Not logged in")
+                g.user_id = uid
+                g.family_circle_id = fid
+                return
+
+            # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
+            if request.path == "/api/chat/chat-session-url":
+                uid = request.headers.get("X-User-Id")
+                fid = request.headers.get("X-Family-Circle-Id")
+                if (not uid or not fid) and _session_valid():
+                    uid = uid or session.get("user_id")
+                    fid = fid or session.get("family_circle_id")
+                elif not uid or not fid:
+                    session.clear()
+                if not uid or not fid:
+                    abort(
+                        401,
+                        "Log in at /login first or provide X-User-Id and X-Family-Circle-Id",
+                    )
+                g.user_id = uid
+                g.family_circle_id = fid
+                return
+            # API: headers or session
+            user_id = request.headers.get("X-User-Id")
+            family_circle_id = request.headers.get("X-Family-Circle-Id")
+            if not user_id or not family_circle_id:
+                if _session_valid():
+                    uid = session.get("user_id")
+                    fid = session.get("family_circle_id")
+                    if uid and fid:
+                        user_id = uid
+                        family_circle_id = fid
+                else:
+                    session.clear()
+            if not user_id:
+                abort(401, "X-User-Id header required")
+            if not family_circle_id:
+                abort(401, "X-Family-Circle-Id header required")
+            g.user_id = user_id
+            g.family_circle_id = family_circle_id
+            return
+
+        # Remaining routes: webapp HTML and other non-API paths — session required (browser redirect)
+        if not _session_valid():
+            session.clear()
+            dest = request.full_path or "/"
+            return redirect(
+                "/login.html?next=" + urllib.parse.quote(dest, safe="")
+            )
+        uid = session.get("user_id")
+        fid = session.get("family_circle_id")
+        if not uid or not fid:
+            dest = request.full_path or "/"
+            return redirect(
+                "/login.html?next=" + urllib.parse.quote(dest, safe="")
+            )
+        g.user_id = uid
+        g.family_circle_id = fid
 
     app.config["container"] = container
 
@@ -337,6 +366,7 @@ def create_server_app(db_path=None):
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
     care_recipient_svc = container.get_care_recipient_service()
+    photo_upload_svc = container.get_photo_upload_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -554,6 +584,103 @@ def create_server_app(db_path=None):
         uploads = get_uploads_dir()
         return send_from_directory(uploads, fn, as_attachment=False)
 
+    @app.route(
+        "/api/family_circles/<family_circle_id>/care-recipient-photo",
+        methods=["POST"],
+    )
+    def api_care_recipient_photo(family_circle_id):
+        """Multipart: care_recipient_user_id + photo. Writes uploads basename; updates users + care_recipients."""
+        _require_family_access(family_circle_id)
+        cr_id = (request.form.get("care_recipient_user_id") or "").strip()
+        up = request.files.get("photo")
+        if not cr_id or not up or not (up.filename or "").strip():
+            return jsonify({"error": "care_recipient_user_id and photo required"}), 400
+
+        data, err, status = photo_upload_svc.apply_care_recipient_profile_photo(
+            family_circle_id, cr_id, up, get_uploads_dir()
+        )
+        if err:
+            return jsonify({"error": err}), status
+        return jsonify({"data": data})
+
+    @app.route(
+        "/api/family_circles/<family_circle_id>/care-recipient-dnr-document",
+        methods=["POST"],
+    )
+    def api_care_recipient_dnr_document(family_circle_id):
+        """Multipart: care_recipient_user_id + document (PDF or image). Stores basename on care_recipients."""
+        _require_family_access(family_circle_id)
+        cr_id = (request.form.get("care_recipient_user_id") or "").strip()
+        up = request.files.get("document")
+        if not cr_id or not up or not (up.filename or "").strip():
+            return jsonify({"error": "care_recipient_user_id and document required"}), 400
+        if not care_recipient_svc.care_recipient_exists(family_circle_id, cr_id):
+            return jsonify({"error": "care recipient not found"}), 404
+
+        orig = secure_filename(up.filename) or "document.pdf"
+        ext = Path(orig).suffix.lower()
+        if ext not in _DNR_UPLOAD_EXTS:
+            return (
+                jsonify({"error": "allowed types: pdf, doc, docx, jpg, png, gif, webp"}),
+                400,
+            )
+        new_fn = f"{uuid.uuid4().hex}{ext}"
+
+        uploads = get_uploads_dir()
+        os.makedirs(uploads, exist_ok=True)
+        dest = os.path.join(uploads, new_fn)
+        up.save(dest)
+        if os.path.getsize(dest) > _MAX_CARE_RECIPIENT_DNR_BYTES:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            return jsonify({"error": "document too large"}), 413
+
+        old_basename = care_recipient_svc.get_dnr_document_basename(
+            family_circle_id, cr_id
+        )
+        dr = care_recipient_svc.set_dnr_document_path(
+            family_circle_id, cr_id, new_fn
+        )
+        if not dr.success:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            return jsonify({"error": dr.error}), 500
+
+        photo_upload_svc.remove_replaced_file_in_uploads_dir(
+            uploads, old_basename, new_fn
+        )
+
+        return jsonify({"data": dr.data})
+
+    @app.route(
+        "/api/family_circles/<family_circle_id>/care-recipients/<care_recipient_user_id>/dnr-document"
+    )
+    def api_serve_care_recipient_dnr_document(
+        family_circle_id, care_recipient_user_id
+    ):
+        """POLST / DNR scan for kiosk and webapp; same auth as emergency profile."""
+        _require_family_access(family_circle_id)
+        fn = care_recipient_svc.get_dnr_document_basename(
+            family_circle_id, care_recipient_user_id
+        )
+        if not fn:
+            abort(404)
+        uploads = get_uploads_dir()
+        path = os.path.join(uploads, fn)
+        if not os.path.isfile(path):
+            abort(404)
+        uploads_abs = os.path.abspath(uploads)
+        if not os.path.abspath(path).startswith(uploads_abs + os.sep):
+            abort(404)
+        mt, _ = mimetypes.guess_type(fn)
+        if not mt:
+            mt = "application/octet-stream"
+        return send_from_directory(uploads, fn, mimetype=mt, as_attachment=False)
+
     @app.route("/api/family_circles/<family_circle_id>/calendar/headers")
     def api_calendar_headers(family_circle_id):
         _require_family_access(family_circle_id)
@@ -676,6 +803,7 @@ def create_server_app(db_path=None):
             frequency=body.get("frequency"),
             notes=body.get("notes"),
             max_daily=body.get("max_daily"),
+            fda_rxcui=body.get("fda_rxcui"),
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -706,6 +834,8 @@ def create_server_app(db_path=None):
                 name,
                 medication_times,
                 dosage=body.get("dosage"),
+                frequency=body.get("frequency"),
+                fda_rxcui=body.get("fda_rxcui"),
             )
             if not r.success:
                 return jsonify({"error": r.error}), 400
@@ -737,7 +867,7 @@ def create_server_app(db_path=None):
     def api_emergency_contacts(family_circle_id):
         """Only emergency-priority contacts."""
         _require_family_access(family_circle_id)
-        r = contact_svc.c_service_get_emergency_contacts(family_circle_id)
+        r = contact_svc.get_emergency_contacts(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": [asdict(c) for c in (r.data or [])]})
@@ -946,6 +1076,19 @@ def create_server_app(db_path=None):
         def serve_login():
             return send_from_directory(_webapp_dist, "login.html")
 
+        @app.route("/ice-editor")
+        @app.route("/ice_editor.html")
+        def serve_ice_editor():
+            return send_from_directory(_webapp_dist, "ice_editor.html")
+
+        @app.route("/meridian_api_base.js")
+        def serve_meridian_api_base_js():
+            return send_from_directory(_webapp_dist, "meridian_api_base.js")
+
+        @app.route("/meridian_medications_inline.js")
+        def serve_meridian_medications_inline_js():
+            return send_from_directory(_webapp_dist, "meridian_medications_inline.js")
+
         @app.route("/app.js")
         def serve_app_js():
             return send_from_directory(_webapp_dist, "app.js")
@@ -958,9 +1101,26 @@ def create_server_app(db_path=None):
         def serve_medications_js():
             return send_from_directory(_webapp_dist, "medications.js")
 
+        @app.route("/ice_editor.js")
+        def serve_ice_editor_js():
+            return send_from_directory(_webapp_dist, "ice_editor.js")
+
         @app.route("/style.css")
         def serve_style_css():
             return send_from_directory(_webapp_dist, "style.css")
+
+        _webapp_brand = os.path.join(_webapp_dist, "brand")
+
+        @app.route("/brand/<path:path>")
+        def serve_webapp_brand(path):
+            if not os.path.isdir(_webapp_brand):
+                abort(404)
+            if path.startswith("/") or ".." in path:
+                abort(404)
+            _, ext = os.path.splitext(path)
+            if ext.lower() not in {".png", ".svg", ".webp", ".ico"}:
+                abort(404)
+            return send_from_directory(_webapp_brand, path)
 
         @app.route("/fonts/<path:path>")
         def serve_fonts(path):

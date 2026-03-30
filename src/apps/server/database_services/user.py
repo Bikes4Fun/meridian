@@ -7,6 +7,7 @@ import sqlite3
 from typing import Optional
 
 from ..database_manager import DatabaseManager
+from .saved_upload_basename import is_safe_saved_upload_basename
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -31,9 +32,30 @@ class UserService:
         if not r.success or not r.data:
             return None
         fn = (r.data[0].get("photo_filename") or "").strip()
-        if ".." in fn or "/" in fn or "\\" in fn:
+        if not fn or not is_safe_saved_upload_basename(fn):
             return None
-        return fn if fn else None
+        return fn
+
+    def set_user_photo_filename(
+        self, user_id: str, family_circle_id: str, photo_filename: Optional[str]
+    ) -> ServiceResult:
+        """Set users.photo_filename; user must be in family. Filename must be a safe basename."""
+        mem = self.db_manager.execute_query(
+            "SELECT 1 FROM user_family_circle WHERE user_id = ? AND family_circle_id = ?",
+            (user_id, family_circle_id),
+        )
+        if not mem.success or not mem.data:
+            return ServiceResult.error_result("user not in family")
+        fn = (photo_filename or "").strip()
+        if fn and not is_safe_saved_upload_basename(fn):
+            return ServiceResult.error_result("invalid photo filename")
+        u = self.db_manager.execute_update(
+            "UPDATE users SET photo_filename = ? WHERE id = ?",
+            (fn if fn else None, user_id),
+        )
+        if not u.success:
+            return u
+        return ServiceResult.success_result({"user_id": user_id, "photo_filename": fn or None})
 
     def get_display_name(self, user_id: str) -> str:
         """Get user display_name; returns user_id if not found."""

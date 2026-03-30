@@ -1,7 +1,7 @@
 /* =============================================================================
    MERIDIAN BASE – Universal design tokens and styles
    Shared by webapp, chatapp, kiosk. Override in app-specific CSS as needed.
-   Aligns with info/meridian-design-system-2.md
+   Shared tokens; webapp extends in apps/webapp (Clinical Clarity / design plan).
    ============================================================================= */
 
 /* =============================================================================
@@ -53,6 +53,12 @@
   --error-bg: #f8d7da;
   --error-text: #721c24;
   --warning: #ff8000;
+
+  /* Semantic actions (web dashboard; optional for other apps) */
+  --danger: #c0392b;
+  --danger-hover: #a93226;
+  --secondary-btn: #7f8c8d;
+  --secondary-btn-hover: #6c7a7b;
 }
 
 /* =============================================================================

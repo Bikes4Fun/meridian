@@ -10,7 +10,6 @@ import logging
 
 from . import clock_widget
 from . import events_handler
-from .temperature_sensor import STOVE_SNOOZE_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 def build_home_html(
     services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = ""
 ) -> str:
-    """Option 5: Up Next + What's Next Today + side-by-side action buttons."""
+    """Up Next, today's timeline, (Health lives in footer)."""
     from . import html_primitives as hp
 
     clock = clock_widget.build_clock_html(services)
@@ -29,27 +28,14 @@ def build_home_html(
     timeline = f"""<div class="timeline-card">
         <div class="timeline-header">WHAT'S NEXT TODAY</div>
         <div id="timeline_content" class="timeline-list">{timeline_html}</div>
-        <button type="button" class="timeline-view-btn" data-screen="schedule">View Full Schedule</button>
     </div>"""
-    actions = """<div class="home-action-row">
-        <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
-        <button type="button" class="manage-meds-btn" data-screen="medications">Manage Medications</button>
-    </div>"""
-    temp_widget = (
-        f'<div class="temp-widget-row"><div class="temp-widget">🌡 Stove: <span id="stove-temp">—</span></div>'
-        f'{hp.kiosk_button(f"Ignore stove ({STOVE_SNOOZE_MINUTES}m)", "pywebview.api.snooze_stove_temp()", small=True)}</div>'
-    )
-    return (
+    inner = (
         clock
-        + temp_widget
-        + hp.spacer(24)
         + up_next
-        + hp.spacer(16)
         + timeline
-        + hp.spacer(16)
-        + actions
         + events_handler.get_event_form_overlay_html()
     )
+    return f'<div class="home-screen">{inner}</div>'
 
 
 def load_schedule_items(services) -> tuple[list, object]:
@@ -185,17 +171,13 @@ def build_timeline_html(items: list) -> str:
         if (it.get("type") in ("med", "prn")) and it.get("med_id") is not None:
             mid = html_module.escape(str(it["med_id"]))
             slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
-            lbl = (
-                "Uncheck"
-                if done
-                else ("Take" if it.get("type") == "prn" else "Check took")
-            )
-            extra = f' <button type="button" class="med-taken-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}" style="font-size:11px;padding:2px 6px;">{lbl}</button>'
+            lbl = "Undo" if done else "Taken"
+            extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}">{lbl}</button></span>'
         elif it.get("type") == "event" and it.get("event_id"):
             eid = html_module.escape(str(it["event_id"]))
             edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
-            extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
+            extra = f'<span class="timeline-item-actions"><button type="button" class="event-edit-btn timeline-action-btn" data-event="{edata}">Edit</button><button type="button" class="event-delete-btn timeline-action-btn" data-event-id="{eid}">Delete</button></span>'
         result.append(
-            f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
+            f'<div class="{cls}"><span class="{bar_class}"></span><span class="timeline-item-main">{time_str} • {title_esc}{check}</span>{extra}</div>'
         )
     return "\n".join(result)

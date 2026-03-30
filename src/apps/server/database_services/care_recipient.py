@@ -101,6 +101,46 @@ class CareRecipientService:
             (family_circle_id, role, contact_id),
         )
 
+    def care_recipient_exists(
+        self, family_circle_id: str, care_recipient_user_id: str
+    ) -> bool:
+        """Return True when a care recipient row exists for this family/user id."""
+        r = self.db_manager.execute_query(
+            "SELECT 1 FROM care_recipients WHERE family_circle_id = ? AND care_recipient_user_id = ? LIMIT 1",
+            (family_circle_id, care_recipient_user_id),
+        )
+        return bool(r.success and r.data)
+
+    def get_dnr_document_basename(
+        self, family_circle_id: str, care_recipient_user_id: str
+    ):
+        """Return stored DNR/POLST basename for a care recipient, or None."""
+        r = self.db_manager.execute_query(
+            "SELECT dnr_document_path FROM care_recipients WHERE family_circle_id = ? AND care_recipient_user_id = ? LIMIT 1",
+            (family_circle_id, care_recipient_user_id),
+        )
+        if not r.success or not r.data:
+            return None
+        return r.data[0].get("dnr_document_path")
+
+    def set_dnr_document_path(
+        self, family_circle_id: str, care_recipient_user_id: str, dnr_document_path: str
+    ) -> ServiceResult:
+        """Update stored DNR/POLST basename for an existing care recipient row."""
+        r = self.db_manager.execute_update(
+            "UPDATE care_recipients SET dnr_document_path = ? WHERE family_circle_id = ? AND care_recipient_user_id = ?",
+            (dnr_document_path, family_circle_id, care_recipient_user_id),
+        )
+        if not r.success:
+            return r
+        return ServiceResult.success_result(
+            {
+                "family_circle_id": family_circle_id,
+                "care_recipient_user_id": care_recipient_user_id,
+                "dnr_document_path": dnr_document_path,
+            }
+        )
+
     def add_allergy(self, care_recipient_user_id: str, allergen: str) -> ServiceResult:
         """Add allergy for care recipient."""
         return self.db_manager.execute_update(

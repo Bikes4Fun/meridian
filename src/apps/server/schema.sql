@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS medications (
     name TEXT NOT NULL,
     dosage TEXT,
     frequency TEXT,
+    fda_rxcui TEXT,
     notes TEXT,
     max_daily INTEGER,
     last_taken TEXT,

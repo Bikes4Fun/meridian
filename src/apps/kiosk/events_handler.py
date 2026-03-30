@@ -1,6 +1,5 @@
 """
-Events: schedule screen (Full Schedule view) + modal/form handler.
-Builds schedule HTML (meds + events timeline) and handles add/edit/delete modal behavior.
+EventsHandler: event modals and API calls. build_schedule_html: Schedule nav (meds + events timeline).
 """
 
 import datetime
@@ -32,7 +31,7 @@ def get_event_form_overlay_html() -> str:
 
 
 def get_event_modal_html() -> str:
-    """Add Event button + overlay (for schedule screen)."""
+    """Add Event button + overlay (included in Schedule nav HTML from build_schedule_html)."""
     return """<div class="home-action-row" style="margin-top:16px;">
 <button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
 </div>""" + get_event_form_overlay_html()
@@ -216,7 +215,7 @@ class EventsHandler:
         return r.error or "failed"
 
     def _refresh_schedule_if_shown(self) -> None:
-        """If schedule screen is shown, re-navigate to refresh."""
+        """If Schedule nav is active (data-screen schedule), re-navigate to refresh."""
         self._app._eval(
             "if(document.body.dataset.screen==='schedule'&&typeof pywebview!=='undefined'&&pywebview.api&&pywebview.api.navigate)pywebview.api.navigate('schedule');"
         )

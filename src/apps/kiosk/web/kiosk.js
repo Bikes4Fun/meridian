@@ -1,16 +1,22 @@
-document.getElementById('kiosk-nav').addEventListener('click', function(e) {
-  var btn = e.target.closest('[data-screen]');
-  if (btn && typeof pywebview !== 'undefined' && pywebview.api) {
-    pywebview.api.navigate(btn.dataset.screen);
-  }
-});
+// Top nav (#kiosk-nav) and footer (#kiosk-footer): any click on a [data-screen] button calls Python navigate().
+function bindScreenNav(container) {
+  if (!container) return;
+  container.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-screen]');
+    if (btn && typeof pywebview !== 'undefined' && pywebview.api) {
+      pywebview.api.navigate(btn.dataset.screen);
+    }
+  });
+}
+bindScreenNav(document.getElementById('kiosk-nav'));
+bindScreenNav(document.getElementById('kiosk-footer'));
 
 // Cancel button: event-modal div has stopPropagation() so clicks inside the modal
-// (Cancel, form, etc.) never bubble up to screen-content. Capture phase runs first.
+// never bubble up to screen-content. Capture phase runs first.
 function handleModalCancel(e) {
-  var cancelBtn = e.target.closest('#eventFormCancel, #medFormCancel');
+  var cancelBtn = e.target.closest('#eventFormCancel');
   if (cancelBtn) {
-    var ov = document.getElementById(cancelBtn.id === 'eventFormCancel' ? 'eventFormOverlay' : 'medFormOverlay');
+    var ov = document.getElementById('eventFormOverlay');
     if (ov) ov.style.display = 'none';
     e.stopPropagation();
   }
@@ -23,26 +29,6 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     pywebview.api.open_add_event_modal();
     return;
   }
-  var addMedBtn = e.target.closest('#addMedicationBtn');
-  if (addMedBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_medication_modal) {
-    pywebview.api.open_add_medication_modal();
-    return;
-  }
-  var medEditBtn = e.target.closest('.med-edit-btn');
-  if (medEditBtn && medEditBtn.dataset.med && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_edit_medication_modal) {
-    var m = JSON.parse(medEditBtn.dataset.med);
-    if (m && m.id != null) pywebview.api.open_edit_medication_modal(m.id);
-    return;
-  }
-  var medDeleteBtn = e.target.closest('.med-delete-btn');
-  if (medDeleteBtn && medDeleteBtn.dataset.medId) {
-    if (!confirm('Delete this medication?')) return;
-    var mid = parseInt(medDeleteBtn.dataset.medId, 10);
-    var res = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.delete_medication) ? pywebview.api.delete_medication(mid) : 'Delete unavailable';
-    function done(r) { if (r !== 'ok') alert(r || 'Failed'); }
-    (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
-    return;
-  }
   var medTakenBtn = e.target.closest('.med-taken-btn');
   if (medTakenBtn && medTakenBtn.dataset.medId && medTakenBtn.dataset.medTime && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.mark_medication_taken) {
     var mid = parseInt(medTakenBtn.dataset.medId, 10);
@@ -52,8 +38,8 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     function done(r) {
       if (r === 'ok') {
         var screen = (document.body && document.body.dataset.screen) || 'home';
-        if (pywebview.api.refresh_screen) pywebview.api.refresh_screen(screen);
-        else pywebview.api.refresh_events();
+        if (pywebview.api.reload_screen) pywebview.api.reload_screen(screen);
+        else if (pywebview.api.refresh_events) pywebview.api.refresh_events();
       } else if (r) alert(r);
     }
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
@@ -77,7 +63,9 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
     return;
   }
-  var screenBtn = e.target.closest('[data-screen]');
+  // Must not use closest('[data-screen]') alone: body has data-screen from showScreen() and would
+  // match every click (inputs, checkboxes) and re-navigate → flash, no focus.
+  var screenBtn = e.target.closest('button[data-screen]');
   if (screenBtn && typeof pywebview !== 'undefined' && pywebview.api) {
     pywebview.api.navigate(screenBtn.dataset.screen);
     return;
@@ -86,47 +74,10 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     e.target.style.display = 'none';
     return;
   }
-  if (e.target.id === 'medFormOverlay') {
-    e.target.style.display = 'none';
-    return;
-  }
 });
 
 
 document.getElementById('screen-content').addEventListener('submit', function(e) {
-  if (e.target.id === 'medForm') {
-    e.preventDefault();
-    var name = (document.getElementById('medName') || {}).value || '';
-    var dosage = (document.getElementById('medDosage') || {}).value || '';
-    var medIdEl = document.getElementById('medId');
-    var medId = medIdEl && medIdEl.value ? parseInt(medIdEl.value, 10) : 0;
-    var times = [];
-    (document.querySelectorAll('#medForm input[name="med_time"]:checked') || []).forEach(function(cb) {
-      if (cb.value) times.push(cb.value);
-    });
-    if (!name || times.length === 0) {
-      alert('Name and at least one time required');
-      return;
-    }
-    var payload = { name: name, medication_times: times };
-    if (dosage) payload.dosage = dosage;
-    var result;
-    if (medId) {
-      result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.update_medication) ? pywebview.api.update_medication(medId, JSON.stringify(payload)) : 'Submit unavailable';
-    } else {
-      result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.add_medication) ? pywebview.api.add_medication(JSON.stringify(payload)) : 'Submit unavailable';
-    }
-    function done(res) {
-      if (res === 'ok') {
-        var o = document.getElementById('medFormOverlay');
-        if (o) o.style.display = 'none';
-        var f = document.getElementById('medForm');
-        if (f) f.reset();
-      } else { alert(res || 'Failed'); }
-    }
-    (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);
-    return;
-  }
   if (e.target.id !== 'eventForm') return;
   e.preventDefault();
   var title = (document.getElementById('eventTitle') || {}).value || '';
@@ -149,17 +100,39 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
   (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);
 });
 
+function updateNavActiveState(screenName) {
+  var tabs = document.querySelectorAll('#kiosk-nav [data-screen], #kiosk-footer [data-screen]');
+  tabs.forEach(function(btn) {
+    btn.classList.remove('nav-tab--active');
+    btn.removeAttribute('aria-current');
+    if (btn.dataset.screen === screenName) {
+      btn.classList.add('nav-tab--active');
+      btn.setAttribute('aria-current', 'page');
+    }
+  });
+}
+
 function showScreen(name, html) {
   var el = document.getElementById('screen-content');
   if (el) {
     el.innerHTML = html;
     document.body.dataset.screen = name;
+    updateNavActiveState(name);
+    if (typeof window.onKioskScreenShown === 'function') {
+      window.onKioskScreenShown(name);
+    }
   }
 }
 
 function updateEl(id, content) {
   var el = document.getElementById(id);
   if (el) el.innerHTML = content;
+}
+
+function updateClockPeriod(periodUpper, spritePeriod) {
+  updateEl('clock-period', periodUpper);
+  var sp = document.querySelector('.clock-period-sprite');
+  if (sp) sp.setAttribute('data-period', spritePeriod);
 }
 
 function showToast(msg) {

@@ -4,6 +4,7 @@ WHERE FUNCTIONALITY MOVED TO (client): client/remote.RemoteMedicationService cal
 REMOVAL: Required on server. Can be omitted from client deployment when SERVER_URL is set.
 """
 
+import logging
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
@@ -24,6 +25,7 @@ class TimedMedication:
     notes: Optional[str] = None
     group_time: Optional[str] = None
     id: Optional[int] = None
+    fda_rxcui: Optional[str] = None
 
 
 @dataclass
@@ -34,11 +36,13 @@ class PRNMedication:
     max_daily: Optional[int] = None
     notes: Optional[str] = None
     id: Optional[int] = None
+    fda_rxcui: Optional[str] = None
 
 
 class MedicationService:
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
+        self.logger = logging.getLogger(__name__)
         self.timed_medications: List[TimedMedication] = []
         self.prn_medications: List[PRNMedication] = []
 
@@ -65,7 +69,7 @@ class MedicationService:
         if not care_recipient_user_id:
             return
         query = """
-            SELECT m.id, m.name, m.dosage, m.taken_today, m.last_taken, mt.name as time_name, mt.time as group_time
+            SELECT m.id, m.name, m.dosage, m.fda_rxcui, m.taken_today, m.last_taken, mt.name as time_name, mt.time as group_time
             FROM medications m
             LEFT JOIN medication_to_time mtt ON m.id = mtt.medication_id
             LEFT JOIN medication_times mt ON mtt.group_id = mt.id
@@ -89,6 +93,7 @@ class MedicationService:
                 medication_groups[med_name] = {
                     "id": med_id,
                     "dosage": dosage,
+                    "fda_rxcui": (row.get("fda_rxcui") or "").strip() or None,
                     "taken_today": taken_today,
                     "last_taken": last_taken,
                     "groups": [],
@@ -117,6 +122,7 @@ class MedicationService:
                             status="taken" if prn_taken else "available",
                             last_taken=med_data.get("last_taken"),
                             id=med_id,
+                            fda_rxcui=med_data.get("fda_rxcui"),
                         )
                     )
                 else:
@@ -134,6 +140,7 @@ class MedicationService:
                                 status="done" if slot_done else "not_done",
                                 group_time=group["time"],
                                 id=med_id,
+                                fda_rxcui=med_data.get("fda_rxcui"),
                             )
                         )
             else:
@@ -148,6 +155,7 @@ class MedicationService:
         frequency: Optional[str] = None,
         notes: Optional[str] = None,
         max_daily: Optional[int] = None,
+        fda_rxcui: Optional[str] = None,
     ) -> ServiceResult:
         """Insert medication into DB and link to medication_times. Returns med id or error."""
         care_recipient_user_id = self._get_care_recipient_user_id(family_circle_id)
@@ -155,11 +163,12 @@ class MedicationService:
             return ServiceResult.error_result("No care recipient for family circle")
         if not name or not medication_times:
             return ServiceResult.error_result("name and medication_times required")
+        rx = (fda_rxcui or "").strip() or None
         result = self.db_manager.execute_insert(
             """INSERT INTO medications
-               (care_recipient_user_id, name, dosage, frequency, notes, max_daily, last_taken, taken_today)
-               VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)""",
-            (care_recipient_user_id, name, dosage, frequency, notes, max_daily),
+               (care_recipient_user_id, name, dosage, frequency, fda_rxcui, notes, max_daily, last_taken, taken_today)
+               VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)""",
+            (care_recipient_user_id, name, dosage, frequency, rx, notes, max_daily),
         )
         if not result.success:
             return ServiceResult.error_result(result.error or "Insert failed")
@@ -190,7 +199,7 @@ class MedicationService:
         if not care_recipient_user_id:
             return ServiceResult.error_result("No care recipient for family circle")
         r = self.db_manager.execute_query(
-            "SELECT name, dosage FROM medications WHERE id = ? AND care_recipient_user_id = ?",
+            "SELECT name, dosage, frequency, fda_rxcui FROM medications WHERE id = ? AND care_recipient_user_id = ?",
             (medication_id, care_recipient_user_id),
         )
         if not r.success or not r.data:
@@ -210,6 +219,8 @@ class MedicationService:
                 "id": medication_id,
                 "name": row["name"],
                 "dosage": row["dosage"] or "",
+                "frequency": row["frequency"] or "",
+                "fda_rxcui": row["fda_rxcui"] or "",
                 "medication_times": time_names,
             }
         )
@@ -221,8 +232,10 @@ class MedicationService:
         name: str,
         medication_times: List[str],
         dosage: Optional[str] = None,
+        frequency: Optional[str] = None,
+        fda_rxcui: Optional[str] = None,
     ) -> ServiceResult:
-        """Update medication name, dosage, and times."""
+        """Update medication name, dosage, frequency, fda_rxcui, and times."""
         care_recipient_user_id = self._get_care_recipient_user_id(family_circle_id)
         if not care_recipient_user_id:
             return ServiceResult.error_result("No care recipient for family circle")
@@ -234,9 +247,10 @@ class MedicationService:
         )
         if not r.success or not r.data:
             return ServiceResult.error_result("Medication not found")
+        rx = (fda_rxcui or "").strip() or None
         self.db_manager.execute_update(
-            "UPDATE medications SET name = ?, dosage = ? WHERE id = ?",
-            (name, dosage, medication_id),
+            "UPDATE medications SET name = ?, dosage = ?, frequency = ?, fda_rxcui = ? WHERE id = ?",
+            (name, dosage or "", frequency or "", rx, medication_id),
         )
         self.db_manager.execute_update(
             "DELETE FROM medication_to_time WHERE medication_id = ?", (medication_id,)
@@ -380,6 +394,7 @@ class MedicationService:
                     "time": m.time,
                     "status": m.status,
                     "group_time": group_names.get(m.time),
+                    "fda_rxcui": m.fda_rxcui,
                 }
                 for m in self.timed_medications
             ],
@@ -389,6 +404,7 @@ class MedicationService:
                     "name": m.name,
                     "last_taken": m.last_taken,
                     "status": m.status,
+                    "fda_rxcui": m.fda_rxcui,
                 }
                 for m in self.prn_medications
             ],

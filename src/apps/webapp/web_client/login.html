@@ -3,12 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log In</title>
+    <title>Meridian · Log in</title>
     <link rel="stylesheet" href="/shared/css/base.css">
     <link rel="stylesheet" href="/style.css">
 </head>
-<body class="login-page">
-    <h1>Log In</h1>
+<body class="login-page app-dashboard">
+    <div class="login-brand">
+        <img src="/brand/logo-mark.png" alt="" class="login-logo-mark" width="56" height="56" decoding="async">
+        <div class="login-brand-text">
+            <span class="login-product-name">Meridian</span>
+            <h1>Log in</h1>
+        </div>
+    </div>
     <p class="login-subtitle">Select user and family circle (simulated login for demo).</p>
     <form id="loginForm">
         <label for="familyCircleId">Family Circle ID</label>
@@ -19,6 +25,7 @@
 
         <button type="submit">Continue</button>
     </form>
+    <script src="/meridian_api_base.js"></script>
     <script src="/app.js"></script>
 </body>
 </html>

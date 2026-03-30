@@ -34,6 +34,7 @@ def build_webapp(logger, api_url: str, src_dir: str):
         "index.html",
         "app.js",
         "events.js",
+        "meridian_medications_inline.js",
         "medications.js",
     ):
         src_path = os.path.join(client, filename)

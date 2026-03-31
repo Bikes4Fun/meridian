@@ -19,45 +19,6 @@ except ImportError:
     pass
 
 
-# --- FUTURE contents of apps/webapp/build_webapp.py --- #
-def build_webapp(logger, api_url: str, src_dir: str):
-    import os
-    import shutil
-
-    client = os.path.join(src_dir, "apps", "webapp", "web_client")
-    dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
-    os.makedirs(dist, exist_ok=True)
-    for filename in (
-        "login.html",
-        "index.html",
-        "app.js",
-        "events.js",
-        "meridian_medications_inline.js",
-        "medications.js",
-    ):
-        src_path = os.path.join(client, filename)
-        dst_path = os.path.join(dist, filename)
-        with open(src_path, encoding="utf-8") as f:
-            content = f.read()
-        with open(dst_path, "w", encoding="utf-8") as f:
-            f.write(content.replace("__API_URL__", api_url))
-    if os.path.isfile(os.path.join(client, "style.css")):
-        shutil.copy2(os.path.join(client, "style.css"), os.path.join(dist, "style.css"))
-    font_src = os.path.join(src_dir, "shared", "fonts", "Atkinson_Hyperlegible")
-    font_dst = os.path.join(dist, "fonts")
-    if os.path.isdir(font_src):
-        os.makedirs(font_dst, exist_ok=True)
-        for f in (
-            "AtkinsonHyperlegible-Regular.ttf",
-            "AtkinsonHyperlegible-Bold.ttf",
-            "AtkinsonHyperlegible-Italic.ttf",
-            "AtkinsonHyperlegible-BoldItalic.ttf",
-        ):
-            if os.path.isfile(os.path.join(font_src, f)):
-                shutil.copy2(os.path.join(font_src, f), os.path.join(font_dst, f))
-    logger.debug("Webapp built: login.html, index.html, app.js, events.js, style.css")
-
-
 # --- FUTURE contents of apps/chatapp/build_chatapp.py --- #
 def build_chatapp(logger, api_url: str, src_dir: str):
     import os
@@ -127,6 +88,7 @@ from shared.config import (
 # from apps.webapp.build_webapp import build_webapp
 # perhaps kiosk/app is 'run_kiosk' ...
 from apps.kiosk.app import create_app
+from apps.webapp.__main__ import build_webapp
 
 
 def _start_local_api_server(logger):

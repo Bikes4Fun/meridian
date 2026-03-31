@@ -3,8 +3,6 @@ Main entry point for Meridian.
 In local mode, starts the API server (DB + REST) in a background thread and runs the pywebview kiosk client.
 In Railway/remote mode (with --railway-run), uses a remote Railway API (no local API server thread).
 
-Build webapp + chatapp static files (see build_webapp / build_chatapp).
-Replaces node build.js / build_all.js - no Node.js dependency.
 API_URL empty string = same-origin (served from same server as API).
 """
 
@@ -152,7 +150,8 @@ def _start_local_api_server(logger):
     server_thread.start()
     time.sleep(0.5)
 
-    api_url = f"http://127.0.0.1:{port}"
+    url_host = "127.0.0.1" if host == "0.0.0.0" else host
+    api_url = f"http://{url_host}:{port}"
     return api_url
 
 
@@ -181,12 +180,10 @@ def run_local_server_and_db(logger):
     logger.debug("Database loaded")
 
     os.environ["WEBAPP_URL"] = local_api_url
-    os.environ["CHATAPP_URL"] = local_api_url.rstrip("/")
     os.environ["CORS_ORIGIN"] = local_api_url
 
     logger.info(f"API/DB: {local_api_url}")
     logger.info(f"Webapp: {local_api_url}")
-    logger.debug(f"Chatapp: {local_api_url}/chatapp")
 
     return local_api_url
 

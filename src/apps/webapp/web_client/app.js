@@ -208,22 +208,20 @@
         var nav = document.getElementById('appNav');
         if (!nav) return;
         nav.addEventListener('click', function (e) {
-            var btn = e.target.closest('.nav-btn');
-            if (!btn || !btn.dataset.page) return;
-            var pageId = btn.dataset.page;
-            var pageMap = {
-                mobile: 'pageMobile',
-                events: 'pageEvents',
-                health: 'pageHealth',
-                settings: 'pageSettings'
-            };
-            var targetId = pageMap[pageId];
+            var raw = e.target;
+            var el = raw.nodeType === 1 ? raw : raw.parentElement;
+            if (!el || !el.closest) return;
+            var btn = el.closest('.nav-btn');
+            if (!btn) return;
+            var pageId = btn.getAttribute('data-page') || '';
+            var targetId = btn.getAttribute('data-target-id');
             if (!targetId) return;
             [].forEach.call(nav.querySelectorAll('.nav-btn'), function (b) { b.classList.remove('active'); });
             [].forEach.call(document.querySelectorAll('.page'), function (p) { p.classList.remove('active'); });
             btn.classList.add('active');
             var target = document.getElementById(targetId);
             if (target) target.classList.add('active');
+            document.body.classList.toggle('dashboard-view--info', pageId === 'info');
             var apiRoot = API_BASE || '';
             if (pageId === 'events' && window.MeridianEvents) {
                 MeridianEvents.init(apiRoot, _familyCircleId, showStatus);

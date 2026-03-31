@@ -977,6 +977,36 @@ body.login-page button[type="submit"]:hover {
     display: block;
 }
 
+/* Info tab: user guide uses full viewport width below masthead (info.html layout) */
+body.dashboard-view--info .masthead-inner {
+    max-width: none;
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+}
+
+body.dashboard-view--info .app-main {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.page--info {
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+}
+
+.info-doc-frame {
+    display: block;
+    width: 100%;
+    border: none;
+    background: var(--web-bg, #faf9f7);
+    /* Fill space below header + tab row; document scrolls inside iframe */
+    min-height: calc(100vh - 13rem);
+    height: calc(100vh - 13rem);
+}
+
 /* ICE / emergency profile editor (standalone page) */
 .ice-editor-page {
     padding: var(--space-md);

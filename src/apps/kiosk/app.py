@@ -192,8 +192,17 @@ class MeridianKioskApp:
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
             if extra:
                 self._eval(extra)
+            if screen_name == "settings":
+                self._push_stove_temp_display()
         except Exception as e:
             logger.exception(f"navigate failed: {e}")
+
+    def _push_stove_temp_display(self) -> None:
+        """Refresh Settings → Monitors stove value immediately (background thread also updates every ~2s)."""
+        sensor = self._temp_sensor
+        if not sensor:
+            return
+        self._eval_el("stove-temp", sensor.get_display())
 
     def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
         """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""

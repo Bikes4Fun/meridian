@@ -14,6 +14,9 @@
     var mySendbirdUserId = null;
     var seenMessageIds = {};
     var pollInterval = null;
+    var currentCall = null;
+    var callSdkReady = false;
+    var callRecipientId = null;
 
     function api(path) {
         return (API_URL || window.location.origin).replace(/\/$/, '') + path;
@@ -22,6 +25,118 @@
     function setStatus(msg, className) {
         var el = document.getElementById('status');
         if (el) { el.textContent = msg; el.className = className || 'info'; }
+    }
+
+    function setCallStatus(msg, className) {
+        var el = document.getElementById('callStatus');
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent = msg;
+        el.className = className || 'info';
+    }
+
+    function attachDirectCallHandlers(call) {
+        if (!call) return;
+        currentCall = call;
+        call.onConnected = function () {
+            setCallStatus('Call connected.', 'success');
+            var endBtn = document.getElementById('endCallBtn');
+            if (endBtn) endBtn.disabled = false;
+        };
+        call.onEnded = function () {
+            currentCall = null;
+            var endBtn = document.getElementById('endCallBtn');
+            if (endBtn) endBtn.disabled = true;
+            setCallStatus('Call ended.', 'info');
+        };
+    }
+
+    function initCalls(tokenData, recipientData) {
+        var SendBirdCall = window.SendBirdCall;
+        if (!SendBirdCall) {
+            setCallStatus('Calls SDK not loaded.', 'error');
+            return;
+        }
+        fetch(api('/api/chat/config'), { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (cfg) {
+                if (!cfg || !cfg.app_id) throw new Error('No app_id in config.');
+                callRecipientId = recipientData.sendbird_user_id;
+
+                SendBirdCall.init(cfg.app_id);
+                return SendBirdCall.useMedia().then(function () {
+                    return new Promise(function (resolve, reject) {
+                        SendBirdCall.authenticate({
+                            userId: tokenData.sendbird_user_id,
+                            accessToken: tokenData.session_token || ''
+                        }, function (result, error) {
+                            if (error) reject(error);
+                            else resolve(result);
+                        });
+                    });
+                }).then(function () {
+                    return SendBirdCall.connectWebSocket();
+                }).then(function () {
+                    SendBirdCall.addListener('chat-client-call-listener', {
+                        onRinging: function (call) {
+                            attachDirectCallHandlers(call);
+                            call.accept({
+                                callOption: {
+                                    localMediaView: document.getElementById('localVideo'),
+                                    remoteMediaView: document.getElementById('remoteVideo'),
+                                    audioEnabled: true,
+                                    videoEnabled: true
+                                }
+                            });
+                            setCallStatus('Incoming call accepted.', 'info');
+                        }
+                    });
+                    callSdkReady = true;
+                    var callRow = document.getElementById('callRow');
+                    var callVideos = document.getElementById('callVideos');
+                    if (callRow) callRow.style.display = 'flex';
+                    if (callVideos) callVideos.style.display = 'flex';
+                    setCallStatus('Call ready. Tap Start video call.', 'success');
+                });
+            })
+            .catch(function (err) {
+                setCallStatus('Call setup failed: ' + (err && err.message || err), 'error');
+            });
+    }
+
+    function startVideoCall() {
+        if (!callSdkReady || !callRecipientId) {
+            setCallStatus('Call is not ready yet.', 'error');
+            return;
+        }
+        if (currentCall) {
+            setCallStatus('Already in a call.', 'info');
+            return;
+        }
+        var SendBirdCall = window.SendBirdCall;
+        var call = SendBirdCall.dial({
+            userId: callRecipientId,
+            isVideoCall: true,
+            callOption: {
+                localMediaView: document.getElementById('localVideo'),
+                remoteMediaView: document.getElementById('remoteVideo'),
+                audioEnabled: true,
+                videoEnabled: true
+            }
+        }, function (dialedCall, error) {
+            if (error) {
+                setCallStatus('Dial failed: ' + (error && error.message || error), 'error');
+                return;
+            }
+            attachDirectCallHandlers(dialedCall);
+            setCallStatus('Calling…', 'info');
+        });
+        attachDirectCallHandlers(call);
+    }
+
+    function endCurrentCall() {
+        if (!currentCall) return;
+        currentCall.end();
     }
 
     function appendMessage(text, isSelf) {
@@ -131,6 +246,8 @@
         var sendRow = document.getElementById('sendRow');
         var msgInput = document.getElementById('msgInput');
         var sendBtn = document.getElementById('sendBtn');
+        var startVideoCallBtn = document.getElementById('startVideoCallBtn');
+        var endCallBtn = document.getElementById('endCallBtn');
 
         setStatus('Loading…', 'info');
 
@@ -160,6 +277,7 @@
                 if (document.title === 'Family Chat') document.title = 'Chat with ' + themDisplay;
 
                 setStatus('Opening conversation…', 'info');
+                initCalls(tokenData, recipientData);
                 return createChannel(recipientData.sendbird_user_id)
                     .then(function (data) {
                         if (!data.channel_url) throw new Error('No channel_url in response');
@@ -173,6 +291,8 @@
                         setStatus('Connected. Say hello!', 'success');
                         if (sendRow) sendRow.style.display = 'flex';
                         if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+                        if (startVideoCallBtn) startVideoCallBtn.addEventListener('click', startVideoCall);
+                        if (endCallBtn) endCallBtn.addEventListener('click', endCurrentCall);
                         if (msgInput) msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMessage(); });
                         pollInterval = setInterval(pollMessages, 2500);
                     });

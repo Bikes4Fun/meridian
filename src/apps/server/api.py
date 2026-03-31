@@ -1081,6 +1081,10 @@ def create_server_app(db_path=None):
         def serve_ice_editor():
             return send_from_directory(_webapp_dist, "ice_editor.html")
 
+        @app.route("/info.html")
+        def serve_info_guide():
+            return send_from_directory(_webapp_dist, "info.html")
+
         @app.route("/meridian_api_base.js")
         def serve_meridian_api_base_js():
             return send_from_directory(_webapp_dist, "meridian_api_base.js")

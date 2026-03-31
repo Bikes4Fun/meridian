@@ -29,91 +29,95 @@
                 </div>
                 <nav id="appNav" class="app-nav app-nav--tabs" aria-label="Main sections">
                     <div class="app-nav__primary">
-                        <button type="button" class="nav-btn active" data-page="health">Patient health data</button>
-                        <button type="button" class="nav-btn" data-page="events">Events</button>
-                        <button type="button" class="nav-btn" data-page="settings">Settings</button>
-                        <button type="button" class="nav-btn" data-page="mobile">Mobile</button>
+                        <button type="button" class="nav-btn active" data-page="health" data-target-id="pageHealth">Patient health data</button>
+                        <button type="button" class="nav-btn" data-page="events" data-target-id="pageEvents">Events</button>
+                        <button type="button" class="nav-btn" data-page="settings" data-target-id="pageSettings">Settings</button>
+                        <button type="button" class="nav-btn" data-page="mobile" data-target-id="pageMobile">Mobile</button>
+                        <button type="button" class="nav-btn" data-page="info" data-target-id="pageInfo">Info</button>
                     </div>
                 </nav>
             </div>
         </header>
         <main class="app-main">
             <div class="app-page-stack">
-            <div id="pageHealth" class="page active">
-                <h1 class="page-title">Patient health data</h1>
-                <p class="muted page-lead">POLST / emergency info, medications, and related records in one place.</p>
-                <section class="card card--pad health-section">
-                    <h2 class="page-section-title">POLST &amp; emergency (ICE)</h2>
-                    <p class="muted page-lead page-lead--tight">Legal preferences, contacts, and the printable emergency document.</p>
-                    <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
-                    <div class="event-card__actions">
-                        <button id="healthManageMedsBtn" type="button" class="btn-inline">Manage medications</button>
-                        <button id="healthKioskControlsBtn" type="button" class="btn-inline">Kiosk controls</button>
+                <div id="pageHealth" class="page active">
+                    <h1 class="page-title">Patient health data</h1>
+                    <p class="muted page-lead">POLST / emergency info, medications, and related records in one place.</p>
+                    <section class="card card--pad health-section">
+                        <h2 class="page-section-title">POLST &amp; emergency (ICE)</h2>
+                        <p class="muted page-lead page-lead--tight">Legal preferences, contacts, and the printable emergency document.</p>
+                        <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
+                        <div class="event-card__actions">
+                            <button id="healthManageMedsBtn" type="button" class="btn-inline">Manage medications</button>
+                            <button id="healthKioskControlsBtn" type="button" class="btn-inline">Kiosk controls</button>
 
-                    </div>
-                </section>
-                <section class="card card--pad health-section health-section--placeholder">
-                    <h2 class="page-section-title">Medication history</h2>
-                    <p class="muted">A log of when doses were recorded will go here.</p>
-                </section>
-            </div>
-            <div id="pageEvents" class="page"></div>
-            <div id="pageSettings" class="page">
-                <h1 class="page-title">Settings</h1>
-                <p class="muted page-lead">Account controls for the primary family manager. Sections below are placeholders until each area is built.</p>
-                <div class="settings-grid">
-                    <section class="settings-card card card--pad">
-                        <h2 class="settings-card__title">Permissions &amp; family access</h2>
-                        <p class="settings-card__body muted">Invite and remove members, roles (manager vs viewer), and who can edit meds, calendar, or trigger alerts.</p>
-                        <span class="settings-card__badge">Coming later</span>
+                        </div>
                     </section>
-                    <section class="settings-card card card--pad">
-                        <h2 class="settings-card__title">HIPAA &amp; activity log</h2>
-                        <p class="settings-card__body muted">Exportable access and change history for compliance (who viewed or changed health-related data and when).</p>
-                        <span class="settings-card__badge">Coming later</span>
-                    </section>
-                    <section class="settings-card card card--pad">
-                        <h2 class="settings-card__title">Kiosk &amp; TV</h2>
-                        <p class="settings-card__body muted">What the person at home can open on the kiosk (screens, chat, map, emergency), brightness or idle behavior, and safe defaults.</p>
-                        <section id="settingsKioskAlert" class="alert-panel alert-panel--compact">
-                            <h3 class="page-section-title page-section-title--minor">Kiosk emergency alert</h3>
-                            <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
-                            <div class="alert-actions alert-actions--compact">
-                                <button id="alertBtn" type="button" class="btn-alert btn-alert--sm">Alert mode</button>
-                                <button id="cancelAlertBtn" type="button" class="btn-secondary-lg btn-secondary-lg--sm">Cancel alert</button>
-                            </div>
-                        </section>
-                    </section>
-                    <section class="settings-card card card--pad">
-                        <h2 class="settings-card__title">Medications</h2>
-                        <p class="settings-card__body muted">Add, remove, or change meds, dosage, frequency, times, and RxCUI. Saves sync with the ICE profile and the kiosk schedule.</p>
-                        <div id="settingsMedsEditor"></div>
+                    <section class="card card--pad health-section health-section--placeholder">
+                        <h2 class="page-section-title">Medication history</h2>
+                        <p class="muted">A log of when doses were recorded will go here.</p>
                     </section>
                 </div>
-            </div>
-            <div id="pageMobile" class="page">
-                <p class="mobile-strip-intro muted">For use on a phone — same features will live in the mobile app.</p>
-                <section class="checkin-block card card--pad card--hero">
-                    <h1 class="page-title">Family Check-In</h1>
-                    <p class="muted page-lead">Share your location so the family map on the kiosk stays up to date.</p>
-                    <label class="field-label visually-hidden" for="notes">Notes for family (optional)</label>
-                    <input type="text" id="notes" placeholder="Details / notes (optional, e.g. note for family)" autocomplete="off">
-                    <button id="checkinBtn" type="button" class="btn-primary-lg">Check in now</button>
-                </section>
-                <section id="chatSection" class="card card--pad card--secondary">
-                    <h2 class="page-section-title page-section-title--minor">Chat</h2>
-                    <p class="muted page-lead page-lead--tight">Opens in a separate window.</p>
-                    <div id="contactsSection">
-                        <div id="contactsGrid"></div>
+                <div id="pageEvents" class="page"></div>
+                <div id="pageSettings" class="page">
+                    <h1 class="page-title">Settings</h1>
+                    <p class="muted page-lead">Account controls for the primary family manager. Sections below are placeholders until each area is built.</p>
+                    <div class="settings-grid">
+                        <section class="settings-card card card--pad">
+                            <h2 class="settings-card__title">Permissions &amp; family access</h2>
+                            <p class="settings-card__body muted">Invite and remove members, roles (manager vs viewer), and who can edit meds, calendar, or trigger alerts.</p>
+                            <span class="settings-card__badge">Coming later</span>
+                        </section>
+                        <section class="settings-card card card--pad">
+                            <h2 class="settings-card__title">HIPAA &amp; activity log</h2>
+                            <p class="settings-card__body muted">Exportable access and change history for compliance (who viewed or changed health-related data and when).</p>
+                            <span class="settings-card__badge">Coming later</span>
+                        </section>
+                        <section class="settings-card card card--pad">
+                            <h2 class="settings-card__title">Kiosk &amp; TV</h2>
+                            <p class="settings-card__body muted">What the person at home can open on the kiosk (screens, chat, map, emergency), brightness or idle behavior, and safe defaults.</p>
+                            <section id="settingsKioskAlert" class="alert-panel alert-panel--compact">
+                                <h3 class="page-section-title page-section-title--minor">Kiosk emergency alert</h3>
+                                <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
+                                <div class="alert-actions alert-actions--compact">
+                                    <button id="alertBtn" type="button" class="btn-alert btn-alert--sm">Alert mode</button>
+                                    <button id="cancelAlertBtn" type="button" class="btn-secondary-lg btn-secondary-lg--sm">Cancel alert</button>
+                                </div>
+                            </section>
+                        </section>
+                        <section class="settings-card card card--pad">
+                            <h2 class="settings-card__title">Medications</h2>
+                            <p class="settings-card__body muted">Add, remove, or change meds, dosage, frequency, times, and RxCUI. Saves sync with the ICE profile and the kiosk schedule.</p>
+                            <div id="settingsMedsEditor"></div>
+                        </section>
                     </div>
-                    <p id="openChatStatus" class="open-chat-status"></p>
-                    <div id="messages"></div>
-                    <div id="chatSendRow">
-                        <input type="text" id="chatMsgInput" placeholder="Type a message…" aria-label="Message text">
-                        <button type="button" id="chatSendBtn" class="btn-chat-send">Send</button>
-                    </div>
-                </section>
-            </div>
+                </div>
+                <div id="pageMobile" class="page">
+                    <p class="mobile-strip-intro muted">For use on a phone — same features will live in the mobile app.</p>
+                    <section class="checkin-block card card--pad card--hero">
+                        <h1 class="page-title">Family Check-In</h1>
+                        <p class="muted page-lead">Share your location so the family map on the kiosk stays up to date.</p>
+                        <label class="field-label visually-hidden" for="notes">Notes for family (optional)</label>
+                        <input type="text" id="notes" placeholder="Details / notes (optional, e.g. note for family)" autocomplete="off">
+                        <button id="checkinBtn" type="button" class="btn-primary-lg">Check in now</button>
+                    </section>
+                    <section id="chatSection" class="card card--pad card--secondary">
+                        <h2 class="page-section-title page-section-title--minor">Chat</h2>
+                        <p class="muted page-lead page-lead--tight">Opens in a separate window.</p>
+                        <div id="contactsSection">
+                            <div id="contactsGrid"></div>
+                        </div>
+                        <p id="openChatStatus" class="open-chat-status"></p>
+                        <div id="messages"></div>
+                        <div id="chatSendRow">
+                            <input type="text" id="chatMsgInput" placeholder="Type a message…" aria-label="Message text">
+                            <button type="button" id="chatSendBtn" class="btn-chat-send">Send</button>
+                        </div>
+                    </section>
+                </div>
+                <div id="pageInfo" class="page page--info">
+                    <iframe class="info-doc-frame" src="/info.html" title="Meridian user guide"></iframe>
+                </div>
             </div>
 
             <div id="status" class="status-stack" role="status" aria-live="polite"></div>

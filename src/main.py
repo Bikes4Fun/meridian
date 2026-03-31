@@ -32,10 +32,13 @@ def build_webapp(logger, api_url: str, src_dir: str):
     for filename in (
         "login.html",
         "index.html",
+        "ice_editor.html",
+        "info.html",
         "app.js",
         "events.js",
         "meridian_medications_inline.js",
         "medications.js",
+        "ice_editor.js",
     ):
         src_path = os.path.join(client, filename)
         dst_path = os.path.join(dist, filename)
@@ -57,7 +60,9 @@ def build_webapp(logger, api_url: str, src_dir: str):
         ):
             if os.path.isfile(os.path.join(font_src, f)):
                 shutil.copy2(os.path.join(font_src, f), os.path.join(font_dst, f))
-    logger.debug("Webapp built: login.html, index.html, app.js, events.js, style.css")
+    logger.debug(
+        "Webapp built: login, index, ice_editor, info, app/events/meds JS, style.css"
+    )
 
 
 # --- FUTURE contents of apps/chatapp/build_chatapp.py --- #

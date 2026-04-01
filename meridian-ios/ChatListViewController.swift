@@ -10,21 +10,33 @@ final class ChatListViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        title = "Chat"
+        view.backgroundColor = MeridianPalette.background
 
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.backgroundColor = .clear
+        tableView.alwaysBounceVertical = true
         tableView.translatesAutoresizingMaskIntoConstraints = false
+
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
+            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
+            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8)
         ])
 
         Task { await loadSessionAndContacts() }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -49,16 +61,26 @@ final class ChatListViewController: UIViewController {
         }
     }
 
-    private func openChat(recipient: Contact) {
-        guard let s = session, let sb = recipient.sendbirdUserId else { return }
+    private func openChat(recipient: Contact, autoStartCall: Bool = false) {
+        guard session != nil, let sb = recipient.sendbirdUserId else { return }
+        if autoStartCall, let targetUserId = recipient.userId, !targetUserId.isEmpty {
+            Task {
+                try? await APIService.shared.requestCall(toUserId: targetUserId)
+            }
+        }
         let chatVC = ChatWebViewController()
-        chatVC.loadChat(recipientSendbirdUserId: sb, recipientDisplayName: recipient.displayName)
+        chatVC.loadChat(
+            recipientSendbirdUserId: sb,
+            recipientDisplayName: recipient.displayName,
+            autoStartCall: autoStartCall
+        )
         let nav = UINavigationController(rootViewController: chatVC)
         if traitCollection.horizontalSizeClass == .compact {
             nav.modalPresentationStyle = .fullScreen
         }
         present(nav, animated: true)
     }
+
 }
 
 extension ChatListViewController: UITableViewDataSource, UITableViewDelegate {
@@ -71,12 +93,28 @@ extension ChatListViewController: UITableViewDataSource, UITableViewDelegate {
         let cell = tableView.dequeueReusableCell(withIdentifier: id) ?? UITableViewCell(style: .subtitle, reuseIdentifier: id)
         let c = contacts[indexPath.row]
         cell.textLabel?.text = c.displayName
-        cell.accessoryType = .disclosureIndicator
+        cell.textLabel?.textColor = MeridianPalette.primaryText
+        cell.detailTextLabel?.text = "Tap for call/chat actions"
+        cell.detailTextLabel?.textColor = MeridianPalette.mutedText
+        cell.accessoryType = .detailButton
         return cell
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        openChat(recipient: contacts[indexPath.row])
+        let recipient = contacts[indexPath.row]
+        let sheet = UIAlertController(title: recipient.displayName, message: nil, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: "Place Call", style: .default) { [weak self] _ in
+            self?.openChat(recipient: recipient, autoStartCall: true)
+        })
+        sheet.addAction(UIAlertAction(title: "Open Chat", style: .default) { [weak self] _ in
+            self?.openChat(recipient: recipient, autoStartCall: false)
+        })
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = tableView
+            popover.sourceRect = tableView.rectForRow(at: indexPath)
+        }
+        present(sheet, animated: true)
     }
 }

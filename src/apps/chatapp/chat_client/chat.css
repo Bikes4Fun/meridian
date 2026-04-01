@@ -6,8 +6,8 @@
 
 :root {
   --chat-font-size: clamp(14px, 4vw, 16px);
-  --chat-header-size: clamp(1.1rem, 4.5vw, 1.5rem);
-  --chat-caption-size: 0.9em;
+  --chat-header-size: clamp(1rem, 3.8vw, 1.2rem);
+  --chat-caption-size: 0.82em;
   --chat-status-size: 13px;
   --chat-space-sm: 8px;
   --chat-space-md: 12px;
@@ -42,13 +42,13 @@ body {
   font-size: var(--chat-header-size);
   font-weight: 700;
   color: var(--text);
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
   line-height: 1.2;
   flex-shrink: 0;
 }
 
 #chatParticipants {
-  margin: 0 0 var(--chat-space-sm) 0;
+  margin: 0 0 6px 0;
   font-size: var(--chat-caption-size);
   color: var(--text-muted);
   flex-shrink: 0;

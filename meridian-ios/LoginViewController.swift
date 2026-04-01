@@ -16,17 +16,16 @@ final class LoginViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        title = "Meridian"
+        applyMeridianScreenDefaults(title: "Meridian")
 
-        serverUrlField.placeholder = "Server URL (e.g. http://192.168.1.10:8000)"
+        serverUrlField.placeholder = "Server URL (e.g. http://192.168.1.171:8000)"
         serverUrlField.borderStyle = .roundedRect
         serverUrlField.autocapitalizationType = .none
         serverUrlField.autocorrectionType = .no
         serverUrlField.keyboardType = .URL
         serverUrlField.textContentType = .URL
         let persisted = Config.persistedApiBaseURLFieldText()
-        serverUrlField.text = persisted.isEmpty ? nil : persisted
+        serverUrlField.text = persisted.isEmpty ? Config.launchBundledApiBaseURL : persisted
 
         serverDefaultHintLabel.numberOfLines = 0
         serverDefaultHintLabel.font = .preferredFont(forTextStyle: .caption1)
@@ -47,7 +46,7 @@ final class LoginViewController: UIViewController {
         userIdField.text = "fm_002"
         familyCircleField.text = "F00000"
 
-        loginButton.setTitle("Log In", for: .normal)
+        loginButton.applyMeridianButtonStyle(.primary, title: "Log In")
         loginButton.addTarget(self, action: #selector(doLogin), for: .touchUpInside)
 
         statusLabel.numberOfLines = 0
@@ -70,11 +69,11 @@ final class LoginViewController: UIViewController {
             serverUrlField.heightAnchor.constraint(equalToConstant: 44),
             userIdField.heightAnchor.constraint(equalToConstant: 44),
             familyCircleField.heightAnchor.constraint(equalToConstant: 44),
-            loginButton.heightAnchor.constraint(equalToConstant: 44),
+            loginButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24)
+            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.screenPadding),
+            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -MeridianLayout.screenPadding)
         ])
     }
 

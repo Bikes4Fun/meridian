@@ -128,6 +128,7 @@ class MeridianKioskApp:
         self._window = None
         self._bridge = None
         self._alert_was_activated = False
+        self._last_incoming_call_id = 0
         self._temp_sensor = None
         self._stove_alert_armed = False
 
@@ -192,8 +193,17 @@ class MeridianKioskApp:
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
             if extra:
                 self._eval(extra)
+            if screen_name == "settings":
+                self._push_stove_temp_display()
         except Exception as e:
             logger.exception(f"navigate failed: {e}")
+
+    def _push_stove_temp_display(self) -> None:
+        """Refresh Settings → Monitors stove value immediately (background thread also updates every ~2s)."""
+        sensor = self._temp_sensor
+        if not sensor:
+            return
+        self._eval_el("stove-temp", sensor.get_display())
 
     def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
         """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
@@ -281,6 +291,7 @@ class MeridianKioskApp:
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
         threading.Thread(target=self._start_temp_push, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
+        threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()
 
     def _refresh_clock(self):
         """Full clock update: day, date line, time, period label + sprite."""
@@ -397,6 +408,28 @@ class MeridianKioskApp:
                 self._eval("document.body.classList.remove('alert-active')")
             self._alert_was_activated = activated
 
+    def _start_incoming_call_poll(self):
+        """Poll incoming call signal and open chat window for auto-answer flow."""
+        while True:
+            time.sleep(1)
+            call_svc = self.services.get("incoming_call_service")
+            if not call_svc:
+                continue
+            result = call_svc.get_incoming_call()
+            if not result.success or not result.data:
+                continue
+            call_id = int(result.data.get("call_id") or 0)
+            if call_id <= 0 or call_id == self._last_incoming_call_id:
+                continue
+            sendbird_user_id = (result.data.get("from_sendbird_user_id") or "").strip()
+            display_name = (result.data.get("from_display_name") or "").strip()
+            if not sendbird_user_id:
+                continue
+            self._last_incoming_call_id = call_id
+            self._navigate_to("chat")
+            if self._bridge:
+                self._bridge.open_chat(sendbird_user_id, display_name or "Family")
+            call_svc.acknowledge_incoming_call(call_id)
 
 def create_app(
     kiosk_user_id: str, family_circle_id: str, api_url: str = None

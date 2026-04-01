@@ -27,6 +27,7 @@ struct SessionInfo {
 struct Contact {
     let id: String
     let displayName: String
+    let relationship: String?
     let sendbirdUserId: String?
     let userId: String?
 }
@@ -35,6 +36,20 @@ struct CheckIn {
     let contactName: String
     let locationName: String?
     let timestamp: Date
+    let latitude: Double?
+    let longitude: Double?
+    let userId: String?
+    let photoURL: String?
+}
+
+struct ChatRecipient {
+    let sendbirdUserId: String
+    let displayName: String
+}
+
+struct TodayEventSummary {
+    let title: String
+    let startTimeText: String?
 }
 
 final class APIService {
@@ -107,6 +122,19 @@ final class APIService {
         }
     }
 
+    func getEmergencyAlertStatus() async throws -> Bool {
+        let (data, res) = try await request("/api/emergency/alert/status")
+        if res.statusCode != 200 { throw APIError.serverError("Alert status failed") }
+        guard
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let dataObj = json["data"] as? [String: Any],
+            let active = dataObj["activated"] as? Bool
+        else {
+            throw APIError.invalidResponse
+        }
+        return active
+    }
+
     // MARK: - Check-in
 
     func checkIn(familyCircleId: String, userId: String, latitude: Double, longitude: Double, notes: String?) async throws {
@@ -141,6 +169,10 @@ final class APIService {
         return arr.compactMap { row -> CheckIn? in
             guard let name = row["contact_name"] as? String else { return nil }
             let loc = row["location_name"] as? String
+            let lat = row["latitude"] as? Double
+            let lon = row["longitude"] as? Double
+            let uid = row["user_id"] as? String
+            let photoURL = row["photo_url"] as? String
             let tsStr = row["timestamp"] as? String
             let ts: Date
             if let s = tsStr {
@@ -163,8 +195,52 @@ final class APIService {
             } else {
                 ts = Date.distantPast
             }
-            return CheckIn(contactName: name, locationName: (loc?.isEmpty == true) ? nil : loc, timestamp: ts)
+            return CheckIn(
+                contactName: name,
+                locationName: (loc?.isEmpty == true) ? nil : loc,
+                timestamp: ts,
+                latitude: lat,
+                longitude: lon,
+                userId: uid,
+                photoURL: photoURL
+            )
         }
+    }
+
+    func getTodayEventSummary(familyCircleId: String) async throws -> TodayEventSummary? {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.timeZone = TimeZone.current
+        let today = dateFormatter.string(from: Date())
+
+        var comp = URLComponents(string: baseURL + "/api/family_circles/\(familyCircleId)/calendar/events")
+        comp?.queryItems = [URLQueryItem(name: "date", value: today)]
+        guard let u = comp?.url else { throw APIError.invalidResponse }
+
+        var req = URLRequest(url: u)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, res) = try await session.data(for: req)
+        guard let http = res as? HTTPURLResponse, http.statusCode == 200 else {
+            throw APIError.serverError("Today events failed")
+        }
+        guard
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let events = json["data"] as? [[String: Any]],
+            let first = events.first
+        else {
+            return nil
+        }
+
+        let title = ((first["display"] as? String) ?? (first["title"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty { return nil }
+
+        var startTimeText: String?
+        if let start = first["start_time"] as? String, start.count >= 16 {
+            let raw = String(start.dropFirst(11).prefix(5))
+            startTimeText = raw
+        }
+        return TodayEventSummary(title: title, startTimeText: startTimeText)
     }
 
     // MARK: - Contacts (for chat)
@@ -180,9 +256,10 @@ final class APIService {
         return arr.compactMap { row in
             guard let id = row["id"] as? String,
                   let name = row["display_name"] as? String else { return nil }
+            let relationship = row["relationship"] as? String
             let sb = row["sendbird_user_id"] as? String
             let uid = row["user_id"] as? String
-            return Contact(id: id, displayName: name, sendbirdUserId: sb, userId: uid)
+            return Contact(id: id, displayName: name, relationship: relationship, sendbirdUserId: sb, userId: uid)
         }.filter { $0.sendbirdUserId != nil && !($0.sendbirdUserId?.isEmpty ?? true) }
     }
 
@@ -199,6 +276,18 @@ final class APIService {
     }
 
     // MARK: - Chat URL
+
+    func getDefaultChatRecipient() async throws -> ChatRecipient {
+        let (data, res) = try await request("/api/chat/recipient")
+        if res.statusCode != 200 { throw APIError.serverError("Recipient lookup failed") }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let sb = (json["sendbird_user_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !sb.isEmpty else {
+            throw APIError.invalidResponse
+        }
+        let name = ((json["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? sb)
+        return ChatRecipient(sendbirdUserId: sb, displayName: name)
+    }
 
     func getChatSessionURL(recipientSendbirdUserId: String, recipientDisplayName: String) async throws -> URL {
         var comp = URLComponents(string: baseURL + "/api/chat/chat-session-url")
@@ -220,5 +309,45 @@ final class APIService {
             throw APIError.invalidResponse
         }
         return url
+    }
+
+    func requestCall(toUserId: String) async throws {
+        let (_, res) = try await request("/api/calls/request", method: "POST", body: [
+            "to_user_id": toUserId
+        ])
+        if res.statusCode != 200 && res.statusCode != 201 {
+            throw APIError.serverError("Call request failed")
+        }
+    }
+
+    func requestCallToDefaultRecipient() async throws {
+        let sessionInfo = try await getSession()
+        let defaultRecipient = try await getDefaultChatRecipient()
+        let contacts = try await getContacts(familyCircleId: sessionInfo.familyCircleId)
+
+        if let careRecipientContact = contacts.first(where: {
+            ($0.relationship ?? "").lowercased().contains("care recipient") &&
+            ($0.userId?.isEmpty == false)
+        }), let targetUserId = careRecipientContact.userId {
+            try await requestCall(toUserId: targetUserId)
+            return
+        }
+
+        if let kioskContact = contacts.first(where: {
+            $0.sendbirdUserId == defaultRecipient.sendbirdUserId &&
+            ($0.userId?.isEmpty == false)
+        }), let targetUserId = kioskContact.userId {
+            try await requestCall(toUserId: targetUserId)
+            return
+        }
+
+        if let onlyCallableContact = contacts.first(where: { $0.userId?.isEmpty == false }),
+           contacts.filter({ $0.userId?.isEmpty == false }).count == 1,
+           let targetUserId = onlyCallableContact.userId {
+            try await requestCall(toUserId: targetUserId)
+            return
+        }
+
+        throw APIError.serverError("No callable kiosk recipient found")
     }
 }

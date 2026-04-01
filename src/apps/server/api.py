@@ -27,6 +27,7 @@ import time
 import uuid
 import datetime
 import urllib.parse
+import logging
 from dataclasses import asdict
 from pathlib import Path
 
@@ -70,6 +71,7 @@ except ImportError:
     from shared.config import get_uploads_dir
 
 _alert_activated = False
+_logger = logging.getLogger(__name__)
 
 _ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
 
@@ -367,6 +369,8 @@ def create_server_app(db_path=None):
     family_svc = container.get_family_service()
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
+    sendbird_svc = container.get_sendbird_service()
+    call_signal_svc = container.get_call_signal_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -893,6 +897,60 @@ def create_server_app(db_path=None):
         _alert_activated = bool(data.get("activated", False))
         return jsonify({"data": {"activated": _alert_activated}})
 
+    @app.route("/api/calls/request", methods=["POST"])
+    def api_call_request():
+        """Create an incoming-call signal for target user (kiosk poll consumes this)."""
+        data = request.get_json() or {}
+        to_user_id = (data.get("to_user_id") or "").strip()
+        if not to_user_id:
+            return jsonify({"error": "to_user_id required"}), 400
+        from_sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(g.user_id)
+        from_display_name = user_svc.get_display_name(g.user_id)
+        r = call_signal_svc.request_call(
+            family_circle_id=g.family_circle_id,
+            from_user_id=g.user_id,
+            to_user_id=to_user_id,
+            from_sendbird_user_id=from_sendbird_user_id,
+            from_display_name=from_display_name,
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": r.data}), 201
+
+    @app.route("/api/calls/incoming", methods=["GET"])
+    def api_call_incoming():
+        """Return latest pending incoming-call signal for current user."""
+        r = call_signal_svc.get_incoming_call(
+            family_circle_id=g.family_circle_id, to_user_id=g.user_id
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data or {}})
+
+    @app.route("/api/calls/<int:call_id>/ack", methods=["POST"])
+    def api_call_ack(call_id):
+        """Acknowledge incoming call so kiosk does not repeatedly open chat."""
+        r = call_signal_svc.acknowledge_call(call_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": r.data or {"updated": 0}})
+
+    @app.route("/api/calls/socket-event", methods=["POST"])
+    def api_call_socket_event():
+        """Client-reported socket lifecycle events (debug visibility in server logs)."""
+        data = request.get_json() or {}
+        event = (data.get("event") or "").strip()
+        if not event:
+            return jsonify({"error": "event required"}), 400
+        _logger.info(
+            "Call socket event user_id=%s family_circle_id=%s event=%s details=%s",
+            g.user_id,
+            g.family_circle_id,
+            event,
+            json.dumps(data, separators=(",", ":"))[:700],
+        )
+        return jsonify({"data": {"ok": True}})
+
     @app.route(
         "/api/family_circles/<family_circle_id>/emergency-profile",
         methods=["GET", "PUT"],
@@ -1061,7 +1119,6 @@ def create_server_app(db_path=None):
     _repo_root = os.path.dirname(_src)
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
-        sendbird_svc = container.get_sendbird_service()
         user_svc = container.get_user_service()
         register_chatapp_routes(
             app, sendbird_svc, user_svc, chat_static_prefix="/chatapp"
@@ -1080,6 +1137,10 @@ def create_server_app(db_path=None):
         @app.route("/ice_editor.html")
         def serve_ice_editor():
             return send_from_directory(_webapp_dist, "ice_editor.html")
+
+        @app.route("/info.html")
+        def serve_info_guide():
+            return send_from_directory(_webapp_dist, "info.html")
 
         @app.route("/meridian_api_base.js")
         def serve_meridian_api_base_js():

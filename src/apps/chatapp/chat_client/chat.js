@@ -14,6 +14,47 @@
     var mySendbirdUserId = null;
     var seenMessageIds = {};
     var pollInterval = null;
+    var currentCall = null;
+    var callSdkReady = false;
+    var callRecipientId = null;
+
+    function logCallLifecycle(eventName, details) {
+        var payload = {
+            event: eventName,
+            ts: new Date().toISOString(),
+            page: window.location.pathname + window.location.search,
+            visibility: document.visibilityState,
+            online: !!navigator.onLine
+        };
+        if (details && typeof details === 'object') {
+            for (var k in details) {
+                if (Object.prototype.hasOwnProperty.call(details, k)) payload[k] = details[k];
+            }
+        }
+        try {
+            console.info('[MeridianCall]', JSON.stringify(payload));
+        } catch (_err) {}
+        try {
+            if (window.webkit
+                && window.webkit.messageHandlers
+                && window.webkit.messageHandlers.meridianLogger
+                && typeof window.webkit.messageHandlers.meridianLogger.postMessage === 'function') {
+                window.webkit.messageHandlers.meridianLogger.postMessage(payload);
+            }
+        } catch (_err2) {}
+        if (eventName === 'sendbird_websocket_connected'
+            || eventName === 'sendbird_call_setup_failed'
+            || eventName === 'calls_sdk_missing') {
+            try {
+                fetch(api('/api/calls/socket-event'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+            } catch (_err3) {}
+        }
+    }
 
     function api(path) {
         return (API_URL || window.location.origin).replace(/\/$/, '') + path;
@@ -22,6 +63,178 @@
     function setStatus(msg, className) {
         var el = document.getElementById('status');
         if (el) { el.textContent = msg; el.className = className || 'info'; }
+    }
+
+    function setCallStatus(msg, className) {
+        var el = document.getElementById('callStatus');
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent = msg;
+        el.className = className || 'info';
+    }
+
+    function attachDirectCallHandlers(call) {
+        if (!call) return;
+        currentCall = call;
+        call.onConnected = function () {
+            logCallLifecycle('direct_call_connected', {
+                call_id: (call.callId || call.id || '').toString(),
+                recipient_sendbird_user_id: callRecipientId || ''
+            });
+            setCallStatus('Call connected.', 'success');
+            var endBtn = document.getElementById('endCallBtn');
+            if (endBtn) endBtn.disabled = false;
+        };
+        call.onEnded = function () {
+            logCallLifecycle('direct_call_ended', {
+                call_id: (call.callId || call.id || '').toString(),
+                recipient_sendbird_user_id: callRecipientId || ''
+            });
+            currentCall = null;
+            var endBtn = document.getElementById('endCallBtn');
+            if (endBtn) endBtn.disabled = true;
+            setCallStatus('Call ended.', 'info');
+        };
+    }
+
+    function initCalls(tokenData, recipientData) {
+        var SendBirdCall = window.SendBirdCall;
+        logCallLifecycle('calls_init_start', {
+            self_sendbird_user_id: tokenData && tokenData.sendbird_user_id || '',
+            recipient_sendbird_user_id: recipientData && recipientData.sendbird_user_id || ''
+        });
+        if (!SendBirdCall) {
+            logCallLifecycle('calls_sdk_missing', {
+                sdk_script: 'https://cdn.jsdelivr.net/npm/sendbird-calls@1.12.2/SendBirdCall.min.js'
+            });
+            setCallStatus('Calls SDK not loaded.', 'error');
+            return;
+        }
+        fetch(api('/api/chat/config'), { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (cfg) {
+                if (!cfg || !cfg.app_id) throw new Error('No app_id in config.');
+                callRecipientId = recipientData.sendbird_user_id;
+
+                logCallLifecycle('sendbird_call_init', {
+                    app_id: cfg.app_id,
+                    self_sendbird_user_id: tokenData.sendbird_user_id || '',
+                    recipient_sendbird_user_id: callRecipientId || ''
+                });
+                SendBirdCall.init(cfg.app_id);
+                return SendBirdCall.useMedia().then(function () {
+                    logCallLifecycle('sendbird_call_authenticate_start', {
+                        app_id: cfg.app_id,
+                        self_sendbird_user_id: tokenData.sendbird_user_id || ''
+                    });
+                    return new Promise(function (resolve, reject) {
+                        SendBirdCall.authenticate({
+                            userId: tokenData.sendbird_user_id,
+                            accessToken: tokenData.session_token || ''
+                        }, function (result, error) {
+                            if (error) {
+                                logCallLifecycle('sendbird_call_authenticate_error', {
+                                    app_id: cfg.app_id,
+                                    self_sendbird_user_id: tokenData.sendbird_user_id || '',
+                                    error: (error && error.message) || String(error)
+                                });
+                                reject(error);
+                            } else {
+                                logCallLifecycle('sendbird_call_authenticated', {
+                                    app_id: cfg.app_id,
+                                    self_sendbird_user_id: tokenData.sendbird_user_id || ''
+                                });
+                                resolve(result);
+                            }
+                        });
+                    });
+                }).then(function () {
+                    logCallLifecycle('sendbird_websocket_connect_start', {
+                        app_id: cfg.app_id,
+                        self_sendbird_user_id: tokenData.sendbird_user_id || '',
+                        transport: 'wss',
+                        remote_port_hint: 443
+                    });
+                    return SendBirdCall.connectWebSocket();
+                }).then(function () {
+                    logCallLifecycle('sendbird_websocket_connected', {
+                        app_id: cfg.app_id,
+                        self_sendbird_user_id: tokenData.sendbird_user_id || '',
+                        recipient_sendbird_user_id: callRecipientId || '',
+                        transport: 'wss',
+                        remote_port_hint: 443,
+                        local_port_note: 'managed by SDK/OS (ephemeral)'
+                    });
+                    SendBirdCall.addListener('chat-client-call-listener', {
+                        onRinging: function (call) {
+                            logCallLifecycle('sendbird_on_ringing', {
+                                call_id: (call && (call.callId || call.id) || '').toString(),
+                                from_sendbird_user_id: (call && call.caller && (call.caller.userId || call.caller.user_id) || '').toString(),
+                                to_sendbird_user_id: callRecipientId || ''
+                            });
+                            attachDirectCallHandlers(call);
+                            call.accept({
+                                callOption: {
+                                    localMediaView: document.getElementById('localVideo'),
+                                    remoteMediaView: document.getElementById('remoteVideo'),
+                                    audioEnabled: true,
+                                    videoEnabled: true
+                                }
+                            });
+                            setCallStatus('Incoming call accepted.', 'info');
+                        }
+                    });
+                    callSdkReady = true;
+                    var callRow = document.getElementById('callRow');
+                    var callVideos = document.getElementById('callVideos');
+                    if (callRow) callRow.style.display = 'flex';
+                    if (callVideos) callVideos.style.display = 'flex';
+                    setCallStatus('Call ready. Tap Start video call.', 'success');
+                });
+            })
+            .catch(function (err) {
+                logCallLifecycle('sendbird_call_setup_failed', {
+                    error: (err && err.message) || String(err),
+                    self_sendbird_user_id: tokenData && tokenData.sendbird_user_id || '',
+                    recipient_sendbird_user_id: recipientData && recipientData.sendbird_user_id || ''
+                });
+                setCallStatus('Call setup failed: ' + (err && err.message || err), 'error');
+            });
+    }
+
+    function startVideoCall() {
+        if (!callSdkReady || !callRecipientId) {
+            setCallStatus('Call is not ready yet.', 'error');
+            return;
+        }
+        if (currentCall) {
+            setCallStatus('Already in a call.', 'info');
+            return;
+        }
+        var SendBirdCall = window.SendBirdCall;
+        var call = SendBirdCall.dial({
+            userId: callRecipientId,
+            isVideoCall: true,
+            callOption: {
+                localMediaView: document.getElementById('localVideo'),
+                remoteMediaView: document.getElementById('remoteVideo'),
+                audioEnabled: true,
+                videoEnabled: true
+            }
+        }, function (dialedCall, error) {
+            if (error) {
+                setCallStatus('Dial failed: ' + (error && error.message || error), 'error');
+                return;
+            }
+            attachDirectCallHandlers(dialedCall);
+            setCallStatus('Calling…', 'info');
+        });
+        attachDirectCallHandlers(call);
+    }
+
+    function endCurrentCall() {
+        if (!currentCall) return;
+        currentCall.end();
     }
 
     function appendMessage(text, isSelf) {
@@ -131,6 +344,8 @@
         var sendRow = document.getElementById('sendRow');
         var msgInput = document.getElementById('msgInput');
         var sendBtn = document.getElementById('sendBtn');
+        var startVideoCallBtn = document.getElementById('startVideoCallBtn');
+        var endCallBtn = document.getElementById('endCallBtn');
 
         setStatus('Loading…', 'info');
 
@@ -160,6 +375,7 @@
                 if (document.title === 'Family Chat') document.title = 'Chat with ' + themDisplay;
 
                 setStatus('Opening conversation…', 'info');
+                initCalls(tokenData, recipientData);
                 return createChannel(recipientData.sendbird_user_id)
                     .then(function (data) {
                         if (!data.channel_url) throw new Error('No channel_url in response');
@@ -173,6 +389,8 @@
                         setStatus('Connected. Say hello!', 'success');
                         if (sendRow) sendRow.style.display = 'flex';
                         if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+                        if (startVideoCallBtn) startVideoCallBtn.addEventListener('click', startVideoCall);
+                        if (endCallBtn) endCallBtn.addEventListener('click', endCurrentCall);
                         if (msgInput) msgInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMessage(); });
                         pollInterval = setInterval(pollMessages, 2500);
                     });

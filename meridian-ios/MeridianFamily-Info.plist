@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>MERIDIAN_API_URL</key>
-	<string>http://192.168.14.15:8000</string>
+	<string>http://192.168.1.171:8000</string>
 </dict>
 </plist>

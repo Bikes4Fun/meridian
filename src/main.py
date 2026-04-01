@@ -19,6 +19,50 @@ except ImportError:
     pass
 
 
+# --- FUTURE contents of apps/webapp/build_webapp.py --- #
+def build_webapp(logger, api_url: str, src_dir: str):
+    import os
+    import shutil
+
+    client = os.path.join(src_dir, "apps", "webapp", "web_client")
+    dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
+    os.makedirs(dist, exist_ok=True)
+    for filename in (
+        "login.html",
+        "index.html",
+        "ice_editor.html",
+        "info.html",
+        "app.js",
+        "events.js",
+        "meridian_medications_inline.js",
+        "medications.js",
+        "ice_editor.js",
+    ):
+        src_path = os.path.join(client, filename)
+        dst_path = os.path.join(dist, filename)
+        with open(src_path, encoding="utf-8") as f:
+            content = f.read()
+        with open(dst_path, "w", encoding="utf-8") as f:
+            f.write(content.replace("__API_URL__", api_url))
+    if os.path.isfile(os.path.join(client, "style.css")):
+        shutil.copy2(os.path.join(client, "style.css"), os.path.join(dist, "style.css"))
+    font_src = os.path.join(src_dir, "shared", "fonts", "Atkinson_Hyperlegible")
+    font_dst = os.path.join(dist, "fonts")
+    if os.path.isdir(font_src):
+        os.makedirs(font_dst, exist_ok=True)
+        for f in (
+            "AtkinsonHyperlegible-Regular.ttf",
+            "AtkinsonHyperlegible-Bold.ttf",
+            "AtkinsonHyperlegible-Italic.ttf",
+            "AtkinsonHyperlegible-BoldItalic.ttf",
+        ):
+            if os.path.isfile(os.path.join(font_src, f)):
+                shutil.copy2(os.path.join(font_src, f), os.path.join(font_dst, f))
+    logger.debug(
+        "Webapp built: login, index, ice_editor, info, app/events/meds JS, style.css"
+    )
+
+
 # --- FUTURE contents of apps/chatapp/build_chatapp.py --- #
 def build_chatapp(logger, api_url: str, src_dir: str):
     import os
@@ -65,6 +109,7 @@ import sys
 import threading
 import time
 import logging
+import socket
 
 # Ensure src is on path for new package layout
 _src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -112,8 +157,20 @@ def _start_local_api_server(logger):
     server_thread.start()
     time.sleep(0.5)
 
-    url_host = "127.0.0.1" if host == "0.0.0.0" else host
-    api_url = f"http://{url_host}:{port}"
+    api_host = host
+    if host == "0.0.0.0":
+        public_host = (os.getenv("SERVER_PUBLIC_HOST") or "").strip()
+        if public_host:
+            api_host = public_host
+        else:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                    s.connect(("8.8.8.8", 80))
+                    api_host = s.getsockname()[0]
+            except OSError:
+                api_host = "127.0.0.1"
+
+    api_url = f"http://{api_host}:{port}"
     return api_url
 
 

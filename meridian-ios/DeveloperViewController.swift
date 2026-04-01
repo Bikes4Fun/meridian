@@ -11,8 +11,7 @@ final class DeveloperViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        title = "Developer"
+        view.backgroundColor = MeridianPalette.background
 
         urlField.placeholder = "API base URL (e.g. http://192.168.1.10:8000)"
         urlField.borderStyle = .roundedRect
@@ -34,11 +33,11 @@ final class DeveloperViewController: UIViewController {
         statusLabel.font = .preferredFont(forTextStyle: .footnote)
 
         let saveButton = UIButton(type: .system)
-        saveButton.setTitle("Save & return to login", for: .normal)
+        saveButton.applyMeridianButtonStyle(.primary, title: "Save & return to login")
         saveButton.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
 
         let clearButton = UIButton(type: .system)
-        clearButton.setTitle("Use build default only", for: .normal)
+        clearButton.applyMeridianButtonStyle(.bordered, title: "Use build default only")
         clearButton.addTarget(self, action: #selector(clearTapped), for: .touchUpInside)
 
         let stack = UIStackView(arrangedSubviews: [
@@ -52,18 +51,24 @@ final class DeveloperViewController: UIViewController {
         view.addSubview(stack)
         NSLayoutConstraint.activate([
             urlField.heightAnchor.constraint(equalToConstant: 44),
-            saveButton.heightAnchor.constraint(equalToConstant: 44),
-            clearButton.heightAnchor.constraint(equalToConstant: 44),
-            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            saveButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            clearButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.screenPadding),
+            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -MeridianLayout.screenPadding),
             stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16)
         ])
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: false)
         urlField.text = Config.resolvedApiBaseURL
         refreshLabels()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     private func refreshLabels() {

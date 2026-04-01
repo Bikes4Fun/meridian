@@ -9,6 +9,7 @@ final class ChatWebViewController: UIViewController {
     private let webView: WKWebView
     private let closeButton = UIBarButtonItem(systemItem: .done)
     private var keyboardObservers: [Any] = []
+    private var shouldAutoStartCall = false
 
     private static let mobileStyleScript = """
     (function() {
@@ -54,9 +55,14 @@ final class ChatWebViewController: UIViewController {
         config.userContentController.addUserScript(script)
         webView = WKWebView(frame: .zero, configuration: config)
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+        webView.configuration.userContentController.add(self, name: "meridianLogger")
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    deinit {
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "meridianLogger")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -112,7 +118,8 @@ final class ChatWebViewController: UIViewController {
         }
     }
 
-    func loadChat(recipientSendbirdUserId: String, recipientDisplayName: String) {
+    func loadChat(recipientSendbirdUserId: String, recipientDisplayName: String, autoStartCall: Bool = false) {
+        shouldAutoStartCall = autoStartCall
         Task {
             do {
                 let url = try await APIService.shared.getChatSessionURL(
@@ -146,5 +153,48 @@ final class ChatWebViewController: UIViewController {
 extension ChatWebViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         webView.evaluateJavaScript(ChatWebViewController.mobileStyleScript)
+        guard shouldAutoStartCall else { return }
+        webView.evaluateJavaScript(
+            """
+            (function() {
+                if (window.__meridianAutoCallStarted) return;
+                window.__meridianAutoCallStarted = true;
+                var tries = 0;
+                var maxTries = 30;
+                var timer = setInterval(function() {
+                    tries += 1;
+                    var row = document.getElementById('callRow');
+                    var btn = document.getElementById('startVideoCallBtn');
+                    if (!btn) {
+                        if (tries >= maxTries) clearInterval(timer);
+                        return;
+                    }
+                    var visible = true;
+                    if (row) {
+                        visible = row.style.display === 'flex' || row.style.display === 'block' || getComputedStyle(row).display !== 'none';
+                    }
+                    if (visible && !btn.disabled) {
+                        btn.click();
+                        clearInterval(timer);
+                        return;
+                    }
+                    if (tries >= maxTries) clearInterval(timer);
+                }, 500);
+            })();
+            """
+        )
+    }
+}
+
+extension ChatWebViewController: WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "meridianLogger" else { return }
+        if let payload = message.body as? [String: Any],
+           let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
+           let json = String(data: data, encoding: .utf8) {
+            print("[MeridianCall] \(json)")
+            return
+        }
+        print("[MeridianCall] \(message.body)")
     }
 }

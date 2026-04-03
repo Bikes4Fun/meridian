@@ -498,7 +498,10 @@ class RemoteChatEntryService:
         self._session = session
 
     def get_entry_url(
-        self, recipient_sendbird_user_id: str = "", recipient_display_name: str = ""
+        self,
+        recipient_sendbird_user_id: str = "",
+        recipient_display_name: str = "",
+        auto_start_call: bool = False,
     ) -> Any:
         """Fetch signed entry URL. recipient = who the kiosk user will chat WITH. Returns ServiceResult with url in data."""
         params = []
@@ -510,6 +513,8 @@ class RemoteChatEntryService:
             params.append(
                 f"recipient_display_name={urllib.parse.quote(recipient_display_name)}"
             )
+        if auto_start_call:
+            params.append("auto_start_call=1")
         qs = "&".join(params)
         url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
         ok, data, err = _get(url, headers=self._headers, session=self._session)

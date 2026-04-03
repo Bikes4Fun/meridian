@@ -101,7 +101,7 @@ def run_kiosk(logger, api_url):
         kiosk_user_id=KIOSK_USER_ID,
         family_circle_id=PATIENT_FAMILY_CIRCLE_ID,
     )
-    logger.info("Kiosk, server and webapp created successfully")
+    logger.debug("Kiosk started")
     app.run()
 
 
@@ -187,14 +187,16 @@ def run_local_server_and_db(logger):
         logger.error("Build failed (%s).", e)
         sys.exit(1)
 
+    seed_status = "skipped"
     try:
         from dev.demo.seed import run_seed
 
         if run_seed(local_api_url):
-            logger.info("Demo data seeded")
+            seed_status = "seeded"
         else:
-            logger.warning("Demo seed failed or skipped")
+            seed_status = "skipped"
     except Exception as e:
+        seed_status = "failed"
         logger.warning(f"Demo seed failed: {e}")
 
     logger.debug("Database loaded")
@@ -203,9 +205,8 @@ def run_local_server_and_db(logger):
     os.environ["CHATAPP_URL"] = local_api_url.rstrip("/")
     os.environ["CORS_ORIGIN"] = local_api_url
 
-    logger.info(f"API/DB: {local_api_url}")
-    logger.info(f"Webapp: {local_api_url}")
-    logger.debug(f"Chatapp: {local_api_url}/chatapp")
+    logger.info(f"Ready: {local_api_url}")
+    logger.debug(f"Seed status: {seed_status}")
 
     return local_api_url
 

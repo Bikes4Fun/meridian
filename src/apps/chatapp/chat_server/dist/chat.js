@@ -2,12 +2,12 @@
  * Chatapp client – proxy approach. No Sendbird SDK.
  * Uses /api/chat/send and /api/chat/messages (polling).
  * Used by webapp, kiosk, mobile.
- * API_URL replaced at build (http://192.168.1.171:8001).
+ * API_URL replaced at build (http://192.168.1.171:8000).
  */
 (function () {
     'use strict';
 
-    var _u = 'http://192.168.1.171:8001';
+    var _u = 'http://192.168.1.171:8000';
     var API_URL = (_u.startsWith('http') ? _u : '').replace(/\/$/, '');
 
     var channelUrl = null;

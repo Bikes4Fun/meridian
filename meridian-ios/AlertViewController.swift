@@ -4,75 +4,130 @@
 import UIKit
 
 final class AlertViewController: UIViewController {
-    private let alertButton = UIButton(type: .system)
-    private let cancelButton = UIButton(type: .system)
+    private let activateEmergencyAlertButton = UIButton(type: .system)
+    private let cancelEmergencyAlertButton = UIButton(type: .system)
+    private let forceAnswerCallButton = UIButton(type: .system)
+    private let sensorCheckButton = UIButton(type: .system)
     private let statusLabel = UILabel()
+    private let progressIndicator = UIActivityIndicatorView(style: .medium)
+    private var isRequestInFlight = false {
+        didSet { updateControlsForRequestState() }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        title = "Alert"
+        applyMeridianScreenDefaults(title: "Alert")
 
-        alertButton.setTitle("Alert Mode", for: .normal)
-        alertButton.backgroundColor = .systemRed
-        alertButton.setTitleColor(.white, for: .normal)
-        alertButton.layer.cornerRadius = 8
-        alertButton.addTarget(self, action: #selector(activateAlert), for: .touchUpInside)
+        activateEmergencyAlertButton.applyMeridianButtonStyle(.alert, title: "Activate Emergency Alert")
+        activateEmergencyAlertButton.addTarget(self, action: #selector(activateAlert), for: .touchUpInside)
 
-        cancelButton.setTitle("Cancel Alert", for: .normal)
-        cancelButton.backgroundColor = .systemGray
-        cancelButton.setTitleColor(.white, for: .normal)
-        cancelButton.layer.cornerRadius = 8
-        cancelButton.addTarget(self, action: #selector(cancelAlert), for: .touchUpInside)
+        cancelEmergencyAlertButton.applyMeridianButtonStyle(.bordered, title: "Cancel Emergency Alert")
+        cancelEmergencyAlertButton.addTarget(self, action: #selector(cancelAlert), for: .touchUpInside)
+
+        forceAnswerCallButton.applyMeridianButtonStyle(.secondary, title: "Force Call Kiosk")
+        forceAnswerCallButton.addTarget(self, action: #selector(forceAnswerCallTapped), for: .touchUpInside)
+
+        sensorCheckButton.applyMeridianButtonStyle(.bordered, title: "Sensor Check (Coming Soon)")
+        sensorCheckButton.addTarget(self, action: #selector(sensorCheckTapped), for: .touchUpInside)
 
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
-        statusLabel.textColor = .secondaryLabel
+        statusLabel.textColor = MeridianPalette.mutedText
+        statusLabel.font = .preferredFont(forTextStyle: .callout)
+        statusLabel.text = "Emergency tools for rapid response."
 
         let stack = UIStackView(arrangedSubviews: [
-            alertButton, cancelButton, statusLabel
+            activateEmergencyAlertButton, cancelEmergencyAlertButton, forceAnswerCallButton, sensorCheckButton, progressIndicator, statusLabel
         ])
         stack.axis = .vertical
-        stack.spacing = 16
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(stack)
         NSLayoutConstraint.activate([
-            alertButton.heightAnchor.constraint(equalToConstant: 52),
-            cancelButton.heightAnchor.constraint(equalToConstant: 52),
+            activateEmergencyAlertButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            cancelEmergencyAlertButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            forceAnswerCallButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            sensorCheckButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24)
+            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.screenPadding),
+            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -MeridianLayout.screenPadding)
         ])
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        enforceMeridianCompactNavigationBar()
+    }
+
     @objc private func activateAlert() {
-        setStatus("Activating…")
+        if isRequestInFlight { return }
+        performAlertUpdate(activated: true)
+    }
+
+    @objc private func cancelAlert() {
+        if isRequestInFlight { return }
+        performAlertUpdate(activated: false)
+    }
+
+    @objc private func forceAnswerCallTapped() {
+        if isRequestInFlight { return }
+        isRequestInFlight = true
+        setStatus("Requesting kiosk force call...")
         Task {
             do {
-                try await APIService.shared.setAlert(activated: true)
-                await MainActor.run { setStatus("Alert activated. TV should switch to emergency.", color: .systemGreen) }
+                try await APIService.shared.requestCallToDefaultRecipient()
+                await MainActor.run {
+                    self.isRequestInFlight = false
+                    self.setStatus("Kiosk force call requested.", color: .systemGreen)
+                }
             } catch {
-                await MainActor.run { setStatus(error.localizedDescription, color: .systemRed) }
+                await MainActor.run {
+                    self.isRequestInFlight = false
+                    self.setStatus("Force call failed. Please try again.", color: .systemRed)
+                }
             }
         }
     }
 
-    @objc private func cancelAlert() {
-        setStatus("Cancelling…")
-        Task {
-            do {
-                try await APIService.shared.setAlert(activated: false)
-                await MainActor.run { setStatus("Alert cancelled.", color: .systemGreen) }
-            } catch {
-                await MainActor.run { setStatus(error.localizedDescription, color: .systemRed) }
-            }
-        }
+    @objc private func sensorCheckTapped() {
+        setStatus("Sensor check controls are staged here for future implementation.")
     }
 
     private func setStatus(_ text: String, color: UIColor = .secondaryLabel) {
         statusLabel.text = text
         statusLabel.textColor = color
+    }
+
+    private func performAlertUpdate(activated: Bool) {
+        isRequestInFlight = true
+        setStatus(activated ? "Sending emergency alert..." : "Cancelling emergency alert...")
+        Task {
+            do {
+                try await APIService.shared.setAlert(activated: activated)
+                await MainActor.run {
+                    self.isRequestInFlight = false
+                    self.setStatus(activated ? "Emergency alert sent." : "Emergency alert cancelled.", color: .systemGreen)
+                }
+            } catch {
+                await MainActor.run {
+                    self.isRequestInFlight = false
+                    self.setStatus(activated ? "Alert failed. Please try again." : "Cancel failed. Please try again.", color: .systemRed)
+                }
+            }
+        }
+    }
+
+    private func updateControlsForRequestState() {
+        activateEmergencyAlertButton.isEnabled = !isRequestInFlight
+        cancelEmergencyAlertButton.isEnabled = !isRequestInFlight
+        forceAnswerCallButton.isEnabled = !isRequestInFlight
+        sensorCheckButton.isEnabled = !isRequestInFlight
+        if isRequestInFlight {
+            progressIndicator.startAnimating()
+        } else {
+            progressIndicator.stopAnimating()
+        }
     }
 }

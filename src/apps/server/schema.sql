@@ -189,3 +189,17 @@ CREATE TABLE IF NOT EXISTS user_push_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS call_signals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    family_circle_id TEXT NOT NULL,
+    from_user_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    from_sendbird_user_id TEXT,
+    from_display_name TEXT,
+    status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested', 'acknowledged')),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
+    FOREIGN KEY (from_user_id) REFERENCES users(id),
+    FOREIGN KEY (to_user_id) REFERENCES users(id)
+);
+

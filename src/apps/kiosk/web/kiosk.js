@@ -58,6 +58,11 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
+  var callBtn = e.target.closest('.contact-call-btn[data-sb-uid]');
+  if (callBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat_with_call) {
+    pywebview.api.open_chat_with_call(callBtn.dataset.sbUid || '', callBtn.dataset.name || '');
+    return;
+  }
   var tile = e.target.closest('.contact-tile[data-sb-uid]');
   if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
     pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
@@ -150,4 +155,153 @@ function showToast(msg) {
   toast._hideTimer = setTimeout(function() {
     toast.classList.add('kiosk-toast--hidden');
   }, 3500);
+}
+
+var _kioskCallSocketReady = false;
+var _kioskCallSocketStarted = false;
+var _kioskLastRingingCallId = '';
+var _kioskClientDeviceId = '';
+
+function _ensureKioskClientDeviceId() {
+  if (_kioskClientDeviceId) return _kioskClientDeviceId;
+  var key = 'meridian_kiosk_device_id';
+  try {
+    var existing = window.localStorage ? window.localStorage.getItem(key) : '';
+    if (existing) {
+      _kioskClientDeviceId = existing;
+      return _kioskClientDeviceId;
+    }
+    var id = 'kiosk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    if (window.localStorage) window.localStorage.setItem(key, id);
+    _kioskClientDeviceId = id;
+    return _kioskClientDeviceId;
+  } catch (_err) {
+    _kioskClientDeviceId = 'kiosk-ephemeral';
+    return _kioskClientDeviceId;
+  }
+}
+
+function logKioskCallSocket(eventName, details) {
+  var payload = {
+    event: eventName,
+    ts: new Date().toISOString(),
+    page: window.location.pathname + window.location.search,
+    visibility: document.visibilityState,
+    online: !!navigator.onLine,
+    client_source: 'kiosk',
+    client_device_id: _ensureKioskClientDeviceId()
+  };
+  if (details && typeof details === 'object') {
+    for (var k in details) {
+      if (Object.prototype.hasOwnProperty.call(details, k)) payload[k] = details[k];
+    }
+  }
+  try { console.info('[MeridianKioskCall]', JSON.stringify(payload)); } catch (_err) {}
+  try {
+    fetch('/api/calls/socket-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+  } catch (_err2) {}
+}
+
+function initKioskCallSocket() {
+  if (_kioskCallSocketStarted) return;
+  _kioskCallSocketStarted = true;
+  var SendBirdCall = window.SendBirdCall;
+  if (!SendBirdCall) {
+    logKioskCallSocket('kiosk_calls_sdk_missing', {
+      sdk_script: 'https://cdn.jsdelivr.net/npm/sendbird-calls@1.12.2/SendBirdCall.min.js'
+    });
+    return;
+  }
+  logKioskCallSocket('kiosk_calls_init_start', {});
+  fetch('/api/chat/config', { credentials: 'include' })
+    .then(function (r) { return r.json(); })
+    .then(function (cfg) {
+      if (!cfg || !cfg.app_id) throw new Error('No app_id in config.');
+      return fetch('/api/chat/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: '{}'
+      }).then(function (r) {
+        return r.json().then(function (d) {
+          if (!r.ok) throw new Error((d && (d.detail || d.error)) || 'Token request failed');
+          return { cfg: cfg, token: d };
+        });
+      });
+    })
+    .then(function (bundle) {
+      var cfg = bundle.cfg;
+      var token = bundle.token || {};
+      var userId = token.sendbird_user_id || '';
+      var sessionToken = token.session_token || '';
+      if (!userId) throw new Error('No sendbird_user_id in token response.');
+
+      logKioskCallSocket('kiosk_sendbird_call_init', { app_id: cfg.app_id, self_sendbird_user_id: userId });
+      SendBirdCall.init(cfg.app_id);
+      return SendBirdCall.useMedia().then(function () {
+        logKioskCallSocket('kiosk_sendbird_call_authenticate_start', { app_id: cfg.app_id, self_sendbird_user_id: userId });
+        return new Promise(function (resolve, reject) {
+          SendBirdCall.authenticate(
+            { userId: userId, accessToken: sessionToken },
+            function (_result, error) {
+              if (error) reject(error);
+              else resolve({ cfg: cfg, userId: userId });
+            }
+          );
+        });
+      });
+    })
+    .then(function (bundle) {
+      var cfg = bundle.cfg;
+      var userId = bundle.userId;
+      logKioskCallSocket('kiosk_sendbird_websocket_connect_start', {
+        app_id: cfg.app_id,
+        self_sendbird_user_id: userId,
+        transport: 'wss',
+        remote_port_hint: 443
+      });
+      return window.SendBirdCall.connectWebSocket().then(function () {
+        _kioskCallSocketReady = true;
+        logKioskCallSocket('kiosk_sendbird_websocket_connected', {
+          app_id: cfg.app_id,
+          self_sendbird_user_id: userId,
+          transport: 'wss',
+          remote_port_hint: 443,
+          local_port_note: 'managed by SDK/OS (ephemeral)'
+        });
+        window.SendBirdCall.addListener('kiosk-call-socket-listener', {
+          onRinging: function (call) {
+            var callId = (call && (call.callId || call.id) || '').toString();
+            if (callId && callId === _kioskLastRingingCallId) return;
+            _kioskLastRingingCallId = callId;
+            var callerId = (call && call.caller && (call.caller.userId || call.caller.user_id) || '').toString();
+            var callerName = (call && call.caller && (call.caller.nickname || call.caller.userId || call.caller.user_id) || 'Family').toString();
+            logKioskCallSocket('kiosk_sendbird_on_ringing', {
+              call_id: callId,
+              from_sendbird_user_id: callerId
+            });
+            if (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat && callerId) {
+              pywebview.api.open_chat(callerId, callerName);
+            }
+          }
+        });
+      });
+    })
+    .catch(function (err) {
+      _kioskCallSocketStarted = false;
+      logKioskCallSocket('kiosk_sendbird_call_setup_failed', {
+        error: (err && err.message) || String(err)
+      });
+    });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initKioskCallSocket);
+} else {
+  initKioskCallSocket();
 }

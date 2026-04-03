@@ -27,6 +27,8 @@ import time
 import uuid
 import datetime
 import urllib.parse
+import logging
+import threading
 from dataclasses import asdict
 from pathlib import Path
 
@@ -70,8 +72,12 @@ except ImportError:
     from shared.config import get_uploads_dir
 
 _alert_activated = False
+_logger = logging.getLogger(__name__)
 
 _ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
+_CHAT_ENTRY_TOKEN_PURPOSE = "chat_session_bootstrap"
+_USED_CHAT_ENTRY_TOKEN_SIGS = {}
+_USED_CHAT_ENTRY_TOKEN_LOCK = threading.Lock()
 
 _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
@@ -85,13 +91,16 @@ def _create_chat_entry_token(
     family_circle_id: str,
     sendbird_user_id: str = "",
     display_name: str = "",
+    auto_start_call: bool = False,
 ) -> str:
     """Create a signed token for chat entry. Valid for _ENTRY_TOKEN_TTL_SEC."""
     payload = {
+        "purpose": _CHAT_ENTRY_TOKEN_PURPOSE,
         "user_id": user_id,
         "family_circle_id": family_circle_id,
         "sendbird_user_id": sendbird_user_id,
         "display_name": display_name,
+        "auto_start_call": bool(auto_start_call),
         "exp": int(time.time()) + _ENTRY_TOKEN_TTL_SEC,
     }
     payload_b64 = (
@@ -112,13 +121,28 @@ def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
         payload_b64, sig = parts[0], parts[1]
         payload_b64_padded = payload_b64 + "=" * (-len(payload_b64) % 4)
         payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
-        if payload.get("exp", 0) < time.time():
+        exp = int(payload.get("exp", 0) or 0)
+        if exp < time.time():
+            return None
+        if (payload.get("purpose") or "") != _CHAT_ENTRY_TOKEN_PURPOSE:
             return None
         expected = hmac.new(
             secret.encode(), payload_b64.encode(), hashlib.sha256
         ).hexdigest()
         if not hmac.compare_digest(expected, sig):
             return None
+        now = int(time.time())
+        with _USED_CHAT_ENTRY_TOKEN_LOCK:
+            expired_sigs = [
+                token_sig
+                for token_sig, token_exp in _USED_CHAT_ENTRY_TOKEN_SIGS.items()
+                if int(token_exp or 0) <= now
+            ]
+            for token_sig in expired_sigs:
+                _USED_CHAT_ENTRY_TOKEN_SIGS.pop(token_sig, None)
+            if sig in _USED_CHAT_ENTRY_TOKEN_SIGS:
+                return None
+            _USED_CHAT_ENTRY_TOKEN_SIGS[sig] = exp
         return payload
     except Exception:
         return None
@@ -138,11 +162,6 @@ def create_server_app(db_path=None):
     app = Flask(__name__)
     _secret = os.environ.get("SECRET_KEY")
     if not _secret:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "SECRET_KEY not set; using dev default. Set SECRET_KEY in production."
-        )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
     # Must be identical on every worker (Railway/gunicorn); per-process time.time() breaks sessions across workers.
@@ -311,6 +330,32 @@ def create_server_app(db_path=None):
 
     app.config["container"] = container
 
+    def _set_authenticated_session(user_id: str, family_circle_id: str) -> None:
+        """Canonical session auth write path: set identity + server id marker."""
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+
+    def _session_identity_from_payload(payload: dict) -> tuple[str, str]:
+        """Extract normalized identity from signed payload."""
+        user_id = (payload.get("user_id") or "").strip()
+        family_circle_id = (payload.get("family_circle_id") or "").strip()
+        return user_id, family_circle_id
+
+    def _chat_redirect_path_from_payload(payload: dict) -> str:
+        """Build chat destination path from signed payload context."""
+        path = "/chatapp/chat.html"
+        recipient_sb = (payload.get("sendbird_user_id") or "").strip()
+        recipient_name = (payload.get("display_name") or "").strip()
+        auto_start_call = bool(payload.get("auto_start_call"))
+        if recipient_sb:
+            path += "?sendbird_user_id=" + urllib.parse.quote(recipient_sb)
+            if recipient_name:
+                path += "&display_name=" + urllib.parse.quote(recipient_name)
+            if auto_start_call:
+                path += "&auto_start_call=1"
+        return path
+
     @app.route("/api/chat/chat-session-url", methods=["GET"])
     def api_chat_session_url():
         """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id.
@@ -326,12 +371,17 @@ def create_server_app(db_path=None):
             or request.args.get("display_name")
             or ""
         ).strip()
+        auto_start_call = (
+            (request.args.get("auto_start_call") or "").strip().lower()
+            in ("1", "true", "yes", "on")
+        )
         token = _create_chat_entry_token(
             app.secret_key,
             g.user_id,
             g.family_circle_id,
             recipient_sb,
             recipient_name,
+            auto_start_call=auto_start_call,
         )
         base_url = request.url_root.rstrip("/")
         bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
@@ -346,17 +396,11 @@ def create_server_app(db_path=None):
         payload = _verify_chat_entry_token(app.secret_key, token)
         if not payload:
             return jsonify({"error": "Invalid or expired token"}), 403
-        chatapp_url = (
-            os.environ.get("CHATAPP_URL") or request.url_root.rstrip("/")
-        ).rstrip("/")
-        if not chatapp_url:
-            return (
-                jsonify(
-                    {"error": "CHATAPP_URL not configured; cannot redirect to chat"}
-                ),
-                503,
-            )
-        return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
+        user_id, family_circle_id = _session_identity_from_payload(payload)
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "Invalid token payload"}), 403
+        _set_authenticated_session(user_id, family_circle_id)
+        return redirect(_chat_redirect_path_from_payload(payload))
 
     user_svc = container.get_user_service()
     calendar_svc = container.get_calendar_service()
@@ -367,6 +411,8 @@ def create_server_app(db_path=None):
     family_svc = container.get_family_service()
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
+    sendbird_svc = container.get_sendbird_service()
+    call_signal_svc = container.get_call_signal_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -893,6 +939,76 @@ def create_server_app(db_path=None):
         _alert_activated = bool(data.get("activated", False))
         return jsonify({"data": {"activated": _alert_activated}})
 
+    @app.route("/api/calls/request", methods=["POST"])
+    def api_call_request():
+        """Create an incoming-call signal for target user (kiosk poll consumes this)."""
+        data = request.get_json() or {}
+        to_user_id = (data.get("to_user_id") or "").strip()
+        if not to_user_id:
+            return jsonify({"error": "to_user_id required"}), 400
+        from_sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(g.user_id)
+        from_display_name = user_svc.get_display_name(g.user_id)
+        r = call_signal_svc.request_call(
+            family_circle_id=g.family_circle_id,
+            from_user_id=g.user_id,
+            to_user_id=to_user_id,
+            from_sendbird_user_id=from_sendbird_user_id,
+            from_display_name=from_display_name,
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": r.data}), 201
+
+    @app.route("/api/calls/incoming", methods=["GET"])
+    def api_call_incoming():
+        """Return latest pending incoming-call signal for current user."""
+        r = call_signal_svc.get_incoming_call(
+            family_circle_id=g.family_circle_id, to_user_id=g.user_id
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data or {}})
+
+    @app.route("/api/calls/<int:call_id>/ack", methods=["POST"])
+    def api_call_ack(call_id):
+        """Acknowledge incoming call so kiosk does not repeatedly open chat."""
+        r = call_signal_svc.acknowledge_call(call_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": r.data or {"updated": 0}})
+
+    @app.route("/api/calls/socket-event", methods=["POST"])
+    def api_call_socket_event():
+        """Client-reported socket lifecycle events (debug visibility in server logs)."""
+        data = request.get_json() or {}
+        event = (data.get("event") or "").strip()
+
+        if not event:
+            return jsonify({"error": "event required"}), 400
+
+        client_source = (data.get("client_source") or "").strip() or "unknown"
+        client_device_id = (data.get("client_device_id") or "").strip() or "unknown"
+        started_events = {
+            "kiosk_sendbird_websocket_connected",
+            "sendbird_websocket_connected",
+        }
+        issue_events = {
+            "kiosk_calls_sdk_missing",
+            "calls_sdk_missing",
+            "kiosk_sendbird_call_setup_failed",
+            "sendbird_call_setup_failed",
+        }
+        if event in started_events:
+            _logger.info(
+                f"Call socket started event={event} source={client_source} device={client_device_id}"
+            )
+        elif event in issue_events:
+            _logger.info(
+                f"Call socket issue event={event} source={client_source} device={client_device_id}"
+            )
+
+        return jsonify({"data": {"ok": True}})
+
     @app.route(
         "/api/family_circles/<family_circle_id>/emergency-profile",
         methods=["GET", "PUT"],
@@ -951,9 +1067,7 @@ def create_server_app(db_path=None):
         family_circle_id = (request.args.get("family_circle_id") or "").strip()
         if not user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = user_id
-        session["family_circle_id"] = family_circle_id
-        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        _set_authenticated_session(user_id, family_circle_id)
         return redirect("/kiosk/")
 
     @app.route("/api/login", methods=["POST"])
@@ -962,13 +1076,11 @@ def create_server_app(db_path=None):
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
-        user_id = data.get("user_id")
-        family_circle_id = data.get("family_circle_id")
+        user_id = (data.get("user_id") or "").strip()
+        family_circle_id = (data.get("family_circle_id") or "").strip()
         if not user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = user_id
-        session["family_circle_id"] = family_circle_id
-        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        _set_authenticated_session(user_id, family_circle_id)
         return jsonify({"ok": True})
 
     @app.route("/api/logout", methods=["POST"])
@@ -1061,7 +1173,6 @@ def create_server_app(db_path=None):
     _repo_root = os.path.dirname(_src)
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
-        sendbird_svc = container.get_sendbird_service()
         user_svc = container.get_user_service()
         register_chatapp_routes(
             app, sendbird_svc, user_svc, chat_static_prefix="/chatapp"
@@ -1080,6 +1191,10 @@ def create_server_app(db_path=None):
         @app.route("/ice_editor.html")
         def serve_ice_editor():
             return send_from_directory(_webapp_dist, "ice_editor.html")
+
+        @app.route("/info.html")
+        def serve_info_guide():
+            return send_from_directory(_webapp_dist, "info.html")
 
         @app.route("/meridian_api_base.js")
         def serve_meridian_api_base_js():

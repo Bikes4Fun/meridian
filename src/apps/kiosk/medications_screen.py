@@ -11,7 +11,7 @@ def build_medications_html(services, api_url: str) -> str:
         + '<div id="kioskMedsEditorRoot"></div>'
         + hp.spacer(16)
         + '<div class="home-action-row">'
-        + '<button type="button" class="add-event-btn" data-screen="settings">Back to Settings</button>'
+        + '<button type="button" class="add-event-btn btn-large" data-screen="settings">Back to Settings</button>'
         + "</div>"
     )
     return hp.panel(inner, class_name="settings-panel")

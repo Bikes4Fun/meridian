@@ -393,6 +393,43 @@ class RemoteAlertService:
         return ServiceResult.success_result(j or {})
 
 
+class RemoteIncomingCallService:
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def get_incoming_call(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/calls/incoming",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "incoming call request failed")
+        return ServiceResult.success_result(data or {})
+
+    def acknowledge_incoming_call(self, call_id: int) -> Any:
+        ok, j, err = _request(
+            "POST",
+            f"{self._base}/api/calls/{call_id}/ack",
+            headers=self._headers,
+            session=self._session,
+            json_body={},
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "incoming call ack failed")
+        if isinstance(j, dict) and "data" in j:
+            return ServiceResult.success_result(j["data"])
+        return ServiceResult.success_result(j or {})
+
+
 class RemoteEmergencyProfileService:
     """Emergency profile (first responder view), medical summary, and emergency contacts from the server."""
 
@@ -461,7 +498,10 @@ class RemoteChatEntryService:
         self._session = session
 
     def get_entry_url(
-        self, recipient_sendbird_user_id: str = "", recipient_display_name: str = ""
+        self,
+        recipient_sendbird_user_id: str = "",
+        recipient_display_name: str = "",
+        auto_start_call: bool = False,
     ) -> Any:
         """Fetch signed entry URL. recipient = who the kiosk user will chat WITH. Returns ServiceResult with url in data."""
         params = []
@@ -473,6 +513,8 @@ class RemoteChatEntryService:
             params.append(
                 f"recipient_display_name={urllib.parse.quote(recipient_display_name)}"
             )
+        if auto_start_call:
+            params.append("auto_start_call=1")
         qs = "&".join(params)
         url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
         ok, data, err = _get(url, headers=self._headers, session=self._session)
@@ -648,6 +690,9 @@ def create_kiosk_remote(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "alert_service": RemoteAlertService(
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "incoming_call_service": RemoteIncomingCallService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "_alert_activated": [False],

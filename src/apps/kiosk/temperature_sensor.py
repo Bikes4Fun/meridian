@@ -5,17 +5,39 @@ When readings stay above threshold for STOVE_ALERT_DURATION_SEC, the kiosk posts
 /api/emergency/alert activated=true flow the webapp uses so family sees the emergency screen.
 """
 
+import glob
 import logging
 import os
 import re
+import sys
 import threading
 import time
 from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# Serial device (set STOVE_SERIAL_PORT e.g. to /tmp/ttyFAKE0 for a simulator).
-STOVE_SERIAL_PORT = os.environ.get("STOVE_SERIAL_PORT", "/dev/ttyUSB0")
+# Wire format: Arduino (or any sender) may print one line per reading:
+#   MERIDIAN,C,34.56
+#   MERIDIAN,F,94.1
+# Other lines still work via the numeric regex below (e.g. "Temp: 31.6 °C").
+
+
+def _default_stove_serial_port() -> str:
+    """STOVE_SERIAL_PORT from env, else first USB serial on macOS, else Linux default."""
+    raw = os.environ.get("STOVE_SERIAL_PORT")
+    if raw is not None and str(raw).strip():
+        return str(raw).strip()
+    if sys.platform == "darwin":
+        matches = sorted(
+            glob.glob("/dev/cu.usbserial*") + glob.glob("/dev/cu.wchusbserial*")
+        )
+        if matches:
+            return matches[0]
+    return "/dev/ttyUSB0"
+
+
+# Serial device (set in .env or STOVE_SERIAL_PORT; /tmp/ttyFAKE0 for a simulator).
+STOVE_SERIAL_PORT = _default_stove_serial_port()
 STOVE_SERIAL_BAUD = int(os.environ.get("STOVE_SERIAL_BAUD", "9600"))
 
 # Tuning for testing with °C sim lines like "Temp: 31.6 °C"
@@ -58,6 +80,19 @@ class TemperatureSensor:
         line = line.strip()
         if not line:
             return None
+        upper = line.upper()
+        if upper.startswith("MERIDIAN,"):
+            parts = [p.strip() for p in line.split(",")]
+            if len(parts) >= 3:
+                try:
+                    unit = parts[1].upper()
+                    val = float(parts[2])
+                    if unit == "C":
+                        return _both_from_value(val, True)
+                    if unit == "F":
+                        return _both_from_value(val, False)
+                except ValueError:
+                    pass
         m = _NUM.search(line)
         if m:
             val = float(m.group(1))
@@ -138,6 +173,7 @@ class TemperatureSensor:
         while True:
             try:
                 ser = serial.Serial(self._port, self._baud, timeout=1)
+                logger.info(f"stove serial connected {self._port} @ {self._baud} baud")
             except Exception as e:
                 logger.debug(f"stove serial open {self._port}: {e}")
                 with self._lock:

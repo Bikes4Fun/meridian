@@ -23,7 +23,7 @@ def build_settings_html(services, api_url: str) -> str:
             "Mark doses from Home or Health."
         )
         + hp.spacer(8)
-        + '<button type="button" class="add-event-btn" data-screen="medications">Edit medications</button>'
+        + '<button type="button" class="add-event-btn btn-large" data-screen="medications">Edit medications</button>'
     )
     body = hp.kiosk_body(
         "Display and account options are managed by your caregiver in the Meridian web dashboard."

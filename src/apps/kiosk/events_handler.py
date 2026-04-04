@@ -25,15 +25,15 @@ def get_event_form_overlay_html() -> str:
 <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
 <textarea id="eventDescription" placeholder="Notes (optional)" rows="2" class="event-input"></textarea>
 <div class="event-form-actions">
-<button type="submit" class="event-btn event-btn-primary">Save</button>
-<button type="button" id="eventFormCancel" class="event-btn event-btn-secondary">Cancel</button>
+<button type="submit" class="event-btn btn-small event-btn-primary">Save</button>
+<button type="button" id="eventFormCancel" class="event-btn btn-small event-btn-secondary">Cancel</button>
 </div></form></div></div>"""
 
 
 def get_event_modal_html() -> str:
     """Add Event button + overlay (included in Schedule nav HTML from build_schedule_html)."""
     return """<div class="home-action-row" style="margin-top:16px;">
-<button type="button" class="add-event-btn" id="addEventBtn">+ Add Event</button>
+<button type="button" class="add-event-btn btn-large" id="addEventBtn">+ Add Event</button>
 </div>""" + get_event_form_overlay_html()
 
 

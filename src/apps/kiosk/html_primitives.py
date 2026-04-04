@@ -118,7 +118,7 @@ def kiosk_button(text, onclick_js, no_feedback=False, small=False):
     Standard: press feedback (scale + darker color). no_feedback=True disables it. small=True: compact, no min size.
     onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it.
     """
-    parts = ["kiosk-button"]
+    parts = ["kiosk-button", "btn-small" if small else "btn-large"]
     if no_feedback:
         parts.append("kiosk-button--no-feedback")
     if small:

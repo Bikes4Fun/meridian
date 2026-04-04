@@ -548,10 +548,13 @@ def register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix: str
         path = (auth_redirect_base + "/chat.html") if auth_redirect_base else "/"
         sb = (payload.get("sendbird_user_id") or "").strip()
         dn = (payload.get("display_name") or "").strip()
+        auto_start_call = bool(payload.get("auto_start_call"))
         if sb:
             path += "?sendbird_user_id=" + urllib.parse.quote(sb)
             if dn:
                 path += "&display_name=" + urllib.parse.quote(dn)
+            if auto_start_call:
+                path += "&auto_start_call=1"
         return redirect(path)
 
     @app.route("/api/chat/config", methods=["GET"])

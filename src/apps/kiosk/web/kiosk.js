@@ -58,6 +58,11 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
+  var callBtn = e.target.closest('.contact-call-btn[data-sb-uid]');
+  if (callBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat_with_call) {
+    pywebview.api.open_chat_with_call(callBtn.dataset.sbUid || '', callBtn.dataset.name || '');
+    return;
+  }
   var tile = e.target.closest('.contact-tile[data-sb-uid]');
   if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
     pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
@@ -155,6 +160,26 @@ function showToast(msg) {
 var _kioskCallSocketReady = false;
 var _kioskCallSocketStarted = false;
 var _kioskLastRingingCallId = '';
+var _kioskClientDeviceId = '';
+
+function _ensureKioskClientDeviceId() {
+  if (_kioskClientDeviceId) return _kioskClientDeviceId;
+  var key = 'meridian_kiosk_device_id';
+  try {
+    var existing = window.localStorage ? window.localStorage.getItem(key) : '';
+    if (existing) {
+      _kioskClientDeviceId = existing;
+      return _kioskClientDeviceId;
+    }
+    var id = 'kiosk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    if (window.localStorage) window.localStorage.setItem(key, id);
+    _kioskClientDeviceId = id;
+    return _kioskClientDeviceId;
+  } catch (_err) {
+    _kioskClientDeviceId = 'kiosk-ephemeral';
+    return _kioskClientDeviceId;
+  }
+}
 
 function logKioskCallSocket(eventName, details) {
   var payload = {
@@ -162,7 +187,9 @@ function logKioskCallSocket(eventName, details) {
     ts: new Date().toISOString(),
     page: window.location.pathname + window.location.search,
     visibility: document.visibilityState,
-    online: !!navigator.onLine
+    online: !!navigator.onLine,
+    client_source: 'kiosk',
+    client_device_id: _ensureKioskClientDeviceId()
   };
   if (details && typeof details === 'object') {
     for (var k in details) {

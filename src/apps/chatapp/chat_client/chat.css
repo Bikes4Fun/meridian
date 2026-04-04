@@ -47,11 +47,82 @@ body {
   flex-shrink: 0;
 }
 
+#callActiveBadge {
+  margin: 0 0 var(--chat-space-sm) 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+  font-weight: 700;
+  display: inline-block;
+  width: fit-content;
+}
+
+#callActiveBadge.call-badge-info {
+  background: var(--info-bg);
+  color: var(--info-text);
+}
+
+#callActiveBadge.call-badge-active {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
 #chatParticipants {
   margin: 0 0 6px 0;
   font-size: var(--chat-caption-size);
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+#participantPhotos {
+  display: flex;
+  justify-content: center;
+  gap: var(--chat-space-lg);
+  margin: 0 0 var(--chat-space-md) 0;
+}
+
+.participant-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 112px;
+}
+
+.participant-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.participant-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.participant-photo-name {
+  margin-top: 6px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+#callRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--chat-space-sm);
+  margin: 0 0 var(--chat-space-sm) 0;
 }
 
 /* =============================================================================

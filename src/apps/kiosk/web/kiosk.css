@@ -48,7 +48,6 @@
 
   /* Surfaces */
   --med-surface: #f0f5fa;      /* Light blue for medication */
-  --events-surface: #f5faf0;   /* Light green for events */
   --surface-muted: #e8e8e8;    /* Neutral gray */
   --surface-hover: #ddd;       /* Hover state for muted surfaces */
 
@@ -81,6 +80,14 @@
   /* ===== TRANSITIONS ===== */
   --transition-press: transform 0.08s ease, background 0.08s ease;
   --active-scale: 0.97;  /* Scale down slightly when pressed */
+
+  /* ===== BUTTON CATEGORY DEFAULTS ===== */
+  --btn-large-font-size: var(--font-caption);
+  --btn-large-min-height: var(--touch-min);
+  --btn-large-radius: var(--radius-sm);
+  --btn-small-font-size: var(--font-caption);
+  --btn-small-min-height: 44px;
+  --btn-small-radius: var(--radius-sm);
 }
 
 /* =============================================================================
@@ -132,7 +139,7 @@ body {
   padding: 0 var(--safe-margin);
   gap: var(--space-md);
   background: var(--bg);
-  border-bottom: 2px solid var(--border);
+  border-bottom: none;
 }
 
 .nav-tab {
@@ -162,8 +169,8 @@ body {
 #kiosk-nav .nav-tab--active {
   font-weight: 700;
   color: var(--primary);
-  background: rgba(46, 125, 155, 0.08);
-  box-shadow: inset 0 -4px 0 0 var(--primary);
+  background: transparent;
+  box-shadow: none;
 }
 
 #kiosk-footer {
@@ -219,10 +226,6 @@ body {
   filter: brightness(1.06);
 }
 
-.footer-emergency-btn:active {
-  transform: scale(var(--active-scale));
-}
-
 .footer-emergency-btn__icon {
   width: 40%;
   height: 40%;
@@ -259,10 +262,6 @@ body {
 
 .kiosk-panel.med-panel {
   background: var(--med-surface);
-}
-
-.kiosk-panel.events-panel {
-  background: var(--events-surface);
 }
 
 /* Utility layout classes */
@@ -363,6 +362,38 @@ body {
    BUTTONS
    ============================================================================= */
 
+/* Button category defaults (utility + mapped existing controls) */
+.btn-large,
+.add-event-btn,
+.timeline-view-btn {
+  font-family: inherit;
+  border-radius: var(--btn-large-radius);
+  font-size: var(--btn-large-font-size);
+  min-height: var(--btn-large-min-height);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.btn-small,
+.timeline-action-btn,
+.event-btn {
+  font-family: inherit;
+  border-radius: var(--btn-small-radius);
+  font-size: var(--btn-small-font-size);
+  min-height: var(--btn-small-min-height);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.footer-emergency-btn:active,
+.add-event-btn:active,
+.timeline-view-btn:active,
+.event-btn-primary:active,
+.event-btn-secondary:active,
+.timeline-action-btn:active {
+  transform: scale(var(--active-scale));
+}
+
 /* Generic kiosk button */
 .kiosk-button {
   font-family: inherit;
@@ -372,7 +403,7 @@ body {
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   border: none;
-  background: var(--accent);
+  background: var(--primary);
   color: #fff;
   cursor: pointer;
   transition: var(--transition-press);
@@ -380,7 +411,7 @@ body {
 
 .kiosk-button:active:not(.kiosk-button--no-feedback) {
   transform: scale(var(--active-scale));
-  background: var(--accent-dark);
+  background: var(--primary-dark);
 }
 
 .kiosk-button--small {
@@ -408,23 +439,15 @@ body {
 /* Primary action (Add Event on home) */
 .add-event-btn {
   font-size: var(--font-body);
-  font-family: inherit;
   min-height: var(--touch-min);
   padding: 0 var(--safe-margin);
   background: var(--primary);
   color: white;
   border: 2px solid var(--primary-dark);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition-press);
 }
 
 .add-event-btn:hover {
   background: var(--primary-hover);
-}
-
-.add-event-btn:active {
-  transform: scale(var(--active-scale));
 }
 
 .home-action-row {
@@ -528,23 +551,15 @@ body {
 /* Timeline view button */
 .timeline-view-btn {
   font-size: var(--font-caption);
-  font-family: inherit;
   margin-top: var(--space-sm);
   padding: 0.5em 1em;
   background: var(--surface-muted);
   color: var(--text);
   border: 2px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition-press);
 }
 
 .timeline-view-btn:hover {
   background: var(--surface-hover);
-}
-
-.timeline-view-btn:active {
-  transform: scale(var(--active-scale));
 }
 
 /* Modal/Event form buttons */
@@ -552,11 +567,7 @@ body {
   flex: 1;
   min-height: var(--touch-min);
   font-size: var(--font-body);
-  font-family: inherit;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
   border: 2px solid var(--border-light);
-  transition: var(--transition-press);
 }
 
 .event-btn-primary {
@@ -569,10 +580,6 @@ body {
   background: var(--primary-hover);
 }
 
-.event-btn-primary:active {
-  transform: scale(var(--active-scale));
-}
-
 .event-btn-secondary {
   background: var(--surface-muted);
   color: var(--text);
@@ -580,10 +587,6 @@ body {
 
 .event-btn-secondary:hover {
   background: var(--surface-hover);
-}
-
-.event-btn-secondary:active {
-  transform: scale(var(--active-scale));
 }
 
 /* =============================================================================
@@ -648,6 +651,57 @@ body {
 .contact-relationship {
   font-size: var(--font-caption);
   color: var(--text-muted);
+}
+
+.chat-contact-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 260px;
+  justify-self: center;
+}
+
+.chat-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.chat-contact-card .contact-tile {
+  min-width: 0;
+  width: 100%;
+  padding: 0.8vh;
+}
+
+.chat-contact-card .avatar-wrapper,
+.chat-contact-card .contact-initial,
+.chat-contact-card .avatar-wrapper .avatar {
+  width: 8.6vh;
+  height: 8.6vh;
+}
+
+.chat-contact-card .contact-name {
+  font-size: var(--font-subheader);
+}
+
+.chat-contact-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.contact-call-btn {
+  background: rgba(26, 155, 138, 0.12);
+  border-color: var(--secondary);
+  color: var(--secondary);
+  font-weight: 700;
+  min-width: 0;
+  width: 100%;
+  font-size: var(--font-body);
 }
 
 /* Large avatar for emergency screen */
@@ -800,25 +854,17 @@ body {
 }
 
 .timeline-action-btn {
-  font-family: inherit;
   font-size: var(--font-caption);
   font-weight: 600;
   min-height: 44px;
   padding: 0.35em 0.85em;
   border: 2px solid var(--border-light);
-  border-radius: var(--radius-sm);
   background: var(--surface-muted);
   color: var(--text);
-  cursor: pointer;
-  transition: var(--transition-press);
 }
 
 .timeline-action-btn:hover {
   background: var(--surface-hover);
-}
-
-.timeline-action-btn:active {
-  transform: scale(var(--active-scale));
 }
 
 .med-manage-row {

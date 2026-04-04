@@ -58,6 +58,10 @@ class KioskBridge:
         """Fetch chat entry URL and open in new pywebview window. No window.open in JS."""
         self._chat.open_chat(sendbird_user_id, display_name)
 
+    def open_chat_with_call(self, sendbird_user_id: str, display_name: str) -> None:
+        """Open chat entry URL and auto-start a video call."""
+        self._chat.open_chat(sendbird_user_id, display_name, auto_start_call=True)
+
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
         logger.info("Print emergency (button)")

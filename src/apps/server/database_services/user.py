@@ -101,4 +101,4 @@ class UserService:
                 return ServiceResult.error_result(
                     "Duplicate sendbird_user_id. Each user must have a unique Sendbird ID."
                 )
-            return ServiceResult.error_result("Database constraint failed: %s" % e)
+            return ServiceResult.error_result("An internal error occurred")

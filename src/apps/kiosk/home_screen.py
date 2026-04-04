@@ -1,7 +1,8 @@
 """
-Home screen: Option 5 - Up Next, What's Next Today, side-by-side action buttons.
-Owns all home presentation: structure, schedule data merge, and HTML for dynamic content.
-Event modal: single source in events_handler.get_event_form_overlay_html().
+Kiosk Home screen: layout, Up Next + “what’s next today” timeline, and merged schedule item loading.
+
+Scope: merge medications + calendar into sortable items; emit HTML for injected regions.
+Not here: event modal markup (events_handler), nav/screen switching (app), or non-home screens.
 """
 
 import html as html_module
@@ -42,8 +43,8 @@ def load_schedule_items(services) -> tuple[list, object]:
     """Fetch meds + events, merge into chronological items. Returns (items, now)."""
     import datetime
 
-    med_svc = services.get("medication_service")
-    cal_svc = services.get("calendar_service")
+    med_svc = services.get_medication_service()
+    cal_svc = services.get_calendar_service()
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     now = datetime.datetime.now()
     items = []

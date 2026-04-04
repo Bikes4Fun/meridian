@@ -1,6 +1,6 @@
 /**
- * Medications: today's doses on #healthMedsTakeHost; inline editing only on #settingsMedsEditor (kiosk parity).
- * Exposes MeridianMedications.init(apiUrl, familyCircleId, showStatus). Requires meridian_medications_inline.js.
+ * Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring. MeridianMedications.init(...). Requires meridian_medications_inline.js.
+ * Scope: DOM for #healthMedsTakeHost / #settingsMedsEditor and credentialed fetches. Not: kiosk embed (kiosk_medications_embed.js), FDA search, or server routes.
  */
 (function () {
     'use strict';
@@ -17,14 +17,6 @@
     var SAVE_MEDS_DISK_SVG =
         '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><line x1="7" y1="3" x2="17" y2="3"/></svg>';
-
-    function escapeHtml(s) {
-        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function escapeAttr(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    }
 
     function buildTakeListHTML() {
         return '<div id="healthMedsList">Loading…</div>';
@@ -51,13 +43,13 @@
     }
 
     function itemHtmlTimed(m) {
-        var name = escapeHtml(m.name);
+        var name = meridianEscapeHtml(m.name);
         var done = m.status === 'done';
         var slot = m.time || '';
-        var meta = escapeHtml(slot) + (done ? ' · Taken \u2713' : ' · Not taken');
+        var meta = meridianEscapeHtml(slot) + (done ? ' · Taken \u2713' : ' · Not taken');
         var takeLbl = done ? 'Uncheck' : 'Take';
-        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + escapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
-        return '<li data-med-id="' + m.id + '" data-med-time="' + escapeAttr(slot) + '" data-med-prn="0" data-med-done="' + (done ? '1' : '0') + '">' +
+        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + meridianEscapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
+        return '<li data-med-id="' + m.id + '" data-med-time="' + meridianEscapeAttr(slot) + '" data-med-prn="0" data-med-done="' + (done ? '1' : '0') + '">' +
             '<article class="med-card">' +
             '<p class="med-card__title">' + name + '</p>' +
             '<p class="med-card__meta">' + meta + '</p>' +
@@ -68,11 +60,11 @@
     }
 
     function itemHtmlPrn(m) {
-        var name = escapeHtml(m.name);
+        var name = meridianEscapeHtml(m.name);
         var taken = m.status === 'taken';
-        var status = m.last_taken ? 'Last: ' + escapeHtml(m.last_taken) : (taken ? 'Taken \u2713' : 'Not taken today');
+        var status = m.last_taken ? 'Last: ' + meridianEscapeHtml(m.last_taken) : (taken ? 'Taken \u2713' : 'Not taken today');
         var takeLbl = taken ? 'Uncheck' : 'Take';
-        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + escapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
+        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + meridianEscapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
         return '<li data-med-id="' + m.id + '" data-med-time="prn" data-med-prn="1" data-med-done="' + (taken ? '1' : '0') + '">' +
             '<article class="med-card">' +
             '<p class="med-card__title">' + name + ' (PRN)</p>' +
@@ -108,7 +100,7 @@
     function loadMeds() {
         var listEl = document.getElementById('healthMedsList');
         if (!listEl || !_familyCircleId) return;
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications', { credentials: 'include' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
@@ -125,7 +117,7 @@
         var listEl = document.getElementById('healthMedsInlineList');
         if (!listEl || !_familyCircleId) return;
         if (_healthMedAutosave) _healthMedAutosave.cancel();
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(
             apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
             { credentials: 'include' }
@@ -146,7 +138,7 @@
         var medId = parseInt(li.getAttribute('data-med-id'), 10);
         var timeSlot = li.getAttribute('data-med-time') || '';
         if (!timeSlot) return;
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications/' + medId + '/mark-taken', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -200,7 +192,7 @@
             var saveBtn = document.getElementById('healthMedsSaveBtn');
             function runMedsSave(silent) {
                 if (!_familyCircleId) return Promise.resolve();
-                var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var rows = MeridianMedicationsInline.collectRows(inlineList);
                 return MeridianMedicationsInline.saveDiff(apiBase, _familyCircleId, _inlineSnapshot, rows)
                     .then(function () {

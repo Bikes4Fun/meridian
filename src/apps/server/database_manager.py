@@ -47,7 +47,7 @@ class DatabaseManager:
                 return ServiceResult.success_result([dict(row) for row in results])
         except sqlite3.Error as e:
             self.logger.error("Query execution failed: %s", e)
-            return ServiceResult.error_result("Database query failed: %s" % e)
+            return ServiceResult.error_result("Database query failed")
 
     def execute_update(self, query: str, params: tuple = ()) -> ServiceResult:
         try:
@@ -58,7 +58,7 @@ class DatabaseManager:
                 return ServiceResult.success_result(cursor.rowcount)
         except sqlite3.Error as e:
             self.logger.error("Update execution failed: %s", e)
-            return ServiceResult.error_result("Database update failed: %s" % e)
+            return ServiceResult.error_result("Database update failed")
 
     def execute_insert(self, query: str, params: tuple = ()) -> ServiceResult:
         """Run INSERT, return lastrowid on success."""
@@ -70,7 +70,7 @@ class DatabaseManager:
                 return ServiceResult.success_result(cursor.lastrowid)
         except sqlite3.Error as e:
             self.logger.error("Insert execution failed: %s", e)
-            return ServiceResult.error_result("Database insert failed: %s" % e)
+            return ServiceResult.error_result("Database insert failed")
 
     def execute_many(self, query: str, params_list: List[tuple]) -> ServiceResult:
         try:
@@ -81,7 +81,7 @@ class DatabaseManager:
                 return ServiceResult.success_result(cursor.rowcount)
         except sqlite3.Error as e:
             self.logger.error("Batch execution failed: %s", e)
-            return ServiceResult.error_result("Database batch operation failed: %s" % e)
+            return ServiceResult.error_result("Database batch operation failed")
 
     def get_table_info(self, table_name: str) -> ServiceResult:
         return self.execute_query("PRAGMA table_info(%s)" % table_name)
@@ -106,7 +106,7 @@ class DatabaseManager:
             return ServiceResult.success_result(self.config.path)
         except Exception as e:
             self.logger.error("Schema creation failed: %s", e)
-            return ServiceResult.error_result("Schema creation failed: %s" % e)
+            return ServiceResult.error_result("Schema creation failed")
 
     def backup_database(self, backup_path: str) -> ServiceResult:
         if not self.config.backup_enabled:
@@ -119,4 +119,4 @@ class DatabaseManager:
             return ServiceResult.success_result(backup_path)
         except Exception as e:
             self.logger.error("Backup failed: %s", e)
-            return ServiceResult.error_result("Backup failed: %s" % e)
+            return ServiceResult.error_result("Backup failed")

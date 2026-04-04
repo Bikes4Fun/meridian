@@ -1,4 +1,9 @@
-"""Settings screen: includes monitors widgets plus kiosk-level copy."""
+"""
+Kiosk Settings: monitors section HTML, link into Medications screen, static kiosk copy.
+
+Scope: composition of primitives + monitor rows (stove id for live updates).
+Not here: live temperature polling (app + TemperatureSensor), or medication row editing.
+"""
 
 from . import html_primitives as hp
 from .monitors_screen import build_monitor_reading_row_html, build_monitors_section_html

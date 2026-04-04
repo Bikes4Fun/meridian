@@ -1,5 +1,8 @@
 """
-Emergency screen: fetches data, shapes contacts, builds form-style layout.
+Kiosk Emergency screen: load emergency profile via remote service; build read-only HTML (patient, medical, contacts).
+
+Scope: presentation + photo fetch for this screen only.
+Not here: printing (emergency_print), alert activation/polling (app), or server-side PDF generation.
 """
 
 def _form_row_html(label_text: str, value_text: str) -> str:
@@ -29,7 +32,7 @@ def build_emergency_html(services, api_url: str) -> str:
     from . import html_primitives as hp
     from .api_client import fetch_photo_b64
 
-    emergency_svc = services.get("emergency_service")
+    emergency_svc = services.get_emergency_service()
     if not emergency_svc:
         return hp.kiosk_header("Emergency profile unavailable")
 
@@ -43,7 +46,7 @@ def build_emergency_html(services, api_url: str) -> str:
     care_recipient_user_id = e_data.get("care_recipient_user_id") or ""
     patient_photo_src = None
     if care_recipient_user_id:
-        contact_svc = services.get("contact_service")
+        contact_svc = services.get_contact_service()
         if contact_svc:
             base = api_url.rstrip("/")
             patient_photo_src = fetch_photo_b64(

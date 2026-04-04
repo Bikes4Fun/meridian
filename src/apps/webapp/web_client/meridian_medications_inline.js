@@ -1,15 +1,11 @@
 /**
- * Shared inline medication editor: row markup, DOM collect, and diff save vs /medications API.
- * Load before ice_editor.js and medications.js (no __API_URL__; callers pass api base).
+ * Shared medication row editor: HTML for rows, collect from DOM, sequential diff save/delete vs /medications (api base from caller).
+ * Scope: MeridianMedicationsInline + reusable by webapp Settings, ICE editor, kiosk embed. Not: page layout, ICE non-med fields, or Python.
  */
 (function (global) {
     'use strict';
 
     var TIME_NAMES = ['Morning', 'Noon', 'Evening', 'prn'];
-
-    function escapeAttr(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    }
 
     function htmlToEl(html) {
         var d = document.createElement('div');
@@ -25,18 +21,18 @@
     function medRowHtml(m) {
         m = m || {};
         var idAttr = m.id != null && m.id !== '' ? String(m.id) : '';
-        var name = escapeAttr(m.name || '');
-        var dosage = escapeAttr(m.dosage || '');
-        var frequency = escapeAttr(m.frequency || '');
-        var rxcui = escapeAttr((m.fda_rxcui != null && m.fda_rxcui !== '') ? String(m.fda_rxcui) : '');
+        var name = global.meridianEscapeAttr(m.name || '');
+        var dosage = global.meridianEscapeAttr(m.dosage || '');
+        var frequency = global.meridianEscapeAttr(m.frequency || '');
+        var rxcui = global.meridianEscapeAttr((m.fda_rxcui != null && m.fda_rxcui !== '') ? String(m.fda_rxcui) : '');
         var times = m.medication_times || [];
         var timeChecks = TIME_NAMES.map(function (t) {
             var lbl = t === 'prn' ? 'As needed' : t;
             var chk = times.indexOf(t) >= 0 ? ' checked' : '';
             return '<label class="ice-med-time-opt"><input type="checkbox" class="ice-med-time" value="' +
-                escapeAttr(t) + '"' + chk + '> ' + lbl + '</label>';
+                global.meridianEscapeAttr(t) + '"' + chk + '> ' + lbl + '</label>';
         }).join('');
-        return '<div class="ice-med-row" data-med-id="' + escapeAttr(idAttr) + '">' +
+        return '<div class="ice-med-row" data-med-id="' + global.meridianEscapeAttr(idAttr) + '">' +
             '<div class="ice-med-fields">' +
             '<input type="text" class="event-input ice-med-name" placeholder="Name" value="' + name + '">' +
             '<input type="text" class="event-input ice-med-dosage" placeholder="Dosage" value="' + dosage + '">' +

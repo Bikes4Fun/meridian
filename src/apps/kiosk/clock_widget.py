@@ -1,6 +1,8 @@
 """
-Clock widget: day, date, time, and time-of-day icon (sprite).
-Reusable across screens that need clock display.
+Kiosk clock fragment: HTML for day, date, time, and period sprite (reads time service).
+
+Scope: static markup for one widget; reusable on any screen that passes services.
+Not here: per-second updates or pywebview eval (app owns refresh loops).
 """
 
 import logging
@@ -12,7 +14,7 @@ def build_clock_html(services) -> str:
     """Build the full clock display HTML: day, period, icon, time, date, year."""
     from . import html_primitives as hp
 
-    time_svc = services.get("time_service")
+    time_svc = services.get_time_service()
     day = time_svc.get_dayof_week().upper() if time_svc else ""
     date = time_svc.get_month_day() if time_svc else ""
     year = time_svc.get_year() if time_svc else ""

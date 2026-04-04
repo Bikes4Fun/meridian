@@ -1,6 +1,9 @@
 """
-Simplified service container for Meridian.
-Used only by server/app.py. Kiosk uses api_client.create_kiosk_remote() instead.
+Server-only: lazy DB-backed service getters (one DatabaseManager, shared service cache).
+
+Scope: construct domain services for the Flask/API process.
+
+Not here: kiosk remote clients, kiosk package imports, or Flask route definitions.
 """
 
 try:

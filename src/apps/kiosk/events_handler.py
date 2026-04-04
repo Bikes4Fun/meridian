@@ -1,5 +1,8 @@
 """
-EventsHandler: event modals and API calls. build_schedule_html: Schedule nav (meds + events timeline).
+Kiosk calendar UX: Schedule screen HTML (meds + events), event overlay markup, EventsHandler (add/edit/delete via remote calendar service).
+
+Scope: calendar-facing DOM strings and bridge methods tied to pywebview eval.
+Not here: Home layout, server Flask routes, or non-calendar APIs.
 """
 
 import datetime
@@ -39,8 +42,8 @@ def get_event_modal_html() -> str:
 
 def build_schedule_html(services, api_url: str) -> str:
     """Full Schedule screen: merged meds + events timeline for today."""
-    med_svc = services.get("medication_service")
-    cal_svc = services.get("calendar_service")
+    med_svc = services.get_medication_service()
+    cal_svc = services.get_calendar_service()
     items = []
     today = ""
     group_times = {}
@@ -179,7 +182,7 @@ class EventsHandler:
             return str(e)
         if not data.get("title") or not data.get("start_time"):
             return "title and start_time required"
-        cal = self._app.services.get("calendar_service")
+        cal = self._app.services.get_calendar_service()
         if not cal:
             return "calendar service unavailable"
         if self._editing_event_id:
@@ -204,7 +207,7 @@ class EventsHandler:
 
     def delete_event(self, event_id: str) -> str:
         """DELETE event via calendar service."""
-        cal = self._app.services.get("calendar_service")
+        cal = self._app.services.get_calendar_service()
         if not cal:
             return "calendar service unavailable"
         r = cal.delete_event(event_id)

@@ -1,6 +1,8 @@
 """
-Health: medications list on Health screen (mark taken only).
-Medication list editing: Settings → Edit medications (webapp inline editor in kiosk_medications_embed.js).
+Kiosk Health screen: medications list HTML and “mark taken” bridge (HealthHandler → remote API).
+
+Scope: render meds from medication service; kiosk-only presentation.
+Not here: editing the medication list (Settings → Medications + inline JS), Home/Schedule timelines, or ICE/emergency PDF flows.
 """
 
 import html as html_module
@@ -86,7 +88,7 @@ def _medication_lists_inner_html(data: dict) -> str:
 
 def build_health_html(services, api_url: str) -> str:
     """Health screen: medications list and mark taken."""
-    med_svc = services.get("medication_service")
+    med_svc = services.get_medication_service()
     if not med_svc:
         return (
             hp.kiosk_header("Health")
@@ -121,7 +123,7 @@ class HealthHandler:
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
-        med_svc = self._app.services.get("medication_service")
+        med_svc = self._app.services.get_medication_service()
         if not med_svc:
             return "medication service unavailable"
         if not hasattr(med_svc, "mark_medication_taken"):

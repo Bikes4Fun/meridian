@@ -1,17 +1,9 @@
 """
-Whole-system, template-level HTML primitives for pywebview kiosk.
-Aligns with info/meridian-design-system-2.md (Typography Scale, TV Kiosk Design Specs, Components).
-Design tokens (background, colors, typography scale) live in kiosk.html CSS.
+Kiosk markup primitives: nav, typography wrappers, loading/empty/error, layout, kiosk_button, contact/avatar snippets.
 
-Screen-specific helpers (form_row, section_bar) live in emergency_screen.
+Scope: reusable HTML string builders only; design tokens live in kiosk CSS. Aligns with the kiosk/TV typography spec in-repo docs.
 
-Used across screens:
-- nav_html: every screen (uses data-screen; kiosk.html has delegated click listener)
-- typography: kiosk_hero, kiosk_header, kiosk_subheader, kiosk_body_large, kiosk_body, kiosk_caption
-- loading_state, empty_state, error_state: every screen
-- panel, two_column_row, spacer: layout
-- kiosk_button: Emergency (Print), any primary action
-- contact_tile, avatar_img: person/contact display
+Not here: fetching services, per-screen composition (see *\_screen.py), labeled form rows / section bars (emergency_screen), or webapp assets.
 """
 
 import html

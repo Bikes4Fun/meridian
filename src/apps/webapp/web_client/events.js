@@ -1,6 +1,6 @@
 /**
- * Events page – populate pageEvents when navigated to.
- * Exposes MeridianEvents.init(apiUrl, familyCircleId, showStatus) for app.js to call.
+ * Webapp Events tab: list today’s calendar events, add/edit/delete modal + credentialed API calls. MeridianEvents.init(...) from app.js.
+ * Scope: #pageEvents only. Not: kiosk schedule screen, medications merge, or shared calendar month view.
  */
 (function () {
     'use strict';
@@ -35,7 +35,7 @@
         var list = document.getElementById('eventsList');
         if (!list || !_familyCircleId) return;
         var today = new Date().toISOString().slice(0, 10);
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
@@ -46,7 +46,7 @@
                 }
                 var items = data.data.map(function (e) {
                     var id = (e.id || '').replace(/"/g, '&quot;');
-                    var title = (e.display || e.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    var title = meridianEscapeHtml(e.display || e.title || '');
                     return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '">' +
                         '<article class="event-card">' +
                         '<p class="event-card__title">' + title + '</p>' +
@@ -125,7 +125,7 @@
                     var eventId = li.getAttribute('data-event-id');
                     if (!eventId) return;
                     if (!confirm('Delete this event?')) return;
-                    var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                    var apiBase = meridianApiBaseNormalize(_apiUrl);
                     fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events/' + encodeURIComponent(eventId), {
                         method: 'DELETE',
                         credentials: 'include'
@@ -161,7 +161,7 @@
                 var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
                 if (endTime) payload.end_time = date + 'T' + endTime + ':00';
 
-                var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var url = apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events';
                 var method = 'POST';
                 if (editingEventId) {

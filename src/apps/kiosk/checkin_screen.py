@@ -1,5 +1,8 @@
 """
-Family Locations screen. Layout: header, check-ins panel, map widget.
+Kiosk Family Locations: screen HTML, check-in panel copy, map section + marker inputs; LocationHandler for “where is everyone”.
+
+Scope: layout and data hooks consumed by map_widget / kiosk JS.
+Not here: Leaflet init (kiosk.js), creating check-ins from this module, or location API implementation on the server.
 """
 
 import json
@@ -16,7 +19,7 @@ class LocationHandler:
 
     def where_is_everyone(self) -> str:
         """Request family to refresh location. Returns message for user."""
-        loc = self._app.services.get("location_service")
+        loc = self._app.services.get_location_service()
         if not loc or not hasattr(loc, "where_is_everyone"):
             return "Location request not available."
         return loc.where_is_everyone()
@@ -33,7 +36,7 @@ def build_checkin_html(
     from . import html_primitives as hp
     from . import map_widget
 
-    loc_svc = services.get("location_service")
+    loc_svc = services.get_location_service()
     checkins_html = hp.loading_state("Loading check-ins...")
     places = []
 

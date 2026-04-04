@@ -82,16 +82,16 @@ class MedicationService:
             return
         medication_groups = {}
         for row in result.data:
+            med_id = row["id"]
             med_name = row["name"]
             dosage = row["dosage"] or ""
             time_name = row["time_name"]
             group_time = row["group_time"]
             taken_today = row["taken_today"]
             last_taken = row.get("last_taken")
-            med_id = row["id"]
-            if med_name not in medication_groups:
-                medication_groups[med_name] = {
-                    "id": med_id,
+            if med_id not in medication_groups:
+                medication_groups[med_id] = {
+                    "name": med_name,
                     "dosage": dosage,
                     "fda_rxcui": (row.get("fda_rxcui") or "").strip() or None,
                     "taken_today": taken_today,
@@ -99,16 +99,16 @@ class MedicationService:
                     "groups": [],
                 }
             if time_name:
-                medication_groups[med_name]["groups"].append(
+                medication_groups[med_id]["groups"].append(
                     {"name": time_name, "time": group_time}
                 )
-        for med_name, med_data in medication_groups.items():
+        for med_id, med_data in medication_groups.items():
+            med_name = med_data["name"]
             if med_data["groups"]:
                 is_prn = any(
                     g["name"].lower() in ["prn", "as needed"]
                     for g in med_data["groups"]
                 )
-                med_id = med_data.get("id")
                 if is_prn:
                     taken_slots = [
                         s.strip()
@@ -144,7 +144,9 @@ class MedicationService:
                             )
                         )
             else:
-                self.logger.warning("Medication '%s' has no times assigned", med_name)
+                self.logger.warning(
+                    "Medication id=%s (%s) has no times assigned", med_id, med_name
+                )
 
     def add_medication(
         self,

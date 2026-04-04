@@ -57,8 +57,9 @@
         var meta = escapeHtml(slot) + (done ? ' · Taken \u2713' : ' · Not taken');
         var takeLbl = done ? 'Uncheck' : 'Take';
         var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + escapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
+        var cardState = done ? 'med-card med-card--done' : 'med-card med-card--pending';
         return '<li data-med-id="' + m.id + '" data-med-time="' + escapeAttr(slot) + '" data-med-prn="0" data-med-done="' + (done ? '1' : '0') + '">' +
-            '<article class="med-card">' +
+            '<article class="' + cardState + '">' +
             '<p class="med-card__title">' + name + '</p>' +
             '<p class="med-card__meta">' + meta + '</p>' +
             rxcui +
@@ -73,8 +74,9 @@
         var status = m.last_taken ? 'Last: ' + escapeHtml(m.last_taken) : (taken ? 'Taken \u2713' : 'Not taken today');
         var takeLbl = taken ? 'Uncheck' : 'Take';
         var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + escapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
+        var cardState = 'med-card med-card--prn' + (taken ? ' med-card--done' : ' med-card--pending');
         return '<li data-med-id="' + m.id + '" data-med-time="prn" data-med-prn="1" data-med-done="' + (taken ? '1' : '0') + '">' +
-            '<article class="med-card">' +
+            '<article class="' + cardState + '">' +
             '<p class="med-card__title">' + name + ' (PRN)</p>' +
             '<p class="med-card__meta">' + status + '</p>' +
             rxcui +
@@ -89,8 +91,9 @@
         var seen = {};
         var items = [];
         timed.forEach(function (m) {
-            if (seen[m.id]) return;
-            seen[m.id] = true;
+            var rowKey = String(m.id) + '|' + String(m.time || '');
+            if (seen[rowKey]) return;
+            seen[rowKey] = true;
             items.push(itemHtmlTimed(m));
         });
         prn.forEach(function (m) {
@@ -146,6 +149,16 @@
         var medId = parseInt(li.getAttribute('data-med-id'), 10);
         var timeSlot = li.getAttribute('data-med-time') || '';
         if (!timeSlot) return;
+        var article = li.querySelector('article.med-card');
+        var btn = li.querySelector('.med-mark-taken-btn');
+        function setBusy(busy) {
+            if (article) {
+                if (busy) article.setAttribute('aria-busy', 'true');
+                else article.removeAttribute('aria-busy');
+            }
+            if (btn) btn.disabled = !!busy;
+        }
+        setBusy(true);
         var apiBase = (_apiUrl || '').replace(/\/$/, '');
         fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications/' + medId + '/mark-taken', {
             method: 'POST',
@@ -159,7 +172,8 @@
                     loadMeds();
                 } else return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
             })
-            .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); });
+            .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); })
+            .then(function () { setBusy(false); });
     }
 
     function onTakeListClick(e) {

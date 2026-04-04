@@ -8,24 +8,30 @@ import html as html_module
 from . import html_primitives as hp
 
 
+# Profile/API-sourced strings must be escaped for HTML text and attributes; fixed UI strings need not.
+# e.g. escape medication name and time slot; literals like "Done ✓" or button labels "Taken"/"Undo" need not.
+
 def _timed_row_html(m: dict, t: str) -> str:
     name = html_module.escape(m.get("name", "?"))
-    status_txt = "Done ✓" if m.get("status") == "done" else "Not done"
+    done = m.get("status") == "done"
+    status_txt = "Done ✓" if done else "Not done"
+    meta = html_module.escape(str(t)) + " · " + status_txt
     med_id = m.get("id")
-    btns = ""
+    card_classes = "med-card med-card--done" if done else "med-card med-card--pending"
+    actions = ""
     if med_id is not None:
         mid = html_module.escape(str(med_id))
         slot = html_module.escape(str(t), quote=True)
-        done = m.get("status") == "done"
         lbl = "Undo" if done else "Taken"
-        btns = (
-            f' <button type="button" class="med-taken-btn" data-med-id="{mid}" '
-            f'data-med-time="{slot}" data-med-done="{str(done).lower()}" '
-            f'style="font-size:11px;padding:2px 6px;">{lbl}</button>'
+        actions = (
+            f'<div class="med-card__actions"><button type="button" '
+            f'class="med-taken-btn timeline-action-btn" data-med-id="{mid}" '
+            f'data-med-time="{slot}" data-med-done="{str(done).lower()}">{lbl}</button></div>'
         )
     return (
         f'<div class="timeline-item med-manage-row"><span class="timeline-bar-med"></span>'
-        f'<span class="timeline-item-main">{name} • {status_txt}</span>{btns}</div>'
+        f'<article class="{card_classes}"><p class="med-card__title">{name}</p>'
+        f'<p class="med-card__meta">{meta}</p>{actions}</article></div>'
     )
 
 
@@ -33,20 +39,30 @@ def _prn_row_html(m: dict) -> str:
     name = html_module.escape(m.get("name", "?"))
     lt = m.get("last_taken")
     taken = m.get("status") == "taken"
-    last = f"Last: {lt}" if lt else ("Taken ✓" if taken else "Not taken today")
+    last = (
+        f"Last: {html_module.escape(str(lt))}"
+        if lt
+        else ("Taken ✓" if taken else "Not taken today")
+    )
     med_id = m.get("id")
-    btns = ""
+    card_classes = "med-card med-card--prn " + (
+        "med-card--done" if taken else "med-card--pending"
+    )
+    title = name + " (PRN)"
+    actions = ""
     if med_id is not None:
         take_lbl = "Uncheck" if taken else "Take"
-        mid = med_id
-        btns = (
-            f' <button type="button" class="med-taken-btn" data-med-id="{mid}" '
-            f'data-med-time="prn" data-med-done="{str(taken).lower()}" '
-            f'style="font-size:11px;padding:2px 6px;">{take_lbl}</button>'
+        mid = html_module.escape(str(med_id))
+        actions = (
+            f'<div class="med-card__actions"><button type="button" '
+            f'class="med-taken-btn timeline-action-btn" data-med-id="{mid}" '
+            f'data-med-time="prn" data-med-done="{str(taken).lower()}">'
+            f"{take_lbl}</button></div>"
         )
     return (
-        f'<div class="timeline-item med-manage-row"><span class="timeline-bar-event"></span>'
-        f'<span class="timeline-item-main">{name} • {last}</span>{btns}</div>'
+        f'<div class="timeline-item med-manage-row"><span class="timeline-bar-med"></span>'
+        f'<article class="{card_classes}"><p class="med-card__title">{title}</p>'
+        f'<p class="med-card__meta">{last}</p>{actions}</article></div>'
     )
 
 
@@ -65,7 +81,7 @@ def _medication_lists_inner_html(data: dict) -> str:
         if not meds:
             continue
         items_html = [_timed_row_html(m, t) for m in meds]
-        header_inner = html_module.escape(t)
+        header_inner = html_module.escape(t)  # batch time key → timeline header text
         parts.append(
             f'<div class="timeline-card"><div class="timeline-header timeline-header--med-batch">'
             f"{header_inner}</div><div class=\"timeline-list\">"

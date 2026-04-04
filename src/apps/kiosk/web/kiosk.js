@@ -23,7 +23,34 @@ function handleModalCancel(e) {
 }
 document.getElementById('screen-content').addEventListener('click', handleModalCancel, true);
 
+var _kioskMedConfirmTimer = null;
+var _kioskMedArmedBtn = null;
+
+function disarmMedTakenBtn(btn) {
+  if (!btn) return;
+  btn.classList.remove('med-taken-btn--armed');
+  if (btn._meridianLabelRestore != null) {
+    btn.textContent = btn._meridianLabelRestore;
+    btn._meridianLabelRestore = null;
+  }
+  if (_kioskMedArmedBtn === btn) _kioskMedArmedBtn = null;
+}
+
+function clearMedTakenArmTimer() {
+  if (_kioskMedConfirmTimer) {
+    clearTimeout(_kioskMedConfirmTimer);
+    _kioskMedConfirmTimer = null;
+  }
+}
+
 document.getElementById('screen-content').addEventListener('click', function(e) {
+  if (_kioskMedArmedBtn) {
+    var clickedMed = e.target.closest('.med-taken-btn');
+    if (clickedMed !== _kioskMedArmedBtn) {
+      clearMedTakenArmTimer();
+      disarmMedTakenBtn(_kioskMedArmedBtn);
+    }
+  }
   var addBtn = e.target.closest('#addEventBtn');
   if (addBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_event_modal) {
     pywebview.api.open_add_event_modal();
@@ -34,15 +61,50 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     var mid = parseInt(medTakenBtn.dataset.medId, 10);
     var timeSlot = medTakenBtn.dataset.medTime || '';
     var currentlyDone = medTakenBtn.dataset.medDone === 'true';
-    var res = pywebview.api.mark_medication_taken(mid, timeSlot, !currentlyDone);
-    function done(r) {
-      if (r === 'ok') {
-        var screen = (document.body && document.body.dataset.screen) || 'home';
-        if (pywebview.api.reload_screen) pywebview.api.reload_screen(screen);
-        else if (pywebview.api.refresh_events) pywebview.api.refresh_events();
-      } else if (r) alert(r);
+    var nextIsTaken = !currentlyDone;
+    if (medTakenBtn === _kioskMedArmedBtn && medTakenBtn.classList.contains('med-taken-btn--armed')) {
+      clearMedTakenArmTimer();
+      _kioskMedArmedBtn = null;
+      medTakenBtn.classList.remove('med-taken-btn--armed');
+      var cardEl = medTakenBtn.closest('article.med-card');
+      if (cardEl) cardEl.setAttribute('aria-busy', 'true');
+      var res = pywebview.api.mark_medication_taken(mid, timeSlot, nextIsTaken);
+      function done(r) {
+        if (cardEl) cardEl.removeAttribute('aria-busy');
+        if (r === 'ok') {
+          var screen = (document.body && document.body.dataset.screen) || 'home';
+          if (pywebview.api.reload_screen) pywebview.api.reload_screen(screen);
+          else if (pywebview.api.refresh_events) pywebview.api.refresh_events();
+        } else {
+          if (medTakenBtn._meridianLabelRestore != null) {
+            medTakenBtn.textContent = medTakenBtn._meridianLabelRestore;
+            medTakenBtn._meridianLabelRestore = null;
+          }
+          if (r) alert(r);
+        }
+      }
+      (res && res.then) ? res.then(done).catch(function (x) {
+        if (cardEl) cardEl.removeAttribute('aria-busy');
+        if (medTakenBtn._meridianLabelRestore != null) {
+          medTakenBtn.textContent = medTakenBtn._meridianLabelRestore;
+          medTakenBtn._meridianLabelRestore = null;
+        }
+        alert(String(x));
+      }) : done(res);
+      return;
     }
-    (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
+    clearMedTakenArmTimer();
+    if (_kioskMedArmedBtn && _kioskMedArmedBtn !== medTakenBtn) {
+      disarmMedTakenBtn(_kioskMedArmedBtn);
+    }
+    _kioskMedArmedBtn = medTakenBtn;
+    medTakenBtn._meridianLabelRestore = medTakenBtn.textContent;
+    medTakenBtn.textContent = nextIsTaken ? 'Tap again to confirm' : 'Tap again to undo';
+    medTakenBtn.classList.add('med-taken-btn--armed');
+    _kioskMedConfirmTimer = setTimeout(function () {
+      _kioskMedConfirmTimer = null;
+      disarmMedTakenBtn(medTakenBtn);
+    }, 10000);
     return;
   }
   var editBtn = e.target.closest('.event-edit-btn');

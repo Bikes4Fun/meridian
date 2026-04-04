@@ -11,12 +11,7 @@ final class ChatListViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyMeridianScreenDefaults(title: "Call Hub")
-
-        statusLabel.numberOfLines = 0
-        statusLabel.font = .preferredFont(forTextStyle: .footnote)
-        statusLabel.textColor = MeridianPalette.mutedText
-        statusLabel.text = "Select a family member below to place a call or open chat."
+        view.backgroundColor = MeridianPalette.background
 
         tableView.dataSource = self
         tableView.delegate = self
@@ -24,19 +19,9 @@ final class ChatListViewController: UIViewController {
         tableView.alwaysBounceVertical = true
         tableView.translatesAutoresizingMaskIntoConstraints = false
 
-        let controlsStack = UIStackView(arrangedSubviews: [statusLabel])
-        controlsStack.axis = .vertical
-        controlsStack.spacing = 8
-        controlsStack.translatesAutoresizingMaskIntoConstraints = false
-
-        view.addSubview(controlsStack)
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
-            controlsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: MeridianLayout.sectionSpacing),
-            controlsStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
-            controlsStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
-
-            tableView.topAnchor.constraint(equalTo: controlsStack.bottomAnchor, constant: 8),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8)
@@ -47,7 +32,12 @@ final class ChatListViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        enforceMeridianCompactNavigationBar()
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     override func viewDidAppear(_ animated: Bool) {

@@ -3,6 +3,7 @@
  */
 import UIKit
 import WebKit
+import MapKit
 
 final class MainTabViewController: UITabBarController {
     private enum TabIndex: Int {
@@ -24,10 +25,6 @@ final class MainTabViewController: UITabBarController {
         tabBar.backgroundColor = .white
 
         let homeVC = HomeViewController()
-        homeVC.onOpenAlerts = { [weak self] in self?.selectedIndex = TabIndex.alerts.rawValue }
-        homeVC.onOpenCheckIn = { [weak self] in self?.selectedIndex = TabIndex.checkIn.rawValue }
-        homeVC.onOpenCalls = { [weak self] in self?.selectedIndex = TabIndex.calls.rawValue }
-        homeVC.onOpenSettings = { [weak self] in self?.selectedIndex = TabIndex.settings.rawValue }
 
         let settingsVC = SettingsViewController()
         settingsVC.onOpenDeveloperTools = { [weak self] in
@@ -37,7 +34,7 @@ final class MainTabViewController: UITabBarController {
 
         viewControllers = [
             wrapped(homeVC, title: "Home", image: UIImage(systemName: "house.fill")),
-            wrapped(AlertViewController(), title: "Alert", image: UIImage(systemName: "exclamationmark.triangle.fill")),
+            wrapped(AlertViewController(), title: "Emergency", image: UIImage(systemName: "exclamationmark.triangle.fill")),
             wrapped(CheckInViewController(), title: "Check-In", image: UIImage(systemName: "location.fill")),
             wrapped(ChatListViewController(), title: "Calls", image: UIImage(systemName: "video.fill")),
             wrapped(settingsVC, title: "Settings", image: UIImage(systemName: "gearshape.fill"))
@@ -90,74 +87,71 @@ final class MainTabViewController: UITabBarController {
 }
 
 final class HomeViewController: UIViewController {
-    var onOpenAlerts: (() -> Void)?
-    var onOpenCheckIn: (() -> Void)?
-    var onOpenCalls: (() -> Void)?
-    var onOpenSettings: (() -> Void)?
-
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
-    private let subheadingLabel = UILabel()
     private let emergencyCard = UIView()
-    private let emergencyButton = UIButton(type: .system)
-    private let forceAnswerButton = UIButton(type: .system)
+    private let emergencyStatusLabel = UILabel()
     private let checkInCard = UIView()
-    private let manualCheckInButton = UIButton(type: .system)
-    private let callsCard = UIView()
-    private let openCallsButton = UIButton(type: .system)
-    private let settingsButton = UIButton(type: .system)
+    private let todaySummaryLabel = UILabel()
+    private let mapCard = UIView()
+    private let familyMapView = MKMapView()
+    private let mapStatusLabel = UILabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyMeridianScreenDefaults(title: "Home")
-
-        subheadingLabel.text = "Notifications, today tasks, and family map."
-        subheadingLabel.font = .preferredFont(forTextStyle: .callout)
-        subheadingLabel.textColor = MeridianPalette.mutedText
-        subheadingLabel.numberOfLines = 0
+        view.backgroundColor = MeridianPalette.background
 
         configureCard(emergencyCard)
         configureCard(checkInCard)
-        configureCard(callsCard)
+        configureCard(mapCard)
 
-        emergencyButton.applyMeridianButtonStyle(.primary, title: "Open Alerts & Notifications")
-        emergencyButton.addTarget(self, action: #selector(openAlerts), for: .touchUpInside)
+        emergencyStatusLabel.numberOfLines = 0
+        emergencyStatusLabel.font = .preferredFont(forTextStyle: .body)
+        emergencyStatusLabel.textColor = MeridianPalette.primaryText
+        emergencyStatusLabel.text = "No active emergency alerts."
 
-        forceAnswerButton.applyMeridianButtonStyle(.secondary, title: "Open Emergency Console")
-        forceAnswerButton.addTarget(self, action: #selector(openAlerts), for: .touchUpInside)
+        todaySummaryLabel.numberOfLines = 0
+        todaySummaryLabel.font = .preferredFont(forTextStyle: .body)
+        todaySummaryLabel.textColor = MeridianPalette.primaryText
+        todaySummaryLabel.text = "No upcoming items today."
 
-        manualCheckInButton.applyMeridianButtonStyle(.primary, title: "Today: meds & appointments")
-        manualCheckInButton.addTarget(self, action: #selector(openCheckIn), for: .touchUpInside)
+        familyMapView.layer.cornerRadius = 10
+        familyMapView.layer.masksToBounds = true
+        familyMapView.layer.borderWidth = 1
+        familyMapView.layer.borderColor = MeridianPalette.border.cgColor
+        familyMapView.showsCompass = false
+        familyMapView.delegate = self
+        familyMapView.translatesAutoresizingMaskIntoConstraints = false
 
-        openCallsButton.applyMeridianButtonStyle(.primary, title: "Open Family Map")
-        openCallsButton.addTarget(self, action: #selector(openCheckIn), for: .touchUpInside)
-
-        settingsButton.applyMeridianButtonStyle(.secondary, title: "Open Settings")
-        settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
+        mapStatusLabel.numberOfLines = 1
+        mapStatusLabel.font = .preferredFont(forTextStyle: .footnote)
+        mapStatusLabel.textColor = MeridianPalette.mutedText
+        mapStatusLabel.text = "No location updates yet."
 
         contentStack.axis = .vertical
         contentStack.spacing = MeridianLayout.sectionSpacing
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let emergencyStack = UIStackView(arrangedSubviews: [sectionTitle("Notifications"), emergencyButton, forceAnswerButton])
+        let emergencyStack = UIStackView(arrangedSubviews: [sectionTitle("Emergency Alerts"), emergencyStatusLabel])
         emergencyStack.axis = .vertical
-        emergencyStack.spacing = 10
+        emergencyStack.spacing = 8
         emergencyCard.addSubview(emergencyStack)
         emergencyStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let checkInStack = UIStackView(arrangedSubviews: [sectionTitle("Today"), manualCheckInButton])
-        checkInStack.axis = .vertical
-        checkInStack.spacing = 10
-        checkInCard.addSubview(checkInStack)
-        checkInStack.translatesAutoresizingMaskIntoConstraints = false
+        let todayStack = UIStackView(arrangedSubviews: [sectionTitle("Today"), todaySummaryLabel])
+        todayStack.axis = .vertical
+        todayStack.spacing = 8
+        checkInCard.addSubview(todayStack)
+        todayStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let callsStack = UIStackView(arrangedSubviews: [sectionTitle("Family Map"), openCallsButton, settingsButton])
-        callsStack.axis = .vertical
-        callsStack.spacing = 10
-        callsCard.addSubview(callsStack)
-        callsStack.translatesAutoresizingMaskIntoConstraints = false
+        let mapHeader = sectionTitle("Family Map")
+        let mapStack = UIStackView(arrangedSubviews: [mapHeader, familyMapView, mapStatusLabel])
+        mapStack.axis = .vertical
+        mapStack.spacing = 8
+        mapCard.addSubview(mapStack)
+        mapStack.translatesAutoresizingMaskIntoConstraints = false
 
-        [emergencyStack, checkInStack, callsStack].forEach { stack in
+        [emergencyStack, todayStack, mapStack].forEach { stack in
             NSLayoutConstraint.activate([
                 stack.topAnchor.constraint(equalTo: stack.superview!.topAnchor, constant: MeridianLayout.cardPadding),
                 stack.leadingAnchor.constraint(equalTo: stack.superview!.leadingAnchor, constant: MeridianLayout.cardPadding),
@@ -166,10 +160,9 @@ final class HomeViewController: UIViewController {
             ])
         }
 
-        contentStack.addArrangedSubview(subheadingLabel)
         contentStack.addArrangedSubview(emergencyCard)
         contentStack.addArrangedSubview(checkInCard)
-        contentStack.addArrangedSubview(callsCard)
+        contentStack.addArrangedSubview(mapCard)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.contentInsetAdjustmentBehavior = .never
@@ -177,11 +170,7 @@ final class HomeViewController: UIViewController {
         view.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
-            emergencyButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            forceAnswerButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            manualCheckInButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            openCallsButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            settingsButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            familyMapView.heightAnchor.constraint(equalToConstant: 220),
 
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -194,11 +183,86 @@ final class HomeViewController: UIViewController {
             contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -MeridianLayout.sectionSpacing),
             contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -(MeridianLayout.screenPadding * 2))
         ])
+
+        Task { await refreshHomeData() }
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        enforceMeridianCompactNavigationBar()
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
+    }
+
+    private func refreshHomeData() async {
+        do {
+            let s = try await APIService.shared.getSession()
+
+            async let alertActive = APIService.shared.getEmergencyAlertStatus()
+            async let today = APIService.shared.getTodayEventSummary(familyCircleId: s.familyCircleId)
+            async let checkins = APIService.shared.getCheckins(familyCircleId: s.familyCircleId)
+
+            let isActive = (try? await alertActive) ?? false
+            let todaySummaryResult = try? await today
+            let todaySummary = todaySummaryResult ?? nil
+            let familyCheckins = (try? await checkins) ?? []
+
+            await MainActor.run {
+                emergencyStatusLabel.text = isActive ? "Active emergency alert in progress." : "No active emergency alerts."
+                emergencyStatusLabel.textColor = isActive ? MeridianPalette.alert : MeridianPalette.primaryText
+
+                if let item = todaySummary {
+                    if let start = item.startTimeText, !start.isEmpty {
+                        todaySummaryLabel.text = "\(start) • \(item.title)"
+                    } else {
+                        todaySummaryLabel.text = item.title
+                    }
+                } else {
+                    todaySummaryLabel.text = "No upcoming items today."
+                }
+                updateHomeMap(with: familyCheckins)
+            }
+        } catch {
+            await MainActor.run {
+                emergencyStatusLabel.text = "Could not load emergency alerts."
+                emergencyStatusLabel.textColor = MeridianPalette.primaryText
+                todaySummaryLabel.text = "Could not load today items."
+                mapStatusLabel.text = "Could not load family locations."
+            }
+        }
+    }
+
+    private func updateHomeMap(with checkins: [CheckIn]) {
+        familyMapView.removeAnnotations(familyMapView.annotations)
+        let validCheckins = checkins.filter { $0.latitude != nil && $0.longitude != nil }
+        for checkIn in validCheckins {
+            guard let lat = checkIn.latitude, let lon = checkIn.longitude else { continue }
+            let annotation = FamilyLocationAnnotation(
+                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                title: checkIn.contactName,
+                subtitle: checkIn.locationName ?? "Unknown location",
+                photoURLString: checkIn.photoURL
+            )
+            familyMapView.addAnnotation(annotation)
+        }
+
+        if validCheckins.isEmpty {
+            mapStatusLabel.text = "No location updates yet."
+            return
+        }
+
+        mapStatusLabel.text = "Latest update: \(validCheckins.first?.contactName ?? "Family member")"
+        if validCheckins.count == 1, let first = validCheckins.first,
+           let lat = first.latitude, let lon = first.longitude {
+            let center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+            let region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04))
+            familyMapView.setRegion(region, animated: false)
+            return
+        }
+        familyMapView.showAnnotations(familyMapView.annotations, animated: false)
     }
 
     private func configureCard(_ card: UIView) {
@@ -216,20 +280,18 @@ final class HomeViewController: UIViewController {
         return label
     }
 
-    @objc private func openAlerts() {
-        onOpenAlerts?()
-    }
+}
 
-    @objc private func openCheckIn() {
-        onOpenCheckIn?()
-    }
-
-    @objc private func openCalls() {
-        onOpenCalls?()
-    }
-
-    @objc private func openSettings() {
-        onOpenSettings?()
+extension HomeViewController: MKMapViewDelegate {
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation is MKUserLocation { return nil }
+        guard let familyAnnotation = annotation as? FamilyLocationAnnotation else { return nil }
+        let identifier = "FamilyLocationAvatar"
+        let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? FamilyLocationAnnotationView
+            ?? FamilyLocationAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+        view.annotation = annotation
+        view.configure(with: familyAnnotation)
+        return view
     }
 }
 
@@ -246,17 +308,11 @@ final class SettingsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyMeridianScreenDefaults(title: "Settings")
+        view.backgroundColor = MeridianPalette.background
 
         contentStack.axis = .vertical
         contentStack.spacing = 12
         contentStack.translatesAutoresizingMaskIntoConstraints = false
-
-        let header = UILabel()
-        header.text = "App Settings"
-        header.font = .preferredFont(forTextStyle: .title3)
-        header.textColor = MeridianPalette.primaryText
-        contentStack.addArrangedSubview(header)
 
         configureListButton(accountButton, title: "Family Profile & Permissions")
         configureListButton(notificationButton, title: "Notification Preferences")
@@ -295,7 +351,12 @@ final class SettingsViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        enforceMeridianCompactNavigationBar()
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     private func configureListButton(_ button: UIButton, title: String) {
@@ -384,5 +445,101 @@ private extension UIColor {
         let g = CGFloat((int >> 8) & 0xFF) / 255
         let b = CGFloat(int & 0xFF) / 255
         self.init(red: r, green: g, blue: b, alpha: 1.0)
+    }
+}
+
+final class FamilyLocationAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let subtitle: String?
+    let photoURLString: String?
+
+    init(coordinate: CLLocationCoordinate2D, title: String?, subtitle: String?, photoURLString: String?) {
+        self.coordinate = coordinate
+        self.title = title
+        self.subtitle = subtitle
+        self.photoURLString = photoURLString
+        super.init()
+    }
+}
+
+final class FamilyLocationAnnotationView: MKAnnotationView {
+    private static let imageCache = NSCache<NSString, UIImage>()
+    private let avatarImageView = UIImageView()
+    private var currentPhotoURLString: String?
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        canShowCallout = true
+        centerOffset = CGPoint(x: 0, y: -18)
+        frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+
+        avatarImageView.frame = bounds
+        avatarImageView.contentMode = .scaleAspectFill
+        avatarImageView.clipsToBounds = true
+        avatarImageView.layer.cornerRadius = 22
+        avatarImageView.layer.borderWidth = 2
+        avatarImageView.layer.borderColor = UIColor.white.cgColor
+        addSubview(avatarImageView)
+
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.22
+        layer.shadowRadius = 4
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+    }
+
+    required init?(coder: NSCoder) {
+        return nil
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        currentPhotoURLString = nil
+        avatarImageView.image = nil
+    }
+
+    func configure(with annotation: FamilyLocationAnnotation) {
+        let fallback = avatarPlaceholderImage(for: annotation.title ?? "?")
+        avatarImageView.image = fallback
+
+        guard let urlString = annotation.photoURLString, !urlString.isEmpty else { return }
+        currentPhotoURLString = urlString
+
+        if let cached = Self.imageCache.object(forKey: urlString as NSString) {
+            avatarImageView.image = cached
+            return
+        }
+
+        guard let url = URL(string: urlString) else { return }
+        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 12)
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
+            guard let self = self else { return }
+            guard self.currentPhotoURLString == urlString else { return }
+            guard let data = data, let image = UIImage(data: data) else { return }
+            Self.imageCache.setObject(image, forKey: urlString as NSString)
+            DispatchQueue.main.async {
+                if self.currentPhotoURLString == urlString {
+                    self.avatarImageView.image = image
+                }
+            }
+        }.resume()
+    }
+
+    private func avatarPlaceholderImage(for name: String) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 44, height: 44))
+        let initial = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1)).uppercased()
+        return renderer.image { context in
+            let rect = CGRect(x: 0, y: 0, width: 44, height: 44)
+            MeridianPalette.primaryAction.setFill()
+            context.cgContext.fillEllipse(in: rect)
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 19, weight: .semibold),
+                .foregroundColor: UIColor.white
+            ]
+            let text = initial.isEmpty ? "?" : initial
+            let size = text.size(withAttributes: attrs)
+            let drawRect = CGRect(x: (44 - size.width) / 2, y: (44 - size.height) / 2, width: size.width, height: size.height)
+            text.draw(in: drawRect, withAttributes: attrs)
+        }
     }
 }

@@ -29,7 +29,7 @@ final class CheckInViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyMeridianScreenDefaults(title: "Check-In")
+        view.backgroundColor = MeridianPalette.background
 
         notesField.placeholder = "Notes (optional)"
         notesField.borderStyle = .roundedRect
@@ -57,22 +57,13 @@ final class CheckInViewController: UIViewController {
         familyMapView.layer.borderWidth = 1
         familyMapView.layer.borderColor = MeridianPalette.border.cgColor
         familyMapView.showsCompass = false
+        familyMapView.delegate = self
 
         emptyStateLabel.text = "No family check-ins yet."
         emptyStateLabel.textAlignment = .center
         emptyStateLabel.textColor = MeridianPalette.mutedText
         emptyStateLabel.font = .preferredFont(forTextStyle: .subheadline)
         emptyStateLabel.isHidden = true
-
-        let mapTitleLabel = UILabel()
-        mapTitleLabel.text = "Family Map"
-        mapTitleLabel.font = .preferredFont(forTextStyle: .subheadline)
-        mapTitleLabel.textColor = MeridianPalette.primaryText
-
-        let sectionTitleLabel = UILabel()
-        sectionTitleLabel.text = "Family Status"
-        sectionTitleLabel.font = .preferredFont(forTextStyle: .subheadline)
-        sectionTitleLabel.textColor = MeridianPalette.primaryText
 
         let controlsStack = UIStackView(arrangedSubviews: [
             manualCheckInButton,
@@ -83,19 +74,14 @@ final class CheckInViewController: UIViewController {
         controlsStack.axis = .vertical
         controlsStack.spacing = 8
         controlsStack.setCustomSpacing(12, after: refreshStatusButton)
-        controlsStack.setCustomSpacing(6, after: sectionTitleLabel)
         controlsStack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(controlsStack)
-        view.addSubview(mapTitleLabel)
         view.addSubview(familyMapView)
-        view.addSubview(sectionTitleLabel)
         view.addSubview(familyStatusTableView)
         familyStatusTableView.addSubview(emptyStateLabel)
         emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
-        mapTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         familyMapView.translatesAutoresizingMaskIntoConstraints = false
-        sectionTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             notesField.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             manualCheckInButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
@@ -104,20 +90,12 @@ final class CheckInViewController: UIViewController {
             controlsStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             controlsStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
 
-            mapTitleLabel.topAnchor.constraint(equalTo: controlsStack.bottomAnchor, constant: 8),
-            mapTitleLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
-            mapTitleLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
-
-            familyMapView.topAnchor.constraint(equalTo: mapTitleLabel.bottomAnchor, constant: 6),
+            familyMapView.topAnchor.constraint(equalTo: controlsStack.bottomAnchor, constant: 8),
             familyMapView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             familyMapView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
             familyMapView.heightAnchor.constraint(equalToConstant: 220),
 
-            sectionTitleLabel.topAnchor.constraint(equalTo: familyMapView.bottomAnchor, constant: 8),
-            sectionTitleLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
-            sectionTitleLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
-
-            familyStatusTableView.topAnchor.constraint(equalTo: sectionTitleLabel.bottomAnchor, constant: 6),
+            familyStatusTableView.topAnchor.constraint(equalTo: familyMapView.bottomAnchor, constant: 8),
             familyStatusTableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             familyStatusTableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
             familyStatusTableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
@@ -143,7 +121,12 @@ final class CheckInViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        enforceMeridianCompactNavigationBar()
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -204,11 +187,13 @@ final class CheckInViewController: UIViewController {
         let validCheckins = checkins.filter { $0.latitude != nil && $0.longitude != nil }
         for checkIn in validCheckins {
             guard let lat = checkIn.latitude, let lon = checkIn.longitude else { continue }
-            let pin = MKPointAnnotation()
-            pin.coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-            pin.title = checkIn.contactName
-            pin.subtitle = checkIn.locationName ?? "Unknown location"
-            familyMapView.addAnnotation(pin)
+            let annotation = FamilyLocationAnnotation(
+                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                title: checkIn.contactName,
+                subtitle: checkIn.locationName ?? "Unknown location",
+                photoURLString: checkIn.photoURL
+            )
+            familyMapView.addAnnotation(annotation)
         }
         guard !validCheckins.isEmpty else { return }
         if validCheckins.count == 1, let first = validCheckins.first,
@@ -358,5 +343,18 @@ extension CheckInViewController: UITableViewDataSource, UITableViewDelegate {
         cell.detailTextLabel?.textColor = MeridianPalette.mutedText
         cell.selectionStyle = .none
         return cell
+    }
+}
+
+extension CheckInViewController: MKMapViewDelegate {
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation is MKUserLocation { return nil }
+        guard let familyAnnotation = annotation as? FamilyLocationAnnotation else { return nil }
+        let identifier = "FamilyLocationAvatar"
+        let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? FamilyLocationAnnotationView
+            ?? FamilyLocationAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+        view.annotation = annotation
+        view.configure(with: familyAnnotation)
+        return view
     }
 }

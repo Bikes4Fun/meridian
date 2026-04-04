@@ -16,7 +16,7 @@ final class AlertViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyMeridianScreenDefaults(title: "Alert")
+        view.backgroundColor = MeridianPalette.background
 
         activateEmergencyAlertButton.applyMeridianButtonStyle(.alert, title: "Activate Emergency Alert")
         activateEmergencyAlertButton.addTarget(self, action: #selector(activateAlert), for: .touchUpInside)
@@ -34,7 +34,7 @@ final class AlertViewController: UIViewController {
         statusLabel.textAlignment = .center
         statusLabel.textColor = MeridianPalette.mutedText
         statusLabel.font = .preferredFont(forTextStyle: .callout)
-        statusLabel.text = "Emergency tools for rapid response."
+        statusLabel.text = ""
 
         let stack = UIStackView(arrangedSubviews: [
             activateEmergencyAlertButton, cancelEmergencyAlertButton, forceAnswerCallButton, sensorCheckButton, progressIndicator, statusLabel
@@ -58,7 +58,12 @@ final class AlertViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        enforceMeridianCompactNavigationBar()
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     @objc private func activateAlert() {

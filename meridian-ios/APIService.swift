@@ -38,6 +38,8 @@ struct CheckIn {
     let timestamp: Date
     let latitude: Double?
     let longitude: Double?
+    let userId: String?
+    let photoURL: String?
 }
 
 struct ChatRecipient {
@@ -169,6 +171,8 @@ final class APIService {
             let loc = row["location_name"] as? String
             let lat = row["latitude"] as? Double
             let lon = row["longitude"] as? Double
+            let uid = row["user_id"] as? String
+            let photoURL = row["photo_url"] as? String
             let tsStr = row["timestamp"] as? String
             let ts: Date
             if let s = tsStr {
@@ -196,7 +200,9 @@ final class APIService {
                 locationName: (loc?.isEmpty == true) ? nil : loc,
                 timestamp: ts,
                 latitude: lat,
-                longitude: lon
+                longitude: lon,
+                userId: uid,
+                photoURL: photoURL
             )
         }
     }

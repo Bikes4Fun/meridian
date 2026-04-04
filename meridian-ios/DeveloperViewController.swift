@@ -11,7 +11,7 @@ final class DeveloperViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyMeridianScreenDefaults(title: "Developer")
+        view.backgroundColor = MeridianPalette.background
 
         urlField.placeholder = "API base URL (e.g. http://192.168.1.10:8000)"
         urlField.borderStyle = .roundedRect
@@ -61,8 +61,14 @@ final class DeveloperViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: false)
         urlField.text = Config.resolvedApiBaseURL
         refreshLabels()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
 
     private func refreshLabels() {

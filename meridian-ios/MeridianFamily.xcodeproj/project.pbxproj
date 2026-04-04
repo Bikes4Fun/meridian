@@ -191,7 +191,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MeridianFamily-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
-				INFOPLIST_KEY_MERIDIAN_API_URL = "http://192.168.1.171:8000";
+				INFOPLIST_KEY_MERIDIAN_API_URL = "";
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Meridian connects to your family server on the same Wi-Fi network.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";
@@ -344,7 +344,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MeridianFamily-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
-				INFOPLIST_KEY_MERIDIAN_API_URL = "http://192.168.1.171:8000";
+				INFOPLIST_KEY_MERIDIAN_API_URL = "";
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Meridian connects to your family server on the same Wi-Fi network.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";

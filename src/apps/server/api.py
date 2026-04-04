@@ -162,6 +162,10 @@ def create_server_app(db_path=None):
     app = Flask(__name__)
     _secret = os.environ.get("SECRET_KEY")
     if not _secret:
+        app.logger.warning(
+            "SECRET_KEY is not set; falling back to the built-in development secret. "
+            "Do not use this configuration in production."
+        )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
     # Must be identical on every worker (Railway/gunicorn); per-process time.time() breaks sessions across workers.
@@ -956,6 +960,8 @@ def create_server_app(db_path=None):
             from_display_name=from_display_name,
         )
         if not r.success:
+            if "not in family circle" in (r.error or "").lower():
+                return jsonify({"error": r.error}), 403
             return jsonify({"error": r.error}), 400
         return jsonify({"data": r.data}), 201
 

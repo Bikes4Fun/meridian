@@ -162,10 +162,6 @@ def create_server_app(db_path=None):
     app = Flask(__name__)
     _secret = os.environ.get("SECRET_KEY")
     if not _secret:
-        app.logger.warning(
-            "SECRET_KEY is not set; falling back to the built-in development secret. "
-            "Do not use this configuration in production."
-        )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
     # Must be identical on every worker (Railway/gunicorn); per-process time.time() breaks sessions across workers.

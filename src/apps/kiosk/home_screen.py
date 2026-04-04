@@ -172,11 +172,11 @@ def build_timeline_html(items: list) -> str:
             mid = html_module.escape(str(it["med_id"]))
             slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
             lbl = "Undo" if done else "Taken"
-            extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}">{lbl}</button></span>'
+            extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn btn-small" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}">{lbl}</button></span>'
         elif it.get("type") == "event" and it.get("event_id"):
             eid = html_module.escape(str(it["event_id"]))
             edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
-            extra = f'<span class="timeline-item-actions"><button type="button" class="event-edit-btn timeline-action-btn" data-event="{edata}">Edit</button><button type="button" class="event-delete-btn timeline-action-btn" data-event-id="{eid}">Delete</button></span>'
+            extra = f'<span class="timeline-item-actions"><button type="button" class="event-edit-btn timeline-action-btn btn-small" data-event="{edata}">Edit</button><button type="button" class="event-delete-btn timeline-action-btn btn-small" data-event-id="{eid}">Delete</button></span>'
         result.append(
             f'<div class="{cls}"><span class="{bar_class}"></span><span class="timeline-item-main">{time_str} • {title_esc}{check}</span>{extra}</div>'
         )

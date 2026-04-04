@@ -5,6 +5,7 @@ import UIKit
 
 final class ChatListViewController: UIViewController {
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    private let statusLabel = UILabel()
     private var contacts: [Contact] = []
     private var session: SessionInfo?
 

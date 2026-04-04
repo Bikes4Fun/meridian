@@ -6,6 +6,6 @@ builder = "RAILPACK"
 buildCommand = "python -m src.apps.webapp && python -m src.apps.chatapp"
 watchPatterns = ["/src/**"]
 [deploy]
-startCommand = "python -m src.apps.server"
+startCommand = "sh -lc 'python -m src.apps.server & API_URL=http://127.0.0.1:${PORT:-8000} python -m src.dev.demo.seed || true; wait'"
 healthcheckPath = "/api/health"
 restartPolicyType = "ON_FAILURE"

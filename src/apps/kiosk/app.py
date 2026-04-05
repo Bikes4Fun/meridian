@@ -1,12 +1,9 @@
 """
-Application factory for Meridian Kiosk (pywebview).
-Creates and configures the pywebview app with KioskBridge for Python↔JS communication.
+Meridian Kiosk client (pywebview): window/bridge, screen registry, background loops (clock, stove push, alert poll, incoming call).
 
-CLIENT vs SERVER:
-- This module is used only by the client. api_url determines where services come from
-  via api_client.create_kiosk_remote(); container is not used.
+Scope: orchestration and navigation; uses api_client.create_kiosk_remote() / KioskRemoteServiceContainer (not the server DB container).
 
-SERVER DEPLOYMENT: app_factory.py is not needed on the server.
+Not here: per-screen HTML beyond dispatch; REST/Flask; database services. Server does not import this module.
 """
 
 import json
@@ -22,7 +19,7 @@ from shared.config import (
     get_kiosk_window_size,
 )
 
-from .api_client import create_kiosk_remote
+from .api_client import KioskRemoteServiceContainer, create_kiosk_remote
 from .chat_screen import ChatHandler
 from .checkin_screen import LocationHandler
 from .events_handler import EventsHandler, build_schedule_html
@@ -37,6 +34,83 @@ NAV_BUTTONS = [
     {"text": "Family", "screen": "family"},
     {"text": "Chat", "screen": "chat"},
 ]
+
+_SCREEN_REGISTRY: dict[str, object] | None = None
+
+
+def _get_screen_registry():
+    """Lazy registry so screen modules load only when needed."""
+    global _SCREEN_REGISTRY
+    if _SCREEN_REGISTRY is not None:
+        return _SCREEN_REGISTRY
+    from .checkin_screen import build_checkin_html
+    from .chat_screen import build_chat_html
+    from .emergency_screen import build_emergency_html
+    from .health_screen import build_health_html
+    from .home_screen import build_home_html
+    from .medications_screen import build_medications_html
+    from .settings_screen import build_settings_html
+
+    def home(app: "MeridianKioskApp"):
+        return (
+            build_home_html(
+                app.services,
+                app.api_url,
+                family_circle_id=app.family_circle_id,
+                kiosk_user_id=app.kiosk_user_id,
+            ),
+            None,
+        )
+
+    def emergency(app: "MeridianKioskApp"):
+        return build_emergency_html(app.services, app.api_url), None
+
+    def family(app: "MeridianKioskApp"):
+        html, markers_json, places_json = build_checkin_html(
+            app.services,
+            app.api_url,
+            app.family_circle_id,
+            kiosk_user_id=app.kiosk_user_id,
+        )
+        return (
+            html,
+            f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})",
+        )
+
+    def chat(app: "MeridianKioskApp"):
+        return (
+            build_chat_html(
+                app.services,
+                app.api_url,
+                app.kiosk_user_id,
+                app.family_circle_id,
+            ),
+            None,
+        )
+
+    def health(app: "MeridianKioskApp"):
+        return build_health_html(app.services, app.api_url), None
+
+    def schedule(app: "MeridianKioskApp"):
+        return build_schedule_html(app.services, app.api_url), None
+
+    def settings(app: "MeridianKioskApp"):
+        return build_settings_html(app.services, app.api_url), None
+
+    def medications(app: "MeridianKioskApp"):
+        return build_medications_html(app.services, app.api_url), None
+
+    _SCREEN_REGISTRY = {
+        "home": home,
+        "emergency": emergency,
+        "family": family,
+        "chat": chat,
+        "health": health,
+        "schedule": schedule,
+        "settings": settings,
+        "medications": medications,
+    }
+    return _SCREEN_REGISTRY
 
 
 class KioskBridge:
@@ -123,7 +197,11 @@ class MeridianKioskApp:
     """Pywebview kiosk app. Python drives data and HTML; JS is thin bridge."""
 
     def __init__(
-        self, services, api_url: str, kiosk_user_id: str, family_circle_id: str
+        self,
+        services: KioskRemoteServiceContainer,
+        api_url: str,
+        kiosk_user_id: str,
+        family_circle_id: str,
     ):
         self.services = services
         self.api_url = api_url
@@ -213,69 +291,9 @@ class MeridianKioskApp:
         """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
         from . import html_primitives as hp
 
-        if screen_name == "home":
-            from .home_screen import build_home_html
-
-            return (
-                build_home_html(
-                    self.services,
-                    self.api_url,
-                    family_circle_id=self.family_circle_id,
-                    kiosk_user_id=self.kiosk_user_id,
-                ),
-                None,
-            )
-
-        if screen_name == "emergency":
-            from .emergency_screen import build_emergency_html
-
-            return build_emergency_html(self.services, self.api_url), None
-
-        if screen_name == "family":
-            from .checkin_screen import build_checkin_html
-
-            html, markers_json, places_json = build_checkin_html(
-                self.services,
-                self.api_url,
-                self.family_circle_id,
-                kiosk_user_id=self.kiosk_user_id,
-            )
-            return (
-                html,
-                f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})",
-            )
-
-        if screen_name == "chat":
-            from .chat_screen import build_chat_html
-
-            return (
-                build_chat_html(
-                    self.services,
-                    self.api_url,
-                    self.kiosk_user_id,
-                    self.family_circle_id,
-                ),
-                None,
-            )
-
-        if screen_name == "health":
-            from .health_screen import build_health_html
-
-            return build_health_html(self.services, self.api_url), None
-
-        if screen_name == "schedule":
-            return build_schedule_html(self.services, self.api_url), None
-
-        if screen_name == "settings":
-            from .settings_screen import build_settings_html
-
-            return build_settings_html(self.services, self.api_url), None
-
-        if screen_name == "medications":
-            from .medications_screen import build_medications_html
-
-            return build_medications_html(self.services, self.api_url), None
-
+        builder = _get_screen_registry().get(screen_name)
+        if builder:
+            return builder(self)
         return hp.error_state("Unknown screen"), None
 
     def _print_emergency(self):
@@ -299,7 +317,7 @@ class MeridianKioskApp:
 
     def _refresh_clock(self):
         """Full clock update: day, date line, time, period label + sprite."""
-        time_svc = self.services.get("time_service")
+        time_svc = self.services.get_time_service()
         if not time_svc:
             return
         self._eval_el("clock-day", time_svc.get_dayof_week().upper())
@@ -330,7 +348,7 @@ class MeridianKioskApp:
         """Per-second clock tick in background."""
         while True:
             time.sleep(1)
-            time_svc = self.services.get("time_service")
+            time_svc = self.services.get_time_service()
             if not time_svc:
                 continue
             self._eval_el("clock-time", time_svc.get_time())
@@ -347,7 +365,7 @@ class MeridianKioskApp:
 
     def _maybe_stove_emergency_alert(self) -> None:
         sensor = self._temp_sensor
-        alert_svc = self.services.get("alert_service")
+        alert_svc = self.services.get_alert_service()
         if not sensor or not alert_svc or not getattr(
             alert_svc, "set_alert_activated", None
         ):
@@ -368,7 +386,7 @@ class MeridianKioskApp:
     def _snooze_stove_temp(self) -> None:
         if self._temp_sensor:
             self._temp_sensor.snooze()
-        alert_svc = self.services.get("alert_service")
+        alert_svc = self.services.get_alert_service()
         if alert_svc and getattr(alert_svc, "set_alert_activated", None):
             r = alert_svc.set_alert_activated(False)
             if r.success:
@@ -394,14 +412,14 @@ class MeridianKioskApp:
 
         while True:
             time.sleep(10)
-            alert_svc = self.services.get("alert_service")
+            alert_svc = self.services.get_alert_service()
             if not alert_svc:
                 continue
             result = alert_svc.get_alert_status()
             if not result.success or not result.data:
                 continue
             activated = result.data.get("activated", False)
-            self.services.get("_alert_activated", [False])[0] = activated
+            self.services.alert_activated_holder[0] = activated
             if activated:
                 self._navigate_to("emergency")
                 self._eval("document.body.classList.add('alert-active')")
@@ -416,7 +434,7 @@ class MeridianKioskApp:
         """Poll incoming call signal and open chat window for auto-answer flow."""
         while True:
             time.sleep(1)
-            call_svc = self.services.get("incoming_call_service")
+            call_svc = self.services.get_incoming_call_service()
             if not call_svc:
                 continue
             result = call_svc.get_incoming_call()

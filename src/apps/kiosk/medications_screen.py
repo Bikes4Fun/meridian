@@ -1,4 +1,9 @@
-"""Medications editor screen: mount for webapp inline editor (kiosk_medications_embed.js)."""
+"""
+Kiosk Medications screen: shell HTML and root node for the shared inline medication editor (kiosk_medications_embed.js + meridian_medications_inline.js).
+
+Scope: panel + placeholder div only.
+Not here: row editor, save/delete API calls, or webapp Settings editor (different host element).
+"""
 
 from . import html_primitives as hp
 

@@ -1,4 +1,9 @@
-"""Reusable monitor / sensor reading fragments for embedding on any screen."""
+"""
+Kiosk monitor fragments: section header + labeled reading row HTML (e.g. stove temp span id for JS/app updates).
+
+Scope: small presentational building blocks for any screen.
+Not here: sensor drivers, alert thresholds, or API calls.
+"""
 
 import html
 

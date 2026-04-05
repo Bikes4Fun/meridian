@@ -1,5 +1,6 @@
 /**
- * Shared webapp helpers. Load before app.js / ice_editor.js.
+ * Shared browser helpers (login redirect, API base resolution, HTML/attr escaping). Load before app / ice_editor / meds modules.
+ * Scope: small globals on window. Not: feature pages, fetch wrappers, or kiosk-only scripts beyond depending on these utilities.
  */
 (function (global) {
     'use strict';
@@ -14,6 +15,15 @@
             return '/';
         }
         return next;
+    };
+    global.meridianApiBaseNormalize = function (url) {
+        return String(url || '').replace(/\/$/, '');
+    };
+    global.meridianEscapeHtml = function (s) {
+        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    global.meridianEscapeAttr = function (s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     };
     global.meridianApiBaseForFetch = function (configUrl) {
         var u = (configUrl || '').trim();

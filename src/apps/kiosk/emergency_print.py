@@ -1,4 +1,9 @@
-"""Emergency document printing: fetch PDF, send to printer, poll job status."""
+"""
+Kiosk emergency print: fetch PDF bytes from remote emergency service, run OS print, optional status label updates.
+
+Scope: client-side print pipeline only.
+Not here: emergency screen HTML, alert routing, or implementing the PDF API on the server.
+"""
 
 import logging
 import os
@@ -103,10 +108,10 @@ def _run_emergency_print(emergency_svc, status_label=None) -> None:
 
 def trigger_emergency_print(services) -> None:
     """Run emergency print (e.g. when alert activated). Uses same flow and status label as the button."""
-    emergency_svc = services.get("emergency_service")
+    emergency_svc = services.get_emergency_service()
     if not emergency_svc or not getattr(
         emergency_svc, "get_emergency_profile_pdf", None
     ):
         return
-    status_label = services.get("_emergency_print_status_label")
+    status_label = services.get_emergency_print_status_label()
     _run_emergency_print(emergency_svc, status_label)

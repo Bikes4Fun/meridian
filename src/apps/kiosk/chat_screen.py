@@ -1,5 +1,8 @@
 """
-Chat screen: contact grid with chat entry. JS calls open_chat; Python fetches URL and opens pywebview window.
+Kiosk Chat: contact grid HTML; ChatHandler fetches chat entry URL and opens a separate webview.
+
+Scope: list contacts and bridge open_chat / open_chat_with_call.
+Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 """
 
 import html
@@ -20,7 +23,7 @@ class ChatHandler:
         self, sendbird_user_id: str, display_name: str, auto_start_call: bool = False
     ) -> None:
         """Fetch chat entry URL for contact and open in new pywebview window."""
-        entry_svc = self._app.services.get("chat_entry_service")
+        entry_svc = self._app.services.get_chat_entry_service()
         if not entry_svc:
             logger.warning("open_chat: no chat_entry_service")
             return
@@ -42,7 +45,7 @@ def build_chat_html(
     from . import html_primitives as hp
     from .api_client import fetch_photo_b64
 
-    contact_svc = services.get("contact_service")
+    contact_svc = services.get_contact_service()
     if not contact_svc or not family_circle_id:
         return (
             hp.kiosk_header("Family Chat")

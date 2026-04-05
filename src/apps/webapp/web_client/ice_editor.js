@@ -1,6 +1,6 @@
 /**
- * ICE / emergency profile editor (webapp). __API_URL__ at build; load meridian_api_base.js and meridian_medications_inline.js first.
- * Medications: inline rows; all saved with Save profile. Emergency contacts: POST /contacts per row.
+ * Webapp ICE (emergency profile) editor: medical block uses MeridianMedicationsInline; contacts/photos/DNR via emergency-profile + contacts APIs. __API_URL__ baked at build.
+ * Scope: ice_editor page behavior. Not: kiosk emergency screen, PDF print flow, or kiosk-only bridge APIs.
  */
 (function () {
     'use strict';
@@ -14,10 +14,6 @@
     var _iceMedsInitial = [];
     var _iceEcInitial = [];
     var _iceMedAutosave = null;
-
-    function escapeAttr(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    }
 
     function cloneEcSnapshot(rows) {
         return JSON.parse(JSON.stringify(rows || []));
@@ -62,10 +58,10 @@
 
     function ecRowHtml(c) {
         c = c || {};
-        var id = escapeAttr(c.id || '');
-        var name = escapeAttr(c.display_name || '');
-        var phone = escapeAttr(c.phone || '');
-        var rel = escapeAttr(c.relationship || '');
+        var id = meridianEscapeAttr(c.id || '');
+        var name = meridianEscapeAttr(c.display_name || '');
+        var phone = meridianEscapeAttr(c.phone || '');
+        var rel = meridianEscapeAttr(c.relationship || '');
         var pr = c.emergency_priority || '';
         var selPri = pr === 'secondary_emergency' ? 'secondary_emergency' : (pr === 'primary_emergency' ? 'primary_emergency' : '');
         var optPri = selPri === 'primary_emergency' ? ' selected' : '';

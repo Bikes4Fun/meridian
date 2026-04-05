@@ -1,603 +1,643 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Meridian — User Guide</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
   :root {
-    --ink: #1c1c2a;
-    --ink-soft: #3e3e58;
-    --ink-muted: #7a7a96;
-    --gold: #c8911f;
-    --gold-light: #e8b84b;
-    --gold-pale: #fdf3dc;
-    --cream: #f8f8f4;
-    --white: #ffffff;
-    --teal: #1e7474;
-    --teal-light: #e4f2f2;
-    --rose: #b84444;
-    --rose-light: #fdf0ee;
-    --rule: #e6e6de;
-    --shadow: 0 4px 28px rgba(26,26,42,0.08);
-    --shadow-sm: 0 2px 10px rgba(26,26,42,0.06);
+    --font: 'Atkinson Hyperlegible', Arial, sans-serif;
+    --base: #faf8f3;
+    --cream: #f5efe7;
+    --text: #4a4a4a;
+    --muted: #6e6760;
+    --terra: #c85a3f;
+    --terra-hover: #b04f36;
+    --terra-ink: #6d3528;
+    --sage: #7a9b76;
+    --sage-dark: #6d8c69;
+    --golden: #d4a574;
+    --border: #e8e2d9;
+    --border-strong: #dcd5cb;
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--cream);
-    color: var(--ink);
+    font-family: var(--font);
+    background: var(--base);
+    color: var(--text);
     font-size: 16px;
-    line-height: 1.75;
-  }
-
-  /* ── COVER ── */
-  .cover {
-    background: var(--ink);
-    color: var(--white);
-    padding: 80px 64px 72px;
-    position: relative;
-    overflow: hidden;
-  }
-  .cover::before {
-    content: '';
-    position: absolute;
-    top: -100px; right: -80px;
-    width: 520px; height: 520px;
-    background: radial-gradient(circle, rgba(200,145,31,0.15) 0%, transparent 68%);
-    pointer-events: none;
-  }
-  .cover::after {
-    content: '';
-    position: absolute;
-    bottom: -60px; left: 38%;
-    width: 380px; height: 380px;
-    background: radial-gradient(circle, rgba(30,116,116,0.12) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  .cover-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--gold-light);
-    margin-bottom: 24px;
-  }
-  .cover h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(42px, 6.5vw, 78px);
-    font-weight: 500;
-    line-height: 1.08;
-    letter-spacing: -0.02em;
-    margin-bottom: 24px;
-  }
-  .cover h1 em { font-style: italic; color: var(--gold-light); }
-  .cover-sub {
-    font-size: 19px;
-    font-weight: 300;
-    color: rgba(255,255,255,0.68);
-    max-width: 520px;
     line-height: 1.6;
-    margin-bottom: 48px;
-  }
-  .cover-pills {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .cover-pill {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.14);
-    border-radius: 20px;
-    padding: 6px 16px;
-    font-size: 13px;
-    color: rgba(255,255,255,0.75);
+    min-height: 100vh;
   }
 
-  /* ── NAV ── */
-  .toc {
-    background: var(--white);
-    border-bottom: 1px solid var(--rule);
-    padding: 0 64px;
+  /* MASTHEAD */
+  .masthead {
+    background: var(--cream);
+    border-bottom: 2px solid var(--border-strong);
+    box-shadow: 0 1px 3px rgba(74,74,74,0.06);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+  .masthead-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 14px 24px;
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .masthead-brand {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--terra);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .masthead-label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* LAYOUT */
+  .shell {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 200px 1fr;
     gap: 0;
-    overflow-x: auto;
+    padding: 0 24px;
+    align-items: start;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: sticky;
+    top: 54px;
+    padding: 28px 20px 40px 0;
+    max-height: calc(100vh - 54px);
+    overflow-y: auto;
     scrollbar-width: none;
   }
-  .toc::-webkit-scrollbar { display: none; }
-  .toc a {
+  .sidebar::-webkit-scrollbar { display: none; }
+  .sb-group { margin-bottom: 18px; }
+  .sb-heading {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 0 0 5px 0;
+    margin-bottom: 2px;
+  }
+  .sidebar a {
     display: block;
-    padding: 16px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ink-muted);
+    padding: 4px 8px;
+    font-size: 13.5px;
+    color: var(--muted);
     text-decoration: none;
-    white-space: nowrap;
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
+    border-radius: var(--r-sm);
+    border-left: 2px solid transparent;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+    line-height: 1.5;
   }
-  .toc a:hover { color: var(--ink); border-bottom-color: var(--gold); }
+  .sidebar a:hover {
+    color: var(--terra-ink);
+    background: var(--cream);
+    border-left-color: var(--terra);
+  }
 
-  /* ── LAYOUT ── */
-  .page { max-width: 880px; margin: 0 auto; padding: 0 48px 100px; }
+  /* CONTENT */
+  .content {
+    padding: 28px 0 80px 32px;
+    border-left: 1px solid var(--border);
+    min-width: 0;
+  }
 
-  /* ── SECTIONS ── */
-  .section { margin-top: 72px; scroll-margin-top: 60px; }
-  .section-tag {
-    font-family: 'DM Mono', monospace;
+  /* SECTION */
+  .doc-section {
+    margin-bottom: 12px;
+    scroll-margin-top: 72px;
+  }
+
+  .section-card {
+    background: var(--cream);
+    border: 2px solid var(--border-strong);
+    border-radius: var(--r-lg);
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(74,74,74,0.07);
+    margin-bottom: 12px;
+  }
+
+  .section-label {
     font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--gold);
+    font-weight: 700;
     text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .section h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 32px;
-    font-weight: 500;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-    margin-bottom: 16px;
-  }
-  .lead {
-    font-size: 17px;
-    font-weight: 300;
-    color: var(--ink-soft);
-    line-height: 1.68;
-    max-width: 680px;
-    margin-bottom: 32px;
-    padding-left: 18px;
-    border-left: 3px solid var(--gold);
-  }
-
-  hr.rule { border: none; border-top: 1px solid var(--rule); margin: 60px 0 0; }
-
-  p { color: var(--ink-soft); margin-bottom: 16px; max-width: 700px; }
-  p:last-child { margin-bottom: 0; }
-
-  h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 21px;
-    font-weight: 500;
-    margin: 36px 0 10px;
-    color: var(--ink);
-  }
-  h4 {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--teal);
-    margin: 28px 0 10px;
-  }
-
-  /* ── CARDS ── */
-  .card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 16px;
-    margin: 24px 0 8px;
-  }
-  .card {
-    background: var(--white);
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    padding: 24px 20px;
-    box-shadow: var(--shadow-sm);
-  }
-  .card-icon { font-size: 24px; margin-bottom: 12px; }
-  .card h4 { font-size: 12px; margin: 0 0 6px; color: var(--ink); letter-spacing: 0.06em; }
-  .card p { font-size: 13.5px; line-height: 1.58; color: var(--ink-muted); margin: 0; max-width: none; }
-
-  /* ── CALLOUTS ── */
-  .callout {
-    border-radius: 10px;
-    padding: 22px 26px;
-    margin: 28px 0;
-  }
-  .callout-gold { background: var(--gold-pale); border-left: 3px solid var(--gold); }
-  .callout-teal { background: var(--teal-light); border-left: 3px solid var(--teal); }
-  .callout-rose  { background: var(--rose-light);  border-left: 3px solid var(--rose);  }
-  .callout strong {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    letter-spacing: 0.05em;
     margin-bottom: 6px;
   }
-  .callout-gold strong { color: var(--gold); }
-  .callout-teal strong { color: var(--teal); }
-  .callout-rose  strong { color: var(--rose);  }
-  .callout p { font-size: 14.5px; color: var(--ink-soft); max-width: none; margin: 0; }
+  .sl-kiosk  { color: var(--sage-dark); }
+  .sl-web    { color: var(--terra); }
+  .sl-mobile { color: #9a6e38; }
+  .sl-ref    { color: var(--muted); }
 
-  /* ── LAYER LIST (security) ── */
-  .layer-list { list-style: none; margin: 16px 0 28px; }
-  .layer-list li {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  .layer-list li:last-child { border-bottom: none; }
-  .ln {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--gold);
-    min-width: 26px;
-    padding-top: 3px;
-  }
-  .lb strong { display: block; font-size: 14.5px; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
-  .lb span { font-size: 13.5px; color: var(--ink-muted); line-height: 1.55; }
+  h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 6px; }
+  .page-lead { font-size: 14px; color: var(--muted); margin: 0 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
+  h2:first-of-type { margin-top: 0; }
+  h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 14px 0 4px; }
 
-  /* ── TABLE ── */
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
+  p { font-size: 14.5px; color: var(--muted); margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+  p strong, li strong { font-weight: 700; color: var(--text); }
+  em { font-style: italic; }
+  a { color: var(--terra); font-weight: 600; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  ul, ol { padding-left: 18px; margin-bottom: 10px; }
+  li { font-size: 14.5px; color: var(--muted); margin-bottom: 4px; line-height: 1.6; }
+  li:last-child { margin-bottom: 0; }
+
+  /* NOTICE */
+  .notice {
+    border-radius: var(--r-md);
+    padding: 10px 14px;
+    margin: 12px 0;
     font-size: 13.5px;
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
   }
-  .data-table th {
-    text-align: left;
-    padding: 9px 14px;
+  .ni { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+  .nb { color: var(--muted); }
+  .nb strong { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+  .n-warn { background: #fdf0ee; border-left: 3px solid var(--terra); }
+  .n-warn .nb strong { color: var(--terra); }
+  .n-tip  { background: #eef4ee; border-left: 3px solid var(--sage); }
+  .n-tip  .nb strong { color: var(--sage-dark); }
+  .n-soon { background: #fdf5ea; border-left: 3px solid var(--golden); }
+  .n-soon .nb strong { color: #9a6e38; }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
     font-size: 10.5px;
-    letter-spacing: 0.1em;
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--ink-muted);
-    border-bottom: 2px solid var(--rule);
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    border-radius: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+    margin-left: 4px;
   }
-  .data-table td {
-    padding: 13px 14px;
-    border-bottom: 1px solid var(--rule);
-    color: var(--ink-soft);
-    vertical-align: top;
-  }
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table td:first-child { font-weight: 500; color: var(--ink); }
+  .b-soon { background: #fdf5ea; color: #9a6e38; border: 1px solid var(--golden); }
+  .b-live { background: #eef4ee; color: #3d6b3a; border: 1px solid var(--sage); }
 
-  /* ── PLATFORM ROW ── */
-  .platform-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin: 24px 0; }
-  .platform-pill {
-    background: var(--white);
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    padding: 20px 16px;
-    text-align: center;
-    box-shadow: var(--shadow-sm);
+  /* STEPS */
+  .steps { list-style: none; padding: 0; margin: 8px 0 10px; counter-reset: s; }
+  .steps li {
+    counter-increment: s;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    font-size: 14.5px;
+    color: var(--muted);
+    line-height: 1.6;
   }
-  .platform-pill .pi { font-size: 26px; margin-bottom: 8px; }
-  .platform-pill .pn { font-size: 13px; font-weight: 500; color: var(--ink); }
-  .platform-pill .ps { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
-
-  /* ── LOCATION EXAMPLES ── */
-  .loc-list { list-style: none; margin: 14px 0 20px; }
-  .loc-list li {
-    padding: 11px 0;
-    border-bottom: 1px solid var(--rule);
-    font-size: 15px;
-    color: var(--ink-soft);
+  .steps li::before {
+    content: counter(s);
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--terra);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    margin-top: 3px;
   }
-  .loc-list li:last-child { border-bottom: none; }
-  .loc-list li span { opacity: 0.5; font-size: 17px; }
 
-  /* ── FOOTER ── */
-  .doc-footer {
-    background: var(--ink);
-    color: rgba(255,255,255,0.4);
-    padding: 36px 64px;
-    font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13.5px; }
+  th { text-align: left; padding: 7px 10px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 2px solid var(--border-strong); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); white-space: nowrap; }
+
+  /* NAV DIAGRAM */
+  .nav-diagram { display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
+  .nav-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .nav-row-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); min-width: 46px; }
+  .nav-chip {
+    font-family: var(--font);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: var(--r-md);
+    border: 2px solid var(--border-strong);
+    background: var(--base);
+    color: var(--text);
   }
-  .doc-footer strong { color: rgba(255,255,255,0.75); }
+  .nav-chip.emerg { background: #c0302a; border-color: #c0302a; color: #fff; }
 
-  @media(max-width:620px){
-    .cover { padding: 52px 24px 56px; }
-    .toc { padding: 0 24px; }
-    .page { padding: 0 24px 72px; }
-    .platform-row { grid-template-columns: 1fr 1fr; }
-    .doc-footer { padding: 28px 24px; flex-direction: column; gap: 6px; }
+  @media (max-width: 700px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { border-left: none; padding: 20px 0 64px; }
   }
 </style>
 </head>
 <body>
 
-<div class="cover">
-  <div class="cover-label">Meridian &nbsp;·&nbsp; User Guide</div>
-  <h1>Care that<br><em>stays connected.</em></h1>
-  <p class="cover-sub">Everything your family needs to coordinate care, share location, and be ready for emergencies — in one place, across every device.</p>
-  <div class="cover-pills">
-    <span class="cover-pill">Web Dashboard</span>
-    <span class="cover-pill">iOS &amp; Android</span>
-    <span class="cover-pill">Care Kiosk</span>
-    <span class="cover-pill">Family &amp; Facility</span>
+<header class="masthead">
+  <div class="masthead-inner">
+    <span class="masthead-brand">Meridian</span>
+    <span class="masthead-label">User Guide · Early access</span>
   </div>
+</header>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-group">
+      <div class="sb-heading">Overview</div>
+      <a href="#what-is-meridian">What is Meridian?</a>
+      <a href="#family-circles">Family Circles</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-heading">Kiosk</div>
+      <a href="#kiosk-nav">Navigation</a>
+      <a href="#kiosk-home">Home</a>
+      <a href="#kiosk-schedule">Schedule</a>
+      <a href="#kiosk-family">Family</a>
+      <a href="#kiosk-chat">Chat</a>
+      <a href="#kiosk-health">Health</a>
+      <a href="#kiosk-emergency">Emergency</a>
+      <a href="#kiosk-settings">Settings</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-heading">Web Dashboard</div>
+      <a href="#web-health">Health tab</a>
+      <a href="#web-ice">ICE / POLST editor</a>
+      <a href="#web-events">Events</a>
+      <a href="#web-settings">Settings</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-heading">Mobile</div>
+      <a href="#mobile-checkin">Check-in</a>
+      <a href="#where-is-everyone">Where is everyone?</a>
+    </div>
+    <div class="sb-group">
+      <div class="sb-heading">Reference</div>
+      <a href="#named-locations">Named locations</a>
+      <a href="#data-privacy">Data &amp; privacy</a>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- OVERVIEW -->
+    <div class="doc-section" id="what-is-meridian">
+      <div class="section-card">
+        <div class="section-label sl-ref">Overview</div>
+        <h1>What is Meridian?</h1>
+        <p class="page-lead">A home system for people living with cognitive decline and the families who support them.</p>
+        <p>Meridian is built around a <strong>kiosk</strong> — a large-format touchscreen meant to stay in one place, stay visible, and stay on. The person at home uses it to check the time and schedule, see where family members are, read messages, manage medications, and reach emergency information. No login required.</p>
+        <p>Family members use the <strong>web dashboard</strong> to manage shared data: events, medications, and the emergency/ICE profile. The <strong>mobile app</strong> (iOS, in development) handles location check-ins and responses to "Where is everyone?" requests.</p>
+        <div class="notice n-warn">
+          <span class="ni">⚠️</span>
+          <div class="nb"><strong>Early access</strong>Authentication and encryption are not yet production-hardened. Use test or demo data only unless your administrator has confirmed the deployment is ready.</div>
+        </div>
+        <h2>The three surfaces</h2>
+        <table>
+          <thead><tr><th>Surface</th><th>Who uses it</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Kiosk</td><td>The care recipient, at home</td><td>Time, schedule, family locations, medications, chat, emergency info. No login.</td></tr>
+            <tr><td>Web dashboard</td><td>Family members, caregivers</td><td>Manage events, medications, the ICE/POLST profile, emergency alerts.</td></tr>
+            <tr><td>Mobile app</td><td>Family members</td><td>Check-in with location, respond to check-in requests. <span class="badge b-soon">In progress</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="doc-section" id="family-circles">
+      <div class="section-card">
+        <div class="section-label sl-ref">Overview</div>
+        <h1>Family Circles</h1>
+        <p class="page-lead">All data in Meridian belongs to a Family Circle — visible only to people you've invited.</p>
+        <p>Each circle has one <strong>care recipient</strong>. Everyone else joins with a role controlling what they can see and change. The kiosk is pre-authenticated to the circle — the care recipient never signs in.</p>
+      </div>
+    </div>
+
+    <!-- KIOSK -->
+    <div class="doc-section" id="kiosk-nav">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Navigation</h1>
+        <p class="page-lead">A top bar for main screens and a footer bar with secondary screens and the always-visible Emergency button.</p>
+        <div class="nav-diagram">
+          <div class="nav-row">
+            <span class="nav-row-label">Top</span>
+            <span class="nav-chip">Home</span>
+            <span class="nav-chip">Schedule</span>
+            <span class="nav-chip">Family</span>
+            <span class="nav-chip">Chat</span>
+          </div>
+          <div class="nav-row">
+            <span class="nav-row-label">Footer</span>
+            <span class="nav-chip">Settings</span>
+            <span class="nav-chip">Health</span>
+            <span class="nav-chip emerg">⚠ Emergency</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-home">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Home screen</h1>
+        <p class="page-lead">The default screen. Shows the time, date, upcoming events, and today's medications.</p>
+        <ul>
+          <li><strong>Clock</strong> — large-format current time</li>
+          <li><strong>Date and time of day</strong> — morning / afternoon / evening, for orientation</li>
+          <li><strong>Up Next</strong> — the next upcoming calendar event</li>
+          <li><strong>Today's medications</strong> — doses for the current time window, each with a Mark taken button</li>
+        </ul>
+        <p>Marking a dose taken refreshes the screen automatically.</p>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-schedule">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Schedule screen</h1>
+        <p class="page-lead">A full view of upcoming events from the shared family calendar.</p>
+        <p>Events are listed in chronological order. Managed from the web dashboard — changes appear on the kiosk the next time the screen loads.</p>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-family">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Family screen</h1>
+        <p class="page-lead">Shows where family members are. Includes the "Where is everyone?" button.</p>
+        <p>Displays a map with each family member's most recent check-in. If the check-in falls within a <a href="#named-locations">named location</a>, the kiosk shows the label (e.g. <em>"Anne is at work downtown"</em>) instead of a pin.</p>
+        <p>Tapping <strong>Where is everyone?</strong> sends a check-in request to all family members' phones.</p>
+        <div class="notice n-tip">
+          <span class="ni">💡</span>
+          <div class="nb">The kiosk's own location can be named — so the care recipient sees <em>"You are at your home on Maple Street"</em> rather than a pin at their address.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-chat">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Chat screen</h1>
+        <p class="page-lead">Send messages and start video calls with family members.</p>
+        <p>Lists family members available to contact. Tapping a name opens a conversation. Video calls can also be started from this screen. Family members join from the web dashboard or mobile app.</p>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-health">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Health screen</h1>
+        <p class="page-lead">Full medication schedule with Mark taken buttons.</p>
+        <p>Medications are grouped by time of day (morning, afternoon, evening) and PRN (as needed). The list is managed from the web dashboard — changes sync immediately.</p>
+        <div class="notice n-tip">
+          <span class="ni">💡</span>
+          <div class="nb">Doses can also be marked taken from the Home screen during the relevant time window, without navigating here.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-emergency">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Emergency screen</h1>
+        <p class="page-lead">The care recipient's full emergency profile. Accessible any time via the red Emergency button in the footer.</p>
+        <p>Displays everything from the ICE profile maintained in the web dashboard:</p>
+        <ul>
+          <li>Name, date of birth, DNR / code status</li>
+          <li>Conditions and allergies</li>
+          <li>Current medications</li>
+          <li>Emergency contacts (primary and secondary)</li>
+          <li>Medical proxy and power of attorney (name and phone)</li>
+          <li>Notes</li>
+          <li><strong>Open document</strong> — if a POLST or DNR file has been uploaded</li>
+        </ul>
+        <p>A <strong>Print</strong> button generates a formatted emergency PDF. The kiosk may auto-print when an alert is active, depending on configuration.</p>
+        <div class="notice n-warn">
+          <span class="ni">⚠️</span>
+          <div class="nb"><strong>Keep it current</strong>Review medications and code status after any medical appointment or change in directives.</div>
+        </div>
+        <h2>Emergency alert mode</h2>
+        <p>Activating an emergency alert from the web dashboard (Settings → Kiosk &amp; TV) switches the kiosk to this screen. Canceling it from the dashboard returns the kiosk to normal. Use only in a real emergency.</p>
+      </div>
+    </div>
+
+    <div class="doc-section" id="kiosk-settings">
+      <div class="section-card">
+        <div class="section-label sl-kiosk">Kiosk</div>
+        <h1>Settings screen</h1>
+        <p class="page-lead">Kiosk-side settings, including inline medication management.</p>
+        <p>Medications can be added, edited, or removed from the same list that appears on the Health screen and in the emergency profile.</p>
+        <div class="notice n-soon">
+          <span class="ni">🕐</span>
+          <div class="nb"><strong>Coming later</strong>Additional controls — brightness, idle behavior, which screens are accessible — will be configurable from the web dashboard under Settings → Kiosk &amp; TV.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEB DASHBOARD -->
+    <div class="doc-section" id="web-health">
+      <div class="section-card">
+        <div class="section-label sl-web">Web Dashboard</div>
+        <h1>Health tab</h1>
+        <p class="page-lead">Main entry point for health data — POLST profile, medications, and the kiosk emergency alert.</p>
+        <ul>
+          <li><strong>POLST &amp; emergency (ICE)</strong> — link to the ICE profile editor</li>
+          <li><strong>Kiosk emergency alert</strong> — activate or cancel the alert on the kiosk</li>
+          <li><strong>Medications</strong> — inline add/edit/remove, and mark doses taken</li>
+          <li><strong>Medication history</strong> — log of recorded doses <span class="badge b-soon">Coming soon</span></li>
+        </ul>
+        <h2>Managing medications</h2>
+        <p>The same list that appears on the kiosk Health screen and in the emergency profile. Changes sync immediately.</p>
+        <p>To remove medications: check the box next to each one, then choose <strong>Remove selected</strong>. <strong>Select all</strong> selects every row; clicking again clears the selection.</p>
+      </div>
+    </div>
+
+    <div class="doc-section" id="web-ice">
+      <div class="section-card">
+        <div class="section-label sl-web">Web Dashboard</div>
+        <h1>ICE / POLST editor</h1>
+        <p class="page-lead">Open from Health → "Open emergency &amp; ICE profile".</p>
+
+        <h2>Basic info</h2>
+        <table>
+          <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Name</td><td></td></tr>
+            <tr><td>Date of birth</td><td></td></tr>
+            <tr><td>DNR</td><td>Checkbox — checked means do not resuscitate</td></tr>
+            <tr><td>Notes</td><td>Free-form clinical or care context</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Medical proxy &amp; POA</h2>
+        <p>Name and phone for both the medical proxy and power of attorney. Both appear on the kiosk Emergency screen.</p>
+
+        <h2>Emergency contacts</h2>
+        <p>Each contact has a name, phone, relationship, and priority: <strong>Primary emergency</strong>, <strong>Secondary emergency</strong>, or <strong>Not on ICE list</strong>. Only primary and secondary contacts appear on the Emergency screen. Use <strong>Add emergency contact</strong> to add a row; remove with the Remove button. Saved with <strong>Save profile</strong>.</p>
+
+        <h2>Conditions, allergies &amp; medications</h2>
+        <p>Conditions and allergies are read-only (pulled from the medical record). The medication list is editable inline. Save with <strong>Save profile</strong>.</p>
+
+        <h2>Photo &amp; DNR document</h2>
+        <p>Two separate uploads, each with its own upload button. Both save immediately on file selection — no need to hit Save profile.</p>
+        <ul>
+          <li><strong>Care recipient photo</strong> — shown on the kiosk Emergency screen</li>
+          <li><strong>DNR or POLST file</strong> (PDF, image, DOC, DOCX) — after upload, a <strong>View uploaded document</strong> link appears here and an <strong>Open document</strong> button appears on the kiosk Emergency screen</li>
+        </ul>
+
+        <div class="notice n-tip">
+          <span class="ni">💡</span>
+          <div class="nb"><strong>Saving</strong>Use <strong>Save profile</strong> for name, DOB, DNR status, notes, proxy/POA, contacts, and medications together. Photo and document uploads save on their own immediately.</div>
+        </div>
+
+        <h2>Print emergency document</h2>
+        <p><strong>Print Emergency Document</strong> opens a formatted PDF summary in a new tab. Use your browser's print dialog to print or save as PDF.</p>
+      </div>
+    </div>
+
+    <div class="doc-section" id="web-events">
+      <div class="section-card">
+        <div class="section-label sl-web">Web Dashboard</div>
+        <h1>Events tab</h1>
+        <p class="page-lead">Manage the shared family calendar. Events appear on the kiosk Home and Schedule screens.</p>
+        <div class="notice n-soon">
+          <span class="ni">🕐</span>
+          <div class="nb"><strong>In progress</strong>The full events interface is being built out.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="web-settings">
+      <div class="section-card">
+        <div class="section-label sl-web">Web Dashboard</div>
+        <h1>Settings tab</h1>
+        <p class="page-lead">Account and circle configuration for the family manager.</p>
+        <table>
+          <thead><tr><th>Section</th><th>What it does</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Permissions &amp; family access</td><td>Invite/remove members, set roles, control per-feature access</td><td><span class="badge b-soon">Coming later</span></td></tr>
+            <tr><td>HIPAA &amp; activity log</td><td>Exportable log of who viewed or changed health data, and when</td><td><span class="badge b-soon">Coming later</span></td></tr>
+            <tr><td>Kiosk &amp; TV</td><td>Screen controls, idle behavior, emergency alert activation</td><td><span class="badge b-soon">Coming later</span></td></tr>
+            <tr><td>Medications</td><td>Add, edit, remove medications, dosage, times</td><td><span class="badge b-live">Available</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MOBILE -->
+    <div class="doc-section" id="mobile-checkin">
+      <div class="section-card">
+        <div class="section-label sl-mobile">Mobile App</div>
+        <h1>Check-in &amp; location</h1>
+        <p class="page-lead">How family members share their location so it appears on the kiosk Family screen.</p>
+        <p>A check-in submits the family member's current location, which is matched against any <a href="#named-locations">named locations</a> set up for the circle. Check-ins can include an optional notes field that appears alongside the location on the kiosk.</p>
+        <div class="notice n-soon">
+          <span class="ni">🕐</span>
+          <div class="nb"><strong>iOS app in development</strong>The check-in flow is currently available via the web dashboard's mobile-optimized view.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-section" id="where-is-everyone">
+      <div class="section-card">
+        <div class="section-label sl-mobile">Mobile App</div>
+        <h1>Where is everyone?</h1>
+        <p class="page-lead">Tapping this on the kiosk Family screen sends a push notification to family members asking them to check in.</p>
+        <ol class="steps">
+          <li>The kiosk user taps <strong>Where is everyone?</strong> on the Family screen.</li>
+          <li>A push notification goes out to all participating family members.</li>
+          <li>The next time they open the app, they can accept or decline. <span class="badge b-soon">In progress</span></li>
+          <li>If they accept, their location is submitted. They can also add a short note. <span class="badge b-soon">Video messages planned</span></li>
+          <li>Their location appears on the kiosk Family screen.</li>
+        </ol>
+        <h2>Rules &amp; limits</h2>
+        <ul>
+          <li>Requests expire after 24 hours if unanswered <span class="badge b-soon">Coming</span></li>
+          <li>Only one active request per family member at a time <span class="badge b-soon">Coming</span></li>
+          <li>Max request frequency is configurable <span class="badge b-soon">Coming</span></li>
+          <li>Location sharing is always opt-in — family members can decline any request</li>
+        </ul>
+        <div class="notice n-tip">
+          <span class="ni">💡</span>
+          <div class="nb">Push notifications require APNs configuration on the server. Without it, requests are logged but not delivered. Contact your administrator if notifications aren't arriving.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERENCE -->
+    <div class="doc-section" id="named-locations">
+      <div class="section-card">
+        <div class="section-label sl-ref">Reference</div>
+        <h1>Named locations</h1>
+        <p class="page-lead">Give common places a plain-language label. When a check-in falls within the location's radius, the kiosk shows the label instead of a map pin.</p>
+        <p>Location matching uses a haversine distance calculation. The nearest matching location wins when areas overlap. The default radius is 150 meters; each location's radius is configurable.</p>
+        <div class="notice n-soon">
+          <span class="ni">🕐</span>
+          <div class="nb"><strong>Editor in progress</strong>Server-side matching is live. Once the editor ships, locations you define apply to new check-ins immediately.</div>
+        </div>
+        <h2>How families write labels</h2>
+        <p>Labels can be brief or descriptive — the goal is that whoever reads it, including someone who may be disoriented, immediately understands where the person is and that it's somewhere expected.</p>
+        <ul>
+          <li><em>"Anne is at work downtown"</em></li>
+          <li><em>"Evan is at High School in Colorado Springs"</em></li>
+          <li><em>"Dave's Office"</em></li>
+          <li><em>"You are at your home on Maple Street in Denver"</em> — for the kiosk's own location</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="doc-section" id="data-privacy">
+      <div class="section-card">
+        <div class="section-label sl-ref">Reference</div>
+        <h1>Data &amp; privacy</h1>
+        <p class="page-lead">What Meridian stores, who can see it, and what's protected.</p>
+        <h2>Circle isolation</h2>
+        <p>All data is scoped to your Family Circle. No other users or circles can access it. The kiosk is pre-authenticated — no credentials are ever exposed to the care recipient.</p>
+        <h2>Location data</h2>
+        <p>Location is submitted only when a family member actively responds to a check-in. No passive background tracking. Location history is not stored by default.</p>
+        <h2>Health &amp; medical data</h2>
+        <p>Medications, conditions, allergies, and ICE documents are stored within your circle only. Uploaded POLST/DNR documents can be deleted at any time from the ICE editor.</p>
+        <h2>Transport</h2>
+        <p>All data is transmitted over TLS. Uploaded documents use access-controlled storage links.</p>
+        <div class="notice n-warn">
+          <span class="ni">⚠️</span>
+          <div class="nb"><strong>Not yet production-hardened</strong>Full encryption at rest, authentication hardening, and compliance certifications are in progress. Do not store real private or medical data unless your administrator has confirmed the deployment is ready.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
 </div>
-
-<nav class="toc">
-  <a href="#overview">Overview</a>
-  <a href="#circles">Family Circles</a>
-  <a href="#locations">Named Locations</a>
-  <a href="#checkins">Check-ins</a>
-  <a href="#emergency">Emergency &amp; POLST</a>
-  <a href="#security">Security</a>
-  <a href="#privacy">Privacy</a>
-  <a href="#accessibility">Accessibility</a>
-  <a href="#deployment">Deployment</a>
-</nav>
-
-<div class="page">
-
-  <!-- OVERVIEW -->
-  <div class="section" id="overview">
-    <div class="section-tag">Overview</div>
-    <h2>What is Meridian?</h2>
-    <p class="lead">Meridian connects families, caregivers, and emergency responders around a single, always-current source of truth for the person they're caring for.</p>
-    <p>Day-to-day care involves a lot of people holding a lot of partial information — one sibling knows about a medication change, another remembers the appointment, no one can find the POLST form when the paramedics ask. Meridian brings it all into one shared system, accessible from the web, your phone, or a dedicated kiosk that the person receiving care can use without needing to manage any technology themselves.</p>
-    <p>Behavior and available features can vary slightly by deployment — home use, facility use, test environments, and device type may each look a little different. This guide describes how the platform works in general terms; your specific setup may differ.</p>
-
-    <div class="platform-row">
-      <div class="platform-pill"><div class="pi">🖥️</div><div class="pn">Web Dashboard</div><div class="ps">For family &amp; caregivers</div></div>
-      <div class="platform-pill"><div class="pi">📱</div><div class="pn">Mobile App</div><div class="ps">iOS &amp; Android</div></div>
-      <div class="platform-pill"><div class="pi">📟</div><div class="pn">Care Kiosk</div><div class="ps">Home &amp; facility</div></div>
-    </div>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- FAMILY CIRCLES -->
-  <div class="section" id="circles">
-    <div class="section-tag">Core Concept</div>
-    <h2>Family Circles</h2>
-    <p class="lead">A Family Circle is the shared space where all of your care information lives — events, medications, locations, contacts, and emergency documents — visible only to the people you invite.</p>
-
-    <p>Every household or care unit in Meridian is organized as a Family Circle. Think of it as a private, shared environment for one care situation. People outside your circle cannot see anything inside it.</p>
-
-    <p>Each circle has one designated <strong>care recipient</strong> — the person being supported. Health data, emergency documents, and POLST directives are associated with that person. Everyone else in the circle is a family member, caregiver, or administrator, each with a role that controls what they can view and change.</p>
-
-    <div class="callout callout-gold">
-      <strong>About roles &amp; permissions</strong>
-      <p>Different actions in Meridian — editing medications, managing location settings, updating billing — require different permission levels. If you're unsure what you can change in your deployment, check with whoever set up your circle or your facility administrator.</p>
-    </div>
-
-    <div class="card-grid">
-      <div class="card"><div class="card-icon">📅</div><h4>Shared Calendar</h4><p>Appointments, social events, and care tasks visible to everyone in the circle.</p></div>
-      <div class="card"><div class="card-icon">💊</div><h4>Medications</h4><p>One maintained list, shared across the circle and surfaced in emergency documents.</p></div>
-      <div class="card"><div class="card-icon">📍</div><h4>Named Locations</h4><p>Common places given human-readable names so the kiosk can show context, not just a map pin.</p></div>
-      <div class="card"><div class="card-icon">🔔</div><h4>Check-ins</h4><p>Kiosk-triggered location requests that family members respond to from their phones.</p></div>
-      <div class="card"><div class="card-icon">🆘</div><h4>Emergency Profile</h4><p>ICE data, POLST documents, and DNR status — one tap away when it matters most.</p></div>
-      <div class="card"><div class="card-icon">🔐</div><h4>Scoped Access</h4><p>Roles control who can edit what. Family members only see and change what their role allows.</p></div>
-    </div>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- NAMED LOCATIONS -->
-  <div class="section" id="locations">
-    <div class="section-tag">Feature</div>
-    <h2>Named Locations</h2>
-    <p class="lead">Instead of showing a map pin or a street address, Meridian shows whoever is at the kiosk a message they can actually understand — and trust.</p>
-
-    <p>Family members with editor permissions can name the places their loved one's family regularly goes. Each location gets a natural-language label and a configurable geofence radius. The labels can be as simple or as detailed as your family finds helpful.</p>
-
-    <ul class="loc-list">
-      <li><span>📍</span> "Anne is at work downtown"</li>
-      <li><span>📍</span> "Evan is at High School in Colorado Springs"</li>
-      <li><span>📍</span> "Dave's Office"</li>
-      <li><span>📍</span> "You are at your home on Maple Street in Denver"</li>
-    </ul>
-
-    <p>The kiosk's own location can also be named — so the care recipient can see that they are at home, described in familiar terms, rather than looking at an address or a map they may not recognize.</p>
-
-    <h3>Why this matters</h3>
-    <p>For someone experiencing cognitive decline, a map showing a dot labeled "downtown" does little to ease anxiety about where a family member has gone. A message that says <em>"Anne is at work — she'll be home this evening"</em> speaks in the language of relationships. It provides not just information but reassurance.</p>
-    <p>Paranoia and distrust of unfamiliar technology are also common symptoms for people living with dementia. Being able to request that family confirm the information is current — rather than simply reading it off a screen — can make a real difference in whether a concerned person feels settled or continues to escalate.</p>
-
-    <div class="callout callout-teal">
-      <strong>Tip — naming the kiosk location</strong>
-      <p>If the kiosk is in the care recipient's home, set a named location for that address with a warm, recognizable label. Seeing "You are at your home on Maple Street" can be grounding in a way that an address or map coordinates simply aren't.</p>
-    </div>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- CHECK-INS -->
-  <div class="section" id="checkins">
-    <div class="section-tag">Feature</div>
-    <h2>Where Is Everyone?</h2>
-    <p class="lead">A single tap on the kiosk sends a check-in request to every family member's phone — and their responses come back to the kiosk as messages or videos.</p>
-
-    <p>When the kiosk user initiates <strong>Where Is Everyone?</strong>, participating family members receive a push notification on their mobile app. Tapping the notification requests a current location update and, optionally, a brief check-in message or short video — something personal, not just a location ping.</p>
-
-    <p>The system is designed around consent. Family members choose whether to respond each time. No one's location is shared silently or without their knowledge.</p>
-
-    <h4>How it works</h4>
-    <table class="data-table">
-      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
-      <tbody>
-        <tr><td>Kiosk request sent</td><td>All participating family members receive a push notification immediately.</td></tr>
-        <tr><td>Family member receives it</td><td>The next time they open the app, they can accept or decline. No silent background tracking.</td></tr>
-        <tr><td>Optional message</td><td>If they accept, they can also send a short text or video check-in back to the kiosk.*</td></tr>
-        <tr><td>Request expires</td><td>If unanswered for 24 hours, the request expires automatically. No lingering notifications.*</td></tr>
-        <tr><td>One request at a time</td><td>While a check-in request is active, no additional requests are sent to that family member.*</td></tr>
-        <tr><td>Frequency limit</td><td>A maximum check-in request frequency can be configured to prevent notification fatigue.*</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:13px; color: var(--ink-muted); margin-top: -4px;">* These features are planned and not yet fully available in all deployments.</p>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- EMERGENCY -->
-  <div class="section" id="emergency">
-    <div class="section-tag">Feature</div>
-    <h2>Emergency &amp; POLST</h2>
-    <p class="lead">Meridian gives your family one place to keep life-critical emergency information current — and puts it in front of first responders instantly when it's needed.</p>
-
-    <p>The <strong>In Case of Emergency (ICE)</strong> profile is where your family maintains the care recipient's complete emergency record. You update it from the web dashboard; it's always accessible on the kiosk's Emergency screen and printable on demand.</p>
-
-    <h3>Managing the ICE profile (web dashboard)</h3>
-    <p>Open <strong>POLST &amp; Emergency (ICE)</strong> from the main dashboard navigation. From there you can:</p>
-
-    <div class="card-grid">
-      <div class="card"><div class="card-icon">🪪</div><h4>Identity &amp; Code Status</h4><p>Name, date of birth, DNR / full-code status, and care directives in plain language.</p></div>
-      <div class="card"><div class="card-icon">📋</div><h4>Medical Proxy &amp; POA</h4><p>Designee names stored alongside the profile they govern — no separate document to dig up.</p></div>
-      <div class="card"><div class="card-icon">💊</div><h4>Medications &amp; Contacts</h4><p>The same list shared across the circle. Select all / deselect all for bulk updates. Always current.</p></div>
-      <div class="card"><div class="card-icon">📎</div><h4>POLST / DNR Upload</h4><p>Upload a scanned order (PDF or image). Immediately accessible from the kiosk and via a direct link in the editor.</p></div>
-      <div class="card"><div class="card-icon">🖼️</div><h4>Care Recipient Photo</h4><p>Upload a photo — used in the editor preview and on the kiosk when available.</p></div>
-      <div class="card"><div class="card-icon">🖨️</div><h4>Print Emergency Document</h4><p>Generate a print-ready PDF summary in one click — for paramedics, ER staff, or your own records.</p></div>
-    </div>
-
-    <div class="callout callout-gold">
-      <strong>Saving your changes</strong>
-      <p>Use <strong>Save profile</strong> to persist text fields, medications, and contact updates together. Photo and POLST/DNR uploads save immediately when you choose a file — you don't need to hit Save for those.</p>
-    </div>
-
-    <h3>On the kiosk — Emergency screen</h3>
-    <p>The kiosk's Emergency screen displays the full composed profile: name, date of birth, code status, allergies, medications, conditions, contacts, proxy, and POA. If a POLST or DNR document has been uploaded, an <strong>Open document</strong> button gives immediate access to the scanned orders — no login needed from a first responder's perspective.</p>
-
-    <p>Depending on your deployment configuration, the kiosk may also offer <strong>Print Emergency Document</strong> directly, and may auto-print when an emergency alert is active.</p>
-
-    <div class="callout callout-rose">
-      <strong>Keep it current</strong>
-      <p>The emergency profile is only as useful as it is accurate. We recommend reviewing medications, contacts, and code status any time there's a change — and after every medical appointment where directives may have been updated.</p>
-    </div>
-
-    <h3>Emergency alerts</h3>
-    <p>Broader alert behavior — notifications to family members, escalation chains, and how alerts interact with kiosk navigation and printing — is still evolving. Your deployment's specific configuration is the source of truth for how alerts behave in your setup.</p>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- SECURITY -->
-  <div class="section" id="security">
-    <div class="section-tag">Safety &amp; Security</div>
-    <h2>How Your Data Is Protected</h2>
-    <p class="lead">Meridian handles some of the most sensitive information a family holds. Security is built into every layer of the platform — not added on afterward.</p>
-
-    <ul class="layer-list">
-      <li>
-        <div class="ln">01</div>
-        <div class="lb"><strong>Encrypted in transit</strong><span>All data between your devices and Meridian's servers travels over TLS encryption. Nothing sensitive is ever sent in plaintext.</span></div>
-      </li>
-      <li>
-        <div class="ln">02</div>
-        <div class="lb"><strong>Role-based access control</strong><span>Every action — viewing medications, editing locations, managing billing, accessing emergency documents — is independently gated by role. Family members can only see and change what their role permits.</span></div>
-      </li>
-      <li>
-        <div class="ln">03</div>
-        <div class="lb"><strong>Circle isolation</strong><span>Your Family Circle's data is strictly isolated. Even in a shared deployment, no data can cross between circles.</span></div>
-      </li>
-      <li>
-        <div class="ln">04</div>
-        <div class="lb"><strong>Consent-based location sharing</strong><span>Location data is shared only when a family member actively responds to a check-in request. Meridian does not passively track or store location in the background.</span></div>
-      </li>
-      <li>
-        <div class="ln">05</div>
-        <div class="lb"><strong>Locked-down kiosk</strong><span>The kiosk runs as a single-purpose device. It does not expose a general browser, filesystem, or operating system to the user. In facility deployments, sensitive screens can be configured to require a staff PIN.</span></div>
-      </li>
-      <li>
-        <div class="ln">06</div>
-        <div class="lb"><strong>Secure document storage</strong><span>Uploaded POLST and DNR files are stored with access-controlled links. The underlying file storage path is never exposed. Emergency access on the kiosk uses time-limited or session-scoped tokens.</span></div>
-      </li>
-      <li>
-        <div class="ln">07</div>
-        <div class="lb"><strong>Audit logging</strong><span>Significant actions — profile edits, document uploads, emergency screen access — are logged with user identity, timestamp, and context for review if needed.</span></div>
-      </li>
-      <li>
-        <div class="ln">08</div>
-        <div class="lb"><strong>Session management</strong><span>Web dashboard sessions time out after inactivity. Mobile apps use platform-native biometric or PIN re-authentication. Kiosk sessions are pre-authenticated per deployment — the person receiving care never needs to manage a password.</span></div>
-      </li>
-    </ul>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- PRIVACY -->
-  <div class="section" id="privacy">
-    <div class="section-tag">Privacy</div>
-    <h2>Your Information, Your Control</h2>
-    <p class="lead">Meridian collects what it needs to deliver each feature — nothing more. You can see, update, and delete your family's information at any time.</p>
-
-    <table class="data-table">
-      <thead><tr><th>Type of data</th><th>How it's handled</th></tr></thead>
-      <tbody>
-        <tr><td>Location data</td><td>Shared only when a family member actively responds to a check-in. Not stored as a continuous history unless your family opts into a location history feature.</td></tr>
-        <tr><td>Health &amp; medical information</td><td>Scoped strictly to your Family Circle. Not used for advertising or shared with third parties outside your deployment's data agreements.</td></tr>
-        <tr><td>POLST / DNR documents</td><td>Stored with encrypted, access-controlled links. You can delete an uploaded document at any time from the ICE editor.</td></tr>
-        <tr><td>Family member accounts</td><td>Each person signs in with their own account. Account data is not shared across circles.</td></tr>
-        <tr><td>Minors in the circle</td><td>If your circle includes minors (grandchildren, for example), their location data is subject to additional consent and parental control requirements.</td></tr>
-      </tbody>
-    </table>
-
-    <div class="callout callout-teal">
-      <strong>Regulatory context</strong>
-      <p>Meridian's architecture is designed for alignment with HIPAA in healthcare deployments and GDPR / CCPA in consumer contexts. Specific compliance attestations depend on your deployment configuration. If you have questions about data handling in a facility deployment, ask your administrator.</p>
-    </div>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- ACCESSIBILITY -->
-  <div class="section" id="accessibility">
-    <div class="section-tag">Accessibility</div>
-    <h2>Designed for Everyone in the Family</h2>
-    <p class="lead">The person at the center of a Family Circle is often the least comfortable with technology. Meridian is built to meet them where they are.</p>
-
-    <div class="card-grid">
-      <div class="card"><div class="card-icon">🔡</div><h4>Large-Format Kiosk UI</h4><p>Typography and touch targets are sized for low-vision users and people with reduced fine motor control.</p></div>
-      <div class="card"><div class="card-icon">🗣️</div><h4>Plain Language</h4><p>Every system message, label, and confirmation is written for clarity. Technical jargon is avoided throughout.</p></div>
-      <div class="card"><div class="card-icon">🧭</div><h4>No-Login Kiosk</h4><p>The care recipient never manages a password. The kiosk is always on and always ready.</p></div>
-      <div class="card"><div class="card-icon">🤝</div><h4>Dementia-Informed Design</h4><p>Named locations, familiar language, and calming information display reflect best practices for people with cognitive challenges.</p></div>
-      <div class="card"><div class="card-icon">🌐</div><h4>Localization Support</h4><p>The platform is built for multi-language deployment. Families can operate in the language that's most natural for the care recipient.</p></div>
-      <div class="card"><div class="card-icon">♿</div><h4>WCAG Compliance Target</h4><p>The web dashboard and mobile apps target WCAG 2.1 AA, with screen-reader support and keyboard navigability.</p></div>
-    </div>
-  </div>
-
-  <hr class="rule" />
-
-  <!-- DEPLOYMENT -->
-  <div class="section" id="deployment">
-    <div class="section-tag">Deployment</div>
-    <h2>Home Use &amp; Facility Deployments</h2>
-    <p class="lead">Meridian works for families managing care at home and for operators running assisted living, memory care, or home care programs.</p>
-
-    <table class="data-table">
-      <thead><tr><th>Setting</th><th>Who sets it up</th><th>What's different</th></tr></thead>
-      <tbody>
-        <tr><td>Home (consumer)</td><td>Family self-provisions</td><td>Family manages all settings and roles directly</td></tr>
-        <tr><td>Assisted living / memory care</td><td>Facility administrator</td><td>Staff roles, facility branding, emergency auto-print, resident profiles</td></tr>
-        <tr><td>Home care agency</td><td>Agency admin</td><td>Caregiver roles separated from family roles; agency oversight layer</td></tr>
-      </tbody>
-    </table>
-
-    <div class="callout callout-teal">
-      <strong>Optional — stove / kitchen temperature (kiosk)</strong>
-      <p>Some setups attach a USB temperature probe to the kiosk. The current reading appears under <strong>Settings → Monitors</strong> on the kiosk. Serial port and alert behavior are configured on the machine that runs the kiosk (for example <code>STOVE_SERIAL_PORT</code> in the project <code>.env</code>), not in this web dashboard.</p>
-    </div>
-
-    <div class="callout callout-gold">
-      <strong>Test vs. production</strong>
-      <p>Meridian supports separate test and production environments. Feature availability, notification routing, and emergency alert behavior can differ between them. If something behaves unexpectedly, confirm with your administrator whether you're in a test environment.</p>
-    </div>
-  </div>
-
-</div>
-
-<footer class="doc-footer">
-  <div><strong>Meridian</strong> — User Guide</div>
-  <div>Features marked * are planned and not yet fully available in all deployments.</div>
-</footer>
 
 </body>
 </html>

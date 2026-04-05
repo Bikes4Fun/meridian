@@ -71,7 +71,8 @@ try:
 except ImportError:
     from shared.config import get_uploads_dir
 
-_alert_activated = False
+_alert_activation_by_family = {}
+_alert_activation_lock = threading.Lock()
 _logger = logging.getLogger(__name__)
 
 _ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
@@ -83,6 +84,17 @@ _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
     {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
 )
+
+
+def _get_alert_activated(family_circle_id: str) -> bool:
+    with _alert_activation_lock:
+        return bool(_alert_activation_by_family.get(family_circle_id, False))
+
+
+def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
+    with _alert_activation_lock:
+        _alert_activation_by_family[family_circle_id] = bool(activated)
+        return _alert_activation_by_family[family_circle_id]
 
 
 def _create_chat_entry_token(
@@ -929,15 +941,16 @@ def create_server_app(db_path=None):
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        return jsonify({"data": {"activated": _alert_activated}})
+        return jsonify({"data": {"activated": _get_alert_activated(g.family_circle_id)}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        global _alert_activated
         data = request.get_json() or {}
-        _alert_activated = bool(data.get("activated", False))
-        return jsonify({"data": {"activated": _alert_activated}})
+        activated = _set_alert_activated(
+            g.family_circle_id, bool(data.get("activated", False))
+        )
+        return jsonify({"data": {"activated": activated}})
 
     @app.route("/api/calls/request", methods=["POST"])
     def api_call_request():
@@ -1172,8 +1185,16 @@ def create_server_app(db_path=None):
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
+    _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
     _repo_root = os.path.dirname(_src)
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
+    if os.path.isfile(os.path.join(_webapp_client, "meridian_api_base.js")):
+
+        @app.route("/meridian_api_base.js")
+        def serve_meridian_api_base_js():
+            """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
+            return send_from_directory(_webapp_client, "meridian_api_base.js")
+
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         user_svc = container.get_user_service()
         register_chatapp_routes(
@@ -1197,10 +1218,6 @@ def create_server_app(db_path=None):
         @app.route("/info.html")
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
-
-        @app.route("/meridian_api_base.js")
-        def serve_meridian_api_base_js():
-            return send_from_directory(_webapp_dist, "meridian_api_base.js")
 
         @app.route("/meridian_medications_inline.js")
         def serve_meridian_medications_inline_js():

@@ -1,6 +1,8 @@
 """
-Map widget: builds location markers and map container HTML.
-Reusable across screens (Family Locations, future map views).
+Kiosk map: marker payloads and map container HTML for the Family screen (uses location service + photo helper).
+
+Scope: data shaping and HTML fragment for embedding.
+Not here: Leaflet setup, check-in POST flows, or named-places API implementation.
 """
 
 import json
@@ -19,7 +21,7 @@ def get_map_markers(
     kiosk_user_id: str = "",
 ) -> list:
     """Build markers for the map: patient at home, then family check-ins. Returns list of marker dicts."""
-    loc_svc = services.get("location_service")
+    loc_svc = services.get_location_service()
     markers = []
 
     if not loc_svc:

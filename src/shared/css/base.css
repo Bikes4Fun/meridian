@@ -4,6 +4,8 @@
    Shared tokens; webapp extends in apps/webapp (Clinical Clarity / design plan).
    ============================================================================= */
 
+/* Webapp+kiosk typical load order: base.css → web_client/style.css → kiosk.css (kiosk only). */
+
 /* =============================================================================
    DESIGN TOKENS (CSS custom properties)
    ============================================================================= */
@@ -25,6 +27,8 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --radius-pill: 2px;
+  --radius-full: 50%;
 
   /* Colors – shared palette */
   --text: #333;
@@ -34,6 +38,25 @@
   --bg: #fff;
   --bg-surface: #fafafa;
   --bg-surface-alt: #f5f5f5;
+
+  /* Warm & Familiar — webapp + kiosk (dashboard maps --web-* here; kiosk sets --bg/--text) */
+  --warm-base: #faf8f3;
+  --warm-cream: #f5efe7;
+  --warm-text: #4a4a4a;
+  --warm-muted: #6e6760;
+  --warm-terracotta: #c85a3f;
+  --warm-terracotta-hover: #b04f36;
+  --warm-terracotta-ink: #6d3528;
+  --warm-sage: #7a9b76;
+  --warm-sage-hover: #6d8c69;
+  --warm-golden: #d4a574;
+  --warm-golden-hover: #c49262;
+  --warm-delete: #8b4d42;
+  --warm-delete-hover: #744038;
+  --warm-border: #e8e2d9;
+  --warm-border-strong: #dcd5cb;
+  --warm-input-bg: #fffefb;
+  --warm-chat-tint: #efe9df;
 
   /* Primary action (green – check-in, send, confirm) */
   --primary: #4CAF50;
@@ -45,6 +68,22 @@
   --accent-dark: #1e5d7a;
   --accent-hover: #3a8fab;
 
+  /* Events / calendar accent (timeline bars, call actions) */
+  --secondary: #1a9b8a;
+
+  /* Map pins, family markers — not medical teal */
+  --interactive: #4080c0;
+  --interactive-dark: #2d5a8f;
+  --map-marker-patient: #2d7a3e;
+
+  /* Neutral chrome */
+  --surface-muted: #e8e8e8;
+  --surface-hover: #ddd;
+  --avatar-fallback: #999;
+
+  /* Medication / clinical list panels (webapp med cards, kiosk med-panel + timeline) */
+  --med-surface: #f0f5fa;
+
   /* Status */
   --success-bg: #d4edda;
   --success-text: #155724;
@@ -52,13 +91,22 @@
   --info-text: #0c5460;
   --error-bg: #f8d7da;
   --error-text: #721c24;
+  --error: #c00;
   --warning: #ff8000;
+  --warning-bright: #ff3300;
 
   /* Semantic actions (web dashboard; optional for other apps) */
   --danger: #c0392b;
   --danger-hover: #a93226;
   --secondary-btn: #7f8c8d;
   --secondary-btn-hover: #6c7a7b;
+
+  /* Overlays & press feedback */
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-light: rgba(0, 0, 0, 0.05);
+  --overlay-medium: rgba(0, 0, 0, 0.1);
+  --transition-press: transform 0.08s ease, background 0.08s ease;
+  --active-scale: 0.97;
 }
 
 /* =============================================================================

@@ -73,7 +73,7 @@ class TestDatabaseManager:
         )
 
         assert result.success is False
-        assert "no such table" in result.error.lower()
+        assert "database update failed" in result.error.lower()
 
     def test_execute_many_success(self, test_db_manager):
         """Test batch execution."""
@@ -171,7 +171,7 @@ class TestDatabaseManagerIntegration:
             "INSERT INTO test_table (id, name) VALUES (?, ?)", (1, "duplicate")
         )
         assert result.success is False
-        assert "unique" in result.error.lower() or "constraint" in result.error.lower()
+        assert "database update failed" in result.error.lower()
         count_result = test_db_manager.execute_query(
             "SELECT COUNT(*) as n FROM test_table", ()
         )

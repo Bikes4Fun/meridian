@@ -155,6 +155,37 @@ class CalendarService:
             return ServiceResult.error_result(result.error or "Delete failed")
         return ServiceResult.success_result(True)
 
+    def _event_rows_to_payloads(self, rows: list) -> List[dict]:
+        events: List[dict] = []
+        for row in rows:
+            start_time = None
+            if row.get("start_time"):
+                try:
+                    start_time = datetime.datetime.fromisoformat(
+                        str(row["start_time"]).replace("Z", "+00:00")
+                    )
+                except Exception:
+                    pass
+            display = row["title"]
+            if start_time:
+                display = f"{row['title']} ({start_time.strftime('%I:%M %p')})"
+            events.append(
+                {
+                    "id": row.get("id"),
+                    "title": row["title"],
+                    "start_time": row.get("start_time"),
+                    "end_time": row.get("end_time"),
+                    "description": row.get("description"),
+                    "location": row.get("location"),
+                    "driver_name": row.get("driver_name"),
+                    "driver_contact_id": row.get("driver_contact_id"),
+                    "pickup_time": row.get("pickup_time"),
+                    "leave_time": row.get("leave_time"),
+                    "display": display,
+                }
+            )
+        return events
+
     def get_events_for_date(
         self, date: str, family_circle_id: Optional[str] = None
     ) -> ServiceResult:
@@ -185,35 +216,42 @@ class CalendarService:
             result = self.db_manager.execute_query(query, (target_date_str,))
         if not result.success:
             return result
-        events = []
-        for row in result.data:
-            start_time = None
-            if row.get("start_time"):
-                try:
-                    start_time = datetime.datetime.fromisoformat(
-                        str(row["start_time"]).replace("Z", "+00:00")
-                    )
-                except Exception:
-                    pass
-            display = row["title"]
-            if start_time:
-                display = f"{row['title']} ({start_time.strftime('%I:%M %p')})"
-            events.append(
-                {
-                    "id": row.get("id"),
-                    "title": row["title"],
-                    "start_time": row.get("start_time"),
-                    "end_time": row.get("end_time"),
-                    "description": row.get("description"),
-                    "location": row.get("location"),
-                    "driver_name": row.get("driver_name"),
-                    "driver_contact_id": row.get("driver_contact_id"),
-                    "pickup_time": row.get("pickup_time"),
-                    "leave_time": row.get("leave_time"),
-                    "display": display,
-                }
+        return ServiceResult.success_result(self._event_rows_to_payloads(result.data))
+
+    def get_events_in_range(
+        self,
+        start_date: str,
+        end_date: str,
+        family_circle_id: Optional[str] = None,
+    ) -> ServiceResult:
+        try:
+            datetime.datetime.strptime(start_date, "%Y-%m-%d")
+            datetime.datetime.strptime(end_date, "%Y-%m-%d")
+        except ValueError:
+            return ServiceResult.error_result("invalid date")
+        if family_circle_id:
+            query = """
+                SELECT id, title, start_time, end_time, description, location,
+                    driver_name, driver_contact_id, pickup_time, leave_time
+                FROM calendar_events
+                WHERE family_circle_id = ? AND DATE(start_time) >= ? AND DATE(start_time) <= ?
+                ORDER BY start_time
+            """
+            result = self.db_manager.execute_query(
+                query, (family_circle_id, start_date, end_date)
             )
-        return ServiceResult.success_result(events)
+        else:
+            query = """
+                SELECT id, title, start_time, end_time, description, location,
+                    driver_name, driver_contact_id, pickup_time, leave_time
+                FROM calendar_events
+                WHERE DATE(start_time) >= ? AND DATE(start_time) <= ?
+                ORDER BY start_time
+            """
+            result = self.db_manager.execute_query(query, (start_date, end_date))
+        if not result.success:
+            return result
+        return ServiceResult.success_result(self._event_rows_to_payloads(result.data))
 
     def get_today_events(
         self, reference_date: Optional[datetime.date] = None

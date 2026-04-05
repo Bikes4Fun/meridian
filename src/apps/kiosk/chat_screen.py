@@ -47,17 +47,13 @@ def build_chat_html(
 
     contact_svc = services.get_contact_service()
     if not contact_svc or not family_circle_id:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.error_state("No contacts (check server).")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.error_state("No contacts (check server).")
         )
     r = contact_svc.get_contacts()
     if not r.success or not r.data:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.empty_state("No contacts.")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.empty_state("No contacts.")
         )
     def _is_care_recipient(contact: dict) -> bool:
         user_id = (contact.get("user_id") or "").strip()
@@ -73,10 +69,8 @@ def build_chat_html(
         if (c.get("sendbird_user_id") or "").strip() and not _is_care_recipient(c)
     ]
     if not chat_contacts:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.empty_state("No contacts with chat.")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.empty_state("No contacts with chat.")
         )
 
     base = api_url.rstrip("/")

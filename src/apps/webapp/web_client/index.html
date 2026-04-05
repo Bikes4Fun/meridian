@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meridian · Family care</title>
     <link rel="stylesheet" href="/shared/css/base.css">
+    <link rel="stylesheet" href="/shared/css/medications.css">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body class="pending app-dashboard">
@@ -41,41 +42,97 @@
         <main class="app-main">
             <div class="app-page-stack">
                 <div id="pageHealth" class="page active">
+                    <!-- meridian-page-layout + meridian-inpage-nav: same pattern as Settings + info.html -->
+                    <div class="meridian-page-layout">
+                        <nav class="meridian-inpage-nav" aria-label="Health page sections">
+                            <div class="meridian-inpage-nav__group">
+                                <p class="meridian-inpage-nav__heading">On this page</p>
+                                <ul class="meridian-inpage-nav__list">
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-today-meds">Today&rsquo;s medications</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-polst">POLST &amp; ICE</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-medications">Medications</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-history">Medication history</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                        <div class="meridian-page-main">
                     <h1 class="page-title">Patient health data</h1>
-                    <p class="muted page-lead">POLST / emergency info, medications, and related records in one place.</p>
-                    <section class="card card--pad health-section">
-                        <h2 class="page-section-title">POLST &amp; emergency (ICE)</h2>
-                        <p class="muted page-lead page-lead--tight">Legal preferences, contacts, and the printable emergency document.</p>
-                        <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
-                        <div class="event-card__actions">
-                            <button id="healthManageMedsBtn" type="button" class="btn-inline">Manage medications</button>
-                            <button id="healthKioskControlsBtn" type="button" class="btn-inline">Kiosk controls</button>
-
+                    <details id="health-section-today-meds" class="card card--pad health-section health-meds-board card--meds health-fold health-section--page-anchor" open>
+                        <summary class="health-fold__summary" id="health-meds-title">Today&rsquo;s medications</summary>
+                        <div class="health-fold__body">
+                        <div class="health-meds-board__snapshot">
+                            <h3 class="health-meds-board__snapshot-title">Caregiver snapshot</h3>
                         </div>
-                    </section>
-                    <section class="card card--pad health-section health-section--placeholder">
-                        <h2 class="page-section-title">Medication history</h2>
-                        <p class="muted">A log of when doses were recorded will go here.</p>
-                    </section>
+                        <div id="healthMedsTakeHost" class="health-meds-board__body" aria-live="polite"></div>
+                        </div>
+                    </details>
+                    <details id="health-section-polst" class="card card--pad health-section health-fold health-section--page-anchor">
+                        <summary class="health-fold__summary" id="health-polst-heading">POLST &amp; emergency (ICE)</summary>
+                        <div class="health-fold__body">
+                            <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
+                        </div>
+                    </details>
+                    <details id="health-section-medications" class="card card--pad health-section health-section--meds-editor health-fold health-section--page-anchor">
+                        <summary class="health-fold__summary" id="health-medications-editor-title">Medications</summary>
+                        <div class="health-fold__body">
+                            <div id="healthMedsEditorHost" class="settings-meds-host"></div>
+                        </div>
+                    </details>
+                    <details id="health-section-history" class="card card--pad health-section med-history-card health-fold health-section--page-anchor">
+                        <summary class="health-fold__summary" id="med-history-title">Medication history</summary>
+                        <div class="health-fold__body">
+                            <p class="muted page-lead page-lead--tight">Coming soon.</p>
+                            <div class="med-history-toolbar" role="toolbar" aria-label="History filters (preview)">
+                                <label class="med-history-toolbar__fake">
+                                    <span class="med-history-toolbar__label">Range</span>
+                                    <select class="med-history-select" disabled aria-disabled="true" title="Coming soon">
+                                        <option>Last 7 days</option>
+                                    </select>
+                                </label>
+                                <button type="button" class="btn-health-secondary med-history-export" disabled title="Coming soon">Export log</button>
+                            </div>
+                            <div class="med-history-preview med-history-preview--placeholder" aria-hidden="true">
+                                <p class="muted med-history-preview__placeholder">Dose history will list here when the log is connected.</p>
+                            </div>
+                        </div>
+                    </details>
+                        </div>
+                    </div>
                 </div>
                 <div id="pageEvents" class="page"></div>
                 <div id="pageSettings" class="page">
+                    <div class="meridian-page-layout">
+                        <nav class="meridian-inpage-nav" aria-label="Settings sections">
+                            <div class="meridian-inpage-nav__group">
+                                <p class="meridian-inpage-nav__heading">On this page</p>
+                                <ul class="meridian-inpage-nav__list">
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-permissions">Permissions &amp; access</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-hipaa">HIPAA &amp; activity log</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-kiosk">Kiosk &amp; TV</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-meds">Medications</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                        <div class="meridian-page-main">
                     <h1 class="page-title">Settings</h1>
                     <p class="muted page-lead">Account controls for the primary family manager. Sections below are placeholders until each area is built.</p>
                     <div class="settings-grid">
-                        <section class="settings-card card card--pad">
+                        <section id="settings-section-permissions" class="settings-card card card--pad settings-section--page-anchor">
                             <h2 class="settings-card__title">Permissions &amp; family access</h2>
                             <p class="settings-card__body muted">Invite and remove members, roles (manager vs viewer), and who can edit meds, calendar, or trigger alerts.</p>
                             <span class="settings-card__badge">Coming later</span>
                         </section>
-                        <section class="settings-card card card--pad">
+                        <section id="settings-section-hipaa" class="settings-card card card--pad settings-section--page-anchor">
                             <h2 class="settings-card__title">HIPAA &amp; activity log</h2>
                             <p class="settings-card__body muted">Exportable access and change history for compliance (who viewed or changed health-related data and when).</p>
                             <span class="settings-card__badge">Coming later</span>
                         </section>
-                        <section class="settings-card card card--pad">
+                        <section id="settings-section-kiosk" class="settings-card card card--pad settings-section--page-anchor">
                             <h2 class="settings-card__title">Kiosk &amp; TV</h2>
                             <p class="settings-card__body muted">What the person at home can open on the kiosk (screens, chat, map, emergency), brightness or idle behavior, and safe defaults.</p>
+                            <div class="settings-kiosk-shortcut">
+                                <button type="button" id="settingsKioskControlsBtn" class="btn-health-secondary">Kiosk controls</button>
+                            </div>
                             <section id="settingsKioskAlert" class="alert-panel alert-panel--compact">
                                 <h3 class="page-section-title page-section-title--minor">Kiosk emergency alert</h3>
                                 <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
@@ -85,11 +142,13 @@
                                 </div>
                             </section>
                         </section>
-                        <section class="settings-card card card--pad">
+                        <section id="settings-section-meds" class="settings-card card card--pad settings-card--meds settings-section--page-anchor">
                             <h2 class="settings-card__title">Medications</h2>
-                            <p class="settings-card__body muted">Add, remove, or change meds, dosage, frequency, times, and RxCUI. Saves sync with the ICE profile and the kiosk schedule.</p>
-                            <div id="settingsMedsEditor"></div>
+                            <p class="settings-card__body muted">The medication list is edited on Patient health data &mdash; same editor whether you open it here or there.</p>
+                            <button type="button" id="settingsMedicationListBtn" class="btn-health-secondary">Open medication list</button>
                         </section>
+                    </div>
+                        </div>
                     </div>
                 </div>
                 <div id="pageMobile" class="page">
@@ -116,7 +175,7 @@
                     </section>
                 </div>
                 <div id="pageInfo" class="page page--info">
-                    <iframe class="info-doc-frame" src="/info.html" title="Meridian user guide"></iframe>
+                    <iframe class="info-doc-frame" src="/info.html?embed=1" title="Meridian user guide"></iframe>
                 </div>
             </div>
 

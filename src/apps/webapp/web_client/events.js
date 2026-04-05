@@ -10,9 +10,39 @@
     var _showStatus = function () {};
     var _initialized = false;
 
+    function localDateISO(d) {
+        d = d || new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1);
+        if (m.length === 1) m = '0' + m;
+        var day = String(d.getDate());
+        if (day.length === 1) day = '0' + day;
+        return y + '-' + m + '-' + day;
+    }
+
+    function addDaysISO(iso, days) {
+        var p = iso.split('-');
+        var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+        dt.setDate(dt.getDate() + days);
+        return localDateISO(dt);
+    }
+
+    function eventDayLabel(startTime) {
+        if (!startTime || startTime.length < 10) return '';
+        var day = startTime.slice(0, 10);
+        var today = localDateISO();
+        if (day === today) {
+            return 'Today';
+        }
+        var parts = day.split('-');
+        var dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
     function buildEventsHTML() {
         return '<h2 class="page-section-title">Events</h2>' +
-            '<p class="muted page-lead">Today\'s schedule</p>' +
+            '<p class="muted page-lead">Upcoming events in the next 30 days (your device\'s local date).</p>' +
+            '<p class="events-gcal-soon muted">Google Calendar: optional sync is <strong>coming soon</strong>. Meridian\'s calendar and kiosk schedule stay; linking will be additive.</p>' +
             '<div id="eventsList">Loading…</div>' +
             '<button id="addEventBtn" type="button" class="btn-add">Add event</button>' +
             '<div id="eventFormModal">' +
@@ -40,8 +70,14 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 if (!list) return;
-                if (!data || !data.data || data.data.length === 0) {
-                    list.innerHTML = '<p class="muted">No events today</p>';
+                if (!res.ok) {
+                    var msg = (res.body && res.body.error) ? String(res.body.error) : 'Could not load events';
+                    list.innerHTML = '<p class="muted">' + meridianEscapeHtml(msg) + '</p>';
+                    return;
+                }
+                var data = res.body;
+                if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+                    list.innerHTML = '<p class="muted">No events in the next 30 days. Use <strong>Add event</strong> to create one.</p>';
                     return;
                 }
                 var items = data.data.map(function (e) {
@@ -49,6 +85,7 @@
                     var title = meridianEscapeHtml(e.display || e.title || '');
                     return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '">' +
                         '<article class="event-card">' +
+                        meta +
                         '<p class="event-card__title">' + title + '</p>' +
                         '<div class="event-card__actions">' +
                         '<button type="button" class="event-edit-btn btn-inline btn-edit">Edit</button>' +
@@ -82,7 +119,7 @@
             editingEventId = null;
             var titleEl = document.getElementById('eventFormTitle');
             if (titleEl) titleEl.textContent = 'Add event';
-            var today = new Date().toISOString().slice(0, 10);
+            var today = localDateISO();
             document.getElementById('eventTitle').value = '';
             document.getElementById('eventDate').value = today;
             document.getElementById('eventStartTime').value = '09:00';
@@ -98,7 +135,7 @@
             if (titleEl) titleEl.textContent = 'Edit event';
             var st = eventData.start_time || '';
             var et = eventData.end_time || '';
-            var date = st ? st.slice(0, 10) : new Date().toISOString().slice(0, 10);
+            var date = st ? st.slice(0, 10) : localDateISO();
             var startTime = st && st.length >= 16 ? st.slice(11, 16) : '09:00';
             var endTime = et && et.length >= 16 ? et.slice(11, 16) : '';
             document.getElementById('eventTitle').value = eventData.title || '';

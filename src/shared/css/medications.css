@@ -1,0 +1,194 @@
+/* =============================================================================
+   MEDICATION UI – Shared primitives (webapp + kiosk)
+   Load after base.css. App CSS may override surfaces; use modifiers for states.
+   ============================================================================= */
+
+/* Dose card states (webapp list + kiosk Health timeline) */
+:is(.list-panel, .timeline-list) .med-card.med-card--done {
+  border-color: var(--success-text);
+  background: var(--success-bg);
+}
+
+:is(.list-panel, .timeline-list) .med-card.med-card--prn.med-card--pending {
+  border-color: var(--accent);
+}
+
+:is(.list-panel, .timeline-list) .med-card[aria-busy="true"] {
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+:is(.list-panel, .timeline-list) .med-card[aria-busy="true"] .med-mark-taken-btn,
+:is(.list-panel, .timeline-list) .med-card[aria-busy="true"] .med-taken-btn {
+  cursor: wait;
+}
+
+/* Kiosk Health: compact dose strip inside timeline (not bulky nested cards) */
+.timeline-list .med-card {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4em 0.65em;
+  background: var(--bg);
+  text-align: left;
+  box-shadow: none;
+}
+
+.timeline-list .med-card__title {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.12em 0;
+  line-height: var(--line-height-tight);
+}
+
+.timeline-list .med-card__meta {
+  font-size: calc(var(--font-caption) * 0.94);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.timeline-list .med-card__title-inline {
+  font-size: calc(var(--font-caption) * 0.94);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.med-card__prn-limit-note {
+  margin: 0.25em 0 0 0;
+  font-size: calc(var(--font-caption) * 0.95);
+  font-weight: 600;
+  color: var(--warm-terracotta-ink);
+  line-height: var(--line-height-tight);
+}
+
+.list-panel--meds .med-card__prn-limit-note {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.med-card__dose-status {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.med-card__dose-status--pending {
+  color: var(--text-muted);
+}
+
+.timeline-list .med-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.timeline-list .med-card--open .med-card__open-inner {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45em 0.75em;
+  width: 100%;
+}
+
+.timeline-list .med-card--open .med-card__open-text {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.timeline-list .med-card--open .med-card__actions {
+  margin: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.timeline-item.med-row--open {
+  align-items: center;
+  padding: 0.18em 0;
+}
+
+.timeline-action-btn--med-dose {
+  min-height: 34px;
+  padding: 0.22em 0.6em;
+  font-size: calc(var(--font-caption) * 0.92);
+}
+
+/* Kiosk Health: completed rows fold to one short line (name · status · Undo) */
+.timeline-item.med-row--folded {
+  align-items: center;
+  padding: 0.15em 0;
+}
+
+.timeline-list .med-card.med-card--folded {
+  padding: 0.35em var(--space-sm);
+}
+
+.timeline-list .med-card--folded .med-card__folded-inner {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em 0.75em;
+  width: 100%;
+}
+
+.timeline-list .med-card--folded .med-card__title {
+  margin: 0;
+  flex: 1 1 8em;
+  min-width: 0;
+  font-size: var(--font-caption);
+  font-weight: 600;
+  line-height: var(--line-height-tight, 1.35);
+}
+
+.med-card__folded-status {
+  font-size: var(--font-caption);
+  font-weight: 700;
+  color: var(--success-text);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.timeline-list .med-card--folded .med-card__actions {
+  margin: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.timeline-list .med-card--folded.med-card--done .med-card__title {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+  opacity: 0.9;
+}
+
+.timeline-action-btn--compact {
+  min-height: 32px;
+  padding: 0.18em 0.55em;
+  font-size: calc(var(--font-caption) * 0.9);
+}
+
+/* Mark-taken / mark-done actions (webapp + kiosk) */
+.med-mark-taken-btn:disabled,
+.med-taken-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.med-mark-taken-btn:focus-visible,
+.med-taken-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Kiosk: second tap required — armed state */
+.med-taken-btn.med-taken-btn--armed {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-weight: 700;
+}

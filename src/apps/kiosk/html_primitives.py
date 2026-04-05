@@ -1,9 +1,9 @@
 """
-Kiosk markup primitives: nav, typography wrappers, loading/empty/error, layout, kiosk_button, contact/avatar snippets.
+Kiosk markup primitives: nav, typography wrappers, loading/empty/error, kiosk_screen_blocked, form_row/section_bar, layout, kiosk_button, contact/avatar snippets.
 
 Scope: reusable HTML string builders only; design tokens live in kiosk CSS. Aligns with the kiosk/TV typography spec in-repo docs.
 
-Not here: fetching services, per-screen composition (see *\_screen.py), labeled form rows / section bars (emergency_screen), or webapp assets.
+Not here: fetching services or per-screen business logic (see *_screen.py); webapp assets.
 """
 
 import html
@@ -40,6 +40,29 @@ def error_state(message):
     """Error/fallback state. Design: Status Indicators—icon + text. Used when fetch fails."""
     return (
         f'<div class="state-placeholder state-error">{html.escape(str(message))}</div>'
+    )
+
+
+def kiosk_screen_blocked(title: str, state_html: str, spacer_px: int = 16) -> str:
+    """Early-return full screen: H1 + spacer + error/empty/loading fragment (shared kiosk guard layout)."""
+    return kiosk_header(title) + spacer(spacer_px) + state_html
+
+
+def form_row_html(label_text: str, value_text: str) -> str:
+    """One labeled row: caption + body value (emergency-style form layout)."""
+    label_esc = html.escape(str(label_text or ""))
+    value_esc = html.escape(str(value_text or "—"))
+    return (
+        f'<div class="form-row"><div class="label">{label_esc}:</div>'
+        f'<div class="value">{value_esc}</div></div>'
+    )
+
+
+def section_bar_html(title: str, bar_color_hex: str = "#4080d9") -> str:
+    """Section header bar. bar_color_hex e.g. #4080d9 blue, #c03333 red."""
+    title_esc = html.escape(str(title or ""))
+    return (
+        f'<div class="section-bar" style="background:{bar_color_hex}">{title_esc}</div>'
     )
 
 

@@ -16,6 +16,29 @@ except ImportError:
     from shared.config import DatabaseConfig
     from shared.interfaces import ServiceResult
 
+_KNOWN_TABLE_NAMES = frozenset(
+    {
+        "users",
+        "family_circles",
+        "user_family_circle",
+        "contacts",
+        "medication_time_templates",
+        "medication_times",
+        "medications",
+        "medication_to_time",
+        "allergies",
+        "conditions",
+        "care_recipients",
+        "ice_contact_roles",
+        "ice_profile",
+        "calendar_events",
+        "named_places",
+        "location_checkins",
+        "user_push_tokens",
+        "call_signals",
+    }
+)
+
 
 class DatabaseManager:
     def __init__(self, config: DatabaseConfig):
@@ -84,10 +107,14 @@ class DatabaseManager:
             return ServiceResult.error_result("Database batch operation failed")
 
     def get_table_info(self, table_name: str) -> ServiceResult:
-        return self.execute_query("PRAGMA table_info(%s)" % table_name)
+        if table_name not in _KNOWN_TABLE_NAMES:
+            return ServiceResult.error_result("invalid table name")
+        return self.execute_query(f'PRAGMA table_info("{table_name}")')
 
     def get_table_count(self, table_name: str) -> ServiceResult:
-        result = self.execute_query("SELECT COUNT(*) as count FROM %s" % table_name)
+        if table_name not in _KNOWN_TABLE_NAMES:
+            return ServiceResult.error_result("invalid table name")
+        result = self.execute_query(f'SELECT COUNT(*) as count FROM "{table_name}"')
         if result.success and result.data:
             return ServiceResult.success_result(result.data[0]["count"])
         return result

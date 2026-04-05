@@ -1,314 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Meridian — User Guide</title>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet"/>
-<style>
-  :root {
-    --font: 'Atkinson Hyperlegible', Arial, sans-serif;
-    --base: #faf8f3;
-    --cream: #f5efe7;
-    --text: #4a4a4a;
-    --muted: #6e6760;
-    --terra: #c85a3f;
-    --terra-hover: #b04f36;
-    --terra-ink: #6d3528;
-    --sage: #7a9b76;
-    --sage-dark: #6d8c69;
-    --golden: #d4a574;
-    --border: #e8e2d9;
-    --border-strong: #dcd5cb;
-    --r-sm: 6px;
-    --r-md: 8px;
-    --r-lg: 12px;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: var(--font);
-    background: var(--base);
-    color: var(--text);
-    font-size: 16px;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  /* MASTHEAD */
-  .masthead {
-    background: var(--cream);
-    border-bottom: 2px solid var(--border-strong);
-    box-shadow: 0 1px 3px rgba(74,74,74,0.06);
-    position: sticky;
-    top: 0;
-    z-index: 30;
-  }
-  .masthead-inner {
-    max-width: 1140px;
-    margin: 0 auto;
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .masthead-brand {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--terra);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .masthead-label {
-    font-size: 13px;
-    color: var(--muted);
-  }
-
-  /* LAYOUT */
-  .shell {
-    max-width: 1140px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 0;
-    padding: 0 24px;
-    align-items: start;
-  }
-
-  /* SIDEBAR */
-  .sidebar {
-    position: sticky;
-    top: 54px;
-    padding: 28px 20px 40px 0;
-    max-height: calc(100vh - 54px);
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-  .sidebar::-webkit-scrollbar { display: none; }
-  .sb-group { margin-bottom: 18px; }
-  .sb-heading {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    padding: 0 0 5px 0;
-    margin-bottom: 2px;
-  }
-  .sidebar a {
-    display: block;
-    padding: 4px 8px;
-    font-size: 13.5px;
-    color: var(--muted);
-    text-decoration: none;
-    border-radius: var(--r-sm);
-    border-left: 2px solid transparent;
-    transition: color 0.12s, background 0.12s, border-color 0.12s;
-    line-height: 1.5;
-  }
-  .sidebar a:hover {
-    color: var(--terra-ink);
-    background: var(--cream);
-    border-left-color: var(--terra);
-  }
-
-  /* CONTENT */
-  .content {
-    padding: 28px 0 80px 32px;
-    border-left: 1px solid var(--border);
-    min-width: 0;
-  }
-
-  /* SECTION */
-  .doc-section {
-    margin-bottom: 12px;
-    scroll-margin-top: 72px;
-  }
-
-  .section-card {
-    background: var(--cream);
-    border: 2px solid var(--border-strong);
-    border-radius: var(--r-lg);
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(74,74,74,0.07);
-    margin-bottom: 12px;
-  }
-
-  .section-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
-  }
-  .sl-kiosk  { color: var(--sage-dark); }
-  .sl-web    { color: var(--terra); }
-  .sl-mobile { color: #9a6e38; }
-  .sl-ref    { color: var(--muted); }
-
-  h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 6px; }
-  .page-lead { font-size: 14px; color: var(--muted); margin: 0 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-  h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
-  h2:first-of-type { margin-top: 0; }
-  h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 14px 0 4px; }
-
-  p { font-size: 14.5px; color: var(--muted); margin-bottom: 10px; }
-  p:last-child { margin-bottom: 0; }
-  p strong, li strong { font-weight: 700; color: var(--text); }
-  em { font-style: italic; }
-  a { color: var(--terra); font-weight: 600; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-
-  ul, ol { padding-left: 18px; margin-bottom: 10px; }
-  li { font-size: 14.5px; color: var(--muted); margin-bottom: 4px; line-height: 1.6; }
-  li:last-child { margin-bottom: 0; }
-
-  /* NOTICE */
-  .notice {
-    border-radius: var(--r-md);
-    padding: 10px 14px;
-    margin: 12px 0;
-    font-size: 13.5px;
-    display: flex;
-    gap: 9px;
-    align-items: flex-start;
-  }
-  .ni { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
-  .nb { color: var(--muted); }
-  .nb strong { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-  .n-warn { background: #fdf0ee; border-left: 3px solid var(--terra); }
-  .n-warn .nb strong { color: var(--terra); }
-  .n-tip  { background: #eef4ee; border-left: 3px solid var(--sage); }
-  .n-tip  .nb strong { color: var(--sage-dark); }
-  .n-soon { background: #fdf5ea; border-left: 3px solid var(--golden); }
-  .n-soon .nb strong { color: #9a6e38; }
-
-  /* BADGE */
-  .badge {
-    display: inline-block;
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 1px 6px;
-    border-radius: 8px;
-    vertical-align: middle;
-    position: relative;
-    top: -1px;
-    margin-left: 4px;
-  }
-  .b-soon { background: #fdf5ea; color: #9a6e38; border: 1px solid var(--golden); }
-  .b-live { background: #eef4ee; color: #3d6b3a; border: 1px solid var(--sage); }
-
-  /* STEPS */
-  .steps { list-style: none; padding: 0; margin: 8px 0 10px; counter-reset: s; }
-  .steps li {
-    counter-increment: s;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin-bottom: 8px;
-    font-size: 14.5px;
-    color: var(--muted);
-    line-height: 1.6;
-  }
-  .steps li::before {
-    content: counter(s);
-    flex-shrink: 0;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    background: var(--terra);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 3px;
-  }
-
-  /* TABLE */
-  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13.5px; }
-  th { text-align: left; padding: 7px 10px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 2px solid var(--border-strong); }
-  td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-  td:first-child { font-weight: 700; color: var(--text); white-space: nowrap; }
-
-  /* NAV DIAGRAM */
-  .nav-diagram { display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
-  .nav-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
-  .nav-row-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); min-width: 46px; }
-  .nav-chip {
-    font-family: var(--font);
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 5px 12px;
-    border-radius: var(--r-md);
-    border: 2px solid var(--border-strong);
-    background: var(--base);
-    color: var(--text);
-  }
-  .nav-chip.emerg { background: #c0302a; border-color: #c0302a; color: #fff; }
-
-  @media (max-width: 700px) {
-    .shell { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    .content { border-left: none; padding: 20px 0 64px; }
-  }
-</style>
-</head>
-<body class="info-doc-body">
-
-<header class="masthead">
-  <div class="masthead-inner">
-    <span class="masthead-brand">Meridian</span>
-    <span class="masthead-label">User Guide · Early access</span>
-  </div>
-</header>
-
-<div class="shell">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sb-group">
-      <div class="sb-heading">Overview</div>
-      <a href="#what-is-meridian">What is Meridian?</a>
-      <a href="#family-circles">Family Circles</a>
-    </div>
-    <div class="sb-group">
-      <div class="sb-heading">Kiosk</div>
-      <a href="#kiosk-nav">Navigation</a>
-      <a href="#kiosk-home">Home</a>
-      <a href="#kiosk-schedule">Schedule</a>
-      <a href="#kiosk-family">Family</a>
-      <a href="#kiosk-chat">Chat</a>
-      <a href="#kiosk-health">Health</a>
-      <a href="#kiosk-emergency">Emergency</a>
-      <a href="#kiosk-settings">Settings</a>
-    </div>
-    <div class="sb-group">
-      <div class="sb-heading">Web Dashboard</div>
-      <a href="#web-health">Health tab</a>
-      <a href="#web-ice">ICE / POLST editor</a>
-      <a href="#web-events">Events</a>
-      <a href="#web-settings">Settings</a>
-    </div>
-    <div class="sb-group">
-      <div class="sb-heading">Mobile</div>
-      <a href="#mobile-checkin">Check-in</a>
-      <a href="#where-is-everyone">Where is everyone?</a>
-    </div>
-    <div class="sb-group">
-      <div class="sb-heading">Reference</div>
-      <a href="#named-locations">Named locations</a>
-      <a href="#data-privacy">Data &amp; privacy</a>
-    </div>
-  </aside>
-
-  <!-- CONTENT -->
-  <main class="content">
-
+<div class="info-doc-frag">
     <!-- OVERVIEW -->
     <div class="doc-section" id="what-is-meridian">
       <div class="section-card">
@@ -471,6 +161,7 @@
         <h1>Health tab</h1>
         <p class="page-lead">Main entry point for health data — POLST profile, medications, and the kiosk emergency alert.</p>
         <ul>
+          <li><strong>Today&rsquo;s medications</strong> — opens first; tap the heading to fold or expand. Other blocks (POLST, medication list, history) start folded.</li>
           <li><strong>POLST &amp; emergency (ICE)</strong> — link to the ICE profile editor</li>
           <li><strong>Kiosk emergency alert</strong> — activate or cancel the alert on the kiosk</li>
           <li><strong>Medications</strong> — inline add/edit/remove, and mark doses taken</li>
@@ -537,17 +228,31 @@
       </div>
     </div>
 
+    <div class="doc-section" id="web-calendar">
+      <div class="section-card">
+        <div class="section-label sl-web">Web Dashboard</div>
+        <h1>Google Calendar <span class="badge b-soon">Coming soon</span></h1>
+        <p class="page-lead">Optional sync between your family&rsquo;s Meridian schedule and Google Calendar.</p>
+        <div class="notice n-soon">
+          <span class="ni">🕐</span>
+          <div class="nb"><strong>Coming soon</strong>We&rsquo;re planning a secure connection (OAuth) so managers can link a Google account and keep events aligned in both directions without sharing passwords in the app.</div>
+        </div>
+        <p>When it ships, you&rsquo;ll connect Calendar from <strong>Settings</strong> or the <strong>Events</strong> area; we&rsquo;ll document exactly what syncs (create/update, which calendars, and privacy) before launch.</p>
+      </div>
+    </div>
+
     <div class="doc-section" id="web-settings">
       <div class="section-card">
         <div class="section-label sl-web">Web Dashboard</div>
         <h1>Settings tab</h1>
-        <p class="page-lead">Account and circle configuration for the family manager.</p>
+        <p class="page-lead">Account and circle configuration for the family manager. A compact <strong>On this page</strong> menu on the left jumps to each section.</p>
         <table>
           <thead><tr><th>Section</th><th>What it does</th><th></th></tr></thead>
           <tbody>
             <tr><td>Permissions &amp; family access</td><td>Invite/remove members, set roles, control per-feature access</td><td><span class="badge b-soon">Coming later</span></td></tr>
             <tr><td>HIPAA &amp; activity log</td><td>Exportable log of who viewed or changed health data, and when</td><td><span class="badge b-soon">Coming later</span></td></tr>
             <tr><td>Kiosk &amp; TV</td><td>Screen controls, idle behavior, emergency alert activation</td><td><span class="badge b-soon">Coming later</span></td></tr>
+            <tr><td>Google Calendar</td><td>Optional sync with Google Calendar for family events</td><td><span class="badge b-soon">Coming soon</span></td></tr>
             <tr><td>Medications</td><td>Add, edit, remove medications, dosage, times</td><td><span class="badge b-live">Available</span></td></tr>
           </tbody>
         </table>
@@ -635,9 +340,4 @@
         </div>
       </div>
     </div>
-
-  </main>
 </div>
-
-</body>
-</html>

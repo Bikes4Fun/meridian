@@ -16,7 +16,7 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 | `src/apps/kiosk/medications_screen.py` | Medications screen shell | Panel + root div for embed JS | Row editor, save/delete calls, webapp Settings host |
 | `src/apps/kiosk/settings_screen.py` | Settings + monitors strip | Primitives + monitor rows (stove id for live text) | Temp polling (`app` + sensor), med row editing |
 | `src/apps/kiosk/monitors_screen.py` | Monitor row/section HTML | Small presentational blocks | Sensor drivers, thresholds, API calls |
-| `src/apps/kiosk/html_primitives.py` | Shared kiosk HTML helpers | Reusable markup strings; tokens in CSS | Service fetch, per-screen layout, emergency form rows, webapp |
+| `src/apps/kiosk/html_primitives.py` | Shared kiosk HTML helpers | Markup strings, `kiosk_screen_blocked`, `form_row_html` / `section_bar_html`, tokens in CSS | Service fetch, per-screen business logic, webapp |
 | `src/apps/kiosk/app.py` | pywebview kiosk app | Window/bridge, registry, clock/stove/alert/call loops | Per-screen HTML, REST/Flask, DB services (server skips this import) |
 | `src/apps/kiosk/api_client.py` | Kiosk HTTP + `KioskRemoteServiceContainer` | Remote clients + local time; no UI | Flask, pywebview, server `ServiceContainer` |
 | `src/apps/server/container.py` | Server DB service container | Lazy getters for API process | Kiosk HTTP clients, kiosk imports, route definitions |
@@ -105,9 +105,9 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 **`html_primitives.py`**
 
-> Kiosk markup primitives: nav, typography wrappers, loading/empty/error, layout, kiosk_button, contact/avatar snippets.  
+> Kiosk markup primitives: nav, typography wrappers, loading/empty/error, kiosk_screen_blocked, form_row/section_bar, layout, kiosk_button, contact/avatar snippets.  
 > Scope: reusable HTML string builders only; design tokens live in kiosk CSS. Aligns with the kiosk/TV typography spec in-repo docs.  
-> Not here: fetching services, per-screen composition (see *_screen.py), labeled form rows / section bars (emergency_screen), or webapp assets.
+> Not here: fetching services or per-screen business logic (see *_screen.py); webapp assets.
 
 **`app.py`**
 

@@ -10,11 +10,6 @@ import html
 from . import html_primitives as hp
 
 
-def build_monitors_section_html(section_title: str, inner_html: str) -> str:
-    """Subheading plus inner content (e.g. one or more reading rows)."""
-    return hp.kiosk_subheader(section_title) + hp.spacer(12) + inner_html
-
-
 def build_monitor_reading_row_html(
     label: str,
     value_element_id: str,

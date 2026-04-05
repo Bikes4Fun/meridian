@@ -1,314 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<script>
-(function () {
-    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) document.documentElement.classList.add('info-embed');
-})();
-</script>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Meridian — User Guide</title>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/shared/css/base.css"/>
-<link rel="stylesheet" href="/style.css"/>
-<style>
-  :root {
-    --font: 'Atkinson Hyperlegible', Arial, sans-serif;
-    --base: #faf8f3;
-    --cream: #f5efe7;
-    --text: #4a4a4a;
-    --muted: #6e6760;
-    --terra: #c85a3f;
-    --terra-hover: #b04f36;
-    --terra-ink: #6d3528;
-    --sage: #7a9b76;
-    --sage-dark: #6d8c69;
-    --golden: #d4a574;
-    --border: #e8e2d9;
-    --border-strong: #dcd5cb;
-    --r-sm: 6px;
-    --r-md: 8px;
-    --r-lg: 12px;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body.info-doc-body {
-    font-family: var(--font), var(--font-family), Arial, sans-serif;
-    background: var(--base);
-    color: var(--text);
-    font-size: 16px;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  /* MASTHEAD */
-  .masthead {
-    background: var(--cream);
-    border-bottom: 2px solid var(--border-strong);
-    box-shadow: 0 1px 3px rgba(74,74,74,0.06);
-    position: sticky;
-    top: 0;
-    z-index: 30;
-  }
-  .masthead-inner {
-    max-width: 1140px;
-    margin: 0 auto;
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .masthead-brand {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--terra);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .masthead-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .masthead-label {
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .masthead-dash {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--terra);
-    text-decoration: none;
-  }
-  .masthead-dash:hover {
-    text-decoration: underline;
-  }
-  html.info-embed .masthead {
-    display: none;
-  }
-
-  /* Guide main column (left nav = global .meridian-inpage-nav in style.css) */
-  .info-doc-content {
-    padding: 28px 0 80px 0;
-    min-width: 0;
-  }
-
-  /* SECTION */
-  .doc-section {
-    margin-bottom: 12px;
-  }
-
-  .section-card {
-    background: var(--cream);
-    border: 2px solid var(--border-strong);
-    border-radius: var(--r-lg);
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(74,74,74,0.07);
-    margin-bottom: 12px;
-  }
-
-  .section-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
-  }
-  .sl-kiosk  { color: var(--sage-dark); }
-  .sl-web    { color: var(--terra); }
-  .sl-mobile { color: #9a6e38; }
-  .sl-ref    { color: var(--muted); }
-
-  h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 6px; }
-  .page-lead { font-size: 14px; color: var(--muted); margin: 0 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-  h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 20px 0 8px; }
-  h2:first-of-type { margin-top: 0; }
-  h3 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 14px 0 4px; }
-
-  p { font-size: 14.5px; color: var(--muted); margin-bottom: 10px; }
-  p:last-child { margin-bottom: 0; }
-  p strong, li strong { font-weight: 700; color: var(--text); }
-  em { font-style: italic; }
-  a { color: var(--terra); font-weight: 600; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-
-  .info-doc-body .meridian-inpage-nav .meridian-inpage-nav__link {
-    color: var(--muted);
-    font-weight: 400;
-  }
-  .info-doc-body .meridian-inpage-nav .meridian-inpage-nav__link:hover {
-    text-decoration: none;
-  }
-
-  .info-doc-body .meridian-inpage-nav__list li {
-    margin-bottom: 0;
-  }
-
-  ul, ol { padding-left: 18px; margin-bottom: 10px; }
-  li { font-size: 14.5px; color: var(--muted); margin-bottom: 4px; line-height: 1.6; }
-  li:last-child { margin-bottom: 0; }
-
-  /* NOTICE */
-  .notice {
-    border-radius: var(--r-md);
-    padding: 10px 14px;
-    margin: 12px 0;
-    font-size: 13.5px;
-    display: flex;
-    gap: 9px;
-    align-items: flex-start;
-  }
-  .ni { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
-  .nb { color: var(--muted); }
-  .nb strong { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-  .n-warn { background: #fdf0ee; border-left: 3px solid var(--terra); }
-  .n-warn .nb strong { color: var(--terra); }
-  .n-tip  { background: #eef4ee; border-left: 3px solid var(--sage); }
-  .n-tip  .nb strong { color: var(--sage-dark); }
-  .n-soon { background: #fdf5ea; border-left: 3px solid var(--golden); }
-  .n-soon .nb strong { color: #9a6e38; }
-
-  /* BADGE */
-  .badge {
-    display: inline-block;
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 1px 6px;
-    border-radius: 8px;
-    vertical-align: middle;
-    position: relative;
-    top: -1px;
-    margin-left: 4px;
-  }
-  .b-soon { background: #fdf5ea; color: #9a6e38; border: 1px solid var(--golden); }
-  .b-live { background: #eef4ee; color: #3d6b3a; border: 1px solid var(--sage); }
-
-  /* STEPS */
-  .steps { list-style: none; padding: 0; margin: 8px 0 10px; counter-reset: s; }
-  .steps li {
-    counter-increment: s;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin-bottom: 8px;
-    font-size: 14.5px;
-    color: var(--muted);
-    line-height: 1.6;
-  }
-  .steps li::before {
-    content: counter(s);
-    flex-shrink: 0;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    background: var(--terra);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 3px;
-  }
-
-  /* TABLE */
-  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13.5px; }
-  th { text-align: left; padding: 7px 10px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 2px solid var(--border-strong); }
-  td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-  td:first-child { font-weight: 700; color: var(--text); white-space: nowrap; }
-
-  /* NAV DIAGRAM */
-  .nav-diagram { display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
-  .nav-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
-  .nav-row-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); min-width: 46px; }
-  .nav-chip {
-    font-family: var(--font);
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 5px 12px;
-    border-radius: var(--r-md);
-    border: 2px solid var(--border-strong);
-    background: var(--base);
-    color: var(--text);
-  }
-  .nav-chip.emerg { background: #c0302a; border-color: #c0302a; color: #fff; }
-
-  @media (max-width: 700px) {
-    .info-guide-outer .meridian-inpage-nav { display: none !important; }
-    .info-doc-content { padding: 20px 0 64px; }
-  }
-</style>
-</head>
-<body class="info-doc-body">
-
-<header class="masthead">
-  <div class="masthead-inner">
-    <span class="masthead-brand">Meridian</span>
-    <div class="masthead-right">
-      <span class="masthead-label">User guide</span>
-      <a class="masthead-dash" href="/">Dashboard</a>
-    </div>
-  </div>
-</header>
-
-<div class="meridian-page-layout info-guide-outer">
-
-  <nav class="meridian-inpage-nav" aria-label="User guide sections">
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Overview</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#what-is-meridian">What is Meridian?</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#family-circles">Family Circles</a></li>
-      </ul>
-    </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Kiosk</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-nav">Navigation</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-home">Home</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-schedule">Schedule</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-family">Family</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-chat">Chat</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-health">Health</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-emergency">Emergency</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-settings">Settings</a></li>
-      </ul>
-    </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Web Dashboard</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#web-health">Health tab</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-ice">ICE / POLST editor</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-events">Events</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-calendar-google">Google Calendar</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-settings">Settings</a></li>
-      </ul>
-    </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Mobile</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#mobile-checkin">Check-in</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#where-is-everyone">Where is everyone?</a></li>
-      </ul>
-    </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Reference</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#named-locations">Named locations</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#data-privacy">Data &amp; privacy</a></li>
-      </ul>
-    </div>
-  </nav>
-
-  <main class="meridian-page-main info-doc-content">
-
+<div class="info-doc-frag">
     <!-- OVERVIEW -->
     <div class="doc-section" id="what-is-meridian">
       <div class="section-card">
@@ -471,6 +161,7 @@
         <h1>Health tab</h1>
         <p class="page-lead">Main entry point for health data — POLST profile, medications, and the kiosk emergency alert.</p>
         <ul>
+          <li><strong>Today&rsquo;s medications</strong> — opens first; tap the heading to fold or expand. Other blocks (POLST, medication list, history) start folded.</li>
           <li><strong>POLST &amp; emergency (ICE)</strong> — link to the ICE profile editor</li>
           <li><strong>Kiosk emergency alert</strong> — activate or cancel the alert on the kiosk</li>
           <li><strong>Medications</strong> — inline add/edit/remove, and mark doses taken</li>
@@ -529,7 +220,7 @@
       <div class="section-card">
         <div class="section-label sl-web">Web Dashboard</div>
         <h1>Events tab</h1>
-        <p class="page-lead">Manage the shared family calendar in Meridian. Events appear on the kiosk Home and Schedule screens. <strong>This Events tab is not being removed</strong>—optional <a href="#web-calendar-google">Google Calendar</a> integration will add on top of it later.</p>
+        <p class="page-lead">Manage the shared family calendar. Events appear on the kiosk Home and Schedule screens.</p>
         <div class="notice n-soon">
           <span class="ni">🕐</span>
           <div class="nb"><strong>In progress</strong>The full events interface is being built out.</div>
@@ -537,16 +228,16 @@
       </div>
     </div>
 
-    <div class="doc-section" id="web-calendar-google">
+    <div class="doc-section" id="web-calendar">
       <div class="section-card">
         <div class="section-label sl-web">Web Dashboard</div>
         <h1>Google Calendar <span class="badge b-soon">Coming soon</span></h1>
-        <p class="page-lead">Optional sync or link with Google Calendar for families who also use GCal—<strong>without removing Meridian&rsquo;s Events tab or kiosk calendar.</strong></p>
-        <p>Meridian keeps its own events for the dashboard and kiosk (<a href="#web-events">Events tab</a>). <strong>Planned Google Calendar integration</strong> is additive: connect or mirror so entries can appear in both places and double entry can be reduced. The current Events UI, event store, and kiosk Home/Schedule behavior stay; GCal integrates alongside them, it does not replace them.</p>
-        <div class="notice n-tip">
-          <span class="ni">💡</span>
-          <div class="nb"><strong>Not a replacement</strong>Built-in Events remain the product calendar. <strong>Implementation note:</strong> OAuth-style read/write or subscribe flows are typical; exact scopes and conflict rules will ship with the integration.</div>
+        <p class="page-lead">Optional sync between your family&rsquo;s Meridian schedule and Google Calendar.</p>
+        <div class="notice n-soon">
+          <span class="ni">🕐</span>
+          <div class="nb"><strong>Coming soon</strong>We&rsquo;re planning a secure connection (OAuth) so managers can link a Google account and keep events aligned in both directions without sharing passwords in the app.</div>
         </div>
+        <p>When it ships, you&rsquo;ll connect Calendar from <strong>Settings</strong> or the <strong>Events</strong> area; we&rsquo;ll document exactly what syncs (create/update, which calendars, and privacy) before launch.</p>
       </div>
     </div>
 
@@ -554,13 +245,14 @@
       <div class="section-card">
         <div class="section-label sl-web">Web Dashboard</div>
         <h1>Settings tab</h1>
-        <p class="page-lead">Account and circle configuration for the family manager.</p>
+        <p class="page-lead">Account and circle configuration for the family manager. A compact <strong>On this page</strong> menu on the left jumps to each section.</p>
         <table>
           <thead><tr><th>Section</th><th>What it does</th><th></th></tr></thead>
           <tbody>
             <tr><td>Permissions &amp; family access</td><td>Invite/remove members, set roles, control per-feature access</td><td><span class="badge b-soon">Coming later</span></td></tr>
             <tr><td>HIPAA &amp; activity log</td><td>Exportable log of who viewed or changed health data, and when</td><td><span class="badge b-soon">Coming later</span></td></tr>
             <tr><td>Kiosk &amp; TV</td><td>Screen controls, idle behavior, emergency alert activation</td><td><span class="badge b-soon">Coming later</span></td></tr>
+            <tr><td>Google Calendar</td><td>Optional sync with Google Calendar for family events</td><td><span class="badge b-soon">Coming soon</span></td></tr>
             <tr><td>Medications</td><td>Add, edit, remove medications, dosage, times</td><td><span class="badge b-live">Available</span></td></tr>
           </tbody>
         </table>
@@ -648,9 +340,4 @@
         </div>
       </div>
     </div>
-
-  </main>
 </div>
-
-</body>
-</html>

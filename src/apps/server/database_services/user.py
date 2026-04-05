@@ -7,6 +7,7 @@ import sqlite3
 from typing import Optional
 
 from ..database_manager import DatabaseManager
+from .family import FamilyService
 from .saved_upload_basename import is_safe_saved_upload_basename
 
 try:
@@ -16,8 +17,9 @@ except ImportError:
 
 
 class UserService:
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: DatabaseManager, family_service: FamilyService):
         self.db_manager = db_manager
+        self._family_service = family_service
 
     def get_user_photo_filename(
         self, user_id: str, family_circle_id: str
@@ -40,11 +42,10 @@ class UserService:
         self, user_id: str, family_circle_id: str, photo_filename: Optional[str]
     ) -> ServiceResult:
         """Set users.photo_filename; user must be in family. Filename must be a safe basename."""
-        mem = self.db_manager.execute_query(
-            "SELECT 1 FROM user_family_circle WHERE user_id = ? AND family_circle_id = ?",
-            (user_id, family_circle_id),
-        )
-        if not mem.success or not mem.data:
+        mem = self._family_service.user_belongs_to_family(user_id, family_circle_id)
+        if not mem.success:
+            return mem
+        if not mem.data:
             return ServiceResult.error_result("user not in family")
         fn = (photo_filename or "").strip()
         if fn and not is_safe_saved_upload_basename(fn):
@@ -101,4 +102,4 @@ class UserService:
                 return ServiceResult.error_result(
                     "Duplicate sendbird_user_id. Each user must have a unique Sendbird ID."
                 )
-            return ServiceResult.error_result("Database constraint failed: %s" % e)
+            return ServiceResult.error_result("An internal error occurred")

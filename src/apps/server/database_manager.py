@@ -16,6 +16,29 @@ except ImportError:
     from shared.config import DatabaseConfig
     from shared.interfaces import ServiceResult
 
+_KNOWN_TABLE_NAMES = frozenset(
+    {
+        "users",
+        "family_circles",
+        "user_family_circle",
+        "contacts",
+        "medication_time_templates",
+        "medication_times",
+        "medications",
+        "medication_to_time",
+        "allergies",
+        "conditions",
+        "care_recipients",
+        "ice_contact_roles",
+        "ice_profile",
+        "calendar_events",
+        "named_places",
+        "location_checkins",
+        "user_push_tokens",
+        "call_signals",
+    }
+)
+
 
 class DatabaseManager:
     def __init__(self, config: DatabaseConfig):
@@ -47,7 +70,7 @@ class DatabaseManager:
                 return ServiceResult.success_result([dict(row) for row in results])
         except sqlite3.Error as e:
             self.logger.error("Query execution failed: %s", e)
-            return ServiceResult.error_result("Database query failed: %s" % e)
+            return ServiceResult.error_result("Database query failed")
 
     def execute_update(self, query: str, params: tuple = ()) -> ServiceResult:
         try:
@@ -58,7 +81,7 @@ class DatabaseManager:
                 return ServiceResult.success_result(cursor.rowcount)
         except sqlite3.Error as e:
             self.logger.error("Update execution failed: %s", e)
-            return ServiceResult.error_result("Database update failed: %s" % e)
+            return ServiceResult.error_result("Database update failed")
 
     def execute_insert(self, query: str, params: tuple = ()) -> ServiceResult:
         """Run INSERT, return lastrowid on success."""
@@ -70,7 +93,7 @@ class DatabaseManager:
                 return ServiceResult.success_result(cursor.lastrowid)
         except sqlite3.Error as e:
             self.logger.error("Insert execution failed: %s", e)
-            return ServiceResult.error_result("Database insert failed: %s" % e)
+            return ServiceResult.error_result("Database insert failed")
 
     def execute_many(self, query: str, params_list: List[tuple]) -> ServiceResult:
         try:
@@ -81,13 +104,17 @@ class DatabaseManager:
                 return ServiceResult.success_result(cursor.rowcount)
         except sqlite3.Error as e:
             self.logger.error("Batch execution failed: %s", e)
-            return ServiceResult.error_result("Database batch operation failed: %s" % e)
+            return ServiceResult.error_result("Database batch operation failed")
 
     def get_table_info(self, table_name: str) -> ServiceResult:
-        return self.execute_query("PRAGMA table_info(%s)" % table_name)
+        if table_name not in _KNOWN_TABLE_NAMES:
+            return ServiceResult.error_result("invalid table name")
+        return self.execute_query(f'PRAGMA table_info("{table_name}")')
 
     def get_table_count(self, table_name: str) -> ServiceResult:
-        result = self.execute_query("SELECT COUNT(*) as count FROM %s" % table_name)
+        if table_name not in _KNOWN_TABLE_NAMES:
+            return ServiceResult.error_result("invalid table name")
+        result = self.execute_query(f'SELECT COUNT(*) as count FROM "{table_name}"')
         if result.success and result.data:
             return ServiceResult.success_result(result.data[0]["count"])
         return result
@@ -106,7 +133,7 @@ class DatabaseManager:
             return ServiceResult.success_result(self.config.path)
         except Exception as e:
             self.logger.error("Schema creation failed: %s", e)
-            return ServiceResult.error_result("Schema creation failed: %s" % e)
+            return ServiceResult.error_result("Schema creation failed")
 
     def backup_database(self, backup_path: str) -> ServiceResult:
         if not self.config.backup_enabled:
@@ -119,4 +146,4 @@ class DatabaseManager:
             return ServiceResult.success_result(backup_path)
         except Exception as e:
             self.logger.error("Backup failed: %s", e)
-            return ServiceResult.error_result("Backup failed: %s" % e)
+            return ServiceResult.error_result("Backup failed")

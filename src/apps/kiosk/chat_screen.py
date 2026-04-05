@@ -1,5 +1,8 @@
 """
-Chat screen: contact grid with chat entry. JS calls open_chat; Python fetches URL and opens pywebview window.
+Kiosk Chat: contact grid HTML; ChatHandler fetches chat entry URL and opens a separate webview.
+
+Scope: list contacts and bridge open_chat / open_chat_with_call.
+Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 """
 
 import html
@@ -20,7 +23,7 @@ class ChatHandler:
         self, sendbird_user_id: str, display_name: str, auto_start_call: bool = False
     ) -> None:
         """Fetch chat entry URL for contact and open in new pywebview window."""
-        entry_svc = self._app.services.get("chat_entry_service")
+        entry_svc = self._app.services.get_chat_entry_service()
         if not entry_svc:
             logger.warning("open_chat: no chat_entry_service")
             return
@@ -42,19 +45,15 @@ def build_chat_html(
     from . import html_primitives as hp
     from .api_client import fetch_photo_b64
 
-    contact_svc = services.get("contact_service")
+    contact_svc = services.get_contact_service()
     if not contact_svc or not family_circle_id:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.error_state("No contacts (check server).")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.error_state("No contacts (check server).")
         )
     r = contact_svc.get_contacts()
     if not r.success or not r.data:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.empty_state("No contacts.")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.empty_state("No contacts.")
         )
     def _is_care_recipient(contact: dict) -> bool:
         user_id = (contact.get("user_id") or "").strip()
@@ -70,10 +69,8 @@ def build_chat_html(
         if (c.get("sendbird_user_id") or "").strip() and not _is_care_recipient(c)
     ]
     if not chat_contacts:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.empty_state("No contacts with chat.")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.empty_state("No contacts with chat.")
         )
 
     base = api_url.rstrip("/")

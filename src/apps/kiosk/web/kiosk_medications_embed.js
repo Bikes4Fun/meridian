@@ -123,6 +123,10 @@
         MeridianMedicationsInline.wireList(inlineList, addBtn, delBtn, selAllBtn, {
             onListMutate: function () {
                 if (_kioskMedAutosave) _kioskMedAutosave.schedule();
+            },
+            onRowsDeleted: function () {
+                if (_kioskMedAutosave) _kioskMedAutosave.cancel();
+                persistMedications(false);
             }
         });
 

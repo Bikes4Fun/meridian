@@ -1,6 +1,9 @@
 """
-Simplified service container for Meridian.
-Used only by server/app.py. Kiosk uses api_client.create_kiosk_remote() instead.
+Server-only: lazy DB-backed service getters (one DatabaseManager, shared service cache).
+
+Scope: construct domain services for the Flask/API process.
+
+Not here: kiosk remote clients, kiosk package imports, or Flask route definitions.
 """
 
 try:
@@ -40,88 +43,89 @@ class ServiceContainer:
         r = self._get_database_manager().create_database_schema()
         return r.success
 
+    def _get_or_create(self, key: str, factory):
+        # Lazy singleton per key; factory may call other getters (order-safe via _services checks).
+        if key not in self._services:
+            self._services[key] = factory()
+        return self._services[key]
+
     def get_contact_service(self):
-        if "contact_service" not in self._services:
-            self._services["contact_service"] = ContactService(
-                self._get_database_manager()
-            )
-        return self._services["contact_service"]
+        return self._get_or_create(
+            "contact_service",
+            lambda: ContactService(self._get_database_manager()),
+        )
 
     def get_user_service(self):
-        if "user_service" not in self._services:
-            self._services["user_service"] = UserService(self._get_database_manager())
-        return self._services["user_service"]
+        return self._get_or_create(
+            "user_service",
+            lambda: UserService(
+                self._get_database_manager(),
+                self.get_family_service(),
+            ),
+        )
 
     def get_calendar_service(self):
-        if "calendar_service" not in self._services:
-            self._services["calendar_service"] = CalendarService(
-                self._get_database_manager()
-            )
-        return self._services["calendar_service"]
+        return self._get_or_create(
+            "calendar_service",
+            lambda: CalendarService(self._get_database_manager()),
+        )
 
     def get_medication_service(self):
-        if "medication_service" not in self._services:
-            self._services["medication_service"] = MedicationService(
-                self._get_database_manager()
-            )
-        return self._services["medication_service"]
+        return self._get_or_create(
+            "medication_service",
+            lambda: MedicationService(self._get_database_manager()),
+        )
 
     def get_location_service(self):
-        if "location_service" not in self._services:
-            self._services["location_service"] = LocationService(
-                self._get_database_manager()
-            )
-        return self._services["location_service"]
+        return self._get_or_create(
+            "location_service",
+            lambda: LocationService(self._get_database_manager()),
+        )
 
     def get_emergency_service(self):
-        if "emergency_service" not in self._services:
-            self._services["emergency_service"] = EmergencyService(
+        return self._get_or_create(
+            "emergency_service",
+            lambda: EmergencyService(
                 self._get_database_manager(),
                 self.get_contact_service(),
-            )
-        return self._services["emergency_service"]
+            ),
+        )
 
     def get_care_recipient_service(self):
-        if "care_recipient_service" not in self._services:
-            self._services["care_recipient_service"] = CareRecipientService(
-                self._get_database_manager()
-            )
-        return self._services["care_recipient_service"]
+        return self._get_or_create(
+            "care_recipient_service",
+            lambda: CareRecipientService(self._get_database_manager()),
+        )
 
     def get_family_service(self):
-        if "family_service" not in self._services:
-            self._services["family_service"] = FamilyService(
-                self._get_database_manager()
-            )
-        return self._services["family_service"]
+        return self._get_or_create(
+            "family_service",
+            lambda: FamilyService(self._get_database_manager()),
+        )
 
     def get_push_notification_service(self):
-        if "push_notification_service" not in self._services:
-            self._services["push_notification_service"] = PushNotificationService(
-                self._get_database_manager()
-            )
-        return self._services["push_notification_service"]
+        return self._get_or_create(
+            "push_notification_service",
+            lambda: PushNotificationService(self._get_database_manager()),
+        )
 
     def get_sendbird_service(self):
-        if "sendbird_service" not in self._services:
-            self._services["sendbird_service"] = SendbirdService(
-                self._get_database_manager()
-            )
-        return self._services["sendbird_service"]
+        return self._get_or_create(
+            "sendbird_service",
+            lambda: SendbirdService(self._get_database_manager()),
+        )
 
     def get_photo_upload_service(self):
-        if "photo_upload_service" not in self._services:
-            self._services["photo_upload_service"] = PhotoUploadService(
-                self.get_user_service()
-            )
-        return self._services["photo_upload_service"]
+        return self._get_or_create(
+            "photo_upload_service",
+            lambda: PhotoUploadService(self.get_user_service()),
+        )
 
     def get_call_signal_service(self):
-        if "call_signal_service" not in self._services:
-            self._services["call_signal_service"] = CallSignalService(
-                self._get_database_manager()
-            )
-        return self._services["call_signal_service"]
+        return self._get_or_create(
+            "call_signal_service",
+            lambda: CallSignalService(self._get_database_manager()),
+        )
 
 
 def create_service_container(db_path: str = "meridian_kiosk.db") -> ServiceContainer:

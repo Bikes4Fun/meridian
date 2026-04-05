@@ -4,6 +4,7 @@ Uses Flask test client.
 """
 
 import sys
+import unittest.mock as mock
 from pathlib import Path
 
 src_dir = Path(__file__).resolve().parent.parent.parent
@@ -11,7 +12,13 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 import pytest
-from dev.tests.conftest import FAMILY_CIRCLE_ID, REF_DATE, TEST_USER_ID
+from apps.server.api import create_server_app
+from dev.tests.conftest import (
+    FAMILY_CIRCLE_ID,
+    OTHER_FAMILY_USER_ID,
+    REF_DATE,
+    TEST_USER_ID,
+)
 
 API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
 
@@ -26,10 +33,24 @@ def test_api_health_no_headers(api_client):
 
 @pytest.mark.integration
 def test_api_login_accessible_without_auth(api_client):
-    """POST /api/login is public entry point."""
-    r = api_client.post("/api/login", json={"user_id": "u", "family_circle_id": "fc"})
+    """POST /api/login is public entry point; body must match user_family_circle."""
+    r = api_client.post(
+        "/api/login",
+        json={"user_id": TEST_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},
+    )
     assert r.status_code == 200
     assert r.get_json().get("ok") is True
+
+
+@pytest.mark.integration
+def test_api_login_forbidden_when_not_in_family(api_client):
+    """POST /api/login rejects user_id not linked to family_circle_id."""
+    r = api_client.post(
+        "/api/login",
+        json={"user_id": OTHER_FAMILY_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},
+    )
+    assert r.status_code == 403
+    assert r.get_json().get("error") == "forbidden"
 
 
 @pytest.mark.integration
@@ -65,6 +86,51 @@ def test_login_rejects_missing_family_circle_id(api_client):
     """POST /api/login without family_circle_id → 400."""
     r = api_client.post("/api/login", json={"user_id": "u"})
     assert r.status_code == 400
+
+
+@pytest.mark.integration
+def test_session_cookie_invalid_after_idle(monkeypatch, populated_test_db):
+    """Cookie session rejected after MERIDIAN_SESSION_IDLE_SEC without activity."""
+    monkeypatch.setenv("MERIDIAN_SESSION_IDLE_SEC", "120")
+    db_path = populated_test_db.config.path
+    app = create_server_app(db_path=db_path)
+    client = app.test_client()
+    t0 = 1_700_000_000
+    with mock.patch("apps.server.api.time.time", return_value=t0):
+        r0 = client.post(
+            "/api/login",
+            json={"user_id": TEST_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},
+        )
+    assert r0.status_code == 200
+    with mock.patch("apps.server.api.time.time", return_value=t0 + 5):
+        r = client.get("/api/session")
+    assert r.status_code == 200
+    with mock.patch("apps.server.api.time.time", return_value=t0 + 200):
+        r2 = client.get("/api/session")
+    assert r2.status_code == 401
+
+
+@pytest.mark.integration
+def test_session_cookie_invalid_after_max_age(monkeypatch, populated_test_db):
+    """Cookie session rejected after MERIDIAN_SESSION_MAX_AGE_SEC from login."""
+    monkeypatch.setenv("MERIDIAN_SESSION_MAX_AGE_SEC", "300")
+    monkeypatch.setenv("MERIDIAN_SESSION_IDLE_SEC", "86400")
+    db_path = populated_test_db.config.path
+    app = create_server_app(db_path=db_path)
+    client = app.test_client()
+    t0 = 1_800_000_000
+    with mock.patch("apps.server.api.time.time", return_value=t0):
+        r0 = client.post(
+            "/api/login",
+            json={"user_id": TEST_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},
+        )
+    assert r0.status_code == 200
+    with mock.patch("apps.server.api.time.time", return_value=t0 + 60):
+        r = client.get("/api/session")
+    assert r.status_code == 200
+    with mock.patch("apps.server.api.time.time", return_value=t0 + 400):
+        r2 = client.get("/api/session")
+    assert r2.status_code == 401
 
 
 @pytest.mark.integration

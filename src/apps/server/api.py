@@ -71,7 +71,8 @@ try:
 except ImportError:
     from shared.config import get_uploads_dir
 
-_alert_activated = False
+_alert_activation_by_family = {}
+_alert_activation_lock = threading.Lock()
 _logger = logging.getLogger(__name__)
 
 _ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
@@ -83,6 +84,17 @@ _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
     {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
 )
+
+
+def _get_alert_activated(family_circle_id: str) -> bool:
+    with _alert_activation_lock:
+        return bool(_alert_activation_by_family.get(family_circle_id, False))
+
+
+def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
+    with _alert_activation_lock:
+        _alert_activation_by_family[family_circle_id] = bool(activated)
+        return _alert_activation_by_family[family_circle_id]
 
 
 def _create_chat_entry_token(
@@ -168,11 +180,50 @@ def create_server_app(db_path=None):
     app.config["SESSION_SERVER_ID"] = hashlib.sha256(
         (app.secret_key + ":meridian_web_session").encode()
     ).hexdigest()[:32]
+    _sess_max = int(os.environ.get("MERIDIAN_SESSION_MAX_AGE_SEC", "86400"))
+    _sess_idle = int(os.environ.get("MERIDIAN_SESSION_IDLE_SEC", "1800"))
+    app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
+    app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
+    app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
+
+    def _session_clocks_ok() -> bool:
+        """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
+        now = int(time.time())
+        login_at = session.get("_login_at")
+        last = session.get("_last_activity")
+        if login_at is None or last is None:
+            session["_login_at"] = now
+            session["_last_activity"] = now
+            return True
+        max_age = int(app.config.get("MERIDIAN_SESSION_MAX_AGE_SEC", 86400))
+        idle = int(app.config.get("MERIDIAN_SESSION_IDLE_SEC", 1800))
+        try:
+            login_i = int(login_at)
+            last_i = int(last)
+        except (TypeError, ValueError):
+            return False
+        if now - login_i > max_age:
+            return False
+        if now - last_i > idle:
+            return False
+        return True
 
     def _session_valid():
-        """Session is valid only if it matches current server instance (invalidates on restart)."""
+        """Session matches server id and is within max age + idle limits."""
         sid = session.get("_sid")
-        return sid and sid == app.config.get("SESSION_SERVER_ID")
+        if not sid or sid != app.config.get("SESSION_SERVER_ID"):
+            return False
+        return _session_clocks_ok()
+
+    def _touch_session_activity_if_cookie_auth() -> None:
+        """Refresh idle deadline when the browser session cookie is the auth path (not header-based kiosk API)."""
+        if request.headers.get("X-User-Id") and request.headers.get("X-Family-Circle-Id"):
+            return
+        if not session.get("user_id"):
+            return
+        if not _session_valid():
+            return
+        session["_last_activity"] = int(time.time())
 
     @app.after_request
     def add_cors(resp):
@@ -272,6 +323,7 @@ def create_server_app(db_path=None):
                     abort(401, "Not logged in")
                 g.user_id = uid
                 g.family_circle_id = fid
+                _touch_session_activity_if_cookie_auth()
                 return
 
             # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
@@ -290,6 +342,7 @@ def create_server_app(db_path=None):
                     )
                 g.user_id = uid
                 g.family_circle_id = fid
+                _touch_session_activity_if_cookie_auth()
                 return
             # API: headers or session
             user_id = request.headers.get("X-User-Id")
@@ -309,6 +362,7 @@ def create_server_app(db_path=None):
                 abort(401, "X-Family-Circle-Id header required")
             g.user_id = user_id
             g.family_circle_id = family_circle_id
+            _touch_session_activity_if_cookie_auth()
             return
 
         # Remaining routes: webapp HTML and other non-API paths — session required (browser redirect)
@@ -327,14 +381,19 @@ def create_server_app(db_path=None):
             )
         g.user_id = uid
         g.family_circle_id = fid
+        _touch_session_activity_if_cookie_auth()
 
     app.config["container"] = container
 
     def _set_authenticated_session(user_id: str, family_circle_id: str) -> None:
         """Canonical session auth write path: set identity + server id marker."""
+        session.permanent = True
+        now = int(time.time())
         session["user_id"] = user_id
         session["family_circle_id"] = family_circle_id
         session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        session["_login_at"] = now
+        session["_last_activity"] = now
 
     def _session_identity_from_payload(payload: dict) -> tuple[str, str]:
         """Extract normalized identity from signed payload."""
@@ -754,9 +813,16 @@ def create_server_app(db_path=None):
     def api_calendar_events(family_circle_id):
         _require_family_access(family_circle_id)
         date = request.args.get("date")
-        if not date:
-            return jsonify({"error": "missing date"}), 400
-        r = calendar_svc.get_events_for_date(date, family_circle_id=family_circle_id)
+        date_from = request.args.get("from")
+        date_to = request.args.get("to")
+        if date_from and date_to:
+            r = calendar_svc.get_events_in_range(
+                date_from, date_to, family_circle_id=family_circle_id
+            )
+        elif date:
+            r = calendar_svc.get_events_for_date(date, family_circle_id=family_circle_id)
+        else:
+            return jsonify({"error": "missing date or from+to"}), 400
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -929,15 +995,16 @@ def create_server_app(db_path=None):
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        return jsonify({"data": {"activated": _alert_activated}})
+        return jsonify({"data": {"activated": _get_alert_activated(g.family_circle_id)}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        global _alert_activated
         data = request.get_json() or {}
-        _alert_activated = bool(data.get("activated", False))
-        return jsonify({"data": {"activated": _alert_activated}})
+        activated = _set_alert_activated(
+            g.family_circle_id, bool(data.get("activated", False))
+        )
+        return jsonify({"data": {"activated": activated}})
 
     @app.route("/api/calls/request", methods=["POST"])
     def api_call_request():
@@ -1067,6 +1134,11 @@ def create_server_app(db_path=None):
         family_circle_id = (request.args.get("family_circle_id") or "").strip()
         if not user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
+        mem = family_svc.user_belongs_to_family(user_id, family_circle_id)
+        if not mem.success:
+            return jsonify({"error": mem.error or "Database query failed"}), 500
+        if not mem.data:
+            return jsonify({"error": "forbidden"}), 403
         _set_authenticated_session(user_id, family_circle_id)
         return redirect("/kiosk/")
 
@@ -1080,6 +1152,11 @@ def create_server_app(db_path=None):
         family_circle_id = (data.get("family_circle_id") or "").strip()
         if not user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
+        mem = family_svc.user_belongs_to_family(user_id, family_circle_id)
+        if not mem.success:
+            return jsonify({"error": mem.error or "Database query failed"}), 500
+        if not mem.data:
+            return jsonify({"error": "forbidden"}), 403
         _set_authenticated_session(user_id, family_circle_id)
         return jsonify({"ok": True})
 
@@ -1170,8 +1247,16 @@ def create_server_app(db_path=None):
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
+    _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
     _repo_root = os.path.dirname(_src)
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
+    if os.path.isfile(os.path.join(_webapp_client, "meridian_api_base.js")):
+
+        @app.route("/meridian_api_base.js")
+        def serve_meridian_api_base_js():
+            """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
+            return send_from_directory(_webapp_client, "meridian_api_base.js")
+
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         user_svc = container.get_user_service()
         register_chatapp_routes(
@@ -1181,7 +1266,25 @@ def create_server_app(db_path=None):
         @app.route("/")
         @app.route("/index.html")
         def serve_index():
-            return send_from_directory(_webapp_dist, "index.html")
+            """Serve dashboard HTML; inject session so the client need not rely on a second /api/session round-trip."""
+            index_path = os.path.join(_webapp_dist, "index.html")
+            with open(index_path, encoding="utf-8") as f:
+                html = f.read()
+            uid = session.get("user_id") or ""
+            fid = session.get("family_circle_id") or ""
+            boot = json.dumps({"user_id": uid, "family_circle_id": fid})
+            idle_sec = int(app.config.get("MERIDIAN_SESSION_IDLE_SEC", 1800))
+            inject = (
+                f"<script>window.__MERIDIAN_SESSION__={boot};"
+                f"window.__MERIDIAN_IDLE_LOGOUT_SEC__={idle_sec};</script>"
+            )
+            if "</head>" in html:
+                html = html.replace("</head>", inject + "</head>", 1)
+            else:
+                html = inject + html
+            resp = Response(html, mimetype="text/html; charset=utf-8")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
 
         @app.route("/login.html")
         def serve_login():
@@ -1195,10 +1298,6 @@ def create_server_app(db_path=None):
         @app.route("/info.html")
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
-
-        @app.route("/meridian_api_base.js")
-        def serve_meridian_api_base_js():
-            return send_from_directory(_webapp_dist, "meridian_api_base.js")
 
         @app.route("/meridian_medications_inline.js")
         def serve_meridian_medications_inline_js():

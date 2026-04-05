@@ -43,7 +43,34 @@ function clearMedTakenArmTimer() {
   }
 }
 
+var _kioskMedConfirmTimer = null;
+var _kioskMedArmedBtn = null;
+
+function disarmMedTakenBtn(btn) {
+  if (!btn) return;
+  btn.classList.remove('med-taken-btn--armed');
+  if (btn._meridianLabelRestore != null) {
+    btn.textContent = btn._meridianLabelRestore;
+    btn._meridianLabelRestore = null;
+  }
+  if (_kioskMedArmedBtn === btn) _kioskMedArmedBtn = null;
+}
+
+function clearMedTakenArmTimer() {
+  if (_kioskMedConfirmTimer) {
+    clearTimeout(_kioskMedConfirmTimer);
+    _kioskMedConfirmTimer = null;
+  }
+}
+
 document.getElementById('screen-content').addEventListener('click', function(e) {
+  if (_kioskMedArmedBtn) {
+    var clickedMed = e.target.closest('.med-taken-btn');
+    if (clickedMed !== _kioskMedArmedBtn) {
+      clearMedTakenArmTimer();
+      disarmMedTakenBtn(_kioskMedArmedBtn);
+    }
+  }
   if (_kioskMedArmedBtn) {
     var clickedMed = e.target.closest('.med-taken-btn');
     if (clickedMed !== _kioskMedArmedBtn) {
@@ -60,8 +87,16 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
   if (medTakenBtn && medTakenBtn.dataset.medId && medTakenBtn.dataset.medTime && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.mark_medication_taken) {
     var mid = parseInt(medTakenBtn.dataset.medId, 10);
     var timeSlot = medTakenBtn.dataset.medTime || '';
+    var prnAct = medTakenBtn.dataset.prnAction || '';
     var currentlyDone = medTakenBtn.dataset.medDone === 'true';
-    var nextIsTaken = !currentlyDone;
+    var nextIsTaken;
+    if (prnAct === 'take') {
+      nextIsTaken = true;
+    } else if (prnAct === 'undo') {
+      nextIsTaken = false;
+    } else {
+      nextIsTaken = !currentlyDone;
+    }
     if (medTakenBtn === _kioskMedArmedBtn && medTakenBtn.classList.contains('med-taken-btn--armed')) {
       clearMedTakenArmTimer();
       _kioskMedArmedBtn = null;

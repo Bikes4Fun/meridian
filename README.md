@@ -1,7 +1,7 @@
 # Meridian
 
 <p align="center">
-  <img src="assets/icons/banner_logo.png" alt="Meridian banner" width="420">
+  <img src="assets/icons/original_banner_logo.png" alt="Meridian banner" width="420">
 </p>
 
 

@@ -17,6 +17,40 @@
             return;
         }
         if (document.getElementById('appNav')) {
+            function finishDashboardInit() {
+                document.body.classList.remove('pending');
+                var topLogin = document.querySelector('.app-topbar-login');
+                if (topLogin) topLogin.style.display = 'none';
+                if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = 'inline';
+                initNav();
+                initKioskAlertShortcut();
+                initHealthShortcuts();
+                initHealthFoldFromHash();
+                initCheckin();
+                initLogoutLink();
+                initIdleLogout();
+                var apiRoot = API_BASE || '';
+                if (window.MeridianMedications) {
+                    MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
+                }
+            }
+            function applySessionPayload(session) {
+                if (!session || !session.family_circle_id || !session.user_id) {
+                    return false;
+                }
+                _familyCircleId = session.family_circle_id;
+                _userId = session.user_id;
+                return true;
+            }
+            var boot = typeof window.__MERIDIAN_SESSION__ !== 'undefined' ? window.__MERIDIAN_SESSION__ : null;
+            if (boot && boot.user_id && boot.family_circle_id) {
+                if (applySessionPayload(boot)) {
+                    finishDashboardInit();
+                } else {
+                    window.location.href = meridianLoginPageWithReturn();
+                }
+                return;
+            }
             var apiBase = API_BASE || '';
             fetch(apiBase + '/api/session', { credentials: 'include' })
                 .then(function (r) {
@@ -24,28 +58,15 @@
                         window.location.href = meridianLoginPageWithReturn();
                         return null;
                     }
-                    return r.ok ? r.json() : null;
+                    if (!r.ok) return null;
+                    return r.json().catch(function () { return null; });
                 })
                 .then(function (session) {
-                    if (!session || !session.family_circle_id || !session.user_id) {
+                    if (!applySessionPayload(session)) {
                         window.location.href = meridianLoginPageWithReturn();
                         return;
                     }
-                    _familyCircleId = session.family_circle_id;
-                    _userId = session.user_id;
-                    document.body.classList.remove('pending');
-                    var topLogin = document.querySelector('.app-topbar-login');
-                    if (topLogin) topLogin.style.display = 'none';
-                    if (document.getElementById('logoutLink')) document.getElementById('logoutLink').style.display = 'inline';
-                    initNav();
-                    initKioskAlertShortcut();
-                    initHealthShortcuts();
-                    initCheckin();
-                    initLogoutLink();
-                    var apiRoot = API_BASE || '';
-                    if (window.MeridianMedications) {
-                        MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
-                    }
+                    finishDashboardInit();
                 })
                 .catch(function () { window.location.href = meridianLoginPageWithReturn(); });
             return;
@@ -82,10 +103,17 @@
     function showStatus(message, type) {
         var container = document.getElementById('status');
         if (!container) return;
+        if (type === 'success') {
+            var olds = container.querySelectorAll('div.success');
+            for (var i = 0; i < olds.length; i++) olds[i].remove();
+        }
         var box = document.createElement('div');
         box.className = type;
         box.textContent = message;
         container.appendChild(box);
+        while (container.children.length > 5) {
+            container.removeChild(container.firstChild);
+        }
     }
 
     function checkIn() {
@@ -236,6 +264,9 @@
                 _mobileChatLoaded = true;
                 initChatContacts();
             }
+            if (pageId === 'health') {
+                setTimeout(syncHealthDetailsFromHash, 0);
+            }
         });
     }
 
@@ -253,29 +284,61 @@
         });
     }
 
+    function syncHealthDetailsFromHash() {
+        var id = (location.hash || '').replace(/^#/, '');
+        if (!id) return;
+        var el = document.getElementById(id);
+        if (el && el.tagName === 'DETAILS') el.open = true;
+    }
+
+    function initHealthFoldFromHash() {
+        window.addEventListener('hashchange', syncHealthDetailsFromHash);
+        syncHealthDetailsFromHash();
+    }
+
+    function openHealthMedicationList() {
+        var nav = document.getElementById('appNav');
+        var healthBtn = nav && nav.querySelector('.nav-btn[data-page="health"]');
+        if (healthBtn) healthBtn.click();
+        setTimeout(function () {
+            var el = document.getElementById('health-section-medications');
+            if (el && el.tagName === 'DETAILS') el.open = true;
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
+    }
+
+    function openSettingsKioskControls() {
+        var nav = document.getElementById('appNav');
+        var settingsBtn = nav && nav.querySelector('.nav-btn[data-page="settings"]');
+        if (settingsBtn) settingsBtn.click();
+        setTimeout(function () {
+            var el = document.getElementById('settingsKioskAlert');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
+    }
+
     function initHealthShortcuts() {
         var nav = document.getElementById('appNav');
         if (!nav) return;
-        var healthMedsBtn = document.getElementById('healthManageMedsBtn');
-        if (healthMedsBtn) {
-            healthMedsBtn.addEventListener('click', function () {
-                var settingsBtn = nav.querySelector('.nav-btn[data-page="settings"]');
-                if (settingsBtn) settingsBtn.click();
-                setTimeout(function () {
-                    var el = document.getElementById('settingsMedsEditor');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 50);
+        var takeHost = document.getElementById('healthMedsTakeHost');
+        if (takeHost) {
+            takeHost.addEventListener('click', function (e) {
+                if (e.target.closest('.health-meds-empty__cta')) {
+                    e.preventDefault();
+                    openHealthMedicationList();
+                }
             });
         }
-        var healthKioskBtn = document.getElementById('healthKioskControlsBtn');
-        if (healthKioskBtn) {
-            healthKioskBtn.addEventListener('click', function () {
-                var settingsBtn = nav.querySelector('.nav-btn[data-page="settings"]');
-                if (settingsBtn) settingsBtn.click();
-                setTimeout(function () {
-                    var el = document.getElementById('settingsKioskAlert');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 50);
+        var settingsMedsShortcut = document.getElementById('settingsMedicationListBtn');
+        if (settingsMedsShortcut) {
+            settingsMedsShortcut.addEventListener('click', function () {
+                openHealthMedicationList();
+            });
+        }
+        var settingsKioskBtn = document.getElementById('settingsKioskControlsBtn');
+        if (settingsKioskBtn) {
+            settingsKioskBtn.addEventListener('click', function () {
+                openSettingsKioskControls();
             });
         }
     }
@@ -371,6 +434,27 @@
                 .then(function () { window.location.href = '/login.html'; })
                 .catch(function () { window.location.href = '/login.html'; });
         });
+    }
+
+    function initIdleLogout() {
+        var sec = typeof window.__MERIDIAN_IDLE_LOGOUT_SEC__ === 'number' ? window.__MERIDIAN_IDLE_LOGOUT_SEC__ : 1800;
+        var idleMs = sec * 1000;
+        if (idleMs <= 0) return;
+        var timer = null;
+        function doLogout() {
+            var apiBase = API_BASE || '';
+            fetch(apiBase + '/api/logout', { method: 'POST', credentials: 'include' })
+                .then(function () { window.location.href = '/login.html'; })
+                .catch(function () { window.location.href = '/login.html'; });
+        }
+        function reset() {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(doLogout, idleMs);
+        }
+        ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+            document.addEventListener(ev, reset, { passive: true });
+        });
+        reset();
     }
 
     if (document.readyState === 'loading') {

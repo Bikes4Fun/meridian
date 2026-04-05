@@ -31,6 +31,7 @@ except ImportError:
     from shared.config import get_database_path, DatabaseConfig
 
 from ..server.database_manager import DatabaseManager
+from ..server.database_services.family import FamilyService
 from ..server.database_services.user import UserService
 from ..server.database_services.sendbird import SendbirdService
 
@@ -80,7 +81,8 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
     db_path = get_database_path()
     db_config = DatabaseConfig(path=db_path, create_if_missing=True)
     db_manager = DatabaseManager(db_config)
-    user_svc = UserService(db_manager)
+    family_svc = FamilyService(db_manager)
+    user_svc = UserService(db_manager, family_svc)
     sendbird_svc = SendbirdService(db_manager)
 
     @app.route("/auth")

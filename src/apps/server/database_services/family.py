@@ -40,3 +40,13 @@ class FamilyService:
             ORDER BY u.display_name
         """
         return self.db_manager.execute_query(query, (family_circle_id,))
+
+    def user_belongs_to_family(self, user_id: str, family_circle_id: str) -> ServiceResult:
+        """True if user_id is linked to family_circle_id in user_family_circle."""
+        r = self.db_manager.execute_query(
+            "SELECT 1 FROM user_family_circle WHERE user_id = ? AND family_circle_id = ?",
+            (user_id, family_circle_id),
+        )
+        if not r.success:
+            return r
+        return ServiceResult.success_result(bool(r.data))

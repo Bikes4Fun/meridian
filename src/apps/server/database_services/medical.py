@@ -17,6 +17,29 @@ except ImportError:
     from shared.interfaces import ServiceResult
 
 
+def _is_prn_slot_token(s: str) -> bool:
+    sl = s.strip().lower()
+    if sl in ("prn", "as needed"):
+        return True
+    if sl.startswith("prn+") or sl.startswith("prn:"):
+        return True
+    return False
+
+
+def _count_prn_doses(slots: List[str]) -> int:
+    return sum(1 for x in slots if _is_prn_slot_token(x))
+
+
+def _remove_last_prn_dose(slots: List[str]) -> List[str]:
+    last_i = None
+    for i, s in enumerate(slots):
+        if _is_prn_slot_token(s):
+            last_i = i
+    if last_i is None:
+        return slots
+    return [s for j, s in enumerate(slots) if j != last_i]
+
+
 @dataclass
 class TimedMedication:
     name: str
@@ -26,6 +49,8 @@ class TimedMedication:
     group_time: Optional[str] = None
     id: Optional[int] = None
     fda_rxcui: Optional[str] = None
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
 
 
 @dataclass
@@ -33,10 +58,12 @@ class PRNMedication:
     name: str
     last_taken: Optional[str] = None
     status: str = "available"
+    doses_today: int = 0
     max_daily: Optional[int] = None
     notes: Optional[str] = None
     id: Optional[int] = None
     fda_rxcui: Optional[str] = None
+    frequency: Optional[str] = None
 
 
 class MedicationService:
@@ -69,53 +96,78 @@ class MedicationService:
         if not care_recipient_user_id:
             return
         query = """
-            SELECT m.id, m.name, m.dosage, m.fda_rxcui, m.taken_today, m.last_taken, mt.name as time_name, mt.time as group_time
+            SELECT m.id, m.name, m.dosage, m.frequency, m.fda_rxcui, m.taken_today, m.last_taken,
+                   m.max_daily,
+                   mt.name AS time_name, mt.time AS group_time, mtt.group_id AS slot_group_id
             FROM medications m
             LEFT JOIN medication_to_time mtt ON m.id = mtt.medication_id
             LEFT JOIN medication_times mt ON mtt.group_id = mt.id
             WHERE m.care_recipient_user_id = ?
-            ORDER BY m.name, mt.time
+            ORDER BY m.id, mt.time
         """
         result = self.db_manager.execute_query(query, (care_recipient_user_id,))
         if not result.success:
             self.logger.error("Failed to load medication data: %s", result.error)
             return
         medication_groups = {}
+        slot_links_seen = set()
         for row in result.data:
+            med_id = row["id"]
             med_name = row["name"]
             dosage = row["dosage"] or ""
+            frequency = (row.get("frequency") or "").strip()
             time_name = row["time_name"]
             group_time = row["group_time"]
             taken_today = row["taken_today"]
             last_taken = row.get("last_taken")
-            med_id = row["id"]
-            if med_name not in medication_groups:
-                medication_groups[med_name] = {
-                    "id": med_id,
+            if med_id not in medication_groups:
+                medication_groups[med_id] = {
+                    "name": med_name,
                     "dosage": dosage,
+                    "frequency": frequency,
                     "fda_rxcui": (row.get("fda_rxcui") or "").strip() or None,
                     "taken_today": taken_today,
                     "last_taken": last_taken,
+                    "max_daily": row.get("max_daily"),
                     "groups": [],
                 }
             if time_name:
-                medication_groups[med_name]["groups"].append(
+                sgid = row.get("slot_group_id")
+                if sgid is not None:
+                    link_key = (med_id, int(sgid))
+                    if link_key in slot_links_seen:
+                        continue
+                    slot_links_seen.add(link_key)
+                medication_groups[med_id]["groups"].append(
                     {"name": time_name, "time": group_time}
                 )
-        for med_name, med_data in medication_groups.items():
+        for med_id, med_data in medication_groups.items():
+            med_name = med_data["name"]
             if med_data["groups"]:
                 is_prn = any(
                     g["name"].lower() in ["prn", "as needed"]
                     for g in med_data["groups"]
                 )
-                med_id = med_data.get("id")
                 if is_prn:
                     taken_slots = [
                         s.strip()
                         for s in (med_data.get("taken_today") or "").split(",")
                         if s.strip()
                     ]
-                    prn_taken = "prn" in taken_slots or "as needed" in taken_slots
+                    doses = _count_prn_doses(taken_slots)
+                    prn_taken = doses > 0
+                    freq = (med_data.get("frequency") or "").strip() or None
+                    md_raw = med_data.get("max_daily")
+                    max_d: Optional[int]
+                    if md_raw is not None and str(md_raw).strip() != "":
+                        try:
+                            max_d = int(md_raw)
+                            if max_d <= 0:
+                                max_d = None
+                        except (TypeError, ValueError):
+                            max_d = None
+                    else:
+                        max_d = None
                     self.prn_medications.append(
                         PRNMedication(
                             name=f"{med_name} {med_data['dosage']}".strip(),
@@ -123,6 +175,9 @@ class MedicationService:
                             last_taken=med_data.get("last_taken"),
                             id=med_id,
                             fda_rxcui=med_data.get("fda_rxcui"),
+                            frequency=freq,
+                            doses_today=doses,
+                            max_daily=max_d,
                         )
                     )
                 else:
@@ -131,8 +186,12 @@ class MedicationService:
                         for s in (med_data["taken_today"] or "").split(",")
                         if s.strip()
                     ]
+                    taken_lower = {s.lower() for s in taken_slots}
+                    dose_disp = (med_data.get("dosage") or "").strip() or None
+                    freq_disp = (med_data.get("frequency") or "").strip() or None
                     for group in med_data["groups"]:
-                        slot_done = group["name"] in taken_slots
+                        tnm = (group["name"] or "").strip().lower()
+                        slot_done = tnm in taken_lower
                         self.timed_medications.append(
                             TimedMedication(
                                 name=f"{med_name} {med_data['dosage']}".strip(),
@@ -141,10 +200,14 @@ class MedicationService:
                                 group_time=group["time"],
                                 id=med_id,
                                 fda_rxcui=med_data.get("fda_rxcui"),
+                                dosage=dose_disp,
+                                frequency=freq_disp,
                             )
                         )
             else:
-                self.logger.warning("Medication '%s' has no times assigned", med_name)
+                self.logger.warning(
+                    "Medication id=%s (%s) has no times assigned", med_id, med_name
+                )
 
     def add_medication(
         self,
@@ -309,11 +372,18 @@ class MedicationService:
             name=name,
             last_taken=kwargs.get("last_taken"),
             status=kwargs.get("status", "available"),
+            doses_today=kwargs.get("doses_today", 0),
             max_daily=kwargs.get("max_daily"),
             notes=kwargs.get("notes"),
         )
         for key, value in kwargs.items():
-            if key not in ("max_daily", "notes", "last_taken", "status"):
+            if key not in (
+                "max_daily",
+                "notes",
+                "last_taken",
+                "status",
+                "doses_today",
+            ):
                 setattr(medication, key, value)
         self.prn_medications.append(medication)
         return medication
@@ -340,7 +410,7 @@ class MedicationService:
         """Mark a medication time slot as taken or not. time_slot e.g. Morning, Evening, prn. taken_today stores comma-separated list. For prn, also updates last_taken."""
         self._load_medication_data(family_circle_id)
         r = self.db_manager.execute_query(
-            "SELECT taken_today, last_taken FROM medications WHERE id = ? AND care_recipient_user_id IN (SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?)",
+            "SELECT taken_today, last_taken, max_daily FROM medications WHERE id = ? AND care_recipient_user_id IN (SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ?)",
             (medication_id, family_circle_id),
         )
         if not r.success or not r.data:
@@ -352,25 +422,55 @@ class MedicationService:
             slot_key = "prn"
         else:
             slot_key = time_slot.strip()
-        if taken:
-            if slot_key not in slots:
-                slots.append(slot_key)
+        max_raw = r.data[0].get("max_daily")
+        max_daily: Optional[int]
+        if max_raw is not None and str(max_raw).strip() != "":
+            try:
+                max_daily = int(max_raw)
+                if max_daily <= 0:
+                    max_daily = None
+            except (TypeError, ValueError):
+                max_daily = None
         else:
-            slots = [
-                s for s in slots if s.lower() != slot_key and s.lower() != "as needed"
-            ]
-        new_taken_today = ",".join(slots) if slots else None
+            max_daily = None
         now_str = datetime.now().strftime("%I:%M %p")
-        if slot_key == "prn" and taken:
+        if slot_key == "prn":
+            if taken:
+                doses = _count_prn_doses(slots)
+                if max_daily is not None and doses >= max_daily:
+                    return ServiceResult.error_result(
+                        "Daily limit reached for this medication"
+                    )
+                slots = list(slots)
+                slots.append(f"prn+{int(datetime.now().timestamp() * 1000)}")
+            else:
+                slots = _remove_last_prn_dose(list(slots))
+            new_taken_today = ",".join(slots) if slots else None
+            if taken:
+                new_last = now_str
+            else:
+                new_last = (
+                    None
+                    if _count_prn_doses(slots) == 0
+                    else r.data[0].get("last_taken")
+                )
             up = self.db_manager.execute_update(
                 "UPDATE medications SET taken_today = ?, last_taken = ? WHERE id = ?",
-                (new_taken_today, now_str, medication_id),
+                (new_taken_today, new_last, medication_id),
             )
+            if not up.success:
+                return ServiceResult.error_result(up.error or "Update failed")
+            return ServiceResult.success_result(True)
+        if taken:
+            if not any(s.lower() == slot_key.lower() for s in slots):
+                slots.append(slot_key)
         else:
-            up = self.db_manager.execute_update(
-                "UPDATE medications SET taken_today = ? WHERE id = ?",
-                (new_taken_today, medication_id),
-            )
+            slots = [s for s in slots if s.lower() != slot_key.lower()]
+        new_taken_today = ",".join(slots) if slots else None
+        up = self.db_manager.execute_update(
+            "UPDATE medications SET taken_today = ? WHERE id = ?",
+            (new_taken_today, medication_id),
+        )
         if not up.success:
             return ServiceResult.error_result(up.error or "Update failed")
         return ServiceResult.success_result(True)
@@ -395,6 +495,8 @@ class MedicationService:
                     "status": m.status,
                     "group_time": group_names.get(m.time),
                     "fda_rxcui": m.fda_rxcui,
+                    "dosage": m.dosage,
+                    "frequency": m.frequency,
                 }
                 for m in self.timed_medications
             ],
@@ -405,6 +507,9 @@ class MedicationService:
                     "last_taken": m.last_taken,
                     "status": m.status,
                     "fda_rxcui": m.fda_rxcui,
+                    "frequency": m.frequency,
+                    "doses_today": m.doses_today,
+                    "max_daily": m.max_daily,
                 }
                 for m in self.prn_medications
             ],

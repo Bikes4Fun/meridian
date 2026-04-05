@@ -358,6 +358,7 @@
         var listEl = document.getElementById('healthMedsList');
         if (!listEl || !_familyCircleId) return;
         var apiBase = meridianApiBaseNormalize(_apiUrl);
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications', { credentials: 'include' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
@@ -400,6 +401,7 @@
         var listEl = document.getElementById('healthMedsInlineList');
         if (!listEl || !_familyCircleId) return;
         if (_healthMedAutosave) _healthMedAutosave.cancel();
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(
             apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
@@ -500,6 +502,7 @@
             var saveBtn = document.getElementById('healthMedsSaveBtn');
             function runMedsSave(silent) {
                 if (!_familyCircleId) return Promise.resolve();
+                var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var rows = MeridianMedicationsInline.collectRows(inlineList);
                 return MeridianMedicationsInline.saveDiff(apiBase, _familyCircleId, _inlineSnapshot, rows)

@@ -4,9 +4,16 @@ Kiosk Settings: monitors section HTML, link into Medications screen, static kios
 Scope: composition of primitives + monitor rows (stove id for live updates).
 Not here: live temperature polling (app + TemperatureSensor), or medication row editing.
 """
+"""
+Kiosk Settings: monitors section HTML, link into Medications screen, static kiosk copy.
+
+Scope: composition of primitives + monitor rows (stove id for live updates).
+Not here: live temperature polling (app + TemperatureSensor), or medication row editing.
+"""
 
 import html as html_module
 
+import html as html_module
 from . import html_primitives as hp
 from .monitors_screen import build_monitor_reading_row_html
 from .temperature_sensor import STOVE_SNOOZE_MINUTES

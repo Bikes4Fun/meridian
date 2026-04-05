@@ -12,8 +12,24 @@ except ImportError:
 
 
 class CallSignalService:
+    CALL_SIGNAL_TTL_MINUTES = 15
+
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
+
+    def _is_user_in_family(self, user_id: str, family_circle_id: str) -> ServiceResult:
+        r = self.db_manager.execute_query(
+            """
+            SELECT 1
+            FROM user_family_circle
+            WHERE user_id = ? AND family_circle_id = ?
+            LIMIT 1
+            """,
+            (user_id, family_circle_id),
+        )
+        if not r.success:
+            return ServiceResult.error_result(r.error or "family membership lookup failed")
+        return ServiceResult.success_result(bool(r.data))
 
     def request_call(
         self,
@@ -25,6 +41,16 @@ class CallSignalService:
     ) -> ServiceResult:
         if not family_circle_id or not from_user_id or not to_user_id:
             return ServiceResult.error_result("family_circle_id, from_user_id, to_user_id required")
+        from_ok = self._is_user_in_family(from_user_id, family_circle_id)
+        if not from_ok.success:
+            return from_ok
+        if not from_ok.data:
+            return ServiceResult.error_result("from_user_id is not in family circle")
+        to_ok = self._is_user_in_family(to_user_id, family_circle_id)
+        if not to_ok.success:
+            return to_ok
+        if not to_ok.data:
+            return ServiceResult.error_result("to_user_id is not in family circle")
         r = self.db_manager.execute_insert(
             """
             INSERT INTO call_signals (
@@ -52,6 +78,14 @@ class CallSignalService:
     def get_incoming_call(self, family_circle_id: str, to_user_id: str) -> ServiceResult:
         if not family_circle_id or not to_user_id:
             return ServiceResult.error_result("family_circle_id and to_user_id required")
+        self.db_manager.execute_update(
+            """
+            DELETE FROM call_signals
+            WHERE status = 'requested'
+              AND datetime(created_at) < datetime('now', ?)
+            """,
+            (f"-{self.CALL_SIGNAL_TTL_MINUTES} minutes",),
+        )
         r = self.db_manager.execute_query(
             """
             SELECT
@@ -64,10 +98,11 @@ class CallSignalService:
             WHERE family_circle_id = ?
               AND to_user_id = ?
               AND status = 'requested'
+              AND datetime(created_at) >= datetime('now', ?)
             ORDER BY id DESC
             LIMIT 1
             """,
-            (family_circle_id, to_user_id),
+            (family_circle_id, to_user_id, f"-{self.CALL_SIGNAL_TTL_MINUTES} minutes"),
         )
         if not r.success:
             return ServiceResult.error_result(r.error or "incoming call query failed")

@@ -1023,6 +1023,8 @@ def create_server_app(db_path=None):
             from_display_name=from_display_name,
         )
         if not r.success:
+            if "not in family circle" in (r.error or "").lower():
+                return jsonify({"error": r.error}), 403
             return jsonify({"error": r.error}), 400
         return jsonify({"data": r.data}), 201
 

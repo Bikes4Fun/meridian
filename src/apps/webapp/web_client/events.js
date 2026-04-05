@@ -1,5 +1,5 @@
 /**
- * Webapp Events tab: list upcoming calendar events (date range API), add/edit/delete modal + credentialed API calls. MeridianEvents.init(...) from app.js.
+ * Webapp Events tab: list today’s calendar events, add/edit/delete modal + credentialed API calls. MeridianEvents.init(...) from app.js.
  * Scope: #pageEvents only. Not: kiosk schedule screen, medications merge, or shared calendar month view.
  */
 (function () {
@@ -63,25 +63,12 @@
 
     function loadEvents() {
         var list = document.getElementById('eventsList');
-        if (!list) return;
-        if (!_familyCircleId) {
-            list.innerHTML = '<p class="muted">Session not ready. Refresh the page or open this tab again.</p>';
-            return;
-        }
-        var fromD = localDateISO();
-        var toD = addDaysISO(fromD, 30);
+        if (!list || !_familyCircleId) return;
+        var today = new Date().toISOString().slice(0, 10);
         var apiBase = meridianApiBaseNormalize(_apiUrl);
-        var url = apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?from=' +
-            encodeURIComponent(fromD) + '&to=' + encodeURIComponent(toD);
-        fetch(url, { credentials: 'include' })
-            .then(function (r) {
-                return r.json().then(function (body) {
-                    return { ok: r.ok, body: body };
-                }).catch(function () {
-                    return { ok: r.ok, body: null };
-                });
-            })
-            .then(function (res) {
+        fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
                 if (!list) return;
                 if (!res.ok) {
                     var msg = (res.body && res.body.error) ? String(res.body.error) : 'Could not load events';
@@ -96,11 +83,7 @@
                 var items = data.data.map(function (e) {
                     var id = (e.id || '').replace(/"/g, '&quot;');
                     var title = meridianEscapeHtml(e.display || e.title || '');
-                    var dayLbl = eventDayLabel(e.start_time || '');
-                    var meta = dayLbl
-                        ? '<p class="event-card__meta">' + meridianEscapeHtml(dayLbl) + '</p>'
-                        : '';
-                    return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '\'>' +
+                    return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '">' +
                         '<article class="event-card">' +
                         meta +
                         '<p class="event-card__title">' + title + '</p>' +

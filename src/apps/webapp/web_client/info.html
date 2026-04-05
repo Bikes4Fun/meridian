@@ -1,17 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-(function () {
-    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) document.documentElement.classList.add('info-embed');
-})();
-</script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Meridian — User Guide</title>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/shared/css/base.css"/>
-<link rel="stylesheet" href="/style.css"/>
 <style>
   :root {
     --font: 'Atkinson Hyperlegible', Arial, sans-serif;
@@ -34,8 +27,8 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body.info-doc-body {
-    font-family: var(--font), var(--font-family), Arial, sans-serif;
+  body {
+    font-family: var(--font);
     background: var(--base);
     color: var(--text);
     font-size: 16px;
@@ -59,8 +52,6 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
   }
   .masthead-brand {
     font-size: 14px;
@@ -69,38 +60,70 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  .masthead-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
   .masthead-label {
     font-size: 13px;
     color: var(--muted);
   }
-  .masthead-dash {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--terra);
-    text-decoration: none;
-  }
-  .masthead-dash:hover {
-    text-decoration: underline;
-  }
-  html.info-embed .masthead {
-    display: none;
+
+  /* LAYOUT */
+  .shell {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0;
+    padding: 0 24px;
+    align-items: start;
   }
 
-  /* Guide main column (left nav = global .meridian-inpage-nav in style.css) */
-  .info-doc-content {
-    padding: 28px 0 80px 0;
+  /* SIDEBAR */
+  .sidebar {
+    position: sticky;
+    top: 54px;
+    padding: 28px 20px 40px 0;
+    max-height: calc(100vh - 54px);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .sidebar::-webkit-scrollbar { display: none; }
+  .sb-group { margin-bottom: 18px; }
+  .sb-heading {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 0 0 5px 0;
+    margin-bottom: 2px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 4px 8px;
+    font-size: 13.5px;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: var(--r-sm);
+    border-left: 2px solid transparent;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+    line-height: 1.5;
+  }
+  .sidebar a:hover {
+    color: var(--terra-ink);
+    background: var(--cream);
+    border-left-color: var(--terra);
+  }
+
+  /* CONTENT */
+  .content {
+    padding: 28px 0 80px 32px;
+    border-left: 1px solid var(--border);
     min-width: 0;
   }
 
   /* SECTION */
   .doc-section {
     margin-bottom: 12px;
+    scroll-margin-top: 72px;
   }
 
   .section-card {
@@ -136,18 +159,6 @@
   em { font-style: italic; }
   a { color: var(--terra); font-weight: 600; text-decoration: none; }
   a:hover { text-decoration: underline; }
-
-  .info-doc-body .meridian-inpage-nav .meridian-inpage-nav__link {
-    color: var(--muted);
-    font-weight: 400;
-  }
-  .info-doc-body .meridian-inpage-nav .meridian-inpage-nav__link:hover {
-    text-decoration: none;
-  }
-
-  .info-doc-body .meridian-inpage-nav__list li {
-    margin-bottom: 0;
-  }
 
   ul, ol { padding-left: 18px; margin-bottom: 10px; }
   li { font-size: 14.5px; color: var(--muted); margin-bottom: 4px; line-height: 1.6; }
@@ -241,8 +252,9 @@
   .nav-chip.emerg { background: #c0302a; border-color: #c0302a; color: #fff; }
 
   @media (max-width: 700px) {
-    .info-guide-outer .meridian-inpage-nav { display: none !important; }
-    .info-doc-content { padding: 20px 0 64px; }
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { border-left: none; padding: 20px 0 64px; }
   }
 </style>
 </head>
@@ -251,63 +263,51 @@
 <header class="masthead">
   <div class="masthead-inner">
     <span class="masthead-brand">Meridian</span>
-    <div class="masthead-right">
-      <span class="masthead-label">User guide</span>
-      <a class="masthead-dash" href="/">Dashboard</a>
-    </div>
+    <span class="masthead-label">User Guide · Early access</span>
   </div>
 </header>
 
-<div class="meridian-page-layout info-guide-outer">
+<div class="shell">
 
-  <nav class="meridian-inpage-nav" aria-label="User guide sections">
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Overview</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#what-is-meridian">What is Meridian?</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#family-circles">Family Circles</a></li>
-      </ul>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-group">
+      <div class="sb-heading">Overview</div>
+      <a href="#what-is-meridian">What is Meridian?</a>
+      <a href="#family-circles">Family Circles</a>
     </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Kiosk</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-nav">Navigation</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-home">Home</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-schedule">Schedule</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-family">Family</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-chat">Chat</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-health">Health</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-emergency">Emergency</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#kiosk-settings">Settings</a></li>
-      </ul>
+    <div class="sb-group">
+      <div class="sb-heading">Kiosk</div>
+      <a href="#kiosk-nav">Navigation</a>
+      <a href="#kiosk-home">Home</a>
+      <a href="#kiosk-schedule">Schedule</a>
+      <a href="#kiosk-family">Family</a>
+      <a href="#kiosk-chat">Chat</a>
+      <a href="#kiosk-health">Health</a>
+      <a href="#kiosk-emergency">Emergency</a>
+      <a href="#kiosk-settings">Settings</a>
     </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Web Dashboard</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#web-health">Health tab</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-ice">ICE / POLST editor</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-events">Events</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-calendar-google">Google Calendar</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#web-settings">Settings</a></li>
-      </ul>
+    <div class="sb-group">
+      <div class="sb-heading">Web Dashboard</div>
+      <a href="#web-health">Health tab</a>
+      <a href="#web-ice">ICE / POLST editor</a>
+      <a href="#web-events">Events</a>
+      <a href="#web-settings">Settings</a>
     </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Mobile</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#mobile-checkin">Check-in</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#where-is-everyone">Where is everyone?</a></li>
-      </ul>
+    <div class="sb-group">
+      <div class="sb-heading">Mobile</div>
+      <a href="#mobile-checkin">Check-in</a>
+      <a href="#where-is-everyone">Where is everyone?</a>
     </div>
-    <div class="meridian-inpage-nav__group">
-      <p class="meridian-inpage-nav__heading">Reference</p>
-      <ul class="meridian-inpage-nav__list">
-        <li><a class="meridian-inpage-nav__link" href="#named-locations">Named locations</a></li>
-        <li><a class="meridian-inpage-nav__link" href="#data-privacy">Data &amp; privacy</a></li>
-      </ul>
+    <div class="sb-group">
+      <div class="sb-heading">Reference</div>
+      <a href="#named-locations">Named locations</a>
+      <a href="#data-privacy">Data &amp; privacy</a>
     </div>
-  </nav>
+  </aside>
 
-  <main class="meridian-page-main info-doc-content">
+  <!-- CONTENT -->
+  <main class="content">
 
     <!-- OVERVIEW -->
     <div class="doc-section" id="what-is-meridian">
@@ -529,23 +529,10 @@
       <div class="section-card">
         <div class="section-label sl-web">Web Dashboard</div>
         <h1>Events tab</h1>
-        <p class="page-lead">Manage the shared family calendar in Meridian. Events appear on the kiosk Home and Schedule screens. <strong>This Events tab is not being removed</strong>—optional <a href="#web-calendar-google">Google Calendar</a> integration will add on top of it later.</p>
+        <p class="page-lead">Manage the shared family calendar. Events appear on the kiosk Home and Schedule screens.</p>
         <div class="notice n-soon">
           <span class="ni">🕐</span>
           <div class="nb"><strong>In progress</strong>The full events interface is being built out.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="doc-section" id="web-calendar-google">
-      <div class="section-card">
-        <div class="section-label sl-web">Web Dashboard</div>
-        <h1>Google Calendar <span class="badge b-soon">Coming soon</span></h1>
-        <p class="page-lead">Optional sync or link with Google Calendar for families who also use GCal—<strong>without removing Meridian&rsquo;s Events tab or kiosk calendar.</strong></p>
-        <p>Meridian keeps its own events for the dashboard and kiosk (<a href="#web-events">Events tab</a>). <strong>Planned Google Calendar integration</strong> is additive: connect or mirror so entries can appear in both places and double entry can be reduced. The current Events UI, event store, and kiosk Home/Schedule behavior stay; GCal integrates alongside them, it does not replace them.</p>
-        <div class="notice n-tip">
-          <span class="ni">💡</span>
-          <div class="nb"><strong>Not a replacement</strong>Built-in Events remain the product calendar. <strong>Implementation note:</strong> OAuth-style read/write or subscribe flows are typical; exact scopes and conflict rules will ship with the integration.</div>
         </div>
       </div>
     </div>

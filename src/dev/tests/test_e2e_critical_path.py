@@ -21,7 +21,7 @@ from dev.tests.conftest import (
 
 @pytest.fixture(autouse=True)
 def reset_alert_state(api_client):
-    """Ensure clean alert state before and after test."""
+    """Ensure alert is off for the default test family before and after the test."""
     r = api_client.post(
         "/api/emergency/alert",
         headers={"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID},

@@ -22,7 +22,7 @@ from shared.config import (
 from .api_client import KioskRemoteServiceContainer, create_kiosk_remote
 from .chat_screen import ChatHandler
 from .checkin_screen import LocationHandler
-from .events_handler import EventsHandler, build_schedule_html
+from .schedule_screen import build_schedule_html
 from .health_screen import HealthHandler
 from .temperature_sensor import TemperatureSensor
 
@@ -48,8 +48,7 @@ def _get_screen_registry():
     from .emergency_screen import build_emergency_html
     from .health_screen import build_health_html
     from .home_screen import build_home_html
-    from .medications_screen import build_medications_html
-    from .settings_screen import build_settings_html
+    from .settings_screen import build_medications_html, build_settings_html
 
     def home(app: "MeridianKioskApp"):
         return (
@@ -114,12 +113,11 @@ def _get_screen_registry():
 
 
 class KioskBridge:
-    """Exposed to JS as pywebview.api. Composes handlers (events, etc.); delegates to them."""
+    """Exposed to JS as pywebview.api. Thin bridge; calendar modal DOM is kiosk.js (meridianKioskEvents)."""
 
     def __init__(self, app):
         self._app = app
         self._chat = ChatHandler(app)
-        self._events = EventsHandler(app)
         self._health = HealthHandler(app)
         self._location = LocationHandler(app)
 
@@ -162,23 +160,22 @@ class KioskBridge:
         ):
             self._app._navigate_to(sid)
 
-    def open_add_event_modal(self) -> None:
-        self._events.open_add_event_modal()
-
-    def edit_event(self, event_data_json: str) -> None:
-        self._events.edit_event(event_data_json)
-
     def submit_event_form(self, payload_json: str) -> str:
-        return self._events.submit_event_form(payload_json)
+        return self._app._submit_event_form(payload_json)
 
     def add_event(self, payload_json: str) -> str:
-        return self._events.add_event(payload_json)
+        return self._app._submit_event_form(payload_json)
 
     def update_event(self, event_id: str, payload_json: str) -> str:
-        return self._events.update_event(event_id, payload_json)
+        try:
+            data = json.loads(payload_json)
+        except json.JSONDecodeError as e:
+            return str(e)
+        data["id"] = event_id
+        return self._app._submit_event_form(json.dumps(data))
 
     def delete_event(self, event_id: str) -> str:
-        return self._events.delete_event(event_id)
+        return self._app._delete_event(event_id)
 
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
@@ -298,7 +295,7 @@ class MeridianKioskApp:
 
     def _print_emergency(self):
         """Trigger emergency print (same flow as alert-activated)."""
-        from .emergency_print import trigger_emergency_print
+        from .emergency_screen import trigger_emergency_print
 
         trigger_emergency_print(self.services)
 
@@ -406,9 +403,46 @@ class MeridianKioskApp:
         self._eval_el("up_next_content", build_up_next_html(items, now))
         self._eval_el("timeline_content", build_timeline_html(items))
 
+    def _submit_event_form(self, payload_json: str) -> str:
+        """POST/PUT calendar event via remote service. Payload may include id for update."""
+        try:
+            data = json.loads(payload_json)
+        except json.JSONDecodeError as e:
+            return str(e)
+        if not data.get("title") or not data.get("start_time"):
+            return "title and start_time required"
+        cal = self.services.get_calendar_service()
+        if not cal:
+            return "calendar service unavailable"
+        event_id = data.pop("id", None)
+        if event_id:
+            r = cal.update_event(str(event_id), data)
+        else:
+            r = cal.add_event(data)
+        if r.success:
+            self._load_home_schedule()
+            self._refresh_schedule_if_shown()
+            return "ok"
+        return r.error or "failed"
+
+    def _delete_event(self, event_id: str) -> str:
+        cal = self.services.get_calendar_service()
+        if not cal:
+            return "calendar service unavailable"
+        r = cal.delete_event(event_id)
+        if r.success:
+            self._load_home_schedule()
+            self._refresh_schedule_if_shown()
+            return "ok"
+        return r.error or "failed"
+
+    def _refresh_schedule_if_shown(self) -> None:
+        """Tell kiosk.js to reload Schedule screen if it is active."""
+        self._eval("meridianKioskEvents.refreshScheduleIfShown()")
+
     def _start_alert_poll(self):
         """Poll alert; when activated, switch to emergency, add flash, trigger print."""
-        from .emergency_print import trigger_emergency_print
+        from .emergency_screen import trigger_emergency_print
 
         while True:
             time.sleep(10)

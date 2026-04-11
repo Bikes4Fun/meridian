@@ -11,7 +11,7 @@ REMOVAL: Required on server (used by emergency_service). Can be omitted from cli
 from typing import List, Optional
 from dataclasses import dataclass
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -40,7 +40,7 @@ class Contact:
 
 
 class ContactService:
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
 
     def get_all_contacts(self, family_circle_id: str) -> ServiceResult:

@@ -51,25 +51,26 @@ try:
         get_database_path,
         get_server_host,
         get_server_port,
+        get_uploads_dir
     )
 except ImportError:
     from shared.config import (
         get_database_path,
         get_server_host,
         get_server_port,
+        get_uploads_dir
     )
-from .emergency_profile_pdf import build_pdf
-from .container import create_service_container
+try:
+    from ...shared.emergency_profile_pdf import build_pdf
+except ImportError:
+    from shared.emergency_profile_pdf import build_pdf
+from .database_services.db_service_registry import create_service_container
 
 try:
     from ...apps.chatapp.api import register_chatapp_routes
 except ImportError:
     from apps.chatapp.api import register_chatapp_routes
 
-try:
-    from ...shared.config import get_uploads_dir
-except ImportError:
-    from shared.config import get_uploads_dir
 
 _alert_activation_by_family = {}
 _alert_activation_lock = threading.Lock()
@@ -338,7 +339,7 @@ def create_server_app(db_path=None):
                 if not uid or not fid:
                     abort(
                         401,
-                        "Log in at /login first or provide X-User-Id and X-Family-Circle-Id",
+                        "Log in at /login.html first or provide X-User-Id and X-Family-Circle-Id",
                     )
                 g.user_id = uid
                 g.family_circle_id = fid
@@ -468,6 +469,38 @@ def create_server_app(db_path=None):
     location_svc = container.get_location_service()
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
+
+    @app.before_request
+    def verify_family_membership():
+        """Reject API calls where user_id + family_circle_id are not linked in user_family_circle.
+
+        Headers alone used to satisfy _require_family_access when URL family matched X-Family-Circle-Id
+        even if X-User-Id was not a member of that family.
+        """
+        if not request.path.startswith("/api"):
+            return
+        if request.path in (
+            "/api/health",
+            "/api/login",
+            "/api/logout",
+            "/auth",
+            "/kiosk-auth",
+        ):
+            return
+        if request.path == "/api/users" and request.method == "POST":
+            return
+        if request.path == "/api/chat/chat-session-bootstrap":
+            return
+        uid = getattr(g, "user_id", None)
+        fid = getattr(g, "family_circle_id", None)
+        if not uid or not fid:
+            return
+        mem = family_svc.user_belongs_to_family(uid, fid)
+        if not mem.success:
+            return jsonify({"error": mem.error or "Database query failed"}), 500
+        if not mem.data:
+            return jsonify({"error": "forbidden"}), 403
+
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
     sendbird_svc = container.get_sendbird_service()
@@ -681,7 +714,7 @@ def create_server_app(db_path=None):
 
     @app.route("/api/users/<user_id>/photo")
     def api_serve_photo(user_id):
-        # TODO: remove api.py queries and maybe even database_manager? (user container?)
+        # TODO: remove api.py queries and maybe even safe_query_manager? (user container?)
         """Serve user photo. User must be in requester's family. Rejects path traversal in filename."""
         fn = user_svc.get_user_photo_filename(user_id, g.family_circle_id)
         if not fn:
@@ -1224,7 +1257,7 @@ def create_server_app(db_path=None):
         platform = (data.get("platform") or "ios").strip().lower()
         if not token:
             return jsonify({"error": "token required"}), 400
-        push_svc = container.get_push_notification_service()
+        push_svc = container.get_notification_service()
         r = push_svc.register_device_token(g.user_id, token, platform)
         if not r.success:
             return jsonify({"error": r.error}), 400
@@ -1237,7 +1270,7 @@ def create_server_app(db_path=None):
     def api_where_is_everyone(family_circle_id):
         """Request family members to refresh location. Sends push (stub for now)."""
         _require_family_access(family_circle_id)
-        push_svc = container.get_push_notification_service()
+        push_svc = container.get_notification_service()
         r = push_svc.request_location_update(family_circle_id, g.user_id)
         if not r.success:
             return jsonify({"error": r.error}), 500

@@ -21,7 +21,7 @@
 Full-flow tests proving Kiosk ↔ API ↔ iOS/Webapp work together. Each test hits the real Flask server seeded from conftest fixtures.
 
 **API layer tests (pytest)**
-- [x] Emergency alert: POST activate → GET status reflects it (`test_e2e_emergency_alert.py`)
+- [x] Emergency alert: POST activate → GET status reflects it; per-family isolation (`test_e2e_emergency_alert.py`)
 - [ ] Emergency profile: PUT → GET round-trip, PDF returns `b"%PDF"` header + patient name in bytes
 - [x] Check-in: POST persists lat/lon → GET checkins returns it (`test_e2e_critical_path.py`)
 - [x] Medication: POST → GET returns it in correct time slot — note `data` is `{timed_medications, prn_medications}` (`test_e2e_critical_path.py`)
@@ -61,9 +61,9 @@ Full-flow tests proving Kiosk ↔ API ↔ iOS/Webapp work together. Each test hi
 
 ## Security tests
 
-- **Public routes:** `GET /api/health` no headers → 200. `GET /api/login` no auth → accessible.
+- **Public routes:** `GET /api/health` no headers → 200. `POST /api/login` with valid body no session → 200 (see `test_infrastructure.py`).
 - **Protected routes → 401:** No `X-User-Id` / `X-Family-Circle-Id` (and no session) → 401 on calendar, medications, contacts (extend beyond calendar).
-- **Session:** `/checkin` no session → redirect to `/login`. `/checkin.js` no session → 401.
+- **Session:** Protected dashboard HTML is served at `/` / `index.html` with injected `window.__MERIDIAN_SESSION__`; API routes return **401** without `X-User-Id` / `X-Family-Circle-Id` (or valid session) per `test_security.py`. (There is no separate `/checkin` page in the current server routes.)
 - **Cross-family → 403:** Auth as family A, request `/api/family_circles/family_B/...` → 403, body says family mismatch.
 - **Check-in identity:** POST with matching `user_id` → 201; with wrong `user_id` → 403.
 - **Photo:** User not in requester’s family → 404. Path traversal (`..` or `/` in filename) → 404 if feasible.
@@ -110,7 +110,7 @@ Full-flow tests proving Kiosk ↔ API ↔ iOS/Webapp work together. Each test hi
 ## Order
 
 1. Conftest (users, care_recipients, medications, contact priorities, REF_DATE).
-2. Security tests in test_api.py (401, 403 cross-family, /checkin redirect, /checkin.js 401, photo 404).
+2. Security tests in `test_security.py` (401, 403 cross-family, check-in identity, photo 404).
 3. Infrastructure tests (write-then-read, fresh DB, invalid path, init fails loudly).
 4. Minimal feature API coverage; fix test_contact; trim service tests.
 5. Markers + README.

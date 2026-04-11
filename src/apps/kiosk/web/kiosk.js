@@ -11,6 +11,78 @@ function bindScreenNav(container) {
 bindScreenNav(document.getElementById('kiosk-nav'));
 bindScreenNav(document.getElementById('kiosk-footer'));
 
+// Calendar modal: open/prefill in JS; Python bridge only submits/deletes (see app.py).
+window.meridianKioskEvents = {
+  openAddModal: function() {
+    var idEl = document.getElementById('eventEditingId');
+    if (idEl) idEl.value = '';
+    var tt = document.getElementById('eventFormTitle');
+    if (tt) tt.textContent = 'Add Event';
+    var title = document.getElementById('eventTitle');
+    if (title) title.value = '';
+    var d = document.getElementById('eventDate');
+    if (d) {
+      var today = new Date();
+      var y = today.getFullYear();
+      var m = String(today.getMonth() + 1).padStart(2, '0');
+      var day = String(today.getDate()).padStart(2, '0');
+      d.value = y + '-' + m + '-' + day;
+    }
+    var s = document.getElementById('eventStartTime');
+    if (s) s.value = '';
+    var en = document.getElementById('eventEndTime');
+    if (en) en.value = '';
+    var l = document.getElementById('eventLocation');
+    if (l) l.value = '';
+    var r = document.getElementById('eventDescription');
+    if (r) r.value = '';
+    var o = document.getElementById('eventFormOverlay');
+    if (o) o.style.display = 'flex';
+  },
+  openEditModal: function(eventDataJson) {
+    var data;
+    try {
+      data = JSON.parse(eventDataJson);
+    } catch (e) {
+      alert('Could not load event');
+      return;
+    }
+    var idEl = document.getElementById('eventEditingId');
+    if (idEl) idEl.value = data.id != null && data.id !== '' ? String(data.id) : '';
+    var t = document.getElementById('eventFormTitle');
+    if (t) t.textContent = 'Edit Event';
+    var st = data.start_time || '';
+    var et = data.end_time || '';
+    var today = new Date();
+    var y = today.getFullYear();
+    var mo = String(today.getMonth() + 1).padStart(2, '0');
+    var day = String(today.getDate()).padStart(2, '0');
+    var dateStr = y + '-' + mo + '-' + day;
+    if (st.length >= 10) dateStr = st.slice(0, 10);
+    var startTime = st.length >= 16 ? st.slice(11, 16) : '09:00';
+    var endTime = et.length >= 16 ? et.slice(11, 16) : '';
+    var titleEl = document.getElementById('eventTitle');
+    if (titleEl) titleEl.value = data.title || '';
+    var d = document.getElementById('eventDate');
+    if (d) d.value = dateStr;
+    var s = document.getElementById('eventStartTime');
+    if (s) s.value = startTime;
+    var e = document.getElementById('eventEndTime');
+    if (e) e.value = endTime;
+    var l = document.getElementById('eventLocation');
+    if (l) l.value = data.location || '';
+    var r = document.getElementById('eventDescription');
+    if (r) r.value = data.description || '';
+    var o = document.getElementById('eventFormOverlay');
+    if (o) o.style.display = 'flex';
+  },
+  refreshScheduleIfShown: function() {
+    if (document.body && document.body.dataset.screen === 'schedule' && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.navigate) {
+      pywebview.api.navigate('schedule');
+    }
+  }
+};
+
 // Cancel button: event-modal div has stopPropagation() so clicks inside the modal
 // never bubble up to screen-content. Capture phase runs first.
 function handleModalCancel(e) {
@@ -43,26 +115,6 @@ function clearMedTakenArmTimer() {
   }
 }
 
-var _kioskMedConfirmTimer = null;
-var _kioskMedArmedBtn = null;
-
-function disarmMedTakenBtn(btn) {
-  if (!btn) return;
-  btn.classList.remove('med-taken-btn--armed');
-  if (btn._meridianLabelRestore != null) {
-    btn.textContent = btn._meridianLabelRestore;
-    btn._meridianLabelRestore = null;
-  }
-  if (_kioskMedArmedBtn === btn) _kioskMedArmedBtn = null;
-}
-
-function clearMedTakenArmTimer() {
-  if (_kioskMedConfirmTimer) {
-    clearTimeout(_kioskMedConfirmTimer);
-    _kioskMedConfirmTimer = null;
-  }
-}
-
 document.getElementById('screen-content').addEventListener('click', function(e) {
   if (_kioskMedArmedBtn) {
     var clickedMed = e.target.closest('.med-taken-btn');
@@ -71,16 +123,9 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
       disarmMedTakenBtn(_kioskMedArmedBtn);
     }
   }
-  if (_kioskMedArmedBtn) {
-    var clickedMed = e.target.closest('.med-taken-btn');
-    if (clickedMed !== _kioskMedArmedBtn) {
-      clearMedTakenArmTimer();
-      disarmMedTakenBtn(_kioskMedArmedBtn);
-    }
-  }
   var addBtn = e.target.closest('#addEventBtn');
-  if (addBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_event_modal) {
-    pywebview.api.open_add_event_modal();
+  if (addBtn && window.meridianKioskEvents && typeof window.meridianKioskEvents.openAddModal === 'function') {
+    window.meridianKioskEvents.openAddModal();
     return;
   }
   var medTakenBtn = e.target.closest('.med-taken-btn');
@@ -143,8 +188,8 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     return;
   }
   var editBtn = e.target.closest('.event-edit-btn');
-  if (editBtn && editBtn.getAttribute('data-event') && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.edit_event) {
-    pywebview.api.edit_event(editBtn.getAttribute('data-event'));
+  if (editBtn && editBtn.getAttribute('data-event') && window.meridianKioskEvents && typeof window.meridianKioskEvents.openEditModal === 'function') {
+    window.meridianKioskEvents.openEditModal(editBtn.getAttribute('data-event'));
     return;
   }
   var deleteBtn = e.target.closest('.event-delete-btn');
@@ -191,12 +236,15 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
   if (!title || !date || !startTime) return;
   var payload = { title: title, start_time: date + 'T' + startTime + ':00', location: location || undefined, description: description || undefined };
   if (endTime) payload.end_time = date + 'T' + endTime + ':00';
+  var idEl = document.getElementById('eventEditingId');
+  if (idEl && idEl.value) payload.id = idEl.value;
 
   var result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.submit_event_form) ? pywebview.api.submit_event_form(JSON.stringify(payload)) : 'Submit unavailable';
   function done(res) {
     if (res === 'ok') {
       var o = document.getElementById('eventFormOverlay'); if (o) o.style.display = 'none';
       var f = document.getElementById('eventForm'); if (f) f.reset();
+      var hid = document.getElementById('eventEditingId'); if (hid) hid.value = '';
     } else { alert(res || 'Failed'); }
   }
   (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);

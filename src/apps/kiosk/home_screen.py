@@ -1,18 +1,49 @@
 """
 Kiosk Home screen: layout, Up Next + “what’s next today” timeline, and merged schedule item loading.
 
-Scope: merge medications + calendar into sortable items; emit HTML for injected regions.
-Not here: event modal markup (events_handler), nav/screen switching (app), or non-home screens.
+Scope: merge medications + calendar into sortable items; emit HTML for injected regions; clock fragment.
+Not here: event modal markup (schedule_screen), nav/screen switching (app), per-second clock updates (app), or non-home screens.
 """
 
 import html as html_module
 import json
 import logging
 
-from . import clock_widget
-from . import events_handler
+from . import schedule_screen
 
 logger = logging.getLogger(__name__)
+
+
+def build_clock_html(services) -> str:
+    """Build the full clock display HTML: day, period, icon, time, date, year."""
+    from . import html_primitives as hp
+
+    time_svc = services.get_time_service()
+    day = time_svc.get_dayof_week().upper() if time_svc else ""
+    date = time_svc.get_month_day() if time_svc else ""
+    year = time_svc.get_year() if time_svc else ""
+    clock_time = time_svc.get_time() if time_svc else ""
+    if time_svc and getattr(time_svc, "get_day_period", None):
+        period, sprite_period = time_svc.get_day_period()
+        period = period.upper()
+    else:
+        period = (time_svc.get_am_pm().upper() if time_svc else "")
+        sprite_period = "night"
+    icon_html = f'<div class="clock-period-sprite" data-period="{sprite_period}" title=""></div>'
+
+    clock = '<div id="clock-main">'
+    clock += hp.kiosk_subheader(day, id_="clock-day")
+    clock += hp.kiosk_hero(clock_time, id_="clock-time")
+    date_line = time_svc.get_clock_date_line() if time_svc and getattr(time_svc, "get_clock_date_line", None) else f"{date}, {year}"
+    clock += hp.kiosk_body_large(date_line, id_="clock-date")
+    clock += "</div>"
+
+    sprite_and_text = '<div id="sprite-and-text">'
+    sprite_and_text += icon_html
+    sprite_and_text += hp.kiosk_caption(period, id_="clock-period")
+    sprite_and_text += "</div>"
+
+    return f'<div class="clock-container">{clock}{sprite_and_text}</div>'
 
 
 def build_home_html(
@@ -21,7 +52,7 @@ def build_home_html(
     """Up Next, today's timeline, (Health lives in footer)."""
     from . import html_primitives as hp
 
-    clock = clock_widget.build_clock_html(services)
+    clock = build_clock_html(services)
     items, now = load_schedule_items(services)
     up_next_html = build_up_next_html(items, now)
     timeline_html = build_timeline_html(items)
@@ -34,7 +65,7 @@ def build_home_html(
         clock
         + up_next
         + timeline
-        + events_handler.get_event_form_overlay_html()
+        + schedule_screen.get_event_form_overlay_html()
     )
     return f'<div class="home-screen">{inner}</div>'
 

@@ -1,9 +1,18 @@
 """
 Kiosk Emergency screen: load emergency profile via remote service; build read-only HTML (patient, medical, contacts).
 
-Scope: presentation + photo fetch for this screen only.
-Not here: printing (emergency_print), alert activation/polling (app), or server-side PDF generation.
+Scope: presentation + photo fetch for this screen; client-side emergency PDF print pipeline (trigger from app on alert).
+Not here: alert activation/polling (app), or server-side PDF generation.
 """
+
+import logging
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+logger = logging.getLogger(__name__)
 
 
 def build_emergency_html(services, api_url: str) -> str:
@@ -106,3 +115,91 @@ def build_emergency_html(services, api_url: str) -> str:
     html_parts.append(hp.kiosk_button("Print Emergency Document", print_js))
 
     return hp.panel("".join(html_parts))
+
+
+def _parse_lp_job_id(stdout: str) -> str | None:
+    """Parse 'request id is PrinterName-123 (1 file(s))' to get PrinterName-123."""
+    if not stdout:
+        return None
+    m = re.search(r"request id is (\S+)", stdout)
+    return m.group(1) if m else None
+
+
+def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
+    """Write PDF to a temp file and trigger system print. Returns (success, message, job_id)."""
+    fd, path = tempfile.mkstemp(suffix=".pdf")
+    try:
+        os.write(fd, pdf_bytes)
+        os.close(fd)
+        fd = None
+        job_id = None
+        if sys.platform in ("darwin", "linux"):
+            r = subprocess.run(["lp", path], capture_output=True, text=True, timeout=10)
+            if r.returncode != 0:
+                err_detail = (
+                    (r.stderr or "").strip()
+                    or (r.stdout or "").strip()
+                    or "Print command failed"
+                )
+                logger.warning(
+                    f"Emergency print: lp failed (rc={r.returncode}) {err_detail}"
+                )
+                return False, err_detail, None
+            job_id = _parse_lp_job_id(r.stdout or "")
+            if job_id:
+                logger.info(f"Print job id: {job_id}")
+        else:
+            r = subprocess.run(
+                ["start", "/p", path], capture_output=True, shell=True, timeout=10
+            )
+            if r.returncode != 0:
+                return False, "Print command failed", None
+        msg = f"Sent to printer (job {job_id})" if job_id else "Sent to printer"
+        return True, msg, job_id
+    except subprocess.TimeoutExpired:
+        return False, "Print timed out", None
+    except Exception as e:
+        return False, str(e), None
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
+def _run_emergency_print(emergency_svc, status_label=None) -> None:
+    """Fetch PDF, print, update status_label if provided, schedule job polling when job_id and label."""
+    logger.info("Emergency print: fetching PDF...")
+    if status_label is not None:
+        status_label.text = "Printing..."
+    result = emergency_svc.get_emergency_profile_pdf()
+    if not result.success:
+        err = getattr(result, "error", None) or "could not get PDF"
+        if status_label is not None:
+            status_label.text = f"Print failed: {err}"
+        logger.warning(f"Emergency print: could not get PDF ({err})")
+        return
+    if not result.data:
+        logger.warning("Emergency print: PDF empty")
+        if status_label is not None:
+            status_label.text = "Print failed: no PDF data"
+        return
+    logger.info(
+        f"Emergency print: PDF fetched ({len(result.data)} bytes), sending to printer..."
+    )
+    ok, msg, job_id = _print_pdf_bytes(result.data)
+    if status_label is not None:
+        status_label.text = msg if ok else f"Print failed: {msg}"
+    if ok:
+        logger.info(f"Emergency print: {msg}")
+    else:
+        logger.warning(f"Emergency print failed: {msg}")
+
+
+def trigger_emergency_print(services) -> None:
+    """Run emergency print (e.g. when alert activated). Uses same flow and status label as the button."""
+    emergency_svc = services.get_emergency_service()
+    if not emergency_svc or not getattr(
+        emergency_svc, "get_emergency_profile_pdf", None
+    ):
+        return
+    status_label = services.get_emergency_print_status_label()
+    _run_emergency_print(emergency_svc, status_label)

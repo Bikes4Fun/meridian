@@ -39,50 +39,35 @@
         return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     }
 
-    function buildEventsHTML() {
-        return '<h2 class="page-section-title">Events</h2>' +
-            '<p class="muted page-lead">Upcoming events in the next 30 days (your device\'s local date).</p>' +
-            '<p class="events-gcal-soon muted">Google Calendar: optional sync is <strong>coming soon</strong>. Meridian\'s calendar and kiosk schedule stay; linking will be additive.</p>' +
-            '<div id="eventsList">Loading…</div>' +
-            '<button id="addEventBtn" type="button" class="btn-add">Add event</button>' +
-            '<div id="eventFormModal">' +
-            '<div class="modal-inner">' +
-            '<h3 id="eventFormTitle">Add event</h3>' +
-            '<form id="eventForm">' +
-            '<input type="text" id="eventTitle" placeholder="Title" required class="event-input">' +
-            '<input type="date" id="eventDate" required class="event-input">' +
-            '<input type="time" id="eventStartTime" required class="event-input">' +
-            '<input type="time" id="eventEndTime" placeholder="End time (optional)" class="event-input">' +
-            '<input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">' +
-            '<textarea id="eventDescription" placeholder="Description (optional)" rows="3" class="event-input"></textarea>' +
-            '<div class="event-form-actions">' +
-            '<button type="submit" class="event-btn-primary">Save</button>' +
-            '<button type="button" id="eventFormCancel" class="event-btn-secondary">Cancel</button>' +
-            '</div></form></div></div>';
-    }
-
     function loadEvents() {
         var list = document.getElementById('eventsList');
         if (!list || !_familyCircleId) return;
         var today = new Date().toISOString().slice(0, 10);
         var apiBase = meridianApiBaseNormalize(_apiUrl);
+        list.innerHTML = 'Loading…';
         fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (data) {
-                if (!list) return;
-                if (!res.ok) {
-                    var msg = (res.body && res.body.error) ? String(res.body.error) : 'Could not load events';
-                    list.innerHTML = '<p class="muted">' + meridianEscapeHtml(msg) + '</p>';
-                    return;
+            .then(function (r) {
+                if (!list) return null;
+                if (!r.ok) {
+                    list.innerHTML = '<p class="muted">Could not load events</p>';
+                    return null;
                 }
-                var data = res.body;
-                if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+                return r.json();
+            })
+            .then(function (data) {
+                if (!list || !data) return;
+                if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
                     list.innerHTML = '<p class="muted">No events in the next 30 days. Use <strong>Add event</strong> to create one.</p>';
                     return;
                 }
                 var items = data.data.map(function (e) {
                     var id = (e.id || '').replace(/"/g, '&quot;');
                     var title = meridianEscapeHtml(e.display || e.title || '');
+                    var startTime = e.start_time || '';
+                    var dayLabel = eventDayLabel(startTime);
+                    var timePart = (startTime && startTime.length >= 16) ? startTime.slice(11, 16) : '';
+                    var metaText = dayLabel ? dayLabel + (timePart ? ' · ' + timePart : '') : (timePart || '');
+                    var meta = metaText ? '<p class="event-card__meta">' + meridianEscapeHtml(metaText) + '</p>' : '';
                     return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '">' +
                         '<article class="event-card">' +
                         meta +
@@ -104,7 +89,6 @@
             loadEvents();
             return;
         }
-        container.innerHTML = buildEventsHTML();
         _initialized = true;
 
         var addBtn = document.getElementById('addEventBtn');

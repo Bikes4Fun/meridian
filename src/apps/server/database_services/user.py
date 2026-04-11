@@ -6,9 +6,9 @@ Read/write users. SQLite enforces sendbird_user_id uniqueness per family.
 import sqlite3
 from typing import Optional
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 from .family import FamilyService
-from .saved_upload_basename import is_safe_saved_upload_basename
+from .photos import is_safe_saved_upload_basename
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -17,7 +17,7 @@ except ImportError:
 
 
 class UserService:
-    def __init__(self, db_manager: DatabaseManager, family_service: FamilyService):
+    def __init__(self, db_manager: QueryManager, family_service: FamilyService):
         self.db_manager = db_manager
         self._family_service = family_service
 

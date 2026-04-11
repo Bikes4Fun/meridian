@@ -28,7 +28,7 @@ PYTHONPATH=src pytest src/dev/tests -v
 
 ### Run specific test file
 ```bash
-PYTHONPATH=src pytest src/dev/tests/test_api.py
+PYTHONPATH=src pytest src/dev/tests/test_security.py
 ```
 
 ### Run only integration tests (uses database or API)
@@ -45,7 +45,7 @@ PYTHONPATH=src pytest src/dev/tests --cov=apps --cov=shared --cov-report=html
 
 All auth is enforced in `apps.server.api` (`set_user_id`, `_require_family_access`).
 
-**No auth (public):** GET `/api/health`, POST `/api/login`, GET `/login`
+**No auth (public):** GET `/api/health`, POST `/api/login`, GET `/login.html`
 
 **Session only** (no headers; session must have `user_id` + `family_circle_id`): GET `/api/session` (401)
 
@@ -61,14 +61,14 @@ All auth is enforced in `apps.server.api` (`set_user_id`, `_require_family_acces
 - POST `/api/family_circles/<id>/create_checkin` (body `user_id` must equal `X-User-Id`)
 - GET `/api/users/<user_id>/photo` (user must be in same family as `X-Family-Circle-Id`)
 
-Tests in `test_api.py` use `PROTECTED_GET_ROUTES` and `PROTECTED_POST_PUT_ROUTES` to assert every protected route returns 401 without auth and every family-scoped route returns 403 when requesting another family.
+Tests in `test_security.py` use `PROTECTED_GET_ROUTES` and `PROTECTED_POST_PUT_ROUTES` to assert every protected route returns 401 without auth and every family-scoped route returns 403 when requesting another family.
 
 ## Test Structure
 
 Security and infrastructure only (no feature-specific tests):
 
 - `conftest.py` - Shared fixtures; fixture data is source of truth (see schema alignment there)
-- `test_api.py` - Flask API security: no secrets in responses, 401/403 auth, check-in identity, photo family check (integration)
+- `test_security.py` - Flask API security: no secrets in responses, 401/403 auth, check-in identity, photo family check (integration)
 - `test_infrastructure.py` - API infrastructure: health, login (public endpoints), calendar stack check (integration)
 - `test_database.py` - DatabaseManager: schema, persistence, invalid path (integration)
 
@@ -82,7 +82,7 @@ Out of scope for this suite: `test_time_service.py` is empty (time formatting is
 
 ## Test Fixtures
 
-Fixtures used (in `conftest.py`): `temp_db_path`, `test_db_config`, `test_db_manager`, `populated_test_db`, `api_client` (in test_api.py)
+Fixtures used (in `conftest.py`): `temp_db_path`, `test_db_config`, `test_db_manager`, `populated_test_db`, `api_client` (used by `test_security.py` and other integration tests)
 
 ## Writing New Tests
 

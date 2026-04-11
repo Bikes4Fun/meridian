@@ -9,7 +9,7 @@ import datetime
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -36,7 +36,7 @@ class Event:
 
 
 class CalendarService:
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
 
     def _ref(self, reference_date: Optional[datetime.date] = None) -> datetime.date:

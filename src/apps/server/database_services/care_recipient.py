@@ -2,7 +2,7 @@
 Care recipient and contact role updates. Legal/medical designations (proxy, POA) are just contact roles.
 """
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -11,7 +11,7 @@ except ImportError:
 
 
 class CareRecipientService:
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
 
     def update_care_recipient(self, family_circle_id: str, data: dict) -> ServiceResult:

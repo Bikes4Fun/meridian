@@ -7,7 +7,7 @@ import logging
 import math
 from typing import Optional
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 DEFAULT_PLACE_RADIUS_M = 150
 
@@ -20,7 +20,7 @@ except ImportError:
 class LocationService:
     """Service for managing location check-ins."""
 
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
         self.logger = logging.getLogger(__name__)
 

@@ -59,6 +59,14 @@ def get_update_interval() -> float:
 #   KIOSK_TV_FULLSCREEN=0 to skip fullscreen (borderless window only).
 KIOSK_REFERENCE_WIDTH = 1080
 KIOSK_REFERENCE_HEIGHT = 1920
+KIOSK_WIN_WIDTH = 1824//2
+KIOSK_WIN_HEIGHT = 2736//2
+
+
+def get_kiosk_win_kiosk() -> bool:
+    """Windows kiosk layout (e.g. python -m apps.kiosk --win-kiosk)."""
+    val = os.getenv("KIOSK_WIN_KIOSK", "0").lower()
+    return val in ("1", "true", "yes")
 
 
 def get_kiosk_dev_scale() -> bool:
@@ -76,6 +84,8 @@ def get_kiosk_dev_height() -> int:
 
 def get_kiosk_window_size() -> tuple[int, int]:
     """(width, height) for kiosk Window.size. Preserves 9:16 when dev scale ON."""
+    if get_kiosk_win_kiosk():
+        return (KIOSK_WIN_WIDTH, KIOSK_WIN_HEIGHT)
     if not get_kiosk_dev_scale():
         return (KIOSK_REFERENCE_WIDTH, KIOSK_REFERENCE_HEIGHT)
     h = get_kiosk_dev_height()

@@ -28,6 +28,7 @@ import uuid
 import datetime
 import urllib.parse
 import logging
+import threading
 from dataclasses import asdict
 from pathlib import Path
 
@@ -50,35 +51,51 @@ try:
         get_database_path,
         get_server_host,
         get_server_port,
+        get_uploads_dir
     )
 except ImportError:
     from shared.config import (
         get_database_path,
         get_server_host,
         get_server_port,
+        get_uploads_dir
     )
-from .emergency_profile_pdf import build_pdf
-from .container import create_service_container
+try:
+    from ...shared.emergency_profile_pdf import build_pdf
+except ImportError:
+    from shared.emergency_profile_pdf import build_pdf
+from .database_services.db_service_registry import create_service_container
 
 try:
     from ...apps.chatapp.api import register_chatapp_routes
 except ImportError:
     from apps.chatapp.api import register_chatapp_routes
 
-try:
-    from ...shared.config import get_uploads_dir
-except ImportError:
-    from shared.config import get_uploads_dir
 
-_alert_activated = False
+_alert_activation_by_family = {}
+_alert_activation_lock = threading.Lock()
 _logger = logging.getLogger(__name__)
 
 _ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
+_CHAT_ENTRY_TOKEN_PURPOSE = "chat_session_bootstrap"
+_USED_CHAT_ENTRY_TOKEN_SIGS = {}
+_USED_CHAT_ENTRY_TOKEN_LOCK = threading.Lock()
 
 _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
     {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
 )
+
+
+def _get_alert_activated(family_circle_id: str) -> bool:
+    with _alert_activation_lock:
+        return bool(_alert_activation_by_family.get(family_circle_id, False))
+
+
+def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
+    with _alert_activation_lock:
+        _alert_activation_by_family[family_circle_id] = bool(activated)
+        return _alert_activation_by_family[family_circle_id]
 
 
 def _create_chat_entry_token(
@@ -87,13 +104,16 @@ def _create_chat_entry_token(
     family_circle_id: str,
     sendbird_user_id: str = "",
     display_name: str = "",
+    auto_start_call: bool = False,
 ) -> str:
     """Create a signed token for chat entry. Valid for _ENTRY_TOKEN_TTL_SEC."""
     payload = {
+        "purpose": _CHAT_ENTRY_TOKEN_PURPOSE,
         "user_id": user_id,
         "family_circle_id": family_circle_id,
         "sendbird_user_id": sendbird_user_id,
         "display_name": display_name,
+        "auto_start_call": bool(auto_start_call),
         "exp": int(time.time()) + _ENTRY_TOKEN_TTL_SEC,
     }
     payload_b64 = (
@@ -114,13 +134,28 @@ def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
         payload_b64, sig = parts[0], parts[1]
         payload_b64_padded = payload_b64 + "=" * (-len(payload_b64) % 4)
         payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
-        if payload.get("exp", 0) < time.time():
+        exp = int(payload.get("exp", 0) or 0)
+        if exp < time.time():
+            return None
+        if (payload.get("purpose") or "") != _CHAT_ENTRY_TOKEN_PURPOSE:
             return None
         expected = hmac.new(
             secret.encode(), payload_b64.encode(), hashlib.sha256
         ).hexdigest()
         if not hmac.compare_digest(expected, sig):
             return None
+        now = int(time.time())
+        with _USED_CHAT_ENTRY_TOKEN_LOCK:
+            expired_sigs = [
+                token_sig
+                for token_sig, token_exp in _USED_CHAT_ENTRY_TOKEN_SIGS.items()
+                if int(token_exp or 0) <= now
+            ]
+            for token_sig in expired_sigs:
+                _USED_CHAT_ENTRY_TOKEN_SIGS.pop(token_sig, None)
+            if sig in _USED_CHAT_ENTRY_TOKEN_SIGS:
+                return None
+            _USED_CHAT_ENTRY_TOKEN_SIGS[sig] = exp
         return payload
     except Exception:
         return None
@@ -140,22 +175,56 @@ def create_server_app(db_path=None):
     app = Flask(__name__)
     _secret = os.environ.get("SECRET_KEY")
     if not _secret:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "SECRET_KEY not set; using dev default. Set SECRET_KEY in production."
-        )
         _secret = "dev-secret-change-in-production"
     app.secret_key = _secret
     # Must be identical on every worker (Railway/gunicorn); per-process time.time() breaks sessions across workers.
     app.config["SESSION_SERVER_ID"] = hashlib.sha256(
         (app.secret_key + ":meridian_web_session").encode()
     ).hexdigest()[:32]
+    _sess_max = int(os.environ.get("MERIDIAN_SESSION_MAX_AGE_SEC", "86400"))
+    _sess_idle = int(os.environ.get("MERIDIAN_SESSION_IDLE_SEC", "1800"))
+    app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
+    app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
+    app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
+
+    def _session_clocks_ok() -> bool:
+        """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
+        now = int(time.time())
+        login_at = session.get("_login_at")
+        last = session.get("_last_activity")
+        if login_at is None or last is None:
+            session["_login_at"] = now
+            session["_last_activity"] = now
+            return True
+        max_age = int(app.config.get("MERIDIAN_SESSION_MAX_AGE_SEC", 86400))
+        idle = int(app.config.get("MERIDIAN_SESSION_IDLE_SEC", 1800))
+        try:
+            login_i = int(login_at)
+            last_i = int(last)
+        except (TypeError, ValueError):
+            return False
+        if now - login_i > max_age:
+            return False
+        if now - last_i > idle:
+            return False
+        return True
 
     def _session_valid():
-        """Session is valid only if it matches current server instance (invalidates on restart)."""
+        """Session matches server id and is within max age + idle limits."""
         sid = session.get("_sid")
-        return sid and sid == app.config.get("SESSION_SERVER_ID")
+        if not sid or sid != app.config.get("SESSION_SERVER_ID"):
+            return False
+        return _session_clocks_ok()
+
+    def _touch_session_activity_if_cookie_auth() -> None:
+        """Refresh idle deadline when the browser session cookie is the auth path (not header-based kiosk API)."""
+        if request.headers.get("X-User-Id") and request.headers.get("X-Family-Circle-Id"):
+            return
+        if not session.get("user_id"):
+            return
+        if not _session_valid():
+            return
+        session["_last_activity"] = int(time.time())
 
     @app.after_request
     def add_cors(resp):
@@ -255,6 +324,7 @@ def create_server_app(db_path=None):
                     abort(401, "Not logged in")
                 g.user_id = uid
                 g.family_circle_id = fid
+                _touch_session_activity_if_cookie_auth()
                 return
 
             # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
@@ -269,10 +339,11 @@ def create_server_app(db_path=None):
                 if not uid or not fid:
                     abort(
                         401,
-                        "Log in at /login first or provide X-User-Id and X-Family-Circle-Id",
+                        "Log in at /login.html first or provide X-User-Id and X-Family-Circle-Id",
                     )
                 g.user_id = uid
                 g.family_circle_id = fid
+                _touch_session_activity_if_cookie_auth()
                 return
             # API: headers or session
             user_id = request.headers.get("X-User-Id")
@@ -292,6 +363,7 @@ def create_server_app(db_path=None):
                 abort(401, "X-Family-Circle-Id header required")
             g.user_id = user_id
             g.family_circle_id = family_circle_id
+            _touch_session_activity_if_cookie_auth()
             return
 
         # Remaining routes: webapp HTML and other non-API paths — session required (browser redirect)
@@ -310,8 +382,39 @@ def create_server_app(db_path=None):
             )
         g.user_id = uid
         g.family_circle_id = fid
+        _touch_session_activity_if_cookie_auth()
 
     app.config["container"] = container
+
+    def _set_authenticated_session(user_id: str, family_circle_id: str) -> None:
+        """Canonical session auth write path: set identity + server id marker."""
+        session.permanent = True
+        now = int(time.time())
+        session["user_id"] = user_id
+        session["family_circle_id"] = family_circle_id
+        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        session["_login_at"] = now
+        session["_last_activity"] = now
+
+    def _session_identity_from_payload(payload: dict) -> tuple[str, str]:
+        """Extract normalized identity from signed payload."""
+        user_id = (payload.get("user_id") or "").strip()
+        family_circle_id = (payload.get("family_circle_id") or "").strip()
+        return user_id, family_circle_id
+
+    def _chat_redirect_path_from_payload(payload: dict) -> str:
+        """Build chat destination path from signed payload context."""
+        path = "/chatapp/chat.html"
+        recipient_sb = (payload.get("sendbird_user_id") or "").strip()
+        recipient_name = (payload.get("display_name") or "").strip()
+        auto_start_call = bool(payload.get("auto_start_call"))
+        if recipient_sb:
+            path += "?sendbird_user_id=" + urllib.parse.quote(recipient_sb)
+            if recipient_name:
+                path += "&display_name=" + urllib.parse.quote(recipient_name)
+            if auto_start_call:
+                path += "&auto_start_call=1"
+        return path
 
     @app.route("/api/chat/chat-session-url", methods=["GET"])
     def api_chat_session_url():
@@ -328,12 +431,17 @@ def create_server_app(db_path=None):
             or request.args.get("display_name")
             or ""
         ).strip()
+        auto_start_call = (
+            (request.args.get("auto_start_call") or "").strip().lower()
+            in ("1", "true", "yes", "on")
+        )
         token = _create_chat_entry_token(
             app.secret_key,
             g.user_id,
             g.family_circle_id,
             recipient_sb,
             recipient_name,
+            auto_start_call=auto_start_call,
         )
         base_url = request.url_root.rstrip("/")
         bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
@@ -348,17 +456,11 @@ def create_server_app(db_path=None):
         payload = _verify_chat_entry_token(app.secret_key, token)
         if not payload:
             return jsonify({"error": "Invalid or expired token"}), 403
-        chatapp_url = (
-            os.environ.get("CHATAPP_URL") or request.url_root.rstrip("/")
-        ).rstrip("/")
-        if not chatapp_url:
-            return (
-                jsonify(
-                    {"error": "CHATAPP_URL not configured; cannot redirect to chat"}
-                ),
-                503,
-            )
-        return redirect(chatapp_url + "/auth?token=" + urllib.parse.quote(token))
+        user_id, family_circle_id = _session_identity_from_payload(payload)
+        if not user_id or not family_circle_id:
+            return jsonify({"error": "Invalid token payload"}), 403
+        _set_authenticated_session(user_id, family_circle_id)
+        return redirect(_chat_redirect_path_from_payload(payload))
 
     user_svc = container.get_user_service()
     calendar_svc = container.get_calendar_service()
@@ -367,6 +469,38 @@ def create_server_app(db_path=None):
     location_svc = container.get_location_service()
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
+
+    @app.before_request
+    def verify_family_membership():
+        """Reject API calls where user_id + family_circle_id are not linked in user_family_circle.
+
+        Headers alone used to satisfy _require_family_access when URL family matched X-Family-Circle-Id
+        even if X-User-Id was not a member of that family.
+        """
+        if not request.path.startswith("/api"):
+            return
+        if request.path in (
+            "/api/health",
+            "/api/login",
+            "/api/logout",
+            "/auth",
+            "/kiosk-auth",
+        ):
+            return
+        if request.path == "/api/users" and request.method == "POST":
+            return
+        if request.path == "/api/chat/chat-session-bootstrap":
+            return
+        uid = getattr(g, "user_id", None)
+        fid = getattr(g, "family_circle_id", None)
+        if not uid or not fid:
+            return
+        mem = family_svc.user_belongs_to_family(uid, fid)
+        if not mem.success:
+            return jsonify({"error": mem.error or "Database query failed"}), 500
+        if not mem.data:
+            return jsonify({"error": "forbidden"}), 403
+
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
     sendbird_svc = container.get_sendbird_service()
@@ -580,7 +714,7 @@ def create_server_app(db_path=None):
 
     @app.route("/api/users/<user_id>/photo")
     def api_serve_photo(user_id):
-        # TODO: remove api.py queries and maybe even database_manager? (user container?)
+        # TODO: remove api.py queries and maybe even safe_query_manager? (user container?)
         """Serve user photo. User must be in requester's family. Rejects path traversal in filename."""
         fn = user_svc.get_user_photo_filename(user_id, g.family_circle_id)
         if not fn:
@@ -712,9 +846,16 @@ def create_server_app(db_path=None):
     def api_calendar_events(family_circle_id):
         _require_family_access(family_circle_id)
         date = request.args.get("date")
-        if not date:
-            return jsonify({"error": "missing date"}), 400
-        r = calendar_svc.get_events_for_date(date, family_circle_id=family_circle_id)
+        date_from = request.args.get("from")
+        date_to = request.args.get("to")
+        if date_from and date_to:
+            r = calendar_svc.get_events_in_range(
+                date_from, date_to, family_circle_id=family_circle_id
+            )
+        elif date:
+            r = calendar_svc.get_events_for_date(date, family_circle_id=family_circle_id)
+        else:
+            return jsonify({"error": "missing date or from+to"}), 400
         if not r.success:
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
@@ -887,15 +1028,16 @@ def create_server_app(db_path=None):
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        return jsonify({"data": {"activated": _alert_activated}})
+        return jsonify({"data": {"activated": _get_alert_activated(g.family_circle_id)}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        global _alert_activated
         data = request.get_json() or {}
-        _alert_activated = bool(data.get("activated", False))
-        return jsonify({"data": {"activated": _alert_activated}})
+        activated = _set_alert_activated(
+            g.family_circle_id, bool(data.get("activated", False))
+        )
+        return jsonify({"data": {"activated": activated}})
 
     @app.route("/api/calls/request", methods=["POST"])
     def api_call_request():
@@ -914,6 +1056,8 @@ def create_server_app(db_path=None):
             from_display_name=from_display_name,
         )
         if not r.success:
+            if "not in family circle" in (r.error or "").lower():
+                return jsonify({"error": r.error}), 403
             return jsonify({"error": r.error}), 400
         return jsonify({"data": r.data}), 201
 
@@ -940,15 +1084,31 @@ def create_server_app(db_path=None):
         """Client-reported socket lifecycle events (debug visibility in server logs)."""
         data = request.get_json() or {}
         event = (data.get("event") or "").strip()
+
         if not event:
             return jsonify({"error": "event required"}), 400
-        _logger.info(
-            "Call socket event user_id=%s family_circle_id=%s event=%s details=%s",
-            g.user_id,
-            g.family_circle_id,
-            event,
-            json.dumps(data, separators=(",", ":"))[:700],
-        )
+
+        client_source = (data.get("client_source") or "").strip() or "unknown"
+        client_device_id = (data.get("client_device_id") or "").strip() or "unknown"
+        started_events = {
+            "kiosk_sendbird_websocket_connected",
+            "sendbird_websocket_connected",
+        }
+        issue_events = {
+            "kiosk_calls_sdk_missing",
+            "calls_sdk_missing",
+            "kiosk_sendbird_call_setup_failed",
+            "sendbird_call_setup_failed",
+        }
+        if event in started_events:
+            _logger.info(
+                f"Call socket started event={event} source={client_source} device={client_device_id}"
+            )
+        elif event in issue_events:
+            _logger.info(
+                f"Call socket issue event={event} source={client_source} device={client_device_id}"
+            )
+
         return jsonify({"data": {"ok": True}})
 
     @app.route(
@@ -1009,9 +1169,12 @@ def create_server_app(db_path=None):
         family_circle_id = (request.args.get("family_circle_id") or "").strip()
         if not user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = user_id
-        session["family_circle_id"] = family_circle_id
-        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        mem = family_svc.user_belongs_to_family(user_id, family_circle_id)
+        if not mem.success:
+            return jsonify({"error": mem.error or "Database query failed"}), 500
+        if not mem.data:
+            return jsonify({"error": "forbidden"}), 403
+        _set_authenticated_session(user_id, family_circle_id)
         return redirect("/kiosk/")
 
     @app.route("/api/login", methods=["POST"])
@@ -1020,13 +1183,16 @@ def create_server_app(db_path=None):
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
-        user_id = data.get("user_id")
-        family_circle_id = data.get("family_circle_id")
+        user_id = (data.get("user_id") or "").strip()
+        family_circle_id = (data.get("family_circle_id") or "").strip()
         if not user_id or not family_circle_id:
             return jsonify({"error": "user_id and family_circle_id required"}), 400
-        session["user_id"] = user_id
-        session["family_circle_id"] = family_circle_id
-        session["_sid"] = app.config.get("SESSION_SERVER_ID", "")
+        mem = family_svc.user_belongs_to_family(user_id, family_circle_id)
+        if not mem.success:
+            return jsonify({"error": mem.error or "Database query failed"}), 500
+        if not mem.data:
+            return jsonify({"error": "forbidden"}), 403
+        _set_authenticated_session(user_id, family_circle_id)
         return jsonify({"ok": True})
 
     @app.route("/api/logout", methods=["POST"])
@@ -1091,7 +1257,7 @@ def create_server_app(db_path=None):
         platform = (data.get("platform") or "ios").strip().lower()
         if not token:
             return jsonify({"error": "token required"}), 400
-        push_svc = container.get_push_notification_service()
+        push_svc = container.get_notification_service()
         r = push_svc.register_device_token(g.user_id, token, platform)
         if not r.success:
             return jsonify({"error": r.error}), 400
@@ -1104,7 +1270,7 @@ def create_server_app(db_path=None):
     def api_where_is_everyone(family_circle_id):
         """Request family members to refresh location. Sends push (stub for now)."""
         _require_family_access(family_circle_id)
-        push_svc = container.get_push_notification_service()
+        push_svc = container.get_notification_service()
         r = push_svc.request_location_update(family_circle_id, g.user_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -1116,8 +1282,16 @@ def create_server_app(db_path=None):
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
+    _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
     _repo_root = os.path.dirname(_src)
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
+    if os.path.isfile(os.path.join(_webapp_client, "meridian_api_base.js")):
+
+        @app.route("/meridian_api_base.js")
+        def serve_meridian_api_base_js():
+            """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
+            return send_from_directory(_webapp_client, "meridian_api_base.js")
+
     if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
         user_svc = container.get_user_service()
         register_chatapp_routes(
@@ -1127,7 +1301,25 @@ def create_server_app(db_path=None):
         @app.route("/")
         @app.route("/index.html")
         def serve_index():
-            return send_from_directory(_webapp_dist, "index.html")
+            """Serve dashboard HTML; inject session so the client need not rely on a second /api/session round-trip."""
+            index_path = os.path.join(_webapp_dist, "index.html")
+            with open(index_path, encoding="utf-8") as f:
+                html = f.read()
+            uid = session.get("user_id") or ""
+            fid = session.get("family_circle_id") or ""
+            boot = json.dumps({"user_id": uid, "family_circle_id": fid})
+            idle_sec = int(app.config.get("MERIDIAN_SESSION_IDLE_SEC", 1800))
+            inject = (
+                f"<script>window.__MERIDIAN_SESSION__={boot};"
+                f"window.__MERIDIAN_IDLE_LOGOUT_SEC__={idle_sec};</script>"
+            )
+            if "</head>" in html:
+                html = html.replace("</head>", inject + "</head>", 1)
+            else:
+                html = inject + html
+            resp = Response(html, mimetype="text/html; charset=utf-8")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
 
         @app.route("/login.html")
         def serve_login():
@@ -1141,10 +1333,6 @@ def create_server_app(db_path=None):
         @app.route("/info.html")
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
-
-        @app.route("/meridian_api_base.js")
-        def serve_meridian_api_base_js():
-            return send_from_directory(_webapp_dist, "meridian_api_base.js")
 
         @app.route("/meridian_medications_inline.js")
         def serve_meridian_medications_inline_js():

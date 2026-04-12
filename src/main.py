@@ -99,7 +99,7 @@ def run_kiosk(logger, api_url):
         kiosk_user_id=KIOSK_USER_ID,
         family_circle_id=PATIENT_FAMILY_CIRCLE_ID,
     )
-    logger.info("Kiosk, server and webapp created successfully")
+    logger.debug("Kiosk started")
     app.run()
 
 
@@ -119,6 +119,9 @@ if _src_dir not in sys.path:
 # --fullscreen = TV mode on second monitor (full 1080×1920, no dev scaling)
 if "--fullscreen" in sys.argv:
     os.environ["KIOSK_TV_MODE"] = "1"
+# --win-kiosk = 2736×1824 window (see shared.config get_kiosk_win_kiosk)
+if "--win-kiosk" in sys.argv:
+    os.environ["KIOSK_WIN_KIOSK"] = "1"
 
 from shared.config import (
     get_log_level,
@@ -177,8 +180,20 @@ def _start_local_api_server(logger):
 def run_local_server_and_db(logger):
     logger.debug("Database: local - %s", get_database_path())
     local_api_url = _start_local_api_server(logger)
-    src_dir = os.path.dirname(os.path.abspath(__file__))
 
+    seed_status = "skipped"
+    try:
+        from dev.demo.seed import run_seed
+
+        if run_seed(local_api_url):
+            seed_status = "seeded"
+        else:
+            seed_status = "skipped"
+    except Exception as e:
+        seed_status = "failed"
+        logger.warning(f"Demo seed failed: {e}")
+
+    src_dir = os.path.dirname(os.path.abspath(__file__))
     try:
         build_webapp(logger, local_api_url, src_dir)
         build_chatapp(logger, local_api_url, src_dir)
@@ -186,23 +201,13 @@ def run_local_server_and_db(logger):
         logger.error("Build failed (%s).", e)
         sys.exit(1)
 
-    try:
-        from dev.demo.seed import run_seed
-
-        if run_seed(local_api_url):
-            logger.info("Demo data seeded")
-        else:
-            logger.warning("Demo seed failed or skipped")
-    except Exception as e:
-        logger.warning(f"Demo seed failed: {e}")
-
     logger.debug("Database loaded")
 
     os.environ["WEBAPP_URL"] = local_api_url
     os.environ["CORS_ORIGIN"] = local_api_url
 
-    logger.info(f"API/DB: {local_api_url}")
-    logger.info(f"Webapp: {local_api_url}")
+    logger.info(f"Ready: {local_api_url}")
+    logger.debug(f"Seed status: {seed_status}")
 
     return local_api_url
 
@@ -232,7 +237,9 @@ def set_logging():
     logging.getLogger("apps.server.database_services.location").setLevel(
         logging.WARNING
     )
-    logging.getLogger("apps.server.database_manager").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.safe_query_manager").setLevel(
+        logging.WARNING
+    )
     logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
     return logger

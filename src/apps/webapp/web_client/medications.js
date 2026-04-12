@@ -1,6 +1,6 @@
 /**
- * Medications: today's doses on #healthMedsTakeHost; inline editing only on #settingsMedsEditor (kiosk parity).
- * Exposes MeridianMedications.init(apiUrl, familyCircleId, showStatus). Requires meridian_medications_inline.js.
+ * Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring. MeridianMedications.init(...). Requires meridian_medications_inline.js.
+ * Scope: DOM for #healthMedsTakeHost / #healthMedsEditorHost and credentialed fetches. Not: kiosk embed (kiosk_medications_embed.js), FDA search, or server routes.
  */
 (function () {
     'use strict';
@@ -18,16 +18,89 @@
         '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><line x1="7" y1="3" x2="17" y2="3"/></svg>';
 
-    function escapeHtml(s) {
-        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function escapeAttr(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    }
-
     function buildTakeListHTML() {
-        return '<div id="healthMedsList">Loading…</div>';
+        return (
+            '<div id="healthMedsStatusBar" class="health-meds-status" hidden></div>' +
+            '<div id="healthMedsList" class="health-meds-list-host">' +
+            '<div class="health-meds-skeleton" aria-busy="true" aria-label="Loading medications">' +
+            '<div class="health-meds-skeleton__card"></div>' +
+            '<div class="health-meds-skeleton__card"></div>' +
+            '<div class="health-meds-skeleton__card"></div>' +
+            '</div></div>' +
+            '<section id="healthMedsCorrectionsWrap" class="med-corrections" aria-labelledby="healthMedsCorrectionsTitle">' +
+            '<h3 class="med-corrections__title" id="healthMedsCorrectionsTitle">Adjust today\u2019s logs</h3>' +
+            '<p class="muted med-corrections__hint">Undo a scheduled dose or remove the last as-needed dose if something was marked by mistake.</p>' +
+            '<div id="healthMedsCorrectionsList" class="med-corrections__list"></div>' +
+            '</section>'
+        );
+    }
+
+    function collectDisplayedMedRows(data) {
+        var timed = (data && data.timed_medications) || [];
+        var prn = (data && data.prn_medications) || [];
+        var seen = {};
+        var timedRows = [];
+        timed.forEach(function (m) {
+            var rowKey = String(m.id) + '|' + String(m.time || '');
+            if (seen[rowKey]) return;
+            seen[rowKey] = true;
+            timedRows.push(m);
+        });
+        var prnRows = [];
+        prn.forEach(function (m) {
+            if (seen[m.id]) return;
+            seen[m.id] = true;
+            prnRows.push(m);
+        });
+        return { timedRows: timedRows, prnRows: prnRows };
+    }
+
+    function paintCaregiverStatus(rows) {
+        var bar = document.getElementById('healthMedsStatusBar');
+        if (!bar) return;
+        var tr = rows.timedRows;
+        var pr = rows.prnRows;
+        var tTotal = tr.length;
+        var tDone = tr.filter(function (m) { return m.status === 'done'; }).length;
+        var tDue = tTotal - tDone;
+        var pTotal = pr.length;
+        if (tTotal === 0 && pTotal === 0) {
+            bar.innerHTML = '';
+            bar.setAttribute('hidden', '');
+            return;
+        }
+        bar.removeAttribute('hidden');
+        var chips = [];
+        if (tTotal > 0) {
+            chips.push(
+                '<span class="health-meds-chip health-meds-chip--stat" role="status">' +
+                    tDone +
+                    ' / ' +
+                    tTotal +
+                    ' scheduled taken</span>'
+            );
+            if (tDue > 0) {
+                chips.push(
+                    '<span class="health-meds-chip health-meds-chip--due">' +
+                        tDue +
+                        ' still due</span>'
+                );
+            }
+        }
+        if (pTotal > 0) {
+            var pDoses = pr.reduce(function (a, m) {
+                return a + (parseInt(m.doses_today, 10) || 0);
+            }, 0);
+            chips.push(
+                '<span class="health-meds-chip health-meds-chip--prn">PRN ' +
+                    pDoses +
+                    ' dose' +
+                    (pDoses === 1 ? '' : 's') +
+                    ' today</span>'
+            );
+        }
+        bar.innerHTML =
+            '<div class="health-meds-chips" role="status">' + chips.join('') + '</div>';
     }
 
     function buildSettingsEditorHTML() {
@@ -50,82 +123,284 @@
             '</div>';
     }
 
-    function itemHtmlTimed(m) {
-        var name = escapeHtml(m.name);
+    function itemHtmlTimedMain(m) {
+        var name = meridianEscapeHtml(m.name);
         var done = m.status === 'done';
         var slot = m.time || '';
-        var meta = escapeHtml(slot) + (done ? ' · Taken \u2713' : ' · Not taken');
-        var takeLbl = done ? 'Uncheck' : 'Take';
-        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + escapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
-        return '<li data-med-id="' + m.id + '" data-med-time="' + escapeAttr(slot) + '" data-med-prn="0" data-med-done="' + (done ? '1' : '0') + '">' +
-            '<article class="med-card">' +
-            '<p class="med-card__title">' + name + '</p>' +
-            '<p class="med-card__meta">' + meta + '</p>' +
+        var inlineMeta = ' · ' + meridianEscapeHtml(slot);
+        if (m.frequency && String(m.frequency).trim()) {
+            inlineMeta = inlineMeta + ' · ' + meridianEscapeHtml(String(m.frequency).trim());
+        }
+        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim())
+            ? '<p class="med-card__rxcui">RxCUI ' + meridianEscapeHtml(String(m.fda_rxcui).trim()) + '</p>'
+            : '';
+        var cardState =
+            (done ? 'med-card med-card--done' : 'med-card med-card--pending') + ' med-card--web';
+        if (done) {
+            return (
+                '<li data-med-id="' +
+                m.id +
+                '" data-med-time="' +
+                meridianEscapeAttr(slot) +
+                '" data-med-prn="0" data-med-done="1">' +
+                '<article class="' +
+                cardState +
+                '">' +
+                '<div class="med-card__web-row">' +
+                '<div class="med-card__web-main">' +
+                '<p class="med-card__title">' +
+                name +
+                '<span class="med-card__title-inline">' +
+                inlineMeta +
+                '</span></p>' +
+                rxcui +
+                '</div></div></article></li>'
+            );
+        }
+        var badgeHtml =
+            '<span class="med-card__badge med-card__badge--due">Not done</span>';
+        return (
+            '<li data-med-id="' +
+            m.id +
+            '" data-med-time="' +
+            meridianEscapeAttr(slot) +
+            '" data-med-prn="0" data-med-done="0">' +
+            '<article class="' +
+            cardState +
+            '">' +
+            '<div class="med-card__web-row">' +
+            '<div class="med-card__web-main">' +
+            '<p class="med-card__title">' +
+            name +
+            '<span class="med-card__title-inline">' +
+            inlineMeta +
+            '</span></p>' +
             rxcui +
+            '</div>' +
+            badgeHtml +
             '<div class="med-card__actions">' +
-            '<button type="button" class="med-mark-taken-btn btn-inline btn-take">' + takeLbl + '</button>' +
-            '</div></article></li>';
+            '<button type="button" class="med-mark-taken-btn btn-med-action btn-med-action--take">Take</button></div>' +
+            '</div></article></li>'
+        );
     }
 
-    function itemHtmlPrn(m) {
-        var name = escapeHtml(m.name);
-        var taken = m.status === 'taken';
-        var status = m.last_taken ? 'Last: ' + escapeHtml(m.last_taken) : (taken ? 'Taken \u2713' : 'Not taken today');
-        var takeLbl = taken ? 'Uncheck' : 'Take';
-        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim()) ? '<p class="med-card__meta med-card__rxcui">RxCUI ' + escapeHtml(String(m.fda_rxcui).trim()) + '</p>' : '';
-        return '<li data-med-id="' + m.id + '" data-med-time="prn" data-med-prn="1" data-med-done="' + (taken ? '1' : '0') + '">' +
-            '<article class="med-card">' +
-            '<p class="med-card__title">' + name + ' (PRN)</p>' +
-            '<p class="med-card__meta">' + status + '</p>' +
-            rxcui +
+    function itemHtmlTimedCorrection(m) {
+        var name = meridianEscapeHtml(m.name);
+        var slot = m.time || '';
+        var inlineMeta = ' · ' + meridianEscapeHtml(slot);
+        if (m.frequency && String(m.frequency).trim()) {
+            inlineMeta = inlineMeta + ' · ' + meridianEscapeHtml(String(m.frequency).trim());
+        }
+        return (
+            '<li data-med-id="' +
+            m.id +
+            '" data-med-time="' +
+            meridianEscapeAttr(slot) +
+            '" data-med-prn="0" data-med-done="1">' +
+            '<article class="med-card med-card--done med-card--web med-card--correction">' +
+            '<div class="med-card__web-row">' +
+            '<div class="med-card__web-main">' +
+            '<p class="med-card__title">' +
+            name +
+            '<span class="med-card__title-inline">' +
+            inlineMeta +
+            '</span></p>' +
+            '</div>' +
             '<div class="med-card__actions">' +
-            '<button type="button" class="med-mark-taken-btn btn-inline btn-take">' + takeLbl + '</button>' +
-            '</div></article></li>';
+            '<button type="button" class="med-mark-taken-btn btn-med-action btn-med-action--undo">Undo</button></div>' +
+            '</div></article></li>'
+        );
+    }
+
+    function itemHtmlPrnMain(m) {
+        var name = meridianEscapeHtml(m.name);
+        var doses = parseInt(m.doses_today, 10) || 0;
+        var maxRaw = m.max_daily;
+        var maxNum = maxRaw != null && String(maxRaw).trim() !== '' ? parseInt(maxRaw, 10) : NaN;
+        var hasMax = !isNaN(maxNum) && maxNum > 0;
+        var canTake = !hasMax || doses < maxNum;
+        var freqPart = (m.frequency && String(m.frequency).trim())
+            ? '<span class="med-card__title-inline"> · ' + meridianEscapeHtml(String(m.frequency).trim()) + '</span>'
+            : '';
+        var lastLine = '';
+        if (doses > 0) {
+            var lastParts = [];
+            if (m.last_taken) {
+                lastParts.push('Last: ' + meridianEscapeHtml(String(m.last_taken)));
+            }
+            if (doses > 1) {
+                lastParts.push(String(doses) + ' today');
+            }
+            if (lastParts.length) {
+                lastLine = '<p class="med-card__meta">' + lastParts.join(' · ') + '</p>';
+            }
+        }
+        var limitNote = '';
+        if (hasMax && !canTake) {
+            limitNote =
+                '<p class="med-card__prn-limit-note" role="status">' +
+                'Daily limit reached for today (' +
+                doses +
+                ' of ' +
+                maxNum +
+                '). Open <strong>Adjust today\u2019s logs</strong> below if you need to remove a dose.' +
+                '</p>';
+        }
+        var rxcui = (m.fda_rxcui && String(m.fda_rxcui).trim())
+            ? '<p class="med-card__rxcui">RxCUI ' + meridianEscapeHtml(String(m.fda_rxcui).trim()) + '</p>'
+            : '';
+        var cardState =
+            'med-card med-card--prn' +
+            (doses > 0 ? ' med-card--done' : ' med-card--pending') +
+            ' med-card--web';
+        var badgeHtml =
+            doses === 0
+                ? '<span class="med-card__badge med-card__badge--prn">Not taken today</span>'
+                : '';
+        var actions = '';
+        if (canTake) {
+            actions =
+                '<div class="med-card__actions">' +
+                '<button type="button" class="med-mark-taken-btn btn-med-action btn-med-action--take" data-prn-action="take">Take</button></div>';
+        }
+        return (
+            '<li data-med-id="' +
+            m.id +
+            '" data-med-time="prn" data-med-prn="1" data-prn-doses="' +
+            doses +
+            '">' +
+            '<article class="' +
+            cardState +
+            '">' +
+            '<div class="med-card__web-row">' +
+            '<div class="med-card__web-main">' +
+            '<p class="med-card__title">' +
+            name +
+            ' <span class="med-card__prn-label">(as needed)</span>' +
+            freqPart +
+            '</p>' +
+            lastLine +
+            limitNote +
+            rxcui +
+            '</div>' +
+            badgeHtml +
+            actions +
+            '</div></article></li>'
+        );
+    }
+
+    function itemHtmlPrnCorrection(m) {
+        var name = meridianEscapeHtml(m.name);
+        var doses = parseInt(m.doses_today, 10) || 0;
+        if (doses < 1) return '';
+        var sub =
+            doses === 1 ? '1 dose logged today' : String(doses) + ' doses logged today';
+        return (
+            '<li data-med-id="' +
+            m.id +
+            '" data-med-time="prn" data-med-prn="1" data-prn-doses="' +
+            doses +
+            '">' +
+            '<article class="med-card med-card--prn med-card--done med-card--web med-card--correction">' +
+            '<div class="med-card__web-row">' +
+            '<div class="med-card__web-main">' +
+            '<p class="med-card__title">' +
+            name +
+            ' <span class="med-card__prn-label">(as needed)</span></p>' +
+            '<p class="med-card__meta">' +
+            meridianEscapeHtml(sub) +
+            '</p></div>' +
+            '<div class="med-card__actions">' +
+            '<button type="button" class="med-mark-taken-btn btn-med-action btn-med-action--undo" data-prn-action="undo">Undo</button></div>' +
+            '</div></article></li>'
+        );
     }
 
     function paintListFromData(data) {
-        var timed = (data && data.timed_medications) || [];
-        var prn = (data && data.prn_medications) || [];
-        var seen = {};
-        var items = [];
-        timed.forEach(function (m) {
-            if (seen[m.id]) return;
-            seen[m.id] = true;
-            items.push(itemHtmlTimed(m));
+        var rows = collectDisplayedMedRows(data);
+        var mainItems = rows.timedRows
+            .map(itemHtmlTimedMain)
+            .concat(rows.prnRows.map(itemHtmlPrnMain));
+        var corrParts = [];
+        rows.timedRows.forEach(function (m) {
+            if (m.status === 'done') corrParts.push(itemHtmlTimedCorrection(m));
         });
-        prn.forEach(function (m) {
-            if (seen[m.id]) return;
-            seen[m.id] = true;
-            items.push(itemHtmlPrn(m));
+        rows.prnRows.forEach(function (m) {
+            var row = itemHtmlPrnCorrection(m);
+            if (row) corrParts.push(row);
         });
+        paintCaregiverStatus(rows);
         var listEl = document.getElementById('healthMedsList');
-        var emptyMsg = '<p class="muted">No medications</p>';
+        var corrEl = document.getElementById('healthMedsCorrectionsList');
+        var emptyMsg =
+            '<div class="health-meds-empty">' +
+            '<p class="health-meds-empty__title">No medications yet</p>' +
+            '<button type="button" class="btn-health-secondary health-meds-empty__cta">Open medication list</button>' +
+            '<p class="health-meds-empty__hint muted">Expand <strong>Medications</strong> in the left menu, or use <strong>Settings</strong> &rarr; Open medication list. <strong>Info</strong> tab for the guide.</p>' +
+            '</div>';
         if (listEl) {
-            listEl.innerHTML = items.length === 0 ? emptyMsg : '<ul class="list-panel">' + items.join('') + '</ul>';
+            listEl.innerHTML =
+                mainItems.length === 0
+                    ? emptyMsg
+                    : '<ul class="list-panel list-panel--meds">' + mainItems.join('') + '</ul>';
+        }
+        if (corrEl) {
+            corrEl.innerHTML =
+                corrParts.length === 0
+                    ? '<p class="muted med-corrections__empty">Nothing to adjust right now.</p>'
+                    : '<ul class="list-panel list-panel--meds list-panel--corrections">' +
+                      corrParts.join('') +
+                      '</ul>';
         }
     }
 
     function loadMeds() {
         var listEl = document.getElementById('healthMedsList');
         if (!listEl || !_familyCircleId) return;
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications', { credentials: 'include' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
+                var bar = document.getElementById('healthMedsStatusBar');
                 if (!data || !data.data) {
-                    listEl.innerHTML = '<p class="muted">Could not load medications</p>';
+                    listEl.innerHTML =
+                        '<div class="health-meds-empty">' +
+                        '<p class="health-meds-empty__title">Could not load medications</p>' +
+                        '<p class="health-meds-empty__hint muted">Check your connection and refresh the page.</p>' +
+                        '</div>';
+                    if (bar) {
+                        bar.innerHTML =
+                            '<div class="health-meds-chips" role="alert">' +
+                            '<span class="health-meds-chip health-meds-chip--error">Snapshot unavailable</span>' +
+                            '</div>';
+                        bar.removeAttribute('hidden');
+                    }
                     return;
                 }
                 paintListFromData(data.data);
             })
-            .catch(function () { listEl.innerHTML = '<p class="muted">Could not load medications</p>'; });
+            .catch(function () {
+                listEl.innerHTML =
+                    '<div class="health-meds-empty">' +
+                    '<p class="health-meds-empty__title">Could not load medications</p>' +
+                    '<p class="health-meds-empty__hint muted">Check your connection and refresh the page.</p>' +
+                    '</div>';
+                var bar = document.getElementById('healthMedsStatusBar');
+                if (bar) {
+                    bar.innerHTML =
+                        '<div class="health-meds-chips" role="alert">' +
+                        '<span class="health-meds-chip health-meds-chip--error">Snapshot unavailable</span>' +
+                        '</div>';
+                    bar.removeAttribute('hidden');
+                }
+            });
     }
 
     function loadInlineMedsFromProfile() {
         var listEl = document.getElementById('healthMedsInlineList');
         if (!listEl || !_familyCircleId) return;
         if (_healthMedAutosave) _healthMedAutosave.cancel();
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(
             apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
             { credentials: 'include' }
@@ -146,7 +421,19 @@
         var medId = parseInt(li.getAttribute('data-med-id'), 10);
         var timeSlot = li.getAttribute('data-med-time') || '';
         if (!timeSlot) return;
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var article = li.querySelector('article.med-card');
+        var btns = li.querySelectorAll('button.med-mark-taken-btn');
+        function setBusy(busy) {
+            if (article) {
+                if (busy) article.setAttribute('aria-busy', 'true');
+                else article.removeAttribute('aria-busy');
+            }
+            btns.forEach(function (b) {
+                b.disabled = !!busy;
+            });
+        }
+        setBusy(true);
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
         fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications/' + medId + '/mark-taken', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -155,23 +442,34 @@
         })
             .then(function (r) {
                 if (r.ok) {
-                    _showStatus(wantTaken ? '\u2713 Marked taken' : 'Unchecked', 'success');
                     loadMeds();
                 } else return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
             })
-            .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); });
+            .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); })
+            .then(function () { setBusy(false); });
     }
 
     function onTakeListClick(e) {
+        var btn = e.target.closest('.med-mark-taken-btn');
+        if (!btn) return;
         var li = e.target.closest('li[data-med-id]');
-        if (!li || !e.target.classList.contains('med-mark-taken-btn')) return;
+        if (!li) return;
+        if (li.getAttribute('data-med-prn') === '1') {
+            var pact = btn.getAttribute('data-prn-action') || '';
+            if (pact === 'undo') {
+                markMedTaken(li, false);
+            } else if (pact === 'take') {
+                markMedTaken(li, true);
+            }
+            return;
+        }
         var done = li.getAttribute('data-med-done') === '1';
         markMedTaken(li, !done);
     }
 
     function initMedications() {
         var takeHost = document.getElementById('healthMedsTakeHost');
-        var editorRoot = document.getElementById('settingsMedsEditor');
+        var editorRoot = document.getElementById('healthMedsEditorHost');
         var pageHealth = document.getElementById('pageHealth');
 
         if (typeof MeridianMedicationsInline === 'undefined') {
@@ -200,7 +498,7 @@
             var saveBtn = document.getElementById('healthMedsSaveBtn');
             function runMedsSave(silent) {
                 if (!_familyCircleId) return Promise.resolve();
-                var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var rows = MeridianMedicationsInline.collectRows(inlineList);
                 return MeridianMedicationsInline.saveDiff(apiBase, _familyCircleId, _inlineSnapshot, rows)
                     .then(function () {
@@ -238,6 +536,10 @@
             MeridianMedicationsInline.wireList(inlineList, addBtn, delBtn, selAllBtn, {
                 onListMutate: function () {
                     if (_healthMedAutosave) _healthMedAutosave.schedule();
+                },
+                onRowsDeleted: function () {
+                    if (_healthMedAutosave) _healthMedAutosave.cancel();
+                    runMedsSave(false);
                 }
             });
 

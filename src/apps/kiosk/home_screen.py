@@ -1,17 +1,49 @@
 """
-Home screen: Option 5 - Up Next, What's Next Today, side-by-side action buttons.
-Owns all home presentation: structure, schedule data merge, and HTML for dynamic content.
-Event modal: single source in events_handler.get_event_form_overlay_html().
+Kiosk Home screen: layout, Up Next + “what’s next today” timeline, and merged schedule item loading.
+
+Scope: merge medications + calendar into sortable items; emit HTML for injected regions; clock fragment.
+Not here: event modal markup (schedule_screen), nav/screen switching (app), per-second clock updates (app), or non-home screens.
 """
 
 import html as html_module
 import json
 import logging
 
-from . import clock_widget
-from . import events_handler
+from . import schedule_screen
 
 logger = logging.getLogger(__name__)
+
+
+def build_clock_html(services) -> str:
+    """Build the full clock display HTML: day, period, icon, time, date, year."""
+    from . import html_primitives as hp
+
+    time_svc = services.get_time_service()
+    day = time_svc.get_dayof_week().upper() if time_svc else ""
+    date = time_svc.get_month_day() if time_svc else ""
+    year = time_svc.get_year() if time_svc else ""
+    clock_time = time_svc.get_time() if time_svc else ""
+    if time_svc and getattr(time_svc, "get_day_period", None):
+        period, sprite_period = time_svc.get_day_period()
+        period = period.upper()
+    else:
+        period = (time_svc.get_am_pm().upper() if time_svc else "")
+        sprite_period = "night"
+    icon_html = f'<div class="clock-period-sprite" data-period="{sprite_period}" title=""></div>'
+
+    clock = '<div id="clock-main">'
+    clock += hp.kiosk_subheader(day, id_="clock-day")
+    clock += hp.kiosk_hero(clock_time, id_="clock-time")
+    date_line = time_svc.get_clock_date_line() if time_svc and getattr(time_svc, "get_clock_date_line", None) else f"{date}, {year}"
+    clock += hp.kiosk_body_large(date_line, id_="clock-date")
+    clock += "</div>"
+
+    sprite_and_text = '<div id="sprite-and-text">'
+    sprite_and_text += icon_html
+    sprite_and_text += hp.kiosk_caption(period, id_="clock-period")
+    sprite_and_text += "</div>"
+
+    return f'<div class="clock-container">{clock}{sprite_and_text}</div>'
 
 
 def build_home_html(
@@ -20,7 +52,7 @@ def build_home_html(
     """Up Next, today's timeline, (Health lives in footer)."""
     from . import html_primitives as hp
 
-    clock = clock_widget.build_clock_html(services)
+    clock = build_clock_html(services)
     items, now = load_schedule_items(services)
     up_next_html = build_up_next_html(items, now)
     timeline_html = build_timeline_html(items)
@@ -33,7 +65,7 @@ def build_home_html(
         clock
         + up_next
         + timeline
-        + events_handler.get_event_form_overlay_html()
+        + schedule_screen.get_event_form_overlay_html()
     )
     return f'<div class="home-screen">{inner}</div>'
 
@@ -42,8 +74,8 @@ def load_schedule_items(services) -> tuple[list, object]:
     """Fetch meds + events, merge into chronological items. Returns (items, now)."""
     import datetime
 
-    med_svc = services.get("medication_service")
-    cal_svc = services.get("calendar_service")
+    med_svc = services.get_medication_service()
+    cal_svc = services.get_calendar_service()
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     now = datetime.datetime.now()
     items = []
@@ -72,6 +104,17 @@ def load_schedule_items(services) -> tuple[list, object]:
                     }
                 )
             for m in data.get("prn_medications", []):
+                doses = int(m.get("doses_today") or 0)
+                max_raw = m.get("max_daily")
+                max_d = None
+                if max_raw is not None and str(max_raw).strip() != "":
+                    try:
+                        max_d = int(max_raw)
+                        if max_d <= 0:
+                            max_d = None
+                    except (TypeError, ValueError):
+                        max_d = None
+                can_take_more = max_d is None or doses < max_d
                 items.append(
                     {
                         "type": "prn",
@@ -80,6 +123,7 @@ def load_schedule_items(services) -> tuple[list, object]:
                         "done": m.get("status") == "taken",
                         "med_id": m.get("id"),
                         "time_slot": "prn",
+                        "prn_can_take_more": can_take_more,
                     }
                 )
     if cal_svc:
@@ -112,11 +156,20 @@ def load_schedule_items(services) -> tuple[list, object]:
     return items, now
 
 
+def _item_blocks_up_next(it: dict, now) -> bool:
+    """True if this row still needs attention (scheduled pending in the future, or PRN with room for more doses)."""
+    if it.get("type") == "prn":
+        return bool(it.get("prn_can_take_more", True))
+    if it["dt"] < now:
+        return False
+    return not it.get("done")
+
+
 def build_up_next_html(items: list, now) -> str:
-    """Build Up Next card HTML. First non-done future item, or 'All done for today'."""
+    """Build Up Next card HTML. First item still needing action, or 'All done for today'."""
     next_item = None
     for it in items:
-        if not it.get("done") and it["dt"] >= now:
+        if _item_blocks_up_next(it, now):
             next_item = it
             break
     if not next_item:
@@ -129,33 +182,24 @@ def build_up_next_html(items: list, now) -> str:
         h = mins // 60
         m = mins % 60
         subtext = f"in {h}h {m}m" if m else f"in {h} hour"
-    time_str = next_item["dt"].strftime("%I:%M %p")
-    icon = "💊" if next_item["type"] == "med" else "📅"
+    time_str = (
+        "As needed"
+        if next_item.get("type") == "prn"
+        else next_item["dt"].strftime("%I:%M %p")
+    )
+    icon = "💊" if next_item["type"] in ("med", "prn") else "📅"
     title_esc = html_module.escape(next_item["title"])
     return f'<div class="up-next-card-inner"><span class="up-next-icon">{icon}</span><div><span class="up-next-title">{title_esc}</span><span class="up-next-sub">{time_str} • {subtext}</span></div></div>'
 
 
 def build_timeline_html(items: list) -> str:
-    """Build What's Next Today list: 1-2 done, 1-3 upcoming, in chronological order."""
+    """Build What's Next Today: every item for today, chronological; list scrolls in CSS if tall."""
     if not items:
         return (
             '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
         )
-    done_count = 0
-    upcoming_count = 0
-    shown = []
-    for it in items:
-        if it.get("done"):
-            if done_count >= 2:
-                continue
-            done_count += 1
-        else:
-            if upcoming_count >= 3:
-                continue
-            upcoming_count += 1
-        shown.append(it)
     result = []
-    for it in shown:
+    for it in items:
         done = it.get("done")
         bar_class = (
             "timeline-bar-med" if it["type"] in ("med", "prn") else "timeline-bar-event"
@@ -168,15 +212,20 @@ def build_timeline_html(items: list) -> str:
         title = it.get("display", it.get("title", "?"))
         title_esc = html_module.escape(str(title))
         extra = ""
-        if (it.get("type") in ("med", "prn")) and it.get("med_id") is not None:
+        if it.get("type") == "med" and it.get("med_id") is not None:
             mid = html_module.escape(str(it["med_id"]))
             slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
-            lbl = "Undo" if done else "Taken"
-            extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn" data-med-id="{mid}" data-med-time="{slot}" data-med-done="{str(done).lower()}">{lbl}</button></span>'
+            if not done:
+                extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn btn-small" data-med-id="{mid}" data-med-time="{slot}" data-med-done="false">Take</button></span>'
+        elif it.get("type") == "prn" and it.get("med_id") is not None:
+            mid = html_module.escape(str(it["med_id"]))
+            slot = html_module.escape(str(it.get("time_slot", "")), quote=True)
+            can_more = it.get("prn_can_take_more", True)
+            if (not done) or can_more:
+                extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn btn-small" data-med-id="{mid}" data-med-time="{slot}" data-prn-action="take" data-med-done="false">Take</button></span>'
         elif it.get("type") == "event" and it.get("event_id"):
-            eid = html_module.escape(str(it["event_id"]))
             edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
-            extra = f'<span class="timeline-item-actions"><button type="button" class="event-edit-btn timeline-action-btn" data-event="{edata}">Edit</button><button type="button" class="event-delete-btn timeline-action-btn" data-event-id="{eid}">Delete</button></span>'
+            extra = f'<span class="timeline-item-actions"><button type="button" class="event-edit-btn timeline-action-btn btn-small" data-event="{edata}">Edit</button></span>'
         result.append(
             f'<div class="{cls}"><span class="{bar_class}"></span><span class="timeline-item-main">{time_str} • {title_esc}{check}</span>{extra}</div>'
         )

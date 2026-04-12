@@ -35,67 +35,19 @@
   /* ===== BORDER RADIUS ===== */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-pill: 2px;       /* Thin pill shape for timeline bars */
-  --radius-full: 50%;
 
-  /* ===== COLOR PALETTE ===== */
-  /* Neutrals & Background (Warm & Familiar — design system base) */
-  --bg: #faf8f3;
-  --text: #4a4a4a;
-  --text-muted: #545454;
-  --border: #ddd;
-  --border-light: #ccc;
+  /* ===== PAGE SHELL (pigments: shared/base.css) ===== */
+  --bg: var(--warm-base);
+  --text: var(--warm-text);
+  --text-muted: var(--warm-muted);
 
-  /* Surfaces */
-  --med-surface: #f0f5fa;      /* Light blue for medication */
-  --events-surface: #f5faf0;   /* Light green for events */
-  --surface-muted: #e8e8e8;    /* Neutral gray */
-  --surface-hover: #ddd;       /* Hover state for muted surfaces */
-
-  /* Primary (Teal - medication/medical) */
-  --primary: #2E7D9B;
-  --primary-dark: #1e5d7a;
-  --primary-hover: #3a8fab;
-
-  /* Accent (Blue - interactive elements) */
-  --accent: #4080c0;
-  --accent-dark: #2d5a8f;
-
-  /* Secondary (Teal-green - events/calendar) */
-  --secondary: #1a9b8a;
-
-  /* Map - patient-at-home marker */
-  --map-marker-patient: #2d7a3e;
-
-  /* Status colors */
-  --avatar-fallback: #999;
-  --error: #c00;
-  --warning: #ff8000;
-  --warning-bright: #ff3300;
-
-  /* Overlays (with alpha for transparency) */
-  --overlay-dark: rgba(0, 0, 0, 0.5);
-  --overlay-light: rgba(0, 0, 0, 0.05);
-  --overlay-medium: rgba(0, 0, 0, 0.1);
-
-  /* ===== TRANSITIONS ===== */
-  --transition-press: transform 0.08s ease, background 0.08s ease;
-  --active-scale: 0.97;  /* Scale down slightly when pressed */
-}
-
-/* =============================================================================
-   FONTS
-   ============================================================================= */
-
-@font-face {
-  font-family: 'AtkinsonHyperlegible';
-  src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'AtkinsonHyperlegible';
-  font-weight: bold;
-  src: url('../../../shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf') format('truetype');
+  /* ===== BUTTON CATEGORY DEFAULTS ===== */
+  --btn-large-font-size: var(--font-caption);
+  --btn-large-min-height: max(4.8vh, 52px);
+  --btn-large-radius: var(--radius-sm);
+  --btn-small-font-size: var(--font-caption);
+  --btn-small-min-height: 36px;
+  --btn-small-radius: var(--radius-sm);
 }
 
 /* =============================================================================
@@ -112,7 +64,7 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  font-family: AtkinsonHyperlegible, sans-serif;
+  font-family: var(--font-family);
   background: var(--bg);
   color: var(--text);
   line-height: var(--line-height);
@@ -132,7 +84,7 @@ body {
   padding: 0 var(--safe-margin);
   gap: var(--space-md);
   background: var(--bg);
-  border-bottom: 2px solid var(--border);
+  border-bottom: none;
 }
 
 .nav-tab {
@@ -161,9 +113,9 @@ body {
 /* Current screen — orientation: “where am I” (design system) */
 #kiosk-nav .nav-tab--active {
   font-weight: 700;
-  color: var(--primary);
-  background: rgba(46, 125, 155, 0.08);
-  box-shadow: inset 0 -4px 0 0 var(--primary);
+  color: var(--accent);
+  background: transparent;
+  box-shadow: none;
 }
 
 #kiosk-footer {
@@ -193,9 +145,9 @@ body {
 
 #kiosk-footer .nav-tab--active {
   font-weight: 700;
-  color: var(--primary);
-  background: rgba(46, 125, 155, 0.08);
-  box-shadow: inset 0 -4px 0 0 var(--primary);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 0 -4px 0 0 var(--accent);
 }
 
 /* Small emergency control: large hit target, compact glyph */
@@ -219,10 +171,6 @@ body {
   filter: brightness(1.06);
 }
 
-.footer-emergency-btn:active {
-  transform: scale(var(--active-scale));
-}
-
 .footer-emergency-btn__icon {
   width: 40%;
   height: 40%;
@@ -244,6 +192,45 @@ body {
   padding: var(--content-pad-y) var(--content-pad-x);
 }
 
+/* Home: fill main area; scroll inside “What’s next today” instead of the whole screen */
+#screen-content:has(> .home-screen) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#screen-content:has(> .home-screen) > .home-screen {
+  flex: 1;
+  min-height: 0;
+}
+
+#screen-content:has(> .home-screen) > .home-screen > .clock-container {
+  flex-shrink: 0;
+}
+
+#screen-content:has(> .home-screen) > .home-screen > .up-next-card {
+  flex-shrink: 0;
+}
+
+#screen-content:has(> .home-screen) > .home-screen > .timeline-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#screen-content:has(> .home-screen) > .home-screen > .timeline-card > .timeline-header {
+  flex-shrink: 0;
+}
+
+#screen-content:has(> .home-screen) #timeline_content.timeline-list {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Home: one column, equal major gaps (replaces ad-hoc spacers) */
 .home-screen {
   display: flex;
@@ -261,8 +248,121 @@ body {
   background: var(--med-surface);
 }
 
-.kiosk-panel.events-panel {
-  background: var(--events-surface);
+.kiosk-panel.settings-panel {
+  padding: var(--space-sm) var(--content-pad-x) var(--space-xl);
+  background: transparent;
+}
+
+/* Settings + Medications shell: stacked cards, aligned content */
+.kiosk-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.kiosk-settings-card {
+  background: var(--med-surface);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg) var(--safe-margin);
+  text-align: left;
+  box-shadow: 0 1px 4px var(--overlay-light);
+}
+
+.kiosk-settings-card__title {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-subheader);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.kiosk-settings-card__body .kiosk-caption {
+  margin: 0 0 var(--space-md);
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 42rem;
+}
+
+.kiosk-settings-card__body--monitor .kiosk-monitor-row,
+.kiosk-settings-card__body--monitor .temp-widget-row {
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.kiosk-settings-card__body--monitor .temp-widget {
+  text-align: left;
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-size: var(--font-body);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.kiosk-settings-card__body--monitor .temp-widget span {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.kiosk-settings-card .kiosk-button {
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  min-height: var(--touch-min);
+  min-width: 0;
+  padding: 0 var(--space-md);
+  font-size: var(--font-caption);
+  font-weight: 600;
+}
+
+.kiosk-settings-card .kiosk-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.kiosk-settings-card .kiosk-button:active:not(.kiosk-button--no-feedback) {
+  background: var(--surface-hover);
+}
+
+.kiosk-settings-primary-btn {
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  min-height: var(--touch-min);
+  font-size: var(--font-body);
+  font-weight: 700;
+}
+
+.kiosk-settings-back-btn {
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  min-height: max(5.5vh, 88px);
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 2px solid var(--border-light);
+  font-weight: 700;
+}
+
+.kiosk-settings-back-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.kiosk-settings-footnote {
+  margin: var(--space-xs) 0 0;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-light);
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  line-height: 1.5;
+  text-align: left;
 }
 
 /* Utility layout classes */
@@ -363,6 +463,38 @@ body {
    BUTTONS
    ============================================================================= */
 
+/* Button category defaults (utility + mapped existing controls) */
+.btn-large,
+.add-event-btn,
+.timeline-view-btn {
+  font-family: inherit;
+  border-radius: var(--btn-large-radius);
+  font-size: var(--btn-large-font-size);
+  min-height: var(--btn-large-min-height);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.btn-small,
+.timeline-action-btn,
+.event-btn {
+  font-family: inherit;
+  border-radius: var(--btn-small-radius);
+  font-size: var(--btn-small-font-size);
+  min-height: var(--btn-small-min-height);
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.footer-emergency-btn:active,
+.add-event-btn:active,
+.timeline-view-btn:active,
+.event-btn-primary:active,
+.event-btn-secondary:active,
+.timeline-action-btn:active {
+  transform: scale(var(--active-scale));
+}
+
 /* Generic kiosk button */
 .kiosk-button {
   font-family: inherit;
@@ -408,23 +540,15 @@ body {
 /* Primary action (Add Event on home) */
 .add-event-btn {
   font-size: var(--font-body);
-  font-family: inherit;
   min-height: var(--touch-min);
   padding: 0 var(--safe-margin);
-  background: var(--primary);
+  background: var(--accent);
   color: white;
-  border: 2px solid var(--primary-dark);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition-press);
+  border: 2px solid var(--accent-dark);
 }
 
 .add-event-btn:hover {
-  background: var(--primary-hover);
-}
-
-.add-event-btn:active {
-  transform: scale(var(--active-scale));
+  background: var(--accent-hover);
 }
 
 .home-action-row {
@@ -438,7 +562,7 @@ body {
 .home-action-row .add-event-btn {
   flex: 1;
   min-width: 10em;
-  min-height: max(6.8vh, 104px);
+  min-height: max(4.8vh, 52px);
   font-size: var(--font-caption);
 }
 
@@ -528,23 +652,15 @@ body {
 /* Timeline view button */
 .timeline-view-btn {
   font-size: var(--font-caption);
-  font-family: inherit;
   margin-top: var(--space-sm);
   padding: 0.5em 1em;
   background: var(--surface-muted);
   color: var(--text);
   border: 2px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition-press);
 }
 
 .timeline-view-btn:hover {
   background: var(--surface-hover);
-}
-
-.timeline-view-btn:active {
-  transform: scale(var(--active-scale));
 }
 
 /* Modal/Event form buttons */
@@ -552,25 +668,17 @@ body {
   flex: 1;
   min-height: var(--touch-min);
   font-size: var(--font-body);
-  font-family: inherit;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
   border: 2px solid var(--border-light);
-  transition: var(--transition-press);
 }
 
 .event-btn-primary {
-  background: var(--primary);
+  background: var(--accent);
   color: white;
-  border-color: var(--primary-dark);
+  border-color: var(--accent-dark);
 }
 
 .event-btn-primary:hover {
-  background: var(--primary-hover);
-}
-
-.event-btn-primary:active {
-  transform: scale(var(--active-scale));
+  background: var(--accent-hover);
 }
 
 .event-btn-secondary {
@@ -580,10 +688,6 @@ body {
 
 .event-btn-secondary:hover {
   background: var(--surface-hover);
-}
-
-.event-btn-secondary:active {
-  transform: scale(var(--active-scale));
 }
 
 /* =============================================================================
@@ -648,6 +752,57 @@ body {
 .contact-relationship {
   font-size: var(--font-caption);
   color: var(--text-muted);
+}
+
+.chat-contact-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 260px;
+  justify-self: center;
+}
+
+.chat-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.chat-contact-card .contact-tile {
+  min-width: 0;
+  width: 100%;
+  padding: 0.8vh;
+}
+
+.chat-contact-card .avatar-wrapper,
+.chat-contact-card .contact-initial,
+.chat-contact-card .avatar-wrapper .avatar {
+  width: 8.6vh;
+  height: 8.6vh;
+}
+
+.chat-contact-card .contact-name {
+  font-size: var(--font-subheader);
+}
+
+.chat-contact-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.contact-call-btn {
+  background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  border-color: var(--secondary);
+  color: var(--secondary);
+  font-weight: 700;
+  min-width: 0;
+  width: 100%;
+  font-size: var(--font-body);
 }
 
 /* Large avatar for emergency screen */
@@ -719,12 +874,38 @@ body {
    ============================================================================= */
 
 .up-next-card {
-  background: var(--primary);
+  background: var(--accent);
   color: #fff;
   padding: var(--space-lg) var(--safe-margin);
   border-radius: var(--radius-md);
   min-height: 12vh;
-  border: 2px solid var(--primary-dark);
+  border: 2px solid var(--accent-dark);
+}
+
+/* Home: Up Next is a compact strip; timeline uses the rest of the viewport */
+.home-screen .up-next-card {
+  min-height: 0;
+  padding: var(--space-sm) var(--safe-margin);
+}
+
+.home-screen .up-next-card-inner {
+  gap: 0.65em;
+}
+
+.home-screen .up-next-icon {
+  font-size: var(--font-body-large);
+}
+
+.home-screen .up-next-title {
+  font-size: var(--font-body-large);
+}
+
+.home-screen .up-next-sub {
+  margin-top: 0.12em;
+}
+
+.home-screen .up-next-done {
+  font-size: var(--font-caption);
 }
 
 .up-next-card-inner {
@@ -768,6 +949,30 @@ body {
   border: 2px solid var(--border-light);
 }
 
+.timeline-card.timeline-card--health-meds {
+  padding: var(--space-sm) var(--space-md);
+  border-width: 1px;
+  border-color: var(--border);
+  background: var(--bg);
+  box-shadow: none;
+}
+
+.timeline-card--health-meds .timeline-header {
+  margin-bottom: 0.35em;
+}
+
+.timeline-card--health-meds .timeline-bar-med--health {
+  width: 3px;
+  height: 1.1em;
+  align-self: center;
+  border-radius: 2px;
+}
+
+/* Health: editor entry card uses timeline-card width (not .kiosk-settings max-width) */
+.health-meds-editor-card .kiosk-settings-card__title {
+  margin-top: 0;
+}
+
 .timeline-header {
   font-size: var(--font-caption);
   font-weight: 700;
@@ -778,6 +983,8 @@ body {
 .timeline-list {
   font-size: var(--font-body);
 }
+
+/* Home timeline list: height comes from #screen-content:has(> .home-screen) flex chain */
 
 .timeline-item {
   display: flex;
@@ -800,25 +1007,17 @@ body {
 }
 
 .timeline-action-btn {
-  font-family: inherit;
   font-size: var(--font-caption);
   font-weight: 600;
   min-height: 44px;
   padding: 0.35em 0.85em;
   border: 2px solid var(--border-light);
-  border-radius: var(--radius-sm);
   background: var(--surface-muted);
   color: var(--text);
-  cursor: pointer;
-  transition: var(--transition-press);
 }
 
 .timeline-action-btn:hover {
   background: var(--surface-hover);
-}
-
-.timeline-action-btn:active {
-  transform: scale(var(--active-scale));
 }
 
 .med-manage-row {
@@ -892,7 +1091,7 @@ body {
   flex-shrink: 0;
   width: 4px;
   height: 1.5em;
-  background: var(--primary);
+  background: var(--accent);
   border-radius: var(--radius-pill);
 }
 
@@ -980,7 +1179,7 @@ body.alert-active {
   max-width: 90%;
   padding: var(--space-sm) var(--space-md);
   font-size: var(--font-body);
-  background: var(--primary);
+  background: var(--accent);
   color: #fff;
   border-radius: var(--radius-md);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -1013,8 +1212,8 @@ body.alert-active {
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid var(--accent);
-  background: var(--accent);
+  border: 3px solid var(--interactive);
+  background: var(--interactive);
 }
 
 .map-marker-photo--patient {
@@ -1048,8 +1247,8 @@ body.alert-active {
   font-size: 0.9em;
   font-weight: 700;
   color: white;
-  background: var(--accent);
-  border: 2px solid var(--accent);
+  background: var(--interactive);
+  border: 2px solid var(--interactive);
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
@@ -1079,7 +1278,7 @@ body.alert-active {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--interactive);
   border: 2px solid white;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
   margin-top: 4px;
@@ -1102,7 +1301,7 @@ body.alert-active {
   height: 28px;
   border-radius: 50%;
   overflow: hidden;
-  background-color: var(--accent);
+  background-color: var(--interactive);
   flex-shrink: 0;
 }
 
@@ -1153,26 +1352,151 @@ body.alert-active {
   font-weight: 700;
 }
 
-.kiosk-meds-actions {
-  margin-top: var(--space-md);
+/* Medications editor: sectioned layout, full-width action stack, neutral Back (add-event-btn is accent elsewhere). */
+#kioskMedsEditorRoot {
+  display: flex;
+  flex-direction: column;
 }
 
-.kiosk-meds-actions .btn-add {
-  min-height: max(2.5vh, 48px);
+#kioskMedsEditorRoot .ice-med-toolbar-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-sm);
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-light);
 }
 
-.kiosk-meds-actions .ice-med-delete-selected-btn {
-  min-height: max(2.5vh, 48px);
+#kioskMedsEditorRoot .ice-med-toolbar-top .ice-med-select-all-btn {
+  flex: 0 1 auto;
+  min-height: max(3vh, 40px);
+  padding: 8px 14px;
+  font-size: calc(var(--font-caption) * 0.95);
 }
 
-.kiosk-meds-actions .ice-med-save-btn {
-  min-height: max(2.5vh, 52px);
-  flex: 1;
-}
-
-#kioskMedsEditorRoot .ice-med-toolbar-top .ice-med-select-all-btn,
 #kioskMedsEditorRoot .ice-med-autosave-label {
-  min-height: max(2.5vh, 44px);
+  flex: 0 1 auto;
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  min-height: 0;
+}
+
+#kioskMedsEditorRoot .ice-medications-editor {
+  margin: 0 0 var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--border-light);
+  gap: var(--space-sm);
+}
+
+#kioskMedsEditorRoot .ice-medications-editor .event-input {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: calc(var(--font-caption) * 0.92);
+}
+
+/* Steady 2×2 fields (overrides wide web breakpoint on this viewport). */
+#kioskMedsEditorRoot .ice-med-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+#kioskMedsEditorRoot .ice-med-row {
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+#kioskMedsEditorRoot .ice-med-row:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+#kioskMedsEditorRoot .ice-med-actions-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-xs);
+}
+
+#kioskMedsEditorRoot .ice-med-times-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25vh var(--space-sm);
+  width: 100%;
+  font-size: calc(var(--font-caption) * 0.92);
+  justify-items: start;
+}
+
+#kioskMedsEditorRoot .ice-med-delete-cell {
+  align-self: flex-end;
+  padding-top: 2px;
+}
+
+#kioskMedsEditorRoot .ice-med-editor-actions.kiosk-meds-actions {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-light);
+  align-items: stretch;
+}
+
+#kioskMedsEditorRoot .kiosk-meds-actions .btn-add,
+#kioskMedsEditorRoot .kiosk-meds-actions .ice-med-delete-selected-btn,
+#kioskMedsEditorRoot .kiosk-meds-actions .ice-med-save-btn {
+  width: 100%;
+  flex: none;
+  margin-top: 0;
+  min-height: max(3.2vh, 42px);
+  padding: 10px 14px;
+  font-size: calc(var(--font-caption) * 0.95);
+  font-weight: 600;
+  box-shadow: none;
+  border-radius: var(--radius-md);
+}
+
+#kioskMedsEditorRoot .kiosk-meds-actions .btn-add {
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 2px solid var(--border-light);
+}
+
+#kioskMedsEditorRoot .kiosk-meds-actions .btn-add:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+#kioskMedsEditorRoot .kiosk-meds-actions .ice-med-delete-selected-btn {
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 2px solid var(--border-light);
+}
+
+#kioskMedsEditorRoot .kiosk-meds-actions .ice-med-delete-selected-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+#kioskMedsEditorRoot .kiosk-meds-actions .ice-med-save-btn {
+  border-width: 2px;
+}
+
+.kiosk-panel.kiosk-meds-panel .add-event-btn.kiosk-meds-panel-back {
+  min-height: max(3.5vh, 48px);
+  font-size: calc(var(--font-caption) * 0.95);
+  background: var(--surface-muted);
+  color: var(--text);
+  border: 2px solid var(--border-light);
+}
+
+.kiosk-panel.kiosk-meds-panel .add-event-btn.kiosk-meds-panel-back:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
 }
 
 #kioskMedsEditorRoot .ice-med-autosave-cb {

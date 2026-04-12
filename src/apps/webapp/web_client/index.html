@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meridian · Family care</title>
-    <link rel="stylesheet" href="/shared/css/base.css">
+    <link rel="stylesheet" href="/shared/base.css">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body class="pending app-dashboard">
@@ -41,41 +41,679 @@
         <main class="app-main">
             <div class="app-page-stack">
                 <div id="pageHealth" class="page active">
+                    <!-- meridian-page-layout + meridian-inpage-nav: same pattern as Events, Mobile, Settings, Info -->
+                    <div class="meridian-page-layout">
+                        <nav class="meridian-inpage-nav" aria-label="Health page sections">
+                            <div class="meridian-inpage-nav__group">
+                                <p class="meridian-inpage-nav__heading">On this page</p>
+                                <ul class="meridian-inpage-nav__list">
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-today-meds">Today&rsquo;s medications</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-polst">POLST &amp; ICE</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-medications">Medications</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#health-section-history">Medication history</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                        <div class="meridian-page-main">
                     <h1 class="page-title">Patient health data</h1>
-                    <p class="muted page-lead">POLST / emergency info, medications, and related records in one place.</p>
-                    <section class="card card--pad health-section">
-                        <h2 class="page-section-title">POLST &amp; emergency (ICE)</h2>
-                        <p class="muted page-lead page-lead--tight">Legal preferences, contacts, and the printable emergency document.</p>
-                        <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
-                        <div class="event-card__actions">
-                            <button id="healthManageMedsBtn" type="button" class="btn-inline">Manage medications</button>
-                            <button id="healthKioskControlsBtn" type="button" class="btn-inline">Kiosk controls</button>
-
+                    <details id="health-section-today-meds" class="card card--pad health-section health-meds-board card--meds meridian-fold health-section--page-anchor" open>
+                        <summary class="meridian-fold__summary" id="health-meds-title">Today&rsquo;s medications</summary>
+                        <div class="meridian-fold__body">
+                        <div class="health-meds-board__snapshot">
+                            <h3 class="health-meds-board__snapshot-title">Caregiver snapshot</h3>
                         </div>
-                    </section>
-                    <section class="card card--pad health-section health-section--placeholder">
-                        <h2 class="page-section-title">Medication history</h2>
-                        <p class="muted">A log of when doses were recorded will go here.</p>
-                    </section>
+                        <div id="healthMedsTakeHost" class="health-meds-board__body" aria-live="polite"></div>
+                        </div>
+                    </details>
+                    <details id="health-section-polst" class="card card--pad health-section meridian-fold health-section--page-anchor">
+                        <summary class="meridian-fold__summary" id="health-polst-heading">POLST &amp; emergency (ICE)</summary>
+                        <div class="meridian-fold__body">
+                            <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
+                        </div>
+                    </details>
+                    <details id="health-section-medications" class="card card--pad health-section health-section--meds-editor meridian-fold health-section--page-anchor">
+                        <summary class="meridian-fold__summary" id="health-medications-editor-title">Medications</summary>
+                        <div class="meridian-fold__body">
+                            <div id="healthMedsEditorHost" class="settings-meds-host"></div>
+                        </div>
+                    </details>
+                    <details id="health-section-history" class="card card--pad health-section med-history-card meridian-fold health-section--page-anchor">
+                        <summary class="meridian-fold__summary" id="med-history-title">Medication history</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">Coming soon.</p>
+                            <div class="med-history-toolbar" role="toolbar" aria-label="History filters (preview)">
+                                <label class="med-history-toolbar__fake">
+                                    <span class="med-history-toolbar__label">Range</span>
+                                    <select class="med-history-select" disabled aria-disabled="true" title="Coming soon">
+                                        <option>Last 7 days</option>
+                                    </select>
+                                </label>
+                                <button type="button" class="btn-health-secondary med-history-export" disabled title="Coming soon">Export log</button>
+                            </div>
+                            <div class="med-history-preview med-history-preview--placeholder" aria-hidden="true">
+                                <p class="muted med-history-preview__placeholder">Dose history will list here when the log is connected.</p>
+                            </div>
+                        </div>
+                    </details>
+                        </div>
+                    </div>
                 </div>
-                <div id="pageEvents" class="page"></div>
+                <div id="pageEvents" class="page">
+                    <div class="meridian-page-layout">
+                        <nav class="meridian-inpage-nav" aria-label="Events page sections">
+                            <div class="meridian-inpage-nav__group">
+                                <p class="meridian-inpage-nav__heading">On this page</p>
+                                <ul class="meridian-inpage-nav__list">
+                                    <li><a class="meridian-inpage-nav__link" href="#events-section-upcoming">Upcoming events</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#events-section-add">Add event</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                        <div class="meridian-page-main">
+                    <h1 class="page-title">Events</h1>
+                    <p class="muted page-lead">Upcoming events in the next 30 days (your device&rsquo;s local date).</p>
+                    <p class="events-gcal-soon muted">Google Calendar: optional sync is <strong>coming soon</strong>. Meridian&rsquo;s calendar and kiosk schedule stay; linking will be additive.</p>
+                    <section id="events-section-upcoming" class="events-section--page-anchor" aria-label="Event list">
+                        <div id="eventsList">Loading&hellip;</div>
+                    </section>
+                    <section id="events-section-add" class="events-section--page-anchor" aria-label="Add event">
+                        <button id="addEventBtn" type="button" class="btn-add">Add event</button>
+                    </section>
+                    <div id="eventFormModal">
+                        <div class="modal-inner">
+                            <h3 id="eventFormTitle">Add event</h3>
+                            <form id="eventForm">
+                                <input type="text" id="eventTitle" placeholder="Title" required class="event-input">
+                                <input type="date" id="eventDate" required class="event-input">
+                                <input type="time" id="eventStartTime" required class="event-input">
+                                <input type="time" id="eventEndTime" placeholder="End time (optional)" class="event-input">
+                                <input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">
+                                <textarea id="eventDescription" placeholder="Description (optional)" rows="3" class="event-input"></textarea>
+                                <div class="event-form-actions">
+                                    <button type="submit" class="event-btn-primary">Save</button>
+                                    <button type="button" id="eventFormCancel" class="event-btn-secondary">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                        </div>
+                    </div>
+                </div>
                 <div id="pageSettings" class="page">
+                    <div class="meridian-page-layout">
+                        <nav class="meridian-inpage-nav" aria-label="Settings sections">
+                            <div class="meridian-inpage-nav__group">
+                                <p class="meridian-inpage-nav__heading">On this page</p>
+                                <ul class="meridian-inpage-nav__list">
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-admin-preview">Admin preview note</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-permissions">Members &amp; roles</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-notifications">Notifications</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-session">Session &amp; devices</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-audit">PHI activity log</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-data">Data export &amp; deletion</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-kiosk">Kiosk, TV &amp; transport</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#settings-section-meds">Medications</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                        <div class="meridian-page-main">
                     <h1 class="page-title">Settings</h1>
-                    <p class="muted page-lead">Account controls for the primary family manager. Sections below are placeholders until each area is built.</p>
-                    <div class="settings-grid">
-                        <section class="settings-card card card--pad">
-                            <h2 class="settings-card__title">Permissions &amp; family access</h2>
-                            <p class="settings-card__body muted">Invite and remove members, roles (manager vs viewer), and who can edit meds, calendar, or trigger alerts.</p>
-                            <span class="settings-card__badge">Coming later</span>
-                        </section>
-                        <section class="settings-card card card--pad">
-                            <h2 class="settings-card__title">HIPAA &amp; activity log</h2>
-                            <p class="settings-card__body muted">Exportable access and change history for compliance (who viewed or changed health-related data and when).</p>
-                            <span class="settings-card__badge">Coming later</span>
-                        </section>
-                        <section class="settings-card card card--pad">
-                            <h2 class="settings-card__title">Kiosk &amp; TV</h2>
-                            <p class="settings-card__body muted">What the person at home can open on the kiosk (screens, chat, map, emergency), brightness or idle behavior, and safe defaults.</p>
+                    <p class="muted page-lead">Family manager controls. Security and permissions blocks below are a <strong>single UI preview</strong> so product and engineering can see everything in one place; controls are not wired to the server yet.</p>
+
+                    <div class="meridian-fold-stack">
+                    <details id="settings-admin-preview" class="admin-ui-preview-note card card--pad meridian-fold settings-section--page-anchor" open role="note">
+                        <summary class="meridian-fold__summary">Admin &amp; security — layout preview</summary>
+                        <div class="meridian-fold__body">
+                        <p class="admin-ui-preview-note__body">Nothing in this column persists. Use it to review fields, tables, and flows before implementing APIs, audit storage, roles on <code class="admin-code">user_family_circle</code>, backup encryption, Pi TLS, and delete cascades.</p>
+                        <ul class="admin-preview-checklist">
+                            <li>HTTP security headers &amp; CSP (when serving HTML/JS)</li>
+                            <li>Rate limits on login and sensitive POSTs</li>
+                            <li>Secrets &amp; key rotation (session secret, backup encryption, chat tokens)</li>
+                            <li>Static/code analysis (e.g. CodeQL) and dependency updates</li>
+                        </ul>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">Members &amp; roles</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">Who belongs to this family circle, their role, and (later) fine-grained write access. Backend: <code class="admin-code">user_family_circle</code> + role column + invite tokens.</p>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Invite someone</h3>
+                                <div class="admin-form-row">
+                                    <label class="field-label" for="adminInviteEmail">Email</label>
+                                    <input type="email" id="adminInviteEmail" name="adminInviteEmail" autocomplete="off" placeholder="caregiver@example.com" disabled>
+                                    <label class="field-label" for="adminInviteRole">Role</label>
+                                    <select id="adminInviteRole" name="adminInviteRole" disabled aria-disabled="true">
+                                        <option>Primary caregiver</option>
+                                        <option>Family member</option>
+                                        <option>View only</option>
+                                    </select>
+                                    <button type="button" class="btn-health-secondary" disabled title="Preview only">Send invite</button>
+                                </div>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Pending invitations</h3>
+                                <p class="muted admin-subsection__lead">Invites that are sent but not yet accepted. Resend or revoke before they join.</p>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Email</th>
+                                                <th scope="col">Role offered</th>
+                                                <th scope="col">Sent</th>
+                                                <th scope="col">Invite expires</th>
+                                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="muted">aide.wellness@example.com</td>
+                                                <td>Family member</td>
+                                                <td class="muted">Mar 28, 2026</td>
+                                                <td class="muted">Apr 11, 2026</td>
+                                                <td>
+                                                    <button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Resend</button>
+                                                    <button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Revoke</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="muted">cousin.sam@example.com</td>
+                                                <td>View only</td>
+                                                <td class="muted">Apr 1, 2026</td>
+                                                <td class="muted">Apr 15, 2026</td>
+                                                <td>
+                                                    <button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Resend</button>
+                                                    <button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Revoke</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">People in this circle</h3>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">Email</th>
+                                                <th scope="col">Role</th>
+                                                <th scope="col">Access expires</th>
+                                                <th scope="col">Last active</th>
+                                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>You <span class="admin-pill">Signed in</span></td>
+                                                <td class="muted">you@example.com</td>
+                                                <td>
+                                                    <select class="admin-table-select" disabled aria-label="Your role" title="Preview only">
+                                                        <option selected>Primary caregiver</option>
+                                                    </select>
+                                                </td>
+                                                <td class="muted">—</td>
+                                                <td class="muted">Now</td>
+                                                <td>—</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Jamie Lee</td>
+                                                <td class="muted">jamie@example.com</td>
+                                                <td>
+                                                    <select class="admin-table-select" aria-label="Role for Jamie Lee" title="Preview only">
+                                                        <option>Primary caregiver</option>
+                                                        <option selected>Family member</option>
+                                                        <option>View only</option>
+                                                    </select>
+                                                </td>
+                                                <td class="muted">—</td>
+                                                <td class="muted">2 days ago</td>
+                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Taylor Nguyen <span class="admin-pill admin-pill--temp">Temporary</span></td>
+                                                <td class="muted">taylor.homehealth@example.com</td>
+                                                <td>
+                                                    <select class="admin-table-select" aria-label="Role for Taylor Nguyen" title="Preview only">
+                                                        <option>Primary caregiver</option>
+                                                        <option selected>Family member</option>
+                                                        <option>View only</option>
+                                                    </select>
+                                                </td>
+                                                <td><span class="admin-expiry">Apr 30, 2026</span></td>
+                                                <td class="muted">Today</td>
+                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Alex Kim</td>
+                                                <td class="muted">alex@example.com</td>
+                                                <td>
+                                                    <select class="admin-table-select" aria-label="Role for Alex Kim" title="Preview only">
+                                                        <option>Primary caregiver</option>
+                                                        <option>Family member</option>
+                                                        <option selected>View only</option>
+                                                    </select>
+                                                </td>
+                                                <td class="muted">—</td>
+                                                <td class="muted">1 week ago</td>
+                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="muted admin-footnote"><strong>Time-limited access:</strong> set an end date for aides or short-term helpers; access should revoke automatically on the server when implemented.</p>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Role capabilities (target policy)</h3>
+                                <p class="muted admin-subsection__lead">Reference matrix for gating routes; implement with server-side checks, not UI alone.</p>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table admin-cap-matrix">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Capability</th>
+                                                <th scope="col">Primary caregiver</th>
+                                                <th scope="col">Family member</th>
+                                                <th scope="col">View only</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td>View PHI (meds, ICE, calendar)</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+                                            <tr><td>Edit medications &amp; ICE</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
+                                            <tr><td>Calendar &amp; events write</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
+                                            <tr><td>Check-ins &amp; location</td><td>Yes</td><td>Yes</td><td>View</td></tr>
+                                            <tr><td>Kiosk emergency alert</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
+                                            <tr><td>Export audit log / full export</td><td>Yes</td><td>No</td><td>No</td></tr>
+                                            <tr><td>Delete family data</td><td>Yes</td><td>No</td><td>No</td></tr>
+                                            <tr><td>Manage members &amp; roles</td><td>Yes</td><td>No</td><td>No</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-notifications" class="card card--pad meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">Notifications &amp; quiet hours</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">Which family roles receive push, email, or SMS for each event type. Urgent events (e.g. kiosk emergency) may bypass quiet hours when policy allows.</p>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Routing by role</h3>
+                                <p class="muted admin-subsection__lead">Check channels to deliver for each role. Implementation will enforce on the server.</p>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table admin-notify-matrix">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Event type</th>
+                                                <th scope="col">Primary caregiver</th>
+                                                <th scope="col">Family member</th>
+                                                <th scope="col">View only</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Kiosk emergency alert</td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Email</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Email</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Email</label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Missed / due medication (caregiver digest)</td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Email</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Email</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Email</label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Check-in request (&ldquo;Where is everyone?&rdquo;)</td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Push</label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Geofence / safe-zone leave <span class="admin-inline-soon">planned</span></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label> <label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Email</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" checked disabled> Push</label></td>
+                                                <td><label class="admin-checkbox-label admin-checkbox-label--table"><input type="checkbox" disabled> Push</label></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Quiet hours (non-urgent)</h3>
+                                <p class="muted admin-subsection__lead">Suppress routine digests during sleep; emergency paths may still notify per policy above.</p>
+                                <div class="admin-form-row admin-form-row--quiet">
+                                    <div>
+                                        <label class="field-label" for="adminQuietStart">Start</label>
+                                        <input type="time" id="adminQuietStart" value="22:00" disabled title="Preview only">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="adminQuietEnd">End</label>
+                                        <input type="time" id="adminQuietEnd" value="07:00" disabled title="Preview only">
+                                    </div>
+                                    <div class="admin-quiet-days">
+                                        <span class="field-label">Days</span>
+                                        <div class="admin-day-chips" role="group" aria-label="Quiet hours days">
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Mon</label>
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Tue</label>
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Wed</label>
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Thu</label>
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Fri</label>
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Sat</label>
+                                            <label class="admin-day-chip"><input type="checkbox" checked disabled> Sun</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-health-secondary admin-margin-top" disabled title="Preview only">Save quiet hours</button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-session" class="card card--pad meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">Session &amp; sign-in</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">Absolute session lifetime, idle logout, and active devices. Backend: Flask session config, optional refresh tokens, revoke list.</p>
+                            <div class="admin-form-row admin-form-row--3col">
+                                <div>
+                                    <label class="field-label" for="adminSessMax">Max session (hours)</label>
+                                    <input type="number" id="adminSessMax" value="24" min="1" max="720" disabled title="Preview only">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="adminSessIdle">Idle timeout (minutes)</label>
+                                    <input type="number" id="adminSessIdle" value="30" min="5" max="1440" disabled title="Preview only">
+                                </div>
+                                <div class="admin-toggle-line">
+                                    <label class="admin-checkbox-label">
+                                        <input type="checkbox" disabled checked> Force logout everywhere when password or role changes
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Active sessions (sample)</h3>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Device / client</th>
+                                                <th scope="col">Approx. location</th>
+                                                <th scope="col">Last activity</th>
+                                                <th scope="col"><span class="visually-hidden">Revoke</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Chrome · macOS</td>
+                                                <td class="muted">This browser</td>
+                                                <td class="muted">Active now</td>
+                                                <td>—</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Home kiosk (Pi)</td>
+                                                <td class="muted">LAN</td>
+                                                <td class="muted">4h ago</td>
+                                                <td><button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Revoke</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Safari · iPhone</td>
+                                                <td class="muted">Mobile app (future)</td>
+                                                <td class="muted">Yesterday</td>
+                                                <td><button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Revoke</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn-secondary-lg admin-margin-top" disabled title="Preview only">Log out all other sessions</button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-audit" class="card card--pad meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">PHI access &amp; change log</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">Append-only audit for compliance: who touched PHI, which route, when. Backend: dedicated table or WORM file; retention policy (e.g. 6 years).</p>
+                            <div class="admin-form-row admin-form-row--filters">
+                                <div>
+                                    <label class="field-label" for="adminAuditFrom">From</label>
+                                    <input type="date" id="adminAuditFrom" value="2026-01-01" disabled>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="adminAuditTo">To</label>
+                                    <input type="date" id="adminAuditTo" value="2026-04-04" disabled>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="adminAuditUser">User</label>
+                                    <select id="adminAuditUser" disabled>
+                                        <option>Everyone</option>
+                                        <option>You</option>
+                                        <option>Jamie Lee</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="adminAuditAction">Action</label>
+                                    <select id="adminAuditAction" disabled>
+                                        <option>All</option>
+                                        <option>VIEW</option>
+                                        <option>EXPORT</option>
+                                        <option>WRITE</option>
+                                    </select>
+                                </div>
+                                <div class="admin-filter-actions">
+                                    <button type="button" class="btn-health-secondary" disabled title="Preview only">Apply filters</button>
+                                    <button type="button" class="btn-secondary-lg" disabled title="Preview only">Export CSV</button>
+                                </div>
+                            </div>
+                            <div class="admin-table-wrap admin-table-wrap--tall">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Time (UTC)</th>
+                                            <th scope="col">User</th>
+                                            <th scope="col">Action</th>
+                                            <th scope="col">Resource</th>
+                                            <th scope="col">Route</th>
+                                            <th scope="col">IP</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="muted">2026-04-04 14:02:11</td>
+                                            <td>You</td>
+                                            <td><span class="admin-tag admin-tag--view">VIEW</span></td>
+                                            <td>Emergency profile</td>
+                                            <td><code class="admin-code">GET …/emergency-profile</code></td>
+                                            <td class="muted">192.168.•••.12</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="muted">2026-04-04 13:58:40</td>
+                                            <td>Jamie Lee</td>
+                                            <td><span class="admin-tag admin-tag--write">WRITE</span></td>
+                                            <td>Medications</td>
+                                            <td><code class="admin-code">PUT …/emergency-profile</code></td>
+                                            <td class="muted">10.0.•••.4</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="muted">2026-04-03 09:15:02</td>
+                                            <td>You</td>
+                                            <td><span class="admin-tag admin-tag--export">EXPORT</span></td>
+                                            <td>ICE PDF</td>
+                                            <td><code class="admin-code">GET …/pdf</code></td>
+                                            <td class="muted">192.168.•••.12</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="muted admin-footnote"><strong>Retention (target):</strong> 6 years, append-only, no in-place edits. <strong>PII in logs:</strong> minimize; store stable user ids internally.</p>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-data" class="card card--pad meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">Data export, backups &amp; deletion</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">Right-to-access export, encrypted backups, and destructive delete with cascade (DB + uploads + audit note). All gated on roles when implemented.</p>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Export</h3>
+                                <p class="muted admin-subsection__lead">Bundle structured health data and references to files for the whole family circle.</p>
+                                <div class="admin-protective-opts">
+                                    <label class="admin-checkbox-label admin-checkbox-label--block">
+                                        <input type="checkbox" checked disabled> Require sign-in password (or re-auth) before starting export
+                                    </label>
+                                    <label class="admin-checkbox-label admin-checkbox-label--block">
+                                        <input type="checkbox" disabled> Two-person rule: second primary caregiver must approve before export is generated
+                                    </label>
+                                </div>
+                                <button type="button" class="btn-health-secondary" disabled title="Preview only">Request full family export</button>
+                                <button type="button" class="btn-secondary-lg admin-margin-left-sm" disabled title="Preview only">Download last export</button>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Backups</h3>
+                                <label class="admin-checkbox-label admin-checkbox-label--block">
+                                    <input type="checkbox" disabled> Encrypt backup files at rest (server-side key or KMS)
+                                </label>
+                                <label class="admin-checkbox-label admin-checkbox-label--block">
+                                    <input type="checkbox" disabled checked> Include DB + file uploads in backup scope
+                                </label>
+                                <p class="muted admin-footnote">Never write plaintext PHI dumps to shared volumes; document key rotation.</p>
+                            </div>
+
+                            <div class="admin-danger-zone">
+                                <h3 class="admin-danger-zone__title">Delete all data for this family</h3>
+                                <p class="admin-danger-zone__body">Removes circle rows, care recipient data, uploads under <code class="admin-code">UPLOADS_DIR</code>, and (optionally) audit pointers per policy. Irreversible.</p>
+                                <div class="admin-protective-opts">
+                                    <label class="admin-checkbox-label admin-checkbox-label--block">
+                                        <input type="checkbox" checked disabled> Require password re-entry to confirm delete
+                                    </label>
+                                    <label class="admin-checkbox-label admin-checkbox-label--block">
+                                        <input type="checkbox" disabled> Require second primary caregiver to confirm (two-person rule)
+                                    </label>
+                                </div>
+                                <label class="admin-checkbox-label">
+                                    <input type="checkbox" disabled> I understand this cannot be undone
+                                </label>
+                                <button type="button" class="btn-inline btn-delete admin-margin-top" disabled title="Preview only">Delete family data</button>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-kiosk" class="card card--pad meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">Kiosk, TV &amp; transport security</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">What the person at home can open, idle behavior, and how traffic is protected on the LAN.</p>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Kiosk mode</h3>
+                                <p class="muted admin-subsection__lead"><strong>Supervised</strong> limits the person at home to essentials (e.g. home + emergency) for cognitive safety. <strong>Unsupervised</strong> uses the screen list and schedules below.</p>
+                                <fieldset class="admin-fieldset">
+                                    <legend class="visually-hidden">Kiosk supervision level</legend>
+                                    <label class="admin-radio-card">
+                                        <input type="radio" name="adminKioskMode" value="unsupervised" checked>
+                                        <span class="admin-radio-card__title">Unsupervised</span>
+                                        <span class="admin-radio-card__desc">All enabled screens follow the rules in the table below.</span>
+                                    </label>
+                                    <label class="admin-radio-card">
+                                        <input type="radio" name="adminKioskMode" value="supervised">
+                                        <span class="admin-radio-card__title">Supervised</span>
+                                        <span class="admin-radio-card__desc">Strict lockdown: home and emergency only until you switch back.</span>
+                                    </label>
+                                </fieldset>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Screen access &amp; allowed hours</h3>
+                                <p class="muted admin-subsection__lead">Optional time windows per screen (e.g. hide map late at night). All times local to the kiosk.</p>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table admin-schedule-table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Screen</th>
+                                                <th scope="col">On kiosk</th>
+                                                <th scope="col">Limit hours</th>
+                                                <th scope="col">From</th>
+                                                <th scope="col">To</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Home</td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="checkbox" disabled title="Preview only"></td>
+                                                <td><input type="time" value="07:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="21:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Schedule / events</td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="checkbox" disabled title="Preview only"></td>
+                                                <td><input type="time" value="06:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="22:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Family map</td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="time" value="07:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="21:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Health / medications</td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="checkbox" disabled title="Preview only"></td>
+                                                <td><input type="time" value="06:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="22:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Chat</td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="time" value="08:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="20:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Edit medications on kiosk</td>
+                                                <td><input type="checkbox" checked disabled title="Preview only"></td>
+                                                <td><input type="checkbox" disabled title="Preview only"></td>
+                                                <td><input type="time" value="09:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="18:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Settings / monitors</td>
+                                                <td><input type="checkbox" disabled title="Preview only"></td>
+                                                <td><input type="checkbox" disabled title="Preview only"></td>
+                                                <td><input type="time" value="09:00" disabled class="admin-time-cell"></td>
+                                                <td><input type="time" value="17:00" disabled class="admin-time-cell"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn-health-secondary admin-margin-top" disabled title="Preview only">Save screen schedule</button>
+                            </div>
+
+                            <div class="admin-form-row admin-form-row--3col">
+                                <div>
+                                    <label class="field-label" for="adminKioskIdle">Kiosk idle dim / lock (minutes)</label>
+                                    <input type="number" id="adminKioskIdle" value="20" min="0" disabled title="Preview only">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="adminKioskPin">PIN for kiosk settings (optional)</label>
+                                    <input type="password" id="adminKioskPin" placeholder="••••" autocomplete="new-password" disabled title="Preview only">
+                                </div>
+                                <div class="admin-status-block">
+                                    <span class="field-label">HTTPS on local Pi</span>
+                                    <p class="admin-status-block__value"><span class="settings-card__badge">Not configured</span> Terminate TLS on 443 (self-signed or local CA).</p>
+                                </div>
+                            </div>
+
+                            <div class="settings-kiosk-shortcut">
+                                <button type="button" id="settingsKioskControlsBtn" class="btn-health-secondary">Kiosk controls</button>
+                            </div>
                             <section id="settingsKioskAlert" class="alert-panel alert-panel--compact">
                                 <h3 class="page-section-title page-section-title--minor">Kiosk emergency alert</h3>
                                 <p class="muted page-lead page-lead--tight">Shows the emergency screen on the home kiosk. Use only in a real emergency.</p>
@@ -84,24 +722,42 @@
                                     <button id="cancelAlertBtn" type="button" class="btn-secondary-lg btn-secondary-lg--sm">Cancel alert</button>
                                 </div>
                             </section>
-                        </section>
-                        <section class="settings-card card card--pad">
-                            <h2 class="settings-card__title">Medications</h2>
-                            <p class="settings-card__body muted">Add, remove, or change meds, dosage, frequency, times, and RxCUI. Saves sync with the ICE profile and the kiosk schedule.</p>
-                            <div id="settingsMedsEditor"></div>
-                        </section>
+                        </div>
+                    </details>
+
+                    <details id="settings-section-meds" class="card card--pad card--meds meridian-fold settings-section--page-anchor">
+                        <summary class="meridian-fold__summary">Medications</summary>
+                        <div class="meridian-fold__body">
+                            <p class="muted page-lead page-lead--tight">The medication list is edited on Patient health data &mdash; same editor whether you open it here or there.</p>
+                            <button type="button" id="settingsMedicationListBtn" class="btn-health-secondary">Open medication list</button>
+                        </div>
+                    </details>
+                    </div>
+                        </div>
                     </div>
                 </div>
                 <div id="pageMobile" class="page">
+                    <div class="meridian-page-layout">
+                        <nav class="meridian-inpage-nav" aria-label="Mobile page sections">
+                            <div class="meridian-inpage-nav__group">
+                                <p class="meridian-inpage-nav__heading">On this page</p>
+                                <ul class="meridian-inpage-nav__list">
+                                    <li><a class="meridian-inpage-nav__link" href="#mobile-section-checkin">Family Check-In</a></li>
+                                    <li><a class="meridian-inpage-nav__link" href="#chatSection">Chat</a></li>
+                                </ul>
+                            </div>
+                        </nav>
+                        <div class="meridian-page-main">
+                    <h1 class="page-title">Mobile</h1>
                     <p class="mobile-strip-intro muted">For use on a phone — same features will live in the mobile app.</p>
-                    <section class="checkin-block card card--pad card--hero">
-                        <h1 class="page-title">Family Check-In</h1>
+                    <section id="mobile-section-checkin" class="checkin-block card card--pad card--hero mobile-section--page-anchor">
+                        <h2 class="page-section-title">Family Check-In</h2>
                         <p class="muted page-lead">Share your location so the family map on the kiosk stays up to date.</p>
                         <label class="field-label visually-hidden" for="notes">Notes for family (optional)</label>
                         <input type="text" id="notes" placeholder="Details / notes (optional, e.g. note for family)" autocomplete="off">
                         <button id="checkinBtn" type="button" class="btn-primary-lg">Check in now</button>
                     </section>
-                    <section id="chatSection" class="card card--pad card--secondary">
+                    <section id="chatSection" class="card card--pad card--secondary mobile-section--page-anchor">
                         <h2 class="page-section-title page-section-title--minor">Chat</h2>
                         <p class="muted page-lead page-lead--tight">Opens in a separate window.</p>
                         <div id="contactsSection">
@@ -114,9 +770,11 @@
                             <button type="button" id="chatSendBtn" class="btn-chat-send">Send</button>
                         </div>
                     </section>
+                        </div>
+                    </div>
                 </div>
                 <div id="pageInfo" class="page page--info">
-                    <iframe class="info-doc-frame" src="/info.html" title="Meridian user guide"></iframe>
+                    <iframe class="info-doc-frame" src="/info.html?embed=1" title="Meridian user guide"></iframe>
                 </div>
             </div>
 

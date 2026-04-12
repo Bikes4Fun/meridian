@@ -1,17 +1,9 @@
 """
-Whole-system, template-level HTML primitives for pywebview kiosk.
-Aligns with info/meridian-design-system-2.md (Typography Scale, TV Kiosk Design Specs, Components).
-Design tokens (background, colors, typography scale) live in kiosk.html CSS.
+Kiosk markup primitives: nav, typography wrappers, loading/empty/error, kiosk_screen_blocked, form_row/section_bar, layout, kiosk_button, contact/avatar snippets.
 
-Screen-specific helpers (form_row, section_bar) live in emergency_screen.
+Scope: reusable HTML string builders only; design tokens live in kiosk CSS. Aligns with the kiosk/TV typography spec in-repo docs.
 
-Used across screens:
-- nav_html: every screen (uses data-screen; kiosk.html has delegated click listener)
-- typography: kiosk_hero, kiosk_header, kiosk_subheader, kiosk_body_large, kiosk_body, kiosk_caption
-- loading_state, empty_state, error_state: every screen
-- panel, two_column_row, spacer: layout
-- kiosk_button: Emergency (Print), any primary action
-- contact_tile, avatar_img: person/contact display
+Not here: fetching services or per-screen business logic (see *_screen.py); webapp assets.
 """
 
 import html
@@ -48,6 +40,29 @@ def error_state(message):
     """Error/fallback state. Design: Status Indicators—icon + text. Used when fetch fails."""
     return (
         f'<div class="state-placeholder state-error">{html.escape(str(message))}</div>'
+    )
+
+
+def kiosk_screen_blocked(title: str, state_html: str, spacer_px: int = 16) -> str:
+    """Early-return full screen: H1 + spacer + error/empty/loading fragment (shared kiosk guard layout)."""
+    return kiosk_header(title) + spacer(spacer_px) + state_html
+
+
+def form_row_html(label_text: str, value_text: str) -> str:
+    """One labeled row: caption + body value (emergency-style form layout)."""
+    label_esc = html.escape(str(label_text or ""))
+    value_esc = html.escape(str(value_text or "—"))
+    return (
+        f'<div class="form-row"><div class="label">{label_esc}:</div>'
+        f'<div class="value">{value_esc}</div></div>'
+    )
+
+
+def section_bar_html(title: str, bar_color_hex: str = "#4080d9") -> str:
+    """Section header bar. bar_color_hex e.g. #4080d9 blue, #c03333 red."""
+    title_esc = html.escape(str(title or ""))
+    return (
+        f'<div class="section-bar" style="background:{bar_color_hex}">{title_esc}</div>'
     )
 
 
@@ -118,7 +133,7 @@ def kiosk_button(text, onclick_js, no_feedback=False, small=False):
     Standard: press feedback (scale + darker color). no_feedback=True disables it. small=True: compact, no min size.
     onclick_js is Python-generated (e.g. pywebview.api.print_emergency()) — do not html.escape it.
     """
-    parts = ["kiosk-button"]
+    parts = ["kiosk-button", "btn-small" if small else "btn-large"]
     if no_feedback:
         parts.append("kiosk-button--no-feedback")
     if small:

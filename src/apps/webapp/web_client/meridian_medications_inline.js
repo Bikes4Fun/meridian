@@ -1,15 +1,11 @@
 /**
- * Shared inline medication editor: row markup, DOM collect, and diff save vs /medications API.
- * Load before ice_editor.js and medications.js (no __API_URL__; callers pass api base).
+ * Shared medication row editor: HTML for rows, collect from DOM, sequential diff save/delete vs /medications (api base from caller).
+ * Scope: MeridianMedicationsInline + reusable by webapp Settings, ICE editor, kiosk embed. Not: page layout, ICE non-med fields, or Python.
  */
 (function (global) {
     'use strict';
 
     var TIME_NAMES = ['Morning', 'Noon', 'Evening', 'prn'];
-
-    function escapeAttr(s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    }
 
     function htmlToEl(html) {
         var d = document.createElement('div');
@@ -25,18 +21,18 @@
     function medRowHtml(m) {
         m = m || {};
         var idAttr = m.id != null && m.id !== '' ? String(m.id) : '';
-        var name = escapeAttr(m.name || '');
-        var dosage = escapeAttr(m.dosage || '');
-        var frequency = escapeAttr(m.frequency || '');
-        var rxcui = escapeAttr((m.fda_rxcui != null && m.fda_rxcui !== '') ? String(m.fda_rxcui) : '');
+        var name = global.meridianEscapeAttr(m.name || '');
+        var dosage = global.meridianEscapeAttr(m.dosage || '');
+        var frequency = global.meridianEscapeAttr(m.frequency || '');
+        var rxcui = global.meridianEscapeAttr((m.fda_rxcui != null && m.fda_rxcui !== '') ? String(m.fda_rxcui) : '');
         var times = m.medication_times || [];
         var timeChecks = TIME_NAMES.map(function (t) {
             var lbl = t === 'prn' ? 'As needed' : t;
             var chk = times.indexOf(t) >= 0 ? ' checked' : '';
             return '<label class="ice-med-time-opt"><input type="checkbox" class="ice-med-time" value="' +
-                escapeAttr(t) + '"' + chk + '> ' + lbl + '</label>';
+                global.meridianEscapeAttr(t) + '"' + chk + '> ' + lbl + '</label>';
         }).join('');
-        return '<div class="ice-med-row" data-med-id="' + escapeAttr(idAttr) + '">' +
+        return '<div class="ice-med-row" data-med-id="' + global.meridianEscapeAttr(idAttr) + '">' +
             '<div class="ice-med-fields">' +
             '<input type="text" class="event-input ice-med-name" placeholder="Name" value="' + name + '">' +
             '<input type="text" class="event-input ice-med-dosage" placeholder="Dosage" value="' + dosage + '">' +
@@ -92,6 +88,24 @@
         return out;
     }
 
+    /** True if row is not a blank placeholder (saved med, typed fields, times, or RxCUI). */
+    function rowIsSubstantiveForDelete(row) {
+        if (!row) return false;
+        var idRaw = row.getAttribute('data-med-id');
+        var id = idRaw ? parseInt(idRaw, 10) : null;
+        if (idRaw && !isNaN(id) && id >= 1) return true;
+        var nameEl = row.querySelector('.ice-med-name');
+        var name = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
+        if (name) return true;
+        var dosageEl = row.querySelector('.ice-med-dosage');
+        var frequencyEl = row.querySelector('.ice-med-frequency');
+        var rxcuiEl = row.querySelector('.ice-med-rxcui');
+        if (dosageEl && dosageEl.value.trim()) return true;
+        if (frequencyEl && frequencyEl.value.trim()) return true;
+        if (rxcuiEl && rxcuiEl.value.trim()) return true;
+        return !!row.querySelector('.ice-med-time:checked');
+    }
+
     function wireList(listEl, addBtn, deleteSelectedBtn, selectAllBtn, hooks) {
         hooks = hooks || {};
         var onListMutate = hooks.onListMutate;
@@ -122,7 +136,23 @@
             deleteSelectedBtn.addEventListener('click', function () {
                 var cbs = listEl.querySelectorAll('.ice-med-select:checked');
                 if (!cbs.length) return;
-                if (!confirm('Remove ' + cbs.length + ' medication row(s) from this list?')) return;
+                var substantive = [];
+                cbs.forEach(function (cb) {
+                    var row = cb.closest('.ice-med-row');
+                    if (row && rowIsSubstantiveForDelete(row)) substantive.push(cb);
+                });
+                if (substantive.length === 0) {
+                    cbs.forEach(function (cb) {
+                        var row = cb.closest('.ice-med-row');
+                        if (row) row.remove();
+                    });
+                    if (!listEl.querySelector('.ice-med-row')) {
+                        listEl.appendChild(htmlToEl(medRowHtml({})));
+                    }
+                    notifyMutate();
+                    return;
+                }
+                if (!confirm('Remove ' + substantive.length + ' medication row(s) from this list?')) return;
                 cbs.forEach(function (cb) {
                     var row = cb.closest('.ice-med-row');
                     if (row) row.remove();
@@ -131,6 +161,7 @@
                     listEl.appendChild(htmlToEl(medRowHtml({})));
                 }
                 notifyMutate();
+                if (typeof hooks.onRowsDeleted === 'function') hooks.onRowsDeleted();
             });
         }
     }

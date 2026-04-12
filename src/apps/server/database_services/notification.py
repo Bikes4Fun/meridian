@@ -6,7 +6,7 @@ Request family members to update location. APNS when configured; stub otherwise.
 import logging
 import os
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -91,7 +91,7 @@ def _send_apns(
 class PushNotificationService:
     """Request location updates via push. APNS when configured; stub otherwise."""
 
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
 
     def request_location_update(

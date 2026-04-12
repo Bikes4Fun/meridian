@@ -1,7 +1,7 @@
 # Meridian
 
 <p align="center">
-  <img src="assets/icons/banner_logo.png" alt="Meridian banner" width="420">
+  <img src="assets/icons/original_banner_logo.png" alt="Meridian banner" width="420">
 </p>
 
 
@@ -92,6 +92,9 @@ Without APNs config, the server logs requests but does not send pushes. To enabl
 ---
 
 ## Run and Tests
+
+On **Windows**, run the kiosk with **64-bit Python 3.11 or 3.12** from [python.org](https://www.python.org/downloads/). The kiosk uses `pywebview`, which depends on `pythonnet`; current `pythonnet` wheels do not cover Python 3.14, so `pip install -r requirements.txt` fails while building from source. After installing a supported Python, use `py -3.12 -m pip install -r requirements.txt` (or activate a 3.12 venv). From `src`, run **`py -3.12 main.py`** — not plain `python main.py` if another Python (e.g. 3.14) is first on `PATH`, or you will get `ModuleNotFoundError` for packages installed into 3.12. If pywebview logs **WebView2** / **Invalid window handle** (`0x80070578`), start the app from a **normal desktop session** (open `cmd` or PowerShell while logged in at the PC, or inside Remote Desktop), not from an **SSH-only** shell; the kiosk needs an interactive Windows desktop. Install or repair the [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) if the error persists.
+
 ```bash
 pip install -r requirements.txt
 PYTHONPATH=src python src/main.py           # local DB/server (default); add --railway-run to test remote API on Railway (requires RAILWAY_API_URL set to Railway API base URL)

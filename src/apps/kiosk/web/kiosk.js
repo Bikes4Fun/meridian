@@ -11,6 +11,78 @@ function bindScreenNav(container) {
 bindScreenNav(document.getElementById('kiosk-nav'));
 bindScreenNav(document.getElementById('kiosk-footer'));
 
+// Calendar modal: open/prefill in JS; Python bridge only submits/deletes (see app.py).
+window.meridianKioskEvents = {
+  openAddModal: function() {
+    var idEl = document.getElementById('eventEditingId');
+    if (idEl) idEl.value = '';
+    var tt = document.getElementById('eventFormTitle');
+    if (tt) tt.textContent = 'Add Event';
+    var title = document.getElementById('eventTitle');
+    if (title) title.value = '';
+    var d = document.getElementById('eventDate');
+    if (d) {
+      var today = new Date();
+      var y = today.getFullYear();
+      var m = String(today.getMonth() + 1).padStart(2, '0');
+      var day = String(today.getDate()).padStart(2, '0');
+      d.value = y + '-' + m + '-' + day;
+    }
+    var s = document.getElementById('eventStartTime');
+    if (s) s.value = '';
+    var en = document.getElementById('eventEndTime');
+    if (en) en.value = '';
+    var l = document.getElementById('eventLocation');
+    if (l) l.value = '';
+    var r = document.getElementById('eventDescription');
+    if (r) r.value = '';
+    var o = document.getElementById('eventFormOverlay');
+    if (o) o.style.display = 'flex';
+  },
+  openEditModal: function(eventDataJson) {
+    var data;
+    try {
+      data = JSON.parse(eventDataJson);
+    } catch (e) {
+      alert('Could not load event');
+      return;
+    }
+    var idEl = document.getElementById('eventEditingId');
+    if (idEl) idEl.value = data.id != null && data.id !== '' ? String(data.id) : '';
+    var t = document.getElementById('eventFormTitle');
+    if (t) t.textContent = 'Edit Event';
+    var st = data.start_time || '';
+    var et = data.end_time || '';
+    var today = new Date();
+    var y = today.getFullYear();
+    var mo = String(today.getMonth() + 1).padStart(2, '0');
+    var day = String(today.getDate()).padStart(2, '0');
+    var dateStr = y + '-' + mo + '-' + day;
+    if (st.length >= 10) dateStr = st.slice(0, 10);
+    var startTime = st.length >= 16 ? st.slice(11, 16) : '09:00';
+    var endTime = et.length >= 16 ? et.slice(11, 16) : '';
+    var titleEl = document.getElementById('eventTitle');
+    if (titleEl) titleEl.value = data.title || '';
+    var d = document.getElementById('eventDate');
+    if (d) d.value = dateStr;
+    var s = document.getElementById('eventStartTime');
+    if (s) s.value = startTime;
+    var e = document.getElementById('eventEndTime');
+    if (e) e.value = endTime;
+    var l = document.getElementById('eventLocation');
+    if (l) l.value = data.location || '';
+    var r = document.getElementById('eventDescription');
+    if (r) r.value = data.description || '';
+    var o = document.getElementById('eventFormOverlay');
+    if (o) o.style.display = 'flex';
+  },
+  refreshScheduleIfShown: function() {
+    if (document.body && document.body.dataset.screen === 'schedule' && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.navigate) {
+      pywebview.api.navigate('schedule');
+    }
+  }
+};
+
 // Cancel button: event-modal div has stopPropagation() so clicks inside the modal
 // never bubble up to screen-content. Capture phase runs first.
 function handleModalCancel(e) {
@@ -23,31 +95,101 @@ function handleModalCancel(e) {
 }
 document.getElementById('screen-content').addEventListener('click', handleModalCancel, true);
 
+var _kioskMedConfirmTimer = null;
+var _kioskMedArmedBtn = null;
+
+function disarmMedTakenBtn(btn) {
+  if (!btn) return;
+  btn.classList.remove('med-taken-btn--armed');
+  if (btn._meridianLabelRestore != null) {
+    btn.textContent = btn._meridianLabelRestore;
+    btn._meridianLabelRestore = null;
+  }
+  if (_kioskMedArmedBtn === btn) _kioskMedArmedBtn = null;
+}
+
+function clearMedTakenArmTimer() {
+  if (_kioskMedConfirmTimer) {
+    clearTimeout(_kioskMedConfirmTimer);
+    _kioskMedConfirmTimer = null;
+  }
+}
+
 document.getElementById('screen-content').addEventListener('click', function(e) {
+  if (_kioskMedArmedBtn) {
+    var clickedMed = e.target.closest('.med-taken-btn');
+    if (clickedMed !== _kioskMedArmedBtn) {
+      clearMedTakenArmTimer();
+      disarmMedTakenBtn(_kioskMedArmedBtn);
+    }
+  }
   var addBtn = e.target.closest('#addEventBtn');
-  if (addBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_add_event_modal) {
-    pywebview.api.open_add_event_modal();
+  if (addBtn && window.meridianKioskEvents && typeof window.meridianKioskEvents.openAddModal === 'function') {
+    window.meridianKioskEvents.openAddModal();
     return;
   }
   var medTakenBtn = e.target.closest('.med-taken-btn');
   if (medTakenBtn && medTakenBtn.dataset.medId && medTakenBtn.dataset.medTime && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.mark_medication_taken) {
     var mid = parseInt(medTakenBtn.dataset.medId, 10);
     var timeSlot = medTakenBtn.dataset.medTime || '';
+    var prnAct = medTakenBtn.dataset.prnAction || '';
     var currentlyDone = medTakenBtn.dataset.medDone === 'true';
-    var res = pywebview.api.mark_medication_taken(mid, timeSlot, !currentlyDone);
-    function done(r) {
-      if (r === 'ok') {
-        var screen = (document.body && document.body.dataset.screen) || 'home';
-        if (pywebview.api.reload_screen) pywebview.api.reload_screen(screen);
-        else if (pywebview.api.refresh_events) pywebview.api.refresh_events();
-      } else if (r) alert(r);
+    var nextIsTaken;
+    if (prnAct === 'take') {
+      nextIsTaken = true;
+    } else if (prnAct === 'undo') {
+      nextIsTaken = false;
+    } else {
+      nextIsTaken = !currentlyDone;
     }
-    (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
+    if (medTakenBtn === _kioskMedArmedBtn && medTakenBtn.classList.contains('med-taken-btn--armed')) {
+      clearMedTakenArmTimer();
+      _kioskMedArmedBtn = null;
+      medTakenBtn.classList.remove('med-taken-btn--armed');
+      var cardEl = medTakenBtn.closest('article.med-card');
+      if (cardEl) cardEl.setAttribute('aria-busy', 'true');
+      var res = pywebview.api.mark_medication_taken(mid, timeSlot, nextIsTaken);
+      function done(r) {
+        if (cardEl) cardEl.removeAttribute('aria-busy');
+        if (r === 'ok') {
+          var screen = (document.body && document.body.dataset.screen) || 'home';
+          if (pywebview.api.reload_screen) pywebview.api.reload_screen(screen);
+          else if (pywebview.api.refresh_events) pywebview.api.refresh_events();
+        } else {
+          if (medTakenBtn._meridianLabelRestore != null) {
+            medTakenBtn.textContent = medTakenBtn._meridianLabelRestore;
+            medTakenBtn._meridianLabelRestore = null;
+          }
+          if (r) alert(r);
+        }
+      }
+      (res && res.then) ? res.then(done).catch(function (x) {
+        if (cardEl) cardEl.removeAttribute('aria-busy');
+        if (medTakenBtn._meridianLabelRestore != null) {
+          medTakenBtn.textContent = medTakenBtn._meridianLabelRestore;
+          medTakenBtn._meridianLabelRestore = null;
+        }
+        alert(String(x));
+      }) : done(res);
+      return;
+    }
+    clearMedTakenArmTimer();
+    if (_kioskMedArmedBtn && _kioskMedArmedBtn !== medTakenBtn) {
+      disarmMedTakenBtn(_kioskMedArmedBtn);
+    }
+    _kioskMedArmedBtn = medTakenBtn;
+    medTakenBtn._meridianLabelRestore = medTakenBtn.textContent;
+    medTakenBtn.textContent = nextIsTaken ? 'Tap again to confirm' : 'Tap again to undo';
+    medTakenBtn.classList.add('med-taken-btn--armed');
+    _kioskMedConfirmTimer = setTimeout(function () {
+      _kioskMedConfirmTimer = null;
+      disarmMedTakenBtn(medTakenBtn);
+    }, 10000);
     return;
   }
   var editBtn = e.target.closest('.event-edit-btn');
-  if (editBtn && editBtn.getAttribute('data-event') && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.edit_event) {
-    pywebview.api.edit_event(editBtn.getAttribute('data-event'));
+  if (editBtn && editBtn.getAttribute('data-event') && window.meridianKioskEvents && typeof window.meridianKioskEvents.openEditModal === 'function') {
+    window.meridianKioskEvents.openEditModal(editBtn.getAttribute('data-event'));
     return;
   }
   var deleteBtn = e.target.closest('.event-delete-btn');
@@ -56,6 +198,11 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     var res = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.delete_event) ? pywebview.api.delete_event(deleteBtn.dataset.eventId) : 'Delete unavailable';
     function done(r) { if (r !== 'ok') alert(r || 'Failed to delete'); }
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
+    return;
+  }
+  var callBtn = e.target.closest('.contact-call-btn[data-sb-uid]');
+  if (callBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat_with_call) {
+    pywebview.api.open_chat_with_call(callBtn.dataset.sbUid || '', callBtn.dataset.name || '');
     return;
   }
   var tile = e.target.closest('.contact-tile[data-sb-uid]');
@@ -89,12 +236,15 @@ document.getElementById('screen-content').addEventListener('submit', function(e)
   if (!title || !date || !startTime) return;
   var payload = { title: title, start_time: date + 'T' + startTime + ':00', location: location || undefined, description: description || undefined };
   if (endTime) payload.end_time = date + 'T' + endTime + ':00';
+  var idEl = document.getElementById('eventEditingId');
+  if (idEl && idEl.value) payload.id = idEl.value;
 
   var result = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.submit_event_form) ? pywebview.api.submit_event_form(JSON.stringify(payload)) : 'Submit unavailable';
   function done(res) {
     if (res === 'ok') {
       var o = document.getElementById('eventFormOverlay'); if (o) o.style.display = 'none';
       var f = document.getElementById('eventForm'); if (f) f.reset();
+      var hid = document.getElementById('eventEditingId'); if (hid) hid.value = '';
     } else { alert(res || 'Failed'); }
   }
   (result && result.then) ? result.then(done).catch(function(x){alert(String(x));}) : done(result);
@@ -155,6 +305,26 @@ function showToast(msg) {
 var _kioskCallSocketReady = false;
 var _kioskCallSocketStarted = false;
 var _kioskLastRingingCallId = '';
+var _kioskClientDeviceId = '';
+
+function _ensureKioskClientDeviceId() {
+  if (_kioskClientDeviceId) return _kioskClientDeviceId;
+  var key = 'meridian_kiosk_device_id';
+  try {
+    var existing = window.localStorage ? window.localStorage.getItem(key) : '';
+    if (existing) {
+      _kioskClientDeviceId = existing;
+      return _kioskClientDeviceId;
+    }
+    var id = 'kiosk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    if (window.localStorage) window.localStorage.setItem(key, id);
+    _kioskClientDeviceId = id;
+    return _kioskClientDeviceId;
+  } catch (_err) {
+    _kioskClientDeviceId = 'kiosk-ephemeral';
+    return _kioskClientDeviceId;
+  }
+}
 
 function logKioskCallSocket(eventName, details) {
   var payload = {
@@ -162,7 +332,9 @@ function logKioskCallSocket(eventName, details) {
     ts: new Date().toISOString(),
     page: window.location.pathname + window.location.search,
     visibility: document.visibilityState,
-    online: !!navigator.onLine
+    online: !!navigator.onLine,
+    client_source: 'kiosk',
+    client_device_id: _ensureKioskClientDeviceId()
   };
   if (details && typeof details === 'object') {
     for (var k in details) {

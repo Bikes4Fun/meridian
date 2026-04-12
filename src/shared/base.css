@@ -1,0 +1,389 @@
+/* =============================================================================
+   MERIDIAN BASE – Universal design tokens and styles
+   Shared by webapp, chatapp, kiosk. Override in app-specific CSS as needed.
+   Shared tokens; webapp extends in apps/webapp (Clinical Clarity / design plan).
+   ============================================================================= */
+
+/* Webapp+kiosk typical load order: base.css → web_client/style.css → kiosk.css (kiosk only). */
+
+/* =============================================================================
+   DESIGN TOKENS (CSS custom properties)
+   ============================================================================= */
+
+:root {
+  /* Typography */
+  --font-family: 'Atkinson Hyperlegible', Arial, sans-serif;
+  --line-height: 1.6;
+  --line-height-tight: 1.4;
+
+  /* Spacing (px-based for web/mobile; kiosk overrides with vh) */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 2px;
+  --radius-full: 50%;
+
+  /* Colors – shared palette */
+  --text: #333;
+  --text-muted: #666;
+  --border: #ddd;
+  --border-light: #ccc;
+  --bg: #fff;
+  --bg-surface: #fafafa;
+  --bg-surface-alt: #f5f5f5;
+
+  /* Warm & Familiar — webapp + kiosk (dashboard maps --web-* here; kiosk sets --bg/--text) */
+  --warm-base: #faf8f3;
+  --warm-cream: #f5efe7;
+  --warm-text: #4a4a4a;
+  --warm-muted: #6e6760;
+  --warm-terracotta: #c85a3f;
+  --warm-terracotta-hover: #b04f36;
+  --warm-terracotta-ink: #6d3528;
+  --warm-sage: #7a9b76;
+  --warm-sage-hover: #6d8c69;
+  --warm-golden: #d4a574;
+  --warm-golden-hover: #c49262;
+  --warm-delete: #8b4d42;
+  --warm-delete-hover: #744038;
+  --warm-border: #e8e2d9;
+  --warm-border-strong: #dcd5cb;
+  --warm-input-bg: #fffefb;
+  --warm-chat-tint: #efe9df;
+
+  /* Primary action (green – check-in, send, confirm) */
+  --primary: #4CAF50;
+  --primary-hover: #45a049;
+  --primary-disabled: #ccc;
+
+  /* Medical/teal (events, medications – matches kiosk) */
+  --accent: #2E7D9B;
+  --accent-dark: #1e5d7a;
+  --accent-hover: #3a8fab;
+
+  /* Events / calendar accent (timeline bars, call actions) */
+  --secondary: #1a9b8a;
+
+  /* Map pins, family markers — not medical teal */
+  --interactive: #4080c0;
+  --interactive-dark: #2d5a8f;
+  --map-marker-patient: #2d7a3e;
+
+  /* Neutral chrome */
+  --surface-muted: #e8e8e8;
+  --surface-hover: #ddd;
+  --avatar-fallback: #999;
+
+  /* Medication / clinical list panels (webapp med cards, kiosk med-panel + timeline) */
+  --med-surface: #f0f5fa;
+
+  /* Status */
+  --success-bg: #d4edda;
+  --success-text: #155724;
+  --info-bg: #d1ecf1;
+  --info-text: #0c5460;
+  --error-bg: #f8d7da;
+  --error-text: #721c24;
+  --error: #c00;
+  --warning: #ff8000;
+  --warning-bright: #ff3300;
+
+  /* Semantic actions (web dashboard; optional for other apps) */
+  --danger: #c0392b;
+  --danger-hover: #a93226;
+  --secondary-btn: #7f8c8d;
+  --secondary-btn-hover: #6c7a7b;
+
+  /* Overlays & press feedback */
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-light: rgba(0, 0, 0, 0.05);
+  --overlay-medium: rgba(0, 0, 0, 0.1);
+  --transition-press: transform 0.08s ease, background 0.08s ease;
+  --active-scale: 0.97;
+}
+
+/* =============================================================================
+   FONTS
+   ============================================================================= */
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('/shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('/shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* =============================================================================
+   RESET / BASE
+   ============================================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: var(--line-height);
+  color: var(--text);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+}
+
+/* =============================================================================
+   TYPOGRAPHY (base – override in app CSS)
+   ============================================================================= */
+
+h1, h2, h3 {
+  color: var(--text);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+h1 { font-size: 1.75rem; font-weight: 700; }
+h2 { font-size: 1.5rem; font-weight: 600; }
+h3 { font-size: 1.25rem; font-weight: 600; }
+
+/* =============================================================================
+   FORM ELEMENTS (base – override in app CSS)
+   ============================================================================= */
+
+input,
+button,
+select {
+  font-family: inherit;
+  font-size: 16px;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  background: var(--primary-disabled);
+}
+
+/* =============================================================================
+   STATUS CLASSES (reusable across apps)
+   ============================================================================= */
+
+.success { background: var(--success-bg); color: var(--success-text); }
+.info { background: var(--info-bg); color: var(--info-text); }
+.error { background: var(--error-bg); color: var(--error-text); }
+
+/* =============================================================================
+   MEDICATION UI – Shared primitives (webapp + kiosk)
+   App CSS may override surfaces; use modifiers for states.
+   ============================================================================= */
+
+/* Dose card states (webapp list + kiosk Health timeline) */
+:is(.list-panel, .timeline-list) .med-card.med-card--done {
+  border-color: var(--success-text);
+  background: var(--success-bg);
+}
+
+:is(.list-panel, .timeline-list) .med-card.med-card--prn.med-card--pending {
+  border-color: var(--accent);
+}
+
+:is(.list-panel, .timeline-list) .med-card[aria-busy="true"] {
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+:is(.list-panel, .timeline-list) .med-card[aria-busy="true"] .med-mark-taken-btn,
+:is(.list-panel, .timeline-list) .med-card[aria-busy="true"] .med-taken-btn {
+  cursor: wait;
+}
+
+/* Kiosk Health: compact dose strip inside timeline (not bulky nested cards) */
+.timeline-list .med-card {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4em 0.65em;
+  background: var(--bg);
+  text-align: left;
+  box-shadow: none;
+}
+
+.timeline-list .med-card__title {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.12em 0;
+  line-height: var(--line-height-tight);
+}
+
+.timeline-list .med-card__meta {
+  font-size: calc(var(--font-caption) * 0.94);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+.timeline-list .med-card__title-inline {
+  font-size: calc(var(--font-caption) * 0.94);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.med-card__prn-limit-note {
+  margin: 0.25em 0 0 0;
+  font-size: calc(var(--font-caption) * 0.95);
+  font-weight: 600;
+  color: var(--warm-terracotta-ink);
+  line-height: var(--line-height-tight);
+}
+
+.list-panel--meds .med-card__prn-limit-note {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.med-card__dose-status {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.med-card__dose-status--pending {
+  color: var(--text-muted);
+}
+
+.timeline-list .med-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.timeline-list .med-card--open .med-card__open-inner {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45em 0.75em;
+  width: 100%;
+}
+
+.timeline-list .med-card--open .med-card__open-text {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.timeline-list .med-card--open .med-card__actions {
+  margin: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.timeline-item.med-row--open {
+  align-items: center;
+  padding: 0.18em 0;
+}
+
+.timeline-action-btn--med-dose {
+  min-height: 34px;
+  padding: 0.22em 0.6em;
+  font-size: calc(var(--font-caption) * 0.92);
+}
+
+/* Kiosk Health: completed rows fold to one short line (name · status · Undo) */
+.timeline-item.med-row--folded {
+  align-items: center;
+  padding: 0.15em 0;
+}
+
+.timeline-list .med-card.med-card--folded {
+  padding: 0.35em var(--space-sm);
+}
+
+.timeline-list .med-card--folded .med-card__folded-inner {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em 0.75em;
+  width: 100%;
+}
+
+.timeline-list .med-card--folded .med-card__title {
+  margin: 0;
+  flex: 1 1 8em;
+  min-width: 0;
+  font-size: var(--font-caption);
+  font-weight: 600;
+  line-height: var(--line-height-tight, 1.35);
+}
+
+.med-card__folded-status {
+  font-size: var(--font-caption);
+  font-weight: 700;
+  color: var(--success-text);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.timeline-list .med-card--folded .med-card__actions {
+  margin: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.timeline-list .med-card--folded.med-card--done .med-card__title {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+  opacity: 0.9;
+}
+
+.timeline-action-btn--compact {
+  min-height: 32px;
+  padding: 0.18em 0.55em;
+  font-size: calc(var(--font-caption) * 0.9);
+}
+
+/* Mark-taken / mark-done actions (webapp + kiosk) */
+.med-mark-taken-btn:disabled,
+.med-taken-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.med-mark-taken-btn:focus-visible,
+.med-taken-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Kiosk: second tap required — armed state */
+.med-taken-btn.med-taken-btn--armed {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-weight: 700;
+}

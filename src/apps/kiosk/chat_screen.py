@@ -1,12 +1,45 @@
 """
-Chat screen: contact grid with chat entry. JS calls open_chat; Python fetches URL and opens pywebview window.
+Kiosk Chat: contact grid HTML; ChatHandler fetches chat entry URL and opens a separate webview.
+
+Scope: list contacts, open_chat_window helper, bridge open_chat / open_chat_with_call.
+Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 """
 
+import html
 import logging
-
-from .webview import open_chat_window
+import subprocess
+import sys
 
 logger = logging.getLogger(__name__)
+
+
+def open_chat_window(url):
+    """Open URL in pywebview. Uses subprocess to avoid blocking the main kiosk window."""
+    if not url:
+        return
+    try:
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import sys, webview; webview.create_window('Family Chat', sys.argv[1], width=800, height=600); webview.start()",
+                url,
+            ]
+        )
+    except Exception:
+        try:
+            import webview
+
+            webview.create_window("Family Chat", url, width=800, height=600)
+            webview.start()
+        except ImportError:
+            import webbrowser
+
+            webbrowser.open(url)
+        except Exception:
+            import webbrowser
+
+            webbrowser.open(url)
 
 
 class ChatHandler:
@@ -15,15 +48,18 @@ class ChatHandler:
     def __init__(self, app):
         self._app = app
 
-    def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
+    def open_chat(
+        self, sendbird_user_id: str, display_name: str, auto_start_call: bool = False
+    ) -> None:
         """Fetch chat entry URL for contact and open in new pywebview window."""
-        entry_svc = self._app.services.get("chat_entry_service")
+        entry_svc = self._app.services.get_chat_entry_service()
         if not entry_svc:
             logger.warning("open_chat: no chat_entry_service")
             return
         r = entry_svc.get_entry_url(
             recipient_sendbird_user_id=sendbird_user_id,
             recipient_display_name=display_name,
+            auto_start_call=auto_start_call,
         )
         if r.success and r.data:
             open_chat_window(str(r.data))
@@ -38,26 +74,32 @@ def build_chat_html(
     from . import html_primitives as hp
     from .api_client import fetch_photo_b64
 
-    contact_svc = services.get("contact_service")
+    contact_svc = services.get_contact_service()
     if not contact_svc or not family_circle_id:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.error_state("No contacts (check server).")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.error_state("No contacts (check server).")
         )
     r = contact_svc.get_contacts()
     if not r.success or not r.data:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.empty_state("No contacts.")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.empty_state("No contacts.")
         )
-    chat_contacts = [c for c in r.data if (c.get("sendbird_user_id") or "").strip()]
+    def _is_care_recipient(contact: dict) -> bool:
+        user_id = (contact.get("user_id") or "").strip()
+        contact_id = (contact.get("id") or "").strip()
+        relationship = (contact.get("relationship") or "").strip().lower()
+        if kiosk_user_id and (user_id == kiosk_user_id or contact_id == kiosk_user_id):
+            return True
+        return relationship in ("care recipient", "care_recipient", "patient", "you")
+
+    chat_contacts = [
+        c
+        for c in r.data
+        if (c.get("sendbird_user_id") or "").strip() and not _is_care_recipient(c)
+    ]
     if not chat_contacts:
-        return (
-            hp.kiosk_header("Family Chat")
-            + hp.spacer(16)
-            + hp.empty_state("No contacts with chat.")
+        return hp.kiosk_screen_blocked(
+            "Family Chat", hp.empty_state("No contacts with chat.")
         )
 
     base = api_url.rstrip("/")
@@ -80,12 +122,20 @@ def build_chat_html(
                 contact_svc._session,
                 contact_svc._headers,
             )
+        tile = hp.contact_tile(avatar_src, name, data_sb_uid=sb_uid, data_name=name)
+        safe_sb_uid = html.escape(sb_uid)
+        safe_name = html.escape(name)
+        action_row = (
+            '<div class="chat-contact-actions">'
+            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn" data-sb-uid="{safe_sb_uid}" data-name="{safe_name}">📞 VOICE CALL</button>'
+            "</div>"
+        )
         tiles.append(
-            hp.contact_tile(avatar_src, name, data_sb_uid=sb_uid, data_name=name)
+            f'<div class="chat-contact-card">{tile}{action_row}</div>'
         )
     grid = "".join(tiles)
     return (
         hp.kiosk_header("Family Chat")
         + hp.spacer(24)
-        + f'<div style="display:flex;flex-wrap:wrap;gap:20px">{grid}</div>'
+        + f'<div class="chat-contact-grid">{grid}</div>'
     )

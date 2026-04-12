@@ -1,7 +1,9 @@
 """
-Remote API client for the Meridian server.
-Used when SERVER_URL is set. Time comes from the device (LocalTimeService);
-calendar, medications, emergency, and settings come from the server API.
+Kiosk-side HTTP clients: GET/POST helpers, Remote* services, LocalTimeService, KioskRemoteServiceContainer (typed getters over those clients).
+
+Scope: talk to the Meridian API from the kiosk process; no UI.
+
+Not here: Flask routes, pywebview, or server DB ServiceContainer (see server container.py).
 """
 
 import logging
@@ -498,7 +500,10 @@ class RemoteChatEntryService:
         self._session = session
 
     def get_entry_url(
-        self, recipient_sendbird_user_id: str = "", recipient_display_name: str = ""
+        self,
+        recipient_sendbird_user_id: str = "",
+        recipient_display_name: str = "",
+        auto_start_call: bool = False,
     ) -> Any:
         """Fetch signed entry URL. recipient = who the kiosk user will chat WITH. Returns ServiceResult with url in data."""
         params = []
@@ -510,6 +515,8 @@ class RemoteChatEntryService:
             params.append(
                 f"recipient_display_name={urllib.parse.quote(recipient_display_name)}"
             )
+        if auto_start_call:
+            params.append("auto_start_call=1")
         qs = "&".join(params)
         url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
         ok, data, err = _get(url, headers=self._headers, session=self._session)
@@ -650,13 +657,62 @@ class RemoteLocationService:
             return None
 
 
+class KioskRemoteServiceContainer:
+    """Typed access to kiosk HTTP-backed services.
+
+    Exposes the same ``get_*_service()`` method *names* as the server-side
+    ``ServiceContainer`` (database-backed; server ``container.py``) so call
+    sites share one convention; here each getter returns a remote client, not a DB service.
+    """
+
+    __slots__ = ("_s",)
+
+    def __init__(self, services_dict: dict):
+        self._s = services_dict
+
+    def get_time_service(self):
+        return self._s.get("time_service")
+
+    def get_calendar_service(self):
+        return self._s.get("calendar_service")
+
+    def get_medication_service(self):
+        return self._s.get("medication_service")
+
+    def get_emergency_service(self):
+        return self._s.get("emergency_service")
+
+    def get_location_service(self):
+        return self._s.get("location_service")
+
+    def get_contact_service(self):
+        return self._s.get("contact_service")
+
+    def get_chat_entry_service(self):
+        return self._s.get("chat_entry_service")
+
+    def get_alert_service(self):
+        return self._s.get("alert_service")
+
+    def get_incoming_call_service(self):
+        return self._s.get("incoming_call_service")
+
+    @property
+    def alert_activated_holder(self) -> list:
+        """Single-element list updated by alert poll (same object as legacy dict entry)."""
+        return self._s["_alert_activated"]
+
+    def get_emergency_print_status_label(self):
+        return self._s.get("_emergency_print_status_label")
+
+
 def create_kiosk_remote(
     server_url: str,
     kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
     session: Optional["requests.Session"] = None,
-) -> dict:
-    """Return services dict for kiosk client: time from device, rest from server API."""
+) -> KioskRemoteServiceContainer:
+    """Return typed kiosk services: time from device, rest from server API."""
     try:
         import requests
 
@@ -692,4 +748,4 @@ def create_kiosk_remote(
         ),
         "_alert_activated": [False],
     }
-    return services
+    return KioskRemoteServiceContainer(services)

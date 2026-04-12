@@ -6,6 +6,7 @@ Uses the same endpoints as kiosk/webapp (calendar events, checkins, medications,
 import json
 import logging
 import os
+import sqlite3
 from datetime import date, datetime, timedelta
 from typing import Dict, Any
 
@@ -15,9 +16,34 @@ DEMO_FAMILY_CIRCLE_ID = "F00000"
 DEMO_USER_ID = "fm_001"
 
 try:
-    from ...shared.config import get_uploads_dir
+    from ...shared.config import get_database_path, get_uploads_dir
 except ImportError:
-    from shared.config import get_uploads_dir
+    from shared.config import get_database_path, get_uploads_dir
+
+
+def ensure_local_seed_prerequisites(db_path: str) -> None:
+    """INSERT OR IGNORE minimal rows so verify_family_membership passes before HTTP seed (local SQLite)."""
+    fam = (
+        (os.environ.get("FAMILY_CIRCLE_ID") or os.environ.get("PATIENT_FAMILY_CIRCLE_ID") or DEMO_FAMILY_CIRCLE_ID)
+        .strip()
+        or DEMO_FAMILY_CIRCLE_ID
+    )
+    kiosk = (os.environ.get("KIOSK_USER_ID") or "fm_care_001").strip() or "fm_care_001"
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (fam,))
+        for uid, name in (("fm_001", "Dean"), (kiosk, "Kiosk")):
+            conn.execute(
+                "INSERT OR IGNORE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id) VALUES (?,?,?,?,?)",
+                (uid, name, None, fam, None),
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?,?)",
+                (uid, fam),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_data_dir() -> str:
@@ -93,6 +119,12 @@ def _make_photo_filename_resolver():
 
 def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     """Seed data via API. Server must be running. Uses standard endpoints (users, contacts, medications, calendar, checkins)."""
+    try:
+        ensure_local_seed_prerequisites(get_database_path())
+    except Exception as e:
+        logger.error("Local seed prerequisites failed: %s", e)
+        return False
+
     try:
         import requests
     except ImportError:

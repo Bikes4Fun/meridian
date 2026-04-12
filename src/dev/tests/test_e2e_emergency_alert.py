@@ -11,14 +11,23 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 import pytest
-from dev.tests.conftest import FAMILY_CIRCLE_ID, TEST_USER_ID
+from dev.tests.conftest import (
+    FAMILY_CIRCLE_ID,
+    OTHER_FAMILY_ID,
+    OTHER_FAMILY_USER_ID,
+    TEST_USER_ID,
+)
 
 API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
+OTHER_API_HEADERS = {
+    "X-User-Id": OTHER_FAMILY_USER_ID,
+    "X-Family-Circle-Id": OTHER_FAMILY_ID,
+}
 
 
 @pytest.fixture(autouse=True)
 def reset_alert_state(api_client):
-    """Reset global alert state after each test."""
+    """Teardown: clear alert for the default test family (API state is per `family_circle_id`)."""
     yield
     r = api_client.post(
         "/api/emergency/alert", headers=API_HEADERS, json={"activated": False}
@@ -53,5 +62,19 @@ def test_alert_deactivate_clears_status(api_client):
     assert r.get_json()["data"]["activated"] is False
 
     r = api_client.get("/api/emergency/alert/status", headers=API_HEADERS)
+    assert r.status_code == 200
+    assert r.get_json()["data"]["activated"] is False
+
+
+@pytest.mark.integration
+def test_alert_status_is_scoped_per_family(api_client):
+    """Alert activation in one family does not affect another family."""
+    r = api_client.post(
+        "/api/emergency/alert", headers=API_HEADERS, json={"activated": True}
+    )
+    assert r.status_code == 200
+    assert r.get_json()["data"]["activated"] is True
+
+    r = api_client.get("/api/emergency/alert/status", headers=OTHER_API_HEADERS)
     assert r.status_code == 200
     assert r.get_json()["data"]["activated"] is False

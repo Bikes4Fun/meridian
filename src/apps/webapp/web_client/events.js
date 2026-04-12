@@ -1,6 +1,6 @@
 /**
- * Events page – populate pageEvents when navigated to.
- * Exposes MeridianEvents.init(apiUrl, familyCircleId, showStatus) for app.js to call.
+ * Webapp Events tab: list today’s calendar events, add/edit/delete modal + credentialed API calls. MeridianEvents.init(...) from app.js.
+ * Scope: #pageEvents only. Not: kiosk schedule screen, medications merge, or shared calendar month view.
  */
 (function () {
     'use strict';
@@ -10,45 +10,67 @@
     var _showStatus = function () {};
     var _initialized = false;
 
-    function buildEventsHTML() {
-        return '<h2 class="page-section-title">Events</h2>' +
-            '<p class="muted page-lead">Today\'s schedule</p>' +
-            '<div id="eventsList">Loading…</div>' +
-            '<button id="addEventBtn" type="button" class="btn-add">Add event</button>' +
-            '<div id="eventFormModal">' +
-            '<div class="modal-inner">' +
-            '<h3 id="eventFormTitle">Add event</h3>' +
-            '<form id="eventForm">' +
-            '<input type="text" id="eventTitle" placeholder="Title" required class="event-input">' +
-            '<input type="date" id="eventDate" required class="event-input">' +
-            '<input type="time" id="eventStartTime" required class="event-input">' +
-            '<input type="time" id="eventEndTime" placeholder="End time (optional)" class="event-input">' +
-            '<input type="text" id="eventLocation" placeholder="Location (optional)" class="event-input">' +
-            '<textarea id="eventDescription" placeholder="Description (optional)" rows="3" class="event-input"></textarea>' +
-            '<div class="event-form-actions">' +
-            '<button type="submit" class="event-btn-primary">Save</button>' +
-            '<button type="button" id="eventFormCancel" class="event-btn-secondary">Cancel</button>' +
-            '</div></form></div></div>';
+    function localDateISO(d) {
+        d = d || new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1);
+        if (m.length === 1) m = '0' + m;
+        var day = String(d.getDate());
+        if (day.length === 1) day = '0' + day;
+        return y + '-' + m + '-' + day;
+    }
+
+    function addDaysISO(iso, days) {
+        var p = iso.split('-');
+        var dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+        dt.setDate(dt.getDate() + days);
+        return localDateISO(dt);
+    }
+
+    function eventDayLabel(startTime) {
+        if (!startTime || startTime.length < 10) return '';
+        var day = startTime.slice(0, 10);
+        var today = localDateISO();
+        if (day === today) {
+            return 'Today';
+        }
+        var parts = day.split('-');
+        var dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     }
 
     function loadEvents() {
         var list = document.getElementById('eventsList');
         if (!list || !_familyCircleId) return;
         var today = new Date().toISOString().slice(0, 10);
-        var apiBase = (_apiUrl || '').replace(/\/$/, '');
+        var apiBase = meridianApiBaseNormalize(_apiUrl);
+        list.innerHTML = 'Loading…';
         fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                if (!list) return null;
+                if (!r.ok) {
+                    list.innerHTML = '<p class="muted">Could not load events</p>';
+                    return null;
+                }
+                return r.json();
+            })
             .then(function (data) {
-                if (!list) return;
-                if (!data || !data.data || data.data.length === 0) {
-                    list.innerHTML = '<p class="muted">No events today</p>';
+                if (!list || !data) return;
+                if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+                    list.innerHTML = '<p class="muted">No events in the next 30 days. Use <strong>Add event</strong> to create one.</p>';
                     return;
                 }
                 var items = data.data.map(function (e) {
                     var id = (e.id || '').replace(/"/g, '&quot;');
-                    var title = (e.display || e.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    var title = meridianEscapeHtml(e.display || e.title || '');
+                    var startTime = e.start_time || '';
+                    var dayLabel = eventDayLabel(startTime);
+                    var timePart = (startTime && startTime.length >= 16) ? startTime.slice(11, 16) : '';
+                    var metaText = dayLabel ? dayLabel + (timePart ? ' · ' + timePart : '') : (timePart || '');
+                    var meta = metaText ? '<p class="event-card__meta">' + meridianEscapeHtml(metaText) + '</p>' : '';
                     return '<li data-event-id="' + id + '" data-event=\'' + JSON.stringify(e).replace(/'/g, '&#39;') + '">' +
                         '<article class="event-card">' +
+                        meta +
                         '<p class="event-card__title">' + title + '</p>' +
                         '<div class="event-card__actions">' +
                         '<button type="button" class="event-edit-btn btn-inline btn-edit">Edit</button>' +
@@ -67,7 +89,6 @@
             loadEvents();
             return;
         }
-        container.innerHTML = buildEventsHTML();
         _initialized = true;
 
         var addBtn = document.getElementById('addEventBtn');
@@ -82,7 +103,7 @@
             editingEventId = null;
             var titleEl = document.getElementById('eventFormTitle');
             if (titleEl) titleEl.textContent = 'Add event';
-            var today = new Date().toISOString().slice(0, 10);
+            var today = localDateISO();
             document.getElementById('eventTitle').value = '';
             document.getElementById('eventDate').value = today;
             document.getElementById('eventStartTime').value = '09:00';
@@ -98,7 +119,7 @@
             if (titleEl) titleEl.textContent = 'Edit event';
             var st = eventData.start_time || '';
             var et = eventData.end_time || '';
-            var date = st ? st.slice(0, 10) : new Date().toISOString().slice(0, 10);
+            var date = st ? st.slice(0, 10) : localDateISO();
             var startTime = st && st.length >= 16 ? st.slice(11, 16) : '09:00';
             var endTime = et && et.length >= 16 ? et.slice(11, 16) : '';
             document.getElementById('eventTitle').value = eventData.title || '';
@@ -125,7 +146,7 @@
                     var eventId = li.getAttribute('data-event-id');
                     if (!eventId) return;
                     if (!confirm('Delete this event?')) return;
-                    var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                    var apiBase = meridianApiBaseNormalize(_apiUrl);
                     fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events/' + encodeURIComponent(eventId), {
                         method: 'DELETE',
                         credentials: 'include'
@@ -161,7 +182,7 @@
                 var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
                 if (endTime) payload.end_time = date + 'T' + endTime + ':00';
 
-                var apiBase = (_apiUrl || '').replace(/\/$/, '');
+                var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var url = apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events';
                 var method = 'POST';
                 if (editingEventId) {

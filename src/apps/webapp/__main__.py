@@ -81,7 +81,6 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
 
     logger.info("Webapp build complete")
 
-
 def main() -> None:
     logger = _set_logging()
     api_url = get_webapp_baked_api_url()

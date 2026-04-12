@@ -27,7 +27,7 @@ OTHER_API_HEADERS = {
 
 @pytest.fixture(autouse=True)
 def reset_alert_state(api_client):
-    """Reset global alert state after each test."""
+    """Teardown: clear alert for the default test family (API state is per `family_circle_id`)."""
     yield
     r = api_client.post(
         "/api/emergency/alert", headers=API_HEADERS, json={"activated": False}

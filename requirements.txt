@@ -1,3 +1,5 @@
+# Windows kiosk: use 64-bit Python 3.11 or 3.12. pywebview needs pythonnet; there is no
+# wheel for Python 3.14+, so pip builds from source and often fails (NuGet / MSVC).
 # Core dependencies
 python-dotenv>=1.0.0
 pywebview>=4.0

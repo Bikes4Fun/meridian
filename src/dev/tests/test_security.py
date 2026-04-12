@@ -2,10 +2,10 @@
 Security tests for the client/server API (Flask server).
 Uses the Flask test client; no running server required.
 
-API auth (from apps.server.api set_user_id / _require_family_access):
-- No auth: GET /api/health, POST /api/login, GET /login
+API auth (from apps.server.api set_user_id / verify_family_membership / _require_family_access):
+- No auth: GET /api/health, POST /api/login, GET /login.html
 - Session only (no headers): GET /api/session (401) — requires session user_id + family_circle_id
-- Both X-User-Id and X-Family-Circle-Id (or session): all other API routes. Family-scoped routes also require URL family_circle_id == header family.
+- Both X-User-Id and X-Family-Circle-Id (or session): all other API routes must match a row in user_family_circle; family-scoped routes also require URL family_circle_id == header family.
 """
 
 import sys
@@ -131,16 +131,14 @@ def test_every_protected_post_put_route_requires_both_headers_401(api_client):
 
 # --- Security: fake credentials rejected ---
 @pytest.mark.integration
-@pytest.mark.skip(
-    reason="API does not validate user/family existence; currently returns 200"
-)
 def test_fake_credentials_rejected(api_client):
-    """Headers with non-existent user/family should be rejected with 403."""
+    """Headers with no user_family_circle row are rejected (verify_family_membership)."""
     r = api_client.get(
         "/api/family_circles/FAKEFAMILY/emergency-profile",
         headers={"X-User-Id": "FAKEUSER", "X-Family-Circle-Id": "FAKEFAMILY"},
     )
     assert r.status_code == 403
+    assert r.get_json().get("error") == "forbidden"
 
 
 # --- Security: user A (fam_a) cannot access family B (fam_b) data → 403 ---
@@ -187,6 +185,22 @@ def test_real_user_from_other_family_cannot_access_your_family(api_client):
         assert r.status_code == 403, (
             "real user from other family must not access %s" % path
         )
+
+
+# --- Security: user must belong to family (not only URL/header family match) ---
+@pytest.mark.integration
+def test_api_forbidden_when_user_not_member_of_header_family(api_client):
+    """403 when X-User-Id is not linked to X-Family-Circle-Id even if URL matches header."""
+    headers = {
+        "X-User-Id": OTHER_FAMILY_USER_ID,
+        "X-Family-Circle-Id": FAMILY_CIRCLE_ID,
+    }
+    r = api_client.get(
+        "/api/family_circles/%s/medications" % FAMILY_CIRCLE_ID,
+        headers=headers,
+    )
+    assert r.status_code == 403
+    assert r.get_json().get("error") == "forbidden"
 
 
 # --- Security: check-in identity ---

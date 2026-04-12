@@ -9,7 +9,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -67,7 +67,7 @@ class PRNMedication:
 
 
 class MedicationService:
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
         self.logger = logging.getLogger(__name__)
         self.timed_medications: List[TimedMedication] = []

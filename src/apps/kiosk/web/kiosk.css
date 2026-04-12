@@ -36,7 +36,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
 
-  /* ===== PAGE SHELL (pigments: shared/css/base.css) ===== */
+  /* ===== PAGE SHELL (pigments: shared/base.css) ===== */
   --bg: var(--warm-base);
   --text: var(--warm-text);
   --text-muted: var(--warm-muted);
@@ -966,6 +966,11 @@ body {
   height: 1.1em;
   align-self: center;
   border-radius: 2px;
+}
+
+/* Health: editor entry card uses timeline-card width (not .kiosk-settings max-width) */
+.health-meds-editor-card .kiosk-settings-card__title {
+  margin-top: 0;
 }
 
 .timeline-header {

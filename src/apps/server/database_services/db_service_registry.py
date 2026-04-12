@@ -1,7 +1,9 @@
 """
-Server-only: lazy DB-backed service getters (one DatabaseManager, shared service cache).
+Server-only: lazy DB-backed service getters (one QueryManager, shared service cache).
 
-Scope: construct domain services for the Flask/API process.
+Scope: construct domain services for the Flask/API process (api.py uses this as the single
+factory). Service modules may import each other for constructor injection (e.g. UserService
+and FamilyService); helpers such as photos.is_safe_saved_upload_basename are plain functions.
 
 Not here: kiosk remote clients, kiosk package imports, or Flask route definitions.
 """
@@ -10,37 +12,37 @@ try:
     from ...shared.config import DatabaseConfig
 except ImportError:
     from shared.config import DatabaseConfig
-from .database_manager import DatabaseManager
-from .database_services.contact import ContactService
-from .database_services.user import UserService
-from .database_services.calendar import CalendarService
-from .database_services.medical import MedicationService
-from .database_services.location import LocationService
-from .database_services.emergency import EmergencyService
-from .database_services.care_recipient import CareRecipientService
-from .database_services.family import FamilyService
-from .database_services.push_notification import PushNotificationService
-from .database_services.sendbird import SendbirdService
-from .database_services.photo_upload_service import PhotoUploadService
-from .database_services.call_signal import CallSignalService
+from .safe_query_manager import QueryManager
+from .contact import ContactService
+from .user import UserService
+from .calendar import CalendarService
+from .medical import MedicationService
+from .location import LocationService
+from .emergency import EmergencyService
+from .care_recipient import CareRecipientService
+from .family import FamilyService
+from .notification import PushNotificationService
+from .sendbird import SendbirdService
+from .photos import PhotoUploadService
+from .call_signal import CallSignalService
 
 
-class ServiceContainer:
+class DatabaseServices:
     def __init__(self, db_path: str = "meridian_kiosk.db"):
         self.db_path = db_path
         self._db_manager = None
         self._services = {}
 
-    def _get_database_manager(self):
+    def _get_query_manager(self):
         if self._db_manager is None:
-            self._db_manager = DatabaseManager(
+            self._db_manager = QueryManager(
                 DatabaseConfig(path=self.db_path, create_if_missing=True)
             )
         return self._db_manager
 
     def ensure_schema(self) -> bool:
         """Create database schema if missing. Call on server startup."""
-        r = self._get_database_manager().create_database_schema()
+        r = self._get_query_manager().create_database_schema()
         return r.success
 
     def _get_or_create(self, key: str, factory):
@@ -52,14 +54,14 @@ class ServiceContainer:
     def get_contact_service(self):
         return self._get_or_create(
             "contact_service",
-            lambda: ContactService(self._get_database_manager()),
+            lambda: ContactService(self._get_query_manager()),
         )
 
     def get_user_service(self):
         return self._get_or_create(
             "user_service",
             lambda: UserService(
-                self._get_database_manager(),
+                self._get_query_manager(),
                 self.get_family_service(),
             ),
         )
@@ -67,26 +69,26 @@ class ServiceContainer:
     def get_calendar_service(self):
         return self._get_or_create(
             "calendar_service",
-            lambda: CalendarService(self._get_database_manager()),
+            lambda: CalendarService(self._get_query_manager()),
         )
 
     def get_medication_service(self):
         return self._get_or_create(
             "medication_service",
-            lambda: MedicationService(self._get_database_manager()),
+            lambda: MedicationService(self._get_query_manager()),
         )
 
     def get_location_service(self):
         return self._get_or_create(
             "location_service",
-            lambda: LocationService(self._get_database_manager()),
+            lambda: LocationService(self._get_query_manager()),
         )
 
     def get_emergency_service(self):
         return self._get_or_create(
             "emergency_service",
             lambda: EmergencyService(
-                self._get_database_manager(),
+                self._get_query_manager(),
                 self.get_contact_service(),
             ),
         )
@@ -94,25 +96,25 @@ class ServiceContainer:
     def get_care_recipient_service(self):
         return self._get_or_create(
             "care_recipient_service",
-            lambda: CareRecipientService(self._get_database_manager()),
+            lambda: CareRecipientService(self._get_query_manager()),
         )
 
     def get_family_service(self):
         return self._get_or_create(
             "family_service",
-            lambda: FamilyService(self._get_database_manager()),
+            lambda: FamilyService(self._get_query_manager()),
         )
 
-    def get_push_notification_service(self):
+    def get_notification_service(self):
         return self._get_or_create(
-            "push_notification_service",
-            lambda: PushNotificationService(self._get_database_manager()),
+            "notification_service",
+            lambda: PushNotificationService(self._get_query_manager()),
         )
 
     def get_sendbird_service(self):
         return self._get_or_create(
             "sendbird_service",
-            lambda: SendbirdService(self._get_database_manager()),
+            lambda: SendbirdService(self._get_query_manager()),
         )
 
     def get_photo_upload_service(self):
@@ -124,9 +126,9 @@ class ServiceContainer:
     def get_call_signal_service(self):
         return self._get_or_create(
             "call_signal_service",
-            lambda: CallSignalService(self._get_database_manager()),
+            lambda: CallSignalService(self._get_query_manager()),
         )
 
 
-def create_service_container(db_path: str = "meridian_kiosk.db") -> ServiceContainer:
-    return ServiceContainer(db_path)
+def create_service_container(db_path: str = "meridian_kiosk.db") -> DatabaseServices:
+    return DatabaseServices(db_path)

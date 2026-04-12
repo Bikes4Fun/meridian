@@ -1,16 +1,45 @@
 """
 Kiosk Chat: contact grid HTML; ChatHandler fetches chat entry URL and opens a separate webview.
 
-Scope: list contacts and bridge open_chat / open_chat_with_call.
+Scope: list contacts, open_chat_window helper, bridge open_chat / open_chat_with_call.
 Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 """
 
 import html
 import logging
-
-from .webview import open_chat_window
+import subprocess
+import sys
 
 logger = logging.getLogger(__name__)
+
+
+def open_chat_window(url):
+    """Open URL in pywebview. Uses subprocess to avoid blocking the main kiosk window."""
+    if not url:
+        return
+    try:
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import sys, webview; webview.create_window('Family Chat', sys.argv[1], width=800, height=600); webview.start()",
+                url,
+            ]
+        )
+    except Exception:
+        try:
+            import webview
+
+            webview.create_window("Family Chat", url, width=800, height=600)
+            webview.start()
+        except ImportError:
+            import webbrowser
+
+            webbrowser.open(url)
+        except Exception:
+            import webbrowser
+
+            webbrowser.open(url)
 
 
 class ChatHandler:

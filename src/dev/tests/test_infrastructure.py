@@ -149,15 +149,15 @@ def test_happy_path(api_client):
 
 # @pytest.mark.integration
 # def test_0_pollute_alert_state(api_client):
-#     """Pollutes shared state: activates emergency alert without reset. No teardown.
-#     Causes test_1_alert_isolation_victim to fail when run after this (name forces order)."""
+#     """Pollutes state for the default family: activates emergency alert without reset. No teardown.
+#     With per-family alert storage, only same-family tests see the leak; name order forces victim after polluter."""
 #     api_client.post("/api/emergency/alert", headers=API_HEADERS, json={"activated": True})
 
 
 # @pytest.mark.integration
 # def test_1_alert_isolation_victim(api_client):
-#     """Assumes alert is False. Fails when run after test_0_pollute_alert_state
-#     (demonstrates shared state pollution when tests lack proper isolation)."""
+#     """Assumes alert is False for the default test family. Fails when run after test_0_pollute_alert_state
+#     (demonstrates missing teardown for that family's alert flag)."""
 #     r = api_client.get("/api/emergency/alert/status", headers=API_HEADERS)
 #     assert r.status_code == 200
 #     assert r.get_json()["data"]["activated"] is False, "alert was polluted by prior test"

@@ -6,7 +6,7 @@ Composes from canonical sources: care_recipients, medications, allergies, condit
 
 from dataclasses import asdict
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -16,7 +16,7 @@ from .contact import ContactService
 
 
 class EmergencyService:
-    def __init__(self, db_manager: DatabaseManager, contact_service: ContactService):
+    def __init__(self, db_manager: QueryManager, contact_service: ContactService):
         self.db_manager = db_manager
         self.contact_service = contact_service
 

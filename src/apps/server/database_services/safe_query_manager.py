@@ -1,6 +1,6 @@
 """
 Centralized database management for Meridian.
-Used by server only (container and app.py). Client gets data via API.
+Used by server only (db_service_registry and api.py). Client gets data via API.
 """
 
 import os
@@ -10,8 +10,8 @@ from typing import List, Tuple
 from contextlib import contextmanager
 
 try:
-    from ...shared.config import DatabaseConfig
-    from ...shared.interfaces import ServiceResult
+    from ....shared.config import DatabaseConfig
+    from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.config import DatabaseConfig
     from shared.interfaces import ServiceResult
@@ -40,7 +40,7 @@ _KNOWN_TABLE_NAMES = frozenset(
 )
 
 
-class DatabaseManager:
+class QueryManager:
     def __init__(self, config: DatabaseConfig):
         self.config = config
         self.logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ class DatabaseManager:
     def create_database_schema(self) -> ServiceResult:
         schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
         if not os.path.exists(schema_path):
-            return ServiceResult.error_result("Schema file not found: %s" % schema_path)
+            return ServiceResult.error_result(f"Schema file not found: {schema_path}")
         try:
             with open(schema_path, "r") as f:
                 schema_sql = f.read()

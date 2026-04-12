@@ -19,6 +19,8 @@ except ImportError:
 
 if "--fullscreen" in sys.argv:
     os.environ["KIOSK_TV_MODE"] = "1"
+if "--win-kiosk" in sys.argv:
+    os.environ["KIOSK_WIN_KIOSK"] = "1"
 
 import logging
 import threading

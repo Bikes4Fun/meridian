@@ -2,7 +2,7 @@
 Family service for family circle and member data.
 """
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -13,7 +13,7 @@ except ImportError:
 class FamilyService:
     """Service for family circle and member operations."""
 
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
 
     def add_family_circle(self, family_circle_id: str) -> ServiceResult:

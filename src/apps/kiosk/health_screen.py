@@ -1,8 +1,8 @@
 """
-Kiosk Health screen: medications list HTML and “mark taken” bridge (HealthHandler → remote API).
+Kiosk Health screen: medications list HTML, Edit medications entry, and “mark taken” bridge (HealthHandler → remote API).
 
-Scope: render meds from medication service; kiosk-only presentation.
-Not here: editing the medication list (Settings → Medications + inline JS), Home/Schedule timelines, or ICE/emergency PDF flows.
+Scope: render meds from medication service; link to full medication editor; kiosk-only presentation.
+Not here: inline editor implementation (kiosk_medications_embed.js), Home/Schedule timelines, or ICE/emergency PDF flows.
 """
 
 import html as html_module
@@ -160,7 +160,6 @@ def _medication_lists_inner_html(data: dict) -> str:
             continue
         items_html = [_timed_row_html(m, t) for m in meds]
         header_inner = html_module.escape(t)  # batch time key → timeline header text
-        header_inner = html_module.escape(t)  # batch time key → timeline header text
         parts.append(
             f'<div class="timeline-card timeline-card--health-meds">'
             f'<div class="timeline-header timeline-header--med-batch">'
@@ -197,16 +196,36 @@ def build_health_html(services, api_url: str) -> str:
 
     data = result.data or {}
     inner = _medication_lists_inner_html(data)
+    med_hint = (
+        "Mark today’s doses in the list above or from Home."
+        if inner
+        else "When medications are listed, mark doses here or from Home."
+    )
+    editor_block = (
+        '<div class="timeline-card timeline-card--health-meds health-meds-editor-card" aria-labelledby="health-meds-edit-h">'
+        + '<h2 class="kiosk-settings-card__title" id="health-meds-edit-h">Medications</h2>'
+        + '<div class="kiosk-settings-card__body">'
+        + hp.kiosk_caption(
+            "Update the list on the Medications screen—the same editor as the web dashboard. "
+            + med_hint
+        )
+        + hp.spacer(10)
+        + '<button type="button" class="add-event-btn btn-large kiosk-settings-primary-btn" data-screen="medications">Edit medications</button>'
+        + "</div></div>"
+    )
     parts = [hp.kiosk_header("Health"), hp.spacer(16)]
     if not inner:
         parts.append(hp.empty_state("No medications listed"))
+        parts.append(hp.spacer(16))
     else:
         parts.append(inner)
+        parts.append(hp.spacer(16))
+    parts.append(editor_block)
     return "".join(parts)
 
 
 class HealthHandler:
-    """Mark taken only; list editing is Settings → Edit medications (shared web inline editor)."""
+    """Mark taken only; list editing is Health → Edit medications (shared web inline editor)."""
 
     def __init__(self, app):
         self._app = app

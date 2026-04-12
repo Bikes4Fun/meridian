@@ -264,8 +264,8 @@
                 _mobileChatLoaded = true;
                 initChatContacts();
             }
-            if (pageId === 'health') {
-                setTimeout(syncHealthDetailsFromHash, 0);
+            if (pageId === 'health' || pageId === 'settings') {
+                setTimeout(syncFoldDetailsFromHash, 0);
             }
         });
     }
@@ -284,7 +284,7 @@
         });
     }
 
-    function syncHealthDetailsFromHash() {
+    function syncFoldDetailsFromHash() {
         var id = (location.hash || '').replace(/^#/, '');
         if (!id) return;
         var el = document.getElementById(id);
@@ -292,8 +292,8 @@
     }
 
     function initHealthFoldFromHash() {
-        window.addEventListener('hashchange', syncHealthDetailsFromHash);
-        syncHealthDetailsFromHash();
+        window.addEventListener('hashchange', syncFoldDetailsFromHash);
+        syncFoldDetailsFromHash();
     }
 
     function openHealthMedicationList() {

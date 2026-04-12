@@ -3,7 +3,7 @@ Incoming call signaling for kiosk page switching.
 Stores short-lived call requests in the database.
 """
 
-from ..database_manager import DatabaseManager
+from .safe_query_manager import QueryManager
 
 try:
     from ....shared.interfaces import ServiceResult
@@ -14,7 +14,7 @@ except ImportError:
 class CallSignalService:
     CALL_SIGNAL_TTL_MINUTES = 15
 
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: QueryManager):
         self.db_manager = db_manager
 
     def _is_user_in_family(self, user_id: str, family_circle_id: str) -> ServiceResult:

@@ -15,13 +15,10 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 from shared.config import DatabaseConfig
-from apps.server.database_manager import DatabaseManager
+from apps.server.database_services.safe_query_manager import QueryManager
 from apps.server.api import create_server_app
+from apps.server.database_services.db_service_registry import create_service_container
 from apps.kiosk.api_client import LocalTimeService
-from apps.server.database_services.contact import ContactService
-from apps.server.database_services.calendar import CalendarService
-from apps.server.database_services.medical import MedicationService
-from apps.server.database_services.emergency import EmergencyService
 
 
 @pytest.fixture
@@ -49,7 +46,7 @@ def test_db_config(temp_db_path):
 @pytest.fixture
 def test_db_manager(test_db_config):
     """Create a database manager with test database."""
-    manager = DatabaseManager(test_db_config)
+    manager = QueryManager(test_db_config)
     result = manager.create_database_schema()
     if not result.success:
         raise RuntimeError("Schema creation failed: %s" % result.error)
@@ -247,27 +244,29 @@ def time_service():
 
 
 @pytest.fixture
-def contact_service(populated_test_db):
-    """Create a ContactService with test database."""
-    return ContactService(populated_test_db)
+def service_container(populated_test_db):
+    """Same wiring as create_server_app: lazy DB-backed services on the test DB path."""
+    return create_service_container(populated_test_db.config.path)
 
 
 @pytest.fixture
-def calendar_service(populated_test_db):
-    """Create a CalendarService with test database."""
-    return CalendarService(populated_test_db)
+def contact_service(service_container):
+    return service_container.get_contact_service()
 
 
 @pytest.fixture
-def medication_service(populated_test_db):
-    """Create a MedicationService with test database."""
-    return MedicationService(populated_test_db)
+def calendar_service(service_container):
+    return service_container.get_calendar_service()
 
 
 @pytest.fixture
-def emergency_service(populated_test_db, contact_service):
-    """Create an EmergencyService with test database and contact service."""
-    return EmergencyService(populated_test_db, contact_service)
+def medication_service(service_container):
+    return service_container.get_medication_service()
+
+
+@pytest.fixture
+def emergency_service(service_container):
+    return service_container.get_emergency_service()
 
 
 @pytest.fixture

@@ -4,18 +4,14 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 | File | Summary | Scope (does) | Not here |
 |------|---------|--------------|----------|
-| `src/apps/kiosk/health_screen.py` | Health meds list + mark-taken bridge | Render meds from medication service; kiosk presentation | Med list editing (Settings + inline JS), Home/Schedule timelines, ICE/PDF |
-| `src/apps/kiosk/home_screen.py` | Home layout + Up Next / timeline | Merge medications + calendar; HTML for injected regions | Event modal (`events_handler`), nav (`app`), other screens |
-| `src/apps/kiosk/events_handler.py` | Schedule + calendar overlay + `EventsHandler` | Calendar DOM strings; bridge + pywebview eval | Home layout, Flask routes, non-calendar APIs |
-| `src/apps/kiosk/emergency_screen.py` | Read-only emergency profile HTML | Presentation + photo fetch for this screen | Printing (`emergency_print`), alert poll (`app`), server PDF gen |
-| `src/apps/kiosk/emergency_print.py` | Client emergency PDF → printer | Client print pipeline | Emergency HTML, alert routing, PDF API on server |
-| `src/apps/kiosk/clock_widget.py` | Clock HTML fragment | Static markup; any screen can pass `services` | Per-second updates / eval (`app`) |
+| `src/apps/kiosk/health_screen.py` | Health meds list + Edit medications link + mark-taken bridge | Render meds; entry to full editor; kiosk presentation | Inline editor JS (`kiosk_medications_embed`), Home/Schedule timelines, ICE/PDF |
+| `src/apps/kiosk/home_screen.py` | Home layout + Up Next / timeline + clock | Merge medications + calendar; clock HTML from time service | Event modal (`schedule_screen`), nav (`app`), other screens |
+| `src/apps/kiosk/schedule_screen.py` | Schedule screen HTML + event overlay markup | Merged timeline strings; modal shell (`#eventEditingId` hidden) | Live modal open/prefill (`kiosk.js` `meridianKioskEvents`), calendar API |
+| `src/apps/kiosk/emergency_screen.py` | Emergency profile HTML + client PDF print | Presentation + photo fetch; `trigger_emergency_print` for alerts/button | Alert poll (`app`), server PDF generation |
 | `src/apps/kiosk/checkin_screen.py` | Family Locations + `LocationHandler` | Layout + hooks for `map_widget` / kiosk JS | Leaflet (`kiosk.js`), check-in creation UX, location API impl |
-| `src/apps/kiosk/chat_screen.py` | Chat grid + entry webview | Contacts list; `open_chat` / `open_chat_with_call` | In-page Sendbird, contact admin APIs |
+| `src/apps/kiosk/chat_screen.py` | Chat grid + `open_chat_window` + entry webview | Contacts list; `open_chat` / `open_chat_with_call` | In-page Sendbird, contact admin APIs |
 | `src/apps/kiosk/map_widget.py` | Map markers + container HTML | Data shaping + embed fragment | Leaflet setup, check-in POST, named-places API impl |
-| `src/apps/kiosk/medications_screen.py` | Medications screen shell | Panel + root div for embed JS | Row editor, save/delete calls, webapp Settings host |
-| `src/apps/kiosk/settings_screen.py` | Settings + monitors strip | Primitives + monitor rows (stove id for live text) | Temp polling (`app` + sensor), med row editing |
-| `src/apps/kiosk/monitors_screen.py` | Monitor row/section HTML | Small presentational blocks | Sensor drivers, thresholds, API calls |
+| `src/apps/kiosk/settings_screen.py` | Settings + monitors; meds editor shell (`build_medications_html`) | Monitor row HTML, settings copy; full editor panel for Medications nav | Temp polling (`app` + sensor), Health timeline |
 | `src/apps/kiosk/html_primitives.py` | Shared kiosk HTML helpers | Markup strings, `kiosk_screen_blocked`, `form_row_html` / `section_bar_html`, tokens in CSS | Service fetch, per-screen business logic, webapp |
 | `src/apps/kiosk/app.py` | pywebview kiosk app | Window/bridge, registry, clock/stove/alert/call loops | Per-screen HTML, REST/Flask, DB services (server skips this import) |
 | `src/apps/kiosk/api_client.py` | Kiosk HTTP + `KioskRemoteServiceContainer` | Remote clients + local time; no UI | Flask, pywebview, server `ServiceContainer` |
@@ -33,39 +29,27 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 **`health_screen.py`**
 
-> Kiosk Health screen: medications list HTML and “mark taken” bridge (HealthHandler → remote API).  
+> Kiosk Health screen: medications list HTML, Edit medications entry (nav to full editor), and “mark taken” bridge (HealthHandler → remote API).  
 > Scope: render meds from medication service; kiosk-only presentation.  
-> Not here: editing the medication list (Settings → Medications + inline JS), Home/Schedule timelines, or ICE/emergency PDF flows.
+> Not here: inline editor implementation (`kiosk_medications_embed.js`), Home/Schedule timelines, or ICE/emergency PDF flows.
 
 **`home_screen.py`**
 
-> Kiosk Home screen: layout, Up Next + “what’s next today” timeline, and merged schedule item loading.  
+> Kiosk Home screen: layout, Up Next + “what’s next today” timeline, merged schedule item loading, and clock fragment (time service).  
 > Scope: merge medications + calendar into sortable items; emit HTML for injected regions.  
-> Not here: event modal markup (events_handler), nav/screen switching (app), or non-home screens.
+> Not here: event modal markup (`schedule_screen`), nav/screen switching (app), or non-home screens.
 
-**`events_handler.py`**
+**`schedule_screen.py`**
 
-> Kiosk calendar UX: Schedule screen HTML (meds + events), event overlay markup, EventsHandler (add/edit/delete via remote calendar service).  
-> Scope: calendar-facing DOM strings and bridge methods tied to pywebview eval.  
-> Not here: Home layout, server Flask routes, or non-calendar APIs.
+> Kiosk Schedule screen: merged meds + events timeline, Add Event button, event modal overlay markup (hidden `#eventEditingId`).  
+> Scope: HTML string builders only. Live modal open/prefill: `kiosk.js` (`meridianKioskEvents`); submit/delete: `pywebview.api` → `app.py` (`_submit_event_form` / `_delete_event`).  
+> Not here: calendar API calls (app / api_client).
 
 **`emergency_screen.py`**
 
 > Kiosk Emergency screen: load emergency profile via remote service; build read-only HTML (patient, medical, contacts).  
-> Scope: presentation + photo fetch for this screen only.  
-> Not here: printing (emergency_print), alert activation/polling (app), or server-side PDF generation.
-
-**`emergency_print.py`**
-
-> Kiosk emergency print: fetch PDF bytes from remote emergency service, run OS print, optional status label updates.  
-> Scope: client-side print pipeline only.  
-> Not here: emergency screen HTML, alert routing, or implementing the PDF API on the server.
-
-**`clock_widget.py`**
-
-> Kiosk clock fragment: HTML for day, date, time, and period sprite (reads time service).  
-> Scope: static markup for one widget; reusable on any screen that passes services.  
-> Not here: per-second updates or pywebview eval (app owns refresh loops).
+> Scope: presentation + photo fetch; client-side emergency PDF print (`trigger_emergency_print` for alerts/button).  
+> Not here: alert activation/polling (app), or server-side PDF generation.
 
 **`checkin_screen.py`**
 
@@ -75,7 +59,7 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 **`chat_screen.py`**
 
-> Kiosk Chat: contact grid HTML; ChatHandler fetches chat entry URL and opens a separate webview.  
+> Kiosk Chat: contact grid HTML; `open_chat_window` (subprocess pywebview for chat URL); ChatHandler fetches chat entry URL.  
 > Scope: list contacts and bridge open_chat / open_chat_with_call.  
 > Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 
@@ -85,23 +69,11 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 > Scope: data shaping and HTML fragment for embedding.  
 > Not here: Leaflet setup, check-in POST flows, or named-places API implementation.
 
-**`medications_screen.py`**
-
-> Kiosk Medications screen: shell HTML and root node for the shared inline medication editor (kiosk_medications_embed.js + meridian_medications_inline.js).  
-> Scope: panel + placeholder div only.  
-> Not here: row editor, save/delete API calls, or webapp Settings editor (different host element).
-
 **`settings_screen.py`**
 
-> Kiosk Settings: monitors section HTML, link into Medications screen, static kiosk copy.  
-> Scope: composition of primitives + monitor rows (stove id for live updates).  
-> Not here: live temperature polling (app + TemperatureSensor), or medication row editing.
-
-**`monitors_screen.py`**
-
-> Kiosk monitor fragments: section header + labeled reading row HTML (e.g. stove temp span id for JS/app updates).  
-> Scope: small presentational building blocks for any screen.  
-> Not here: sensor drivers, alert thresholds, or API calls.
+> Kiosk Settings: monitors section HTML, static kiosk copy; `build_medications_html` is the full editor shell when navigating to Medications.  
+> Scope: composition of primitives + monitor rows (stove id for live updates); meds editor panel + root div for embed JS.  
+> Not here: live temperature polling (app + TemperatureSensor), Health timeline / Edit medications entry (health_screen).
 
 **`html_primitives.py`**
 

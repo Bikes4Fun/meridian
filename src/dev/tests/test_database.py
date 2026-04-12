@@ -1,17 +1,17 @@
 """
-Integration tests for DatabaseManager (DB required). Infrastructure: schema, persistence, invalid path.
+Integration tests for QueryManager (DB required). Infrastructure: schema, persistence, invalid path.
 """
 
 import os
 import pytest
-from apps.server.database_manager import DatabaseManager
+from apps.server.database_services.safe_query_manager import QueryManager
 from shared.config import DatabaseConfig
 from shared.interfaces import ServiceResult
 
 
 @pytest.mark.integration
-class TestDatabaseManager:
-    """Test cases for DatabaseManager."""
+class TestQueryManager:
+    """Test cases for QueryManager."""
 
     def test_connection_success(self, test_db_manager):
         """Test successful database connection."""
@@ -112,7 +112,7 @@ class TestDatabaseManager:
 
     def test_fresh_db_schema_queryable(self, test_db_config):
         """Fresh DB (schema only, no seed): tables exist and are queryable."""
-        manager = DatabaseManager(test_db_config)
+        manager = QueryManager(test_db_config)
         result = manager.create_database_schema()
         assert result.success is True
         r = manager.execute_query("SELECT id FROM family_circles LIMIT 1", ())
@@ -122,14 +122,14 @@ class TestDatabaseManager:
         assert r2.success is True
 
     def test_invalid_db_path_fails(self, test_db_config):
-        """Invalid DB path: DatabaseManager.create_database_schema returns error with 'Schema creation failed'."""
+        """Invalid DB path: QueryManager.create_database_schema returns error with 'Schema creation failed'."""
         config = DatabaseConfig(
             path=os.path.join(os.path.sep, "nonexistent_dir_xyz", "db.db"),
             create_if_missing=True,
             backup_enabled=False,
             connection_timeout=1,
         )
-        manager = DatabaseManager(config)
+        manager = QueryManager(config)
         result = manager.create_database_schema()
         assert result.success is False
         assert result.error
@@ -137,7 +137,7 @@ class TestDatabaseManager:
 
     def test_create_database_schema(self, test_db_config):
         """Test creating database schema."""
-        manager = DatabaseManager(test_db_config)
+        manager = QueryManager(test_db_config)
         result = manager.create_database_schema()
 
         assert result.success is True
@@ -154,8 +154,8 @@ class TestDatabaseManager:
 
 
 @pytest.mark.integration
-class TestDatabaseManagerIntegration:
-    """Integration tests for DatabaseManager with real database operations."""
+class TestQueryManagerIntegration:
+    """Integration tests for QueryManager with real database operations."""
 
     def test_constraint_error_keeps_consistent_state(self, test_db_manager):
         """Duplicate PK insert fails while previously committed rows remain intact."""

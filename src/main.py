@@ -121,6 +121,9 @@ if _src_dir not in sys.path:
 # --fullscreen = TV mode on second monitor (full 1080×1920, no dev scaling)
 if "--fullscreen" in sys.argv:
     os.environ["KIOSK_TV_MODE"] = "1"
+# --win-kiosk = 2736×1824 window (see shared.config get_kiosk_win_kiosk)
+if "--win-kiosk" in sys.argv:
+    os.environ["KIOSK_WIN_KIOSK"] = "1"
 
 from shared.config import (
     get_log_level,
@@ -178,14 +181,6 @@ def _start_local_api_server(logger):
 def run_local_server_and_db(logger):
     logger.debug("Database: local - %s", get_database_path())
     local_api_url = _start_local_api_server(logger)
-    src_dir = os.path.dirname(os.path.abspath(__file__))
-
-    try:
-        build_webapp(logger, local_api_url, src_dir)
-        build_chatapp(logger, local_api_url, src_dir)
-    except Exception as e:
-        logger.error("Build failed (%s).", e)
-        sys.exit(1)
 
     seed_status = "skipped"
     try:
@@ -198,6 +193,14 @@ def run_local_server_and_db(logger):
     except Exception as e:
         seed_status = "failed"
         logger.warning(f"Demo seed failed: {e}")
+
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        build_webapp(logger, local_api_url, src_dir)
+        build_chatapp(logger, local_api_url, src_dir)
+    except Exception as e:
+        logger.error("Build failed (%s).", e)
+        sys.exit(1)
 
     logger.debug("Database loaded")
 
@@ -236,7 +239,9 @@ def set_logging():
     logging.getLogger("apps.server.database_services.location").setLevel(
         logging.WARNING
     )
-    logging.getLogger("apps.server.database_manager").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.safe_query_manager").setLevel(
+        logging.WARNING
+    )
     logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
     return logger

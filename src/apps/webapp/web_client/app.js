@@ -361,20 +361,23 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 if (!data || !data.data) return;
-                var chatContacts = data.data.filter(function (c) { return (c.sendbird_user_id || '').trim(); });
+                var chatContacts = data.data.filter(function (c) {
+                    var relationship = (c.relationship || '').toLowerCase();
+                    return !!(c.phone || '').trim() && relationship !== 'care recipient' && relationship !== 'care_recipient' && relationship !== 'patient';
+                });
                 if (chatContacts.length === 0) {
-                    grid.innerHTML = '<p class="muted">No contacts with chat.</p>';
+                    grid.innerHTML = '<p class="muted">No contacts with a phone number.</p>';
                     return;
                 }
                 grid.innerHTML = '';
                 chatContacts.forEach(function (c) {
                     var name = c.display_name || c.id || 'Contact';
-                    var sb = (c.sendbird_user_id || '').trim();
+                    var phone = (c.phone || '').trim();
                     var tile = document.createElement('div');
                     tile.className = 'contact-tile';
                     tile.setAttribute('tabindex', '0');
                     tile.setAttribute('role', 'button');
-                    tile.setAttribute('aria-label', 'Open chat with ' + name);
+                    tile.setAttribute('aria-label', 'Call ' + name);
                     var inner = document.createElement('div');
                     inner.className = 'contact-tile-inner';
                     var avatar = document.createElement('div');
@@ -393,29 +396,34 @@
                     label.textContent = name;
                     inner.appendChild(label);
                     tile.appendChild(inner);
-                    function openChatWindow() {
-                        if (statusEl) statusEl.textContent = 'Opening chat…';
-                        var qs = '?recipient_sendbird_user_id=' + encodeURIComponent(sb) + '&recipient_display_name=' + encodeURIComponent(name);
-                        fetch(apiBase + '/api/chat/chat-session-url' + qs, { credentials: 'include' })
+                    function placeVoiceCall() {
+                        if (statusEl) statusEl.textContent = 'Calling ' + name + '…';
+                        fetch(apiBase + '/api/voice/call', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ to: phone })
+                        })
                             .then(function (r) {
-                                if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Failed to get chat URL'); });
-                                return r.json();
+                                return r.json().then(function (body) {
+                                    return { ok: r.ok, body: body || {} };
+                                });
                             })
                             .then(function (res) {
-                                if (res && res.url) {
-                                    window.open(res.url, 'chat_' + sb, 'width=800,height=600');
-                                    if (statusEl) statusEl.textContent = '';
-                                } else throw new Error('No URL returned');
+                                if (!res.ok) {
+                                    throw new Error((res.body && (res.body.error || res.body.detail)) || 'Call failed');
+                                }
+                                if (statusEl) statusEl.textContent = 'Calling ' + name;
                             })
                             .catch(function (err) {
-                                if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not open chat');
+                                if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not place call');
                             });
                     }
-                    tile.addEventListener('click', openChatWindow);
+                    tile.addEventListener('click', placeVoiceCall);
                     tile.addEventListener('keydown', function (ev) {
                         if (ev.key === 'Enter' || ev.key === ' ') {
                             ev.preventDefault();
-                            openChatWindow();
+                            placeVoiceCall();
                         }
                     });
                     grid.appendChild(tile);
@@ -463,3 +471,53 @@
         init();
     }
 })();
+
+/**
+ * Shared browser helpers (login redirect, API base resolution, HTML/attr escaping). Load before app / ice_editor / meds modules.
+ * Scope: small globals on window. Not: feature pages, fetch wrappers, or kiosk-only scripts beyond depending on these utilities.
+ */
+(function (global) {
+    'use strict';
+    global.meridianLoginPageWithReturn = function () {
+        return '/login.html?next=' + encodeURIComponent(global.location.pathname + global.location.search);
+    };
+    global.meridianPostLoginRedirectTarget = function () {
+        var next = new URLSearchParams(global.location.search).get('next');
+        if (!next || typeof next !== 'string') return '/';
+        next = next.trim();
+        if (!next || next.indexOf('//') === 0 || next.charAt(0) !== '/' || next.indexOf('://') >= 0) {
+            return '/';
+        }
+        return next;
+    };
+    global.meridianApiBaseNormalize = function (url) {
+        return String(url || '').replace(/\/$/, '');
+    };
+    global.meridianEscapeHtml = function (s) {
+        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    global.meridianEscapeAttr = function (s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    };
+    global.meridianApiBaseForFetch = function (configUrl) {
+        var u = (configUrl || '').trim();
+        if (!u.startsWith('http')) return '';
+        try {
+            var api = new URL(u);
+            var win = global.location;
+            if (api.origin === win.origin) return '';
+            var loopbacks = { localhost: 1, '127.0.0.1': 1, '[::1]': 1 };
+            if (
+                loopbacks[api.hostname] &&
+                loopbacks[win.hostname] &&
+                api.protocol === win.protocol &&
+                String(api.port) === String(win.port)
+            ) {
+                return '';
+            }
+            return u.replace(/\/$/, '');
+        } catch (e) {
+            return '';
+        }
+    };
+})(typeof window !== 'undefined' ? window : this);

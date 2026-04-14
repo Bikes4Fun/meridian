@@ -16,15 +16,16 @@ from typing import Optional
 from shared.config import (
     get_kiosk_tv_fullscreen,
     get_kiosk_tv_mode,
+    get_kiosk_webview_debug,
     get_kiosk_window_size,
 )
 
 from .api_client import KioskRemoteServiceContainer, create_kiosk_remote
-from .chat_screen import ChatHandler
-from .checkin_screen import LocationHandler
-from .schedule_screen import build_schedule_html
+from .communication import ChatHandler
+from .map_screen import LocationHandler
+from .schedule_screen import ScheduleHandler, build_schedule_html
 from .health_screen import HealthHandler
-from .temperature_sensor import TemperatureSensor
+from .sensor_widgets import SensorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,8 @@ def _get_screen_registry():
     global _SCREEN_REGISTRY
     if _SCREEN_REGISTRY is not None:
         return _SCREEN_REGISTRY
-    from .checkin_screen import build_checkin_html
-    from .chat_screen import build_chat_html
+    from .map_screen import build_checkin_html
+    from .communication import build_chat_html
     from .emergency_screen import build_emergency_html
     from .health_screen import build_health_html
     from .home_screen import build_home_html
@@ -120,19 +121,17 @@ class KioskBridge:
         self._chat = ChatHandler(app)
         self._health = HealthHandler(app)
         self._location = LocationHandler(app)
+        self._schedule = ScheduleHandler(app)
+        self._sensor = app._sensor
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
         logger.info(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
-        """Fetch chat entry URL and open in new pywebview window. No window.open in JS."""
-        self._chat.open_chat(sendbird_user_id, display_name)
-
-    def open_chat_with_call(self, sendbird_user_id: str, display_name: str) -> None:
-        """Open chat entry URL and auto-start a video call."""
-        self._chat.open_chat(sendbird_user_id, display_name, auto_start_call=True)
+    def call_phone(self, phone: str, display_name: str = "") -> str:
+        """Place a phone call via server Twilio endpoint."""
+        return self._chat.call_phone(phone, display_name)
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
@@ -161,10 +160,10 @@ class KioskBridge:
             self._app._navigate_to(sid)
 
     def submit_event_form(self, payload_json: str) -> str:
-        return self._app._submit_event_form(payload_json)
+        return self._schedule.submit_event_form(payload_json)
 
     def add_event(self, payload_json: str) -> str:
-        return self._app._submit_event_form(payload_json)
+        return self._schedule.submit_event_form(payload_json)
 
     def update_event(self, event_id: str, payload_json: str) -> str:
         try:
@@ -172,19 +171,29 @@ class KioskBridge:
         except json.JSONDecodeError as e:
             return str(e)
         data["id"] = event_id
-        return self._app._submit_event_form(json.dumps(data))
+        return self._schedule.submit_event_form(json.dumps(data))
 
     def delete_event(self, event_id: str) -> str:
-        return self._app._delete_event(event_id)
+        return self._schedule.delete_event(event_id)
 
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
         return self._health.mark_medication_taken(medication_id, time_slot, taken)
 
+    def get_medications_editor_rows(self) -> str:
+        return self._health.get_medications_editor_rows()
+
+    def save_medications_editor_rows(
+        self, rows_json: str, initial_snapshot_json: str
+    ) -> str:
+        return self._health.save_medications_editor_rows(
+            rows_json, initial_snapshot_json
+        )
+
     def snooze_stove_temp(self) -> None:
         """Snooze stove warnings and clear emergency alert (same POST as webapp cancel)."""
-        self._app._snooze_stove_temp()
+        self._sensor.snooze_stove_alerts()
 
     def where_is_everyone(self) -> str:
         return self._location.where_is_everyone()
@@ -208,8 +217,7 @@ class MeridianKioskApp:
         self._bridge = None
         self._alert_was_activated = False
         self._last_incoming_call_id = 0
-        self._temp_sensor = None
-        self._stove_alert_armed = False
+        self._sensor = SensorHandler(self)
 
     def run(self):
         """Create window, wire bridge, start webview loop."""
@@ -254,7 +262,12 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        webview.start(debug=False)
+        _wv_debug = get_kiosk_webview_debug()
+        if _wv_debug:
+            logger.info(
+                "Kiosk pywebview debug on (MERIDIAN_KIOSK_WEBVIEW_DEBUG): Web Inspector enabled where supported"
+            )
+        webview.start(debug=_wv_debug)
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""
@@ -273,16 +286,9 @@ class MeridianKioskApp:
             if extra:
                 self._eval(extra)
             if screen_name == "settings":
-                self._push_stove_temp_display()
+                self._sensor.push_stove_temp_display()
         except Exception as e:
             logger.exception(f"navigate failed: {e}")
-
-    def _push_stove_temp_display(self) -> None:
-        """Refresh Settings → Monitors stove value immediately (background thread also updates every ~2s)."""
-        sensor = self._temp_sensor
-        if not sensor:
-            return
-        self._eval_el("stove-temp", sensor.get_display())
 
     def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
         """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
@@ -305,10 +311,8 @@ class MeridianKioskApp:
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()
-        self._temp_sensor = TemperatureSensor()
-        self._temp_sensor.start()
+        self._sensor.start()
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
-        threading.Thread(target=self._start_temp_push, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()
 
@@ -351,46 +355,6 @@ class MeridianKioskApp:
             self._eval_el("clock-time", time_svc.get_time())
             self._eval_clock_period(time_svc)
 
-    def _start_temp_push(self):
-        """Push stove temperature to UI and post/clear emergency alert via server (same as webapp)."""
-        while True:
-            time.sleep(2)
-            if self._temp_sensor:
-                reading = self._temp_sensor.get_display()
-                self._eval_el("stove-temp", reading)
-                self._maybe_stove_emergency_alert()
-
-    def _maybe_stove_emergency_alert(self) -> None:
-        sensor = self._temp_sensor
-        alert_svc = self.services.get_alert_service()
-        if not sensor or not alert_svc or not getattr(
-            alert_svc, "set_alert_activated", None
-        ):
-            return
-        if sensor.should_activate_stove_emergency():
-            if not self._stove_alert_armed:
-                r = alert_svc.set_alert_activated(True)
-                if r.success:
-                    self._stove_alert_armed = True
-                    logger.info("Stove temperature sustained over threshold; alert activated")
-            return
-        if self._stove_alert_armed and sensor.reading_below_threshold_c():
-            r = alert_svc.set_alert_activated(False)
-            if r.success:
-                logger.info("Stove temperature normalized; alert cleared")
-                self._stove_alert_armed = False
-
-    def _snooze_stove_temp(self) -> None:
-        if self._temp_sensor:
-            self._temp_sensor.snooze()
-        alert_svc = self.services.get_alert_service()
-        if alert_svc and getattr(alert_svc, "set_alert_activated", None):
-            r = alert_svc.set_alert_activated(False)
-            if r.success:
-                self._stove_alert_armed = False
-        else:
-            self._stove_alert_armed = False
-
     def _load_home_schedule(self):
         """Update Up Next and timeline. Fetches data via home_screen, pushes to webview."""
         from .home_screen import (
@@ -402,39 +366,6 @@ class MeridianKioskApp:
         items, now = load_schedule_items(self.services)
         self._eval_el("up_next_content", build_up_next_html(items, now))
         self._eval_el("timeline_content", build_timeline_html(items))
-
-    def _submit_event_form(self, payload_json: str) -> str:
-        """POST/PUT calendar event via remote service. Payload may include id for update."""
-        try:
-            data = json.loads(payload_json)
-        except json.JSONDecodeError as e:
-            return str(e)
-        if not data.get("title") or not data.get("start_time"):
-            return "title and start_time required"
-        cal = self.services.get_calendar_service()
-        if not cal:
-            return "calendar service unavailable"
-        event_id = data.pop("id", None)
-        if event_id:
-            r = cal.update_event(str(event_id), data)
-        else:
-            r = cal.add_event(data)
-        if r.success:
-            self._load_home_schedule()
-            self._refresh_schedule_if_shown()
-            return "ok"
-        return r.error or "failed"
-
-    def _delete_event(self, event_id: str) -> str:
-        cal = self.services.get_calendar_service()
-        if not cal:
-            return "calendar service unavailable"
-        r = cal.delete_event(event_id)
-        if r.success:
-            self._load_home_schedule()
-            self._refresh_schedule_if_shown()
-            return "ok"
-        return r.error or "failed"
 
     def _refresh_schedule_if_shown(self) -> None:
         """Tell kiosk.js to reload Schedule screen if it is active."""
@@ -477,14 +408,12 @@ class MeridianKioskApp:
             call_id = int(result.data.get("call_id") or 0)
             if call_id <= 0 or call_id == self._last_incoming_call_id:
                 continue
-            sendbird_user_id = (result.data.get("from_sendbird_user_id") or "").strip()
+            caller_user_id = (result.data.get("from_user_id") or "").strip()
             display_name = (result.data.get("from_display_name") or "").strip()
-            if not sendbird_user_id:
+            if not caller_user_id:
                 continue
             self._last_incoming_call_id = call_id
             self._navigate_to("chat")
-            if self._bridge:
-                self._bridge.open_chat(sendbird_user_id, display_name or "Family")
             call_svc.acknowledge_incoming_call(call_id)
 
 def create_app(

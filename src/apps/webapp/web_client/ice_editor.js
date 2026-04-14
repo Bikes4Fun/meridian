@@ -1,5 +1,5 @@
 /**
- * Webapp ICE (emergency profile) editor: medical block uses MeridianMedicationsInline; contacts/photos/DNR via emergency-profile + contacts APIs. __API_URL__ baked at build.
+ * Webapp ICE (emergency profile) editor: medical block uses MeridianMedicationsInline; contacts/photos/DNR via emergency-profile + contacts APIs. __API_URL__ injected at build.
  * Scope: ice_editor page behavior. Not: kiosk emergency screen, PDF print flow, or kiosk-only bridge APIs.
  */
 (function () {

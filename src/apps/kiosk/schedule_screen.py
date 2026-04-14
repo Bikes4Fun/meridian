@@ -12,6 +12,46 @@ import json
 from . import html_primitives as hp
 
 
+class ScheduleHandler:
+    """Handler for Schedule screen bridge methods."""
+
+    def __init__(self, app):
+        self._app = app
+
+    def submit_event_form(self, payload_json: str) -> str:
+        """POST/PUT calendar event via remote service. Payload may include id for update."""
+        try:
+            data = json.loads(payload_json)
+        except json.JSONDecodeError as e:
+            return str(e)
+        if not data.get("title") or not data.get("start_time"):
+            return "title and start_time required"
+        cal = self._app.services.get_calendar_service()
+        if not cal:
+            return "calendar service unavailable"
+        event_id = data.pop("id", None)
+        if event_id:
+            r = cal.update_event(str(event_id), data)
+        else:
+            r = cal.add_event(data)
+        if r.success:
+            self._app._load_home_schedule()
+            self._app._refresh_schedule_if_shown()
+            return "ok"
+        return r.error or "failed"
+
+    def delete_event(self, event_id: str) -> str:
+        cal = self._app.services.get_calendar_service()
+        if not cal:
+            return "calendar service unavailable"
+        r = cal.delete_event(event_id)
+        if r.success:
+            self._app._load_home_schedule()
+            self._app._refresh_schedule_if_shown()
+            return "ok"
+        return r.error or "failed"
+
+
 def get_event_form_overlay_html() -> str:
     """Event add/edit modal overlay only. Home adds its own Add Event button."""
     return """<div id="eventFormOverlay" class="event-overlay" style="display:none;">

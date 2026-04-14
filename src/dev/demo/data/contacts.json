@@ -3,30 +3,28 @@
     {
       "id": "contact_001",
       "display_name": "Dean",
-      "phone": "(555) 123-4567",
+      "phone": null,
       "email": "dad@family.email",
       "birthday": "1960-05-12",
       "relationship": "husband",
       "emergency_priority": "primary_emergency",
       "photo_filename": "dean_gps_pin.jpg",
-      "sendbird_user_id": "dean",
       "notes": "Primary caregiver"
     },
     {
       "id": "contact_002",
       "display_name": "Deanna",
-      "phone": "(555) 456-7890",
+      "phone": "4357725787",
       "email": "deanna@family.email",
       "birthday": "1988-03-22",
       "relationship": "child",
       "emergency_priority": "secondary_emergency",
-      "photo_filename": "deanna_gps_pin.jpeg",
-      "sendbird_user_id": "deanna"
+      "photo_filename": "deanna_gps_pin.jpeg"
     },
     {
       "id": "contact_dr_chen",
       "display_name": "Dr. Michael Chen",
-      "phone": "(555) 987-6543",
+      "phone": null,
       "email": "dr.chen@medicalclinic.com",
       "birthday": null,
       "relationship": "doctor",
@@ -37,7 +35,7 @@
     {
       "id": "contact_pt",
       "display_name": "Physical Therapist",
-      "phone": "(555) 111-2222",
+      "phone": null,
       "email": "pt@rehab.com",
       "birthday": null,
       "relationship": "therapist",
@@ -50,21 +48,26 @@
       "display_name": "Eleanor",
       "phone": null,
       "relationship": "grandchild",
-      "emergency_priority": "not_emergency",
-      "sendbird_user_id": "eleanor"
+      "emergency_priority": "not_emergency"
+    },
+    {
+      "id": "contact_004",
+      "display_name": "Landon",
+      "phone": "14359225983",
+      "relationship": "grandchild",
+      "emergency_priority": "not_emergency"
     },
     {
       "id": "contact_005",
       "display_name": "Dylan",
-      "phone": null,
+      "phone": "4342276223",
       "relationship": "son in law",
-      "emergency_priority": "secondary_emergency",
-      "sendbird_user_id": "dtzecha"
+      "emergency_priority": "secondary_emergency"
     },
     {
       "id": "contact_james_foster",
       "display_name": "James Foster",
-      "phone": "(555) 234-5678",
+      "phone": null,
       "relationship": "son",
       "emergency_priority": "primary_emergency",
       "notes": "Primary caregiver. Medical proxy and POA."
@@ -72,9 +75,9 @@
     {
       "id": "contact_patient",
       "display_name": "Marian Foster",
+      "phone": "18557389731",
       "relationship": "care recipient",
-      "emergency_priority": "not_emergency",
-      "sendbird_user_id": "testpatient"
+      "emergency_priority": "not_emergency"
     }
   ]
 }

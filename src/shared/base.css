@@ -1,6 +1,6 @@
 /* =============================================================================
    MERIDIAN BASE – Universal design tokens and styles
-   Shared by webapp, chatapp, kiosk. Override in app-specific CSS as needed.
+   Shared by webapp and kiosk. Override in app-specific CSS as needed.
    Shared tokens; webapp extends in apps/webapp (Clinical Clarity / design plan).
    ============================================================================= */
 

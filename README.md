@@ -84,7 +84,7 @@ GitHub Discussions for design decisions. Please engage in our current open polls
 ## Technical Stack
 - **UI and mobile**: pywebview + HTML/CSS/JS, Swift (iOS)
 - **Server**: Python (Flask), SQLite
-- **Libraries and APIs**: Pillow, Requests, Leaflet, ReportLab, Sendbird
+- **Libraries and APIs**: Pillow, Requests, Leaflet, ReportLab, Twilio
 
 **Push notifications (Where is everyone?)**  
 Without APNs config, the server logs requests but does not send pushes. To enable real push on a physical device, set: `APNS_AUTH_KEY_PATH` (path to .p8 key), `APNS_KEY_ID`, `APNS_TEAM_ID`. Optional: `APNS_BUNDLE_ID` (default com.meridian.Meridian), `APNS_USE_SANDBOX=1` for dev.
@@ -97,8 +97,33 @@ On **Windows**, run the kiosk with **64-bit Python 3.11 or 3.12** from [python.o
 
 ```bash
 pip install -r requirements.txt
-PYTHONPATH=src python src/main.py           # local DB/server (default); add --railway-run to test remote API on Railway (requires RAILWAY_API_URL set to Railway API base URL)
+PYTHONPATH=src python src/main.py           # local DB/server (default); add --remote-api to test remote API on Railway (requires RAILWAY_API_URL set to Railway API base URL)
+PYTHONPATH=src python -m apps.server
+PYTHONPATH=src python -m apps.webapp
+PYTHONPATH=src python -m apps.kiosk
 PYTHONPATH=src pytest src/dev/tests         # -v for verbose;
+```
+
+### Twilio Voice Quickstart (Server-Side)
+
+```bash
+pip install flask twilio
+export TWILIO_ACCOUNT_SID=YOUR_ACCOUNT_SID
+export TWILIO_AUTH_TOKEN=YOUR_AUTH_TOKEN
+export TWILIO_PHONE_NUMBER=+1YOUR_TWILIO_NUMBER
+```
+
+```python
+import os
+from twilio.rest import Client
+
+client = Client(os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"])
+call = client.calls.create(
+    url="http://demo.twilio.com/docs/voice.xml",
+    to="+18005550100",
+    from_="+18005550199",
+)
+print(call.sid)
 ```
 
 ---
@@ -121,7 +146,6 @@ meridian/
 │   │   │   ├── database.py
 │   │   │   ├── schema.sql
 │   │   │   └── services/
-│   │   ├── chatapp/            # Sendbird chat integration
 │   │   └── webapp/             # Caregiver web client
 │   ├── dev/
 │   │   ├── demo/               # Seed demo data

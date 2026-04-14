@@ -34,8 +34,8 @@ def ensure_local_seed_prerequisites(db_path: str) -> None:
         conn.execute("INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (fam,))
         for uid, name in (("fm_001", "Dean"), (kiosk, "Kiosk")):
             conn.execute(
-                "INSERT OR IGNORE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id) VALUES (?,?,?,?,?)",
-                (uid, name, None, fam, None),
+                "INSERT OR IGNORE INTO users (id, display_name, photo_filename, family_circle_id) VALUES (?,?,?,?)",
+                (uid, name, None, fam),
             )
             conn.execute(
                 "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?,?)",
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     try:
         from shared.config import get_server_host, get_server_port
 
-        host = "127.0.0.1" if get_server_host() == "0.0.0.0" else get_server_host()
+        host = get_server_host()
         default_url = f"http://{host}:{get_server_port()}"
     except ImportError:
         default_url = "http://127.0.0.1:8000"

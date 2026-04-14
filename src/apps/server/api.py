@@ -17,9 +17,7 @@ client/, display/, app_factory.py, icons/, and the kiosk client are not needed o
 they can be omitted or relocated to a client-only repo.
 """
 
-import base64
 import hashlib
-import hmac
 import json
 import mimetypes
 import os
@@ -67,21 +65,12 @@ try:
 except ImportError:
     from shared.emergency_profile_pdf import build_pdf
 from .database_services.db_service_registry import create_service_container
-
-try:
-    from ...apps.chatapp.api import register_chatapp_routes
-except ImportError:
-    from apps.chatapp.api import register_chatapp_routes
+from .twilio_voice import register_twilio_voice_routes
 
 
 _alert_activation_by_family = {}
 _alert_activation_lock = threading.Lock()
 _logger = logging.getLogger(__name__)
-
-_ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
-_CHAT_ENTRY_TOKEN_PURPOSE = "chat_session_bootstrap"
-_USED_CHAT_ENTRY_TOKEN_SIGS = {}
-_USED_CHAT_ENTRY_TOKEN_LOCK = threading.Lock()
 
 _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
@@ -98,69 +87,6 @@ def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
     with _alert_activation_lock:
         _alert_activation_by_family[family_circle_id] = bool(activated)
         return _alert_activation_by_family[family_circle_id]
-
-
-def _create_chat_entry_token(
-    secret: str,
-    user_id: str,
-    family_circle_id: str,
-    sendbird_user_id: str = "",
-    display_name: str = "",
-    auto_start_call: bool = False,
-) -> str:
-    """Create a signed token for chat entry. Valid for _ENTRY_TOKEN_TTL_SEC."""
-    payload = {
-        "purpose": _CHAT_ENTRY_TOKEN_PURPOSE,
-        "user_id": user_id,
-        "family_circle_id": family_circle_id,
-        "sendbird_user_id": sendbird_user_id,
-        "display_name": display_name,
-        "auto_start_call": bool(auto_start_call),
-        "exp": int(time.time()) + _ENTRY_TOKEN_TTL_SEC,
-    }
-    payload_b64 = (
-        base64.urlsafe_b64encode(json.dumps(payload, sort_keys=True).encode())
-        .rstrip(b"=")
-        .decode()
-    )
-    sig = hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
-    return payload_b64 + "." + sig
-
-
-def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
-    """Verify token, return payload dict or None if invalid/expired."""
-    try:
-        parts = token.split(".")
-        if len(parts) != 2:
-            return None
-        payload_b64, sig = parts[0], parts[1]
-        payload_b64_padded = payload_b64 + "=" * (-len(payload_b64) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
-        exp = int(payload.get("exp", 0) or 0)
-        if exp < time.time():
-            return None
-        if (payload.get("purpose") or "") != _CHAT_ENTRY_TOKEN_PURPOSE:
-            return None
-        expected = hmac.new(
-            secret.encode(), payload_b64.encode(), hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(expected, sig):
-            return None
-        now = int(time.time())
-        with _USED_CHAT_ENTRY_TOKEN_LOCK:
-            expired_sigs = [
-                token_sig
-                for token_sig, token_exp in _USED_CHAT_ENTRY_TOKEN_SIGS.items()
-                if int(token_exp or 0) <= now
-            ]
-            for token_sig in expired_sigs:
-                _USED_CHAT_ENTRY_TOKEN_SIGS.pop(token_sig, None)
-            if sig in _USED_CHAT_ENTRY_TOKEN_SIGS:
-                return None
-            _USED_CHAT_ENTRY_TOKEN_SIGS[sig] = exp
-        return payload
-    except Exception:
-        return None
 
 
 def create_server_app(db_path=None):
@@ -188,6 +114,7 @@ def create_server_app(db_path=None):
     app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
     app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
     app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
+    register_twilio_voice_routes(app)
 
     def _session_clocks_ok() -> bool:
         """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
@@ -269,7 +196,7 @@ def create_server_app(db_path=None):
             return Response(status=204)
 
     def _webapp_public_path(path: str) -> bool:
-        """Paths that need no session (static assets, login page, chatapp/kiosk shells)."""
+        """Paths that need no session (static assets, login page, kiosk shell)."""
         if path in (
             "/login.html",
             "/app.js",
@@ -277,11 +204,9 @@ def create_server_app(db_path=None):
             "/style.css",
         ):
             return True
-        if path in ("/chatapp", "/kiosk"):
+        if path == "/kiosk":
             return True
-        if path.startswith(
-            ("/chatapp/", "/kiosk/", "/fonts/", "/shared/", "/brand/")
-        ):
+        if path.startswith(("/kiosk/", "/fonts/", "/shared/", "/brand/")):
             return True
         return False
 
@@ -309,12 +234,6 @@ def create_server_app(db_path=None):
 
         # All /api/*: JSON clients — 401 if unauthenticated (no redirect)
         if request.path.startswith("/api"):
-            # chat-session-bootstrap: new webview; token verified in handler.
-            if request.path == "/api/chat/chat-session-bootstrap":
-                g.user_id = None
-                g.family_circle_id = None
-                return
-
             # /api/session: session only.
             if request.path == "/api/session":
                 if not _session_valid():
@@ -329,24 +248,6 @@ def create_server_app(db_path=None):
                 _touch_session_activity_if_cookie_auth()
                 return
 
-            # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
-            if request.path == "/api/chat/chat-session-url":
-                uid = request.headers.get("X-User-Id")
-                fid = request.headers.get("X-Family-Circle-Id")
-                if (not uid or not fid) and _session_valid():
-                    uid = uid or session.get("user_id")
-                    fid = fid or session.get("family_circle_id")
-                elif not uid or not fid:
-                    session.clear()
-                if not uid or not fid:
-                    abort(
-                        401,
-                        "Log in at /login.html first or provide X-User-Id and X-Family-Circle-Id",
-                    )
-                g.user_id = uid
-                g.family_circle_id = fid
-                _touch_session_activity_if_cookie_auth()
-                return
             # API: headers or session
             user_id = request.headers.get("X-User-Id")
             family_circle_id = request.headers.get("X-Family-Circle-Id")
@@ -398,72 +299,6 @@ def create_server_app(db_path=None):
         session["_login_at"] = now
         session["_last_activity"] = now
 
-    def _session_identity_from_payload(payload: dict) -> tuple[str, str]:
-        """Extract normalized identity from signed payload."""
-        user_id = (payload.get("user_id") or "").strip()
-        family_circle_id = (payload.get("family_circle_id") or "").strip()
-        return user_id, family_circle_id
-
-    def _chat_redirect_path_from_payload(payload: dict) -> str:
-        """Build chat destination path from signed payload context."""
-        path = "/chatapp/chat.html"
-        recipient_sb = (payload.get("sendbird_user_id") or "").strip()
-        recipient_name = (payload.get("display_name") or "").strip()
-        auto_start_call = bool(payload.get("auto_start_call"))
-        if recipient_sb:
-            path += "?sendbird_user_id=" + urllib.parse.quote(recipient_sb)
-            if recipient_name:
-                path += "&display_name=" + urllib.parse.quote(recipient_name)
-            if auto_start_call:
-                path += "&auto_start_call=1"
-        return path
-
-    @app.route("/api/chat/chat-session-url", methods=["GET"])
-    def api_chat_session_url():
-        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id.
-        recipient_sendbird_user_id, recipient_display_name = who the kiosk user will chat WITH (from headers).
-        """
-        recipient_sb = (
-            request.args.get("recipient_sendbird_user_id")
-            or request.args.get("sendbird_user_id")
-            or ""
-        ).strip()
-        recipient_name = (
-            request.args.get("recipient_display_name")
-            or request.args.get("display_name")
-            or ""
-        ).strip()
-        auto_start_call = (
-            (request.args.get("auto_start_call") or "").strip().lower()
-            in ("1", "true", "yes", "on")
-        )
-        token = _create_chat_entry_token(
-            app.secret_key,
-            g.user_id,
-            g.family_circle_id,
-            recipient_sb,
-            recipient_name,
-            auto_start_call=auto_start_call,
-        )
-        base_url = request.url_root.rstrip("/")
-        bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
-        return jsonify({"url": bootstrap_url})
-
-    @app.route("/api/chat/chat-session-bootstrap", methods=["GET"])
-    def api_chat_session_bootstrap():
-        """URL target. Verifies token, sets session cookie, redirects to chatapp. For webapp/kiosk/mobile opening chat in a fresh webview."""
-        token = (request.args.get("token") or "").strip()
-        if not token:
-            return jsonify({"error": "token required"}), 400
-        payload = _verify_chat_entry_token(app.secret_key, token)
-        if not payload:
-            return jsonify({"error": "Invalid or expired token"}), 403
-        user_id, family_circle_id = _session_identity_from_payload(payload)
-        if not user_id or not family_circle_id:
-            return jsonify({"error": "Invalid token payload"}), 403
-        _set_authenticated_session(user_id, family_circle_id)
-        return redirect(_chat_redirect_path_from_payload(payload))
-
     user_svc = container.get_user_service()
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
@@ -491,8 +326,6 @@ def create_server_app(db_path=None):
             return
         if request.path == "/api/users" and request.method == "POST":
             return
-        if request.path == "/api/chat/chat-session-bootstrap":
-            return
         uid = getattr(g, "user_id", None)
         fid = getattr(g, "family_circle_id", None)
         if not uid or not fid:
@@ -505,7 +338,6 @@ def create_server_app(db_path=None):
 
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
-    sendbird_svc = container.get_sendbird_service()
     call_signal_svc = container.get_call_signal_service()
 
     def _parse_date_param():
@@ -547,7 +379,6 @@ def create_server_app(db_path=None):
             photo_filename=data.get("photo_filename"),
             # TODO far future security: new users may be invited to a family and have an auth code etc but shouldn't be able to simply join a family
             family_circle_id=data.get("family_circle_id"),
-            sendbird_user_id=data.get("sendbird_user_id"),
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -581,7 +412,7 @@ def create_server_app(db_path=None):
         "/api/family_circles/<family_circle_id>/contacts", methods=["GET", "POST"]
     )
     def api_contacts(family_circle_id):
-        """GET: all contacts. POST: add contact. Kiosk loads once at boot; includes photo_filename, sendbird_user_id."""
+        """GET: all contacts. POST: add contact."""
         _require_family_access(family_circle_id)
         if request.method == "POST":
             data = request.get_json() or {}
@@ -598,7 +429,6 @@ def create_server_app(db_path=None):
                 emergency_priority=data.get("emergency_priority"),
                 photo_filename=data.get("photo_filename"),
                 notes=data.get("notes"),
-                sendbird_user_id=data.get("sendbird_user_id"),
             )
             if not r.success:
                 return jsonify({"error": "add contact failed"}), 500
@@ -1048,13 +878,11 @@ def create_server_app(db_path=None):
         to_user_id = (data.get("to_user_id") or "").strip()
         if not to_user_id:
             return jsonify({"error": "to_user_id required"}), 400
-        from_sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(g.user_id)
         from_display_name = user_svc.get_display_name(g.user_id)
         r = call_signal_svc.request_call(
             family_circle_id=g.family_circle_id,
             from_user_id=g.user_id,
             to_user_id=to_user_id,
-            from_sendbird_user_id=from_sendbird_user_id,
             from_display_name=from_display_name,
         )
         if not r.success:
@@ -1092,28 +920,20 @@ def create_server_app(db_path=None):
 
         client_source = (data.get("client_source") or "").strip() or "unknown"
         client_device_id = (data.get("client_device_id") or "").strip() or "unknown"
-        started_events = {
-            "kiosk_sendbird_websocket_connected",
-            "sendbird_websocket_connected",
-        }
-        issue_events = {
-            "kiosk_calls_sdk_missing",
-            "calls_sdk_missing",
-            "kiosk_sendbird_call_setup_failed",
-            "sendbird_call_setup_failed",
-        }
-        if event in started_events:
-            _logger.info(
-                f"Call socket started event={event} source={client_source} device={client_device_id}"
-            )
-        elif event in issue_events:
-            err_detail = (
-                (data.get("error") or data.get("reason") or "").strip() or ""
-            )[:500]
-            extra = f" detail={err_detail!r}" if err_detail else ""
-            _logger.info(
-                f"Call socket issue event={event} source={client_source} device={client_device_id}{extra}"
-            )
+        err_detail = ((data.get("error") or data.get("reason") or "").strip() or "")[:500]
+        phase = (data.get("phase") or "").strip()[:120]
+        en = (data.get("err_name") or "").strip()[:80]
+        parts = []
+        if phase:
+            parts.append(f"phase={phase!r}")
+        if en:
+            parts.append(f"err_name={en!r}")
+        if err_detail:
+            parts.append(f"detail={err_detail!r}")
+        extra = (" " + " ".join(parts)) if parts else ""
+        _logger.info(
+            f"Call socket event={event} source={client_source} device={client_device_id}{extra}"
+        )
 
         return jsonify({"data": {"ok": True}})
 
@@ -1283,10 +1103,9 @@ def create_server_app(db_path=None):
         data = r.data or {}
         return jsonify({"ok": True, "requested_count": data.get("requested_count", 0)})
 
-    # Chatapp routes + static (webapp, chatapp, kiosk) for Railway all-in-one deploy
+    # Static routes (webapp + kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
-    _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
     _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
     _repo_root = os.path.dirname(_src)
@@ -1298,12 +1117,7 @@ def create_server_app(db_path=None):
             """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
             return send_from_directory(_webapp_client, "meridian_api_base.js")
 
-    if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
-        user_svc = container.get_user_service()
-        register_chatapp_routes(
-            app, sendbird_svc, user_svc, chat_static_prefix="/chatapp"
-        )
-
+    if os.path.isdir(_webapp_dist):
         @app.route("/")
         @app.route("/index.html")
         def serve_index():
@@ -1389,28 +1203,16 @@ def create_server_app(db_path=None):
                 abort(404)
             return send_from_directory(os.path.join(_src, "shared"), path)
 
-        @app.route("/chatapp/")
-        @app.route("/chatapp/<path:path>")
-        def serve_chat(path=""):
+    if os.path.isdir(_kiosk_web):
+
+        @app.route("/kiosk/")
+        @app.route("/kiosk/<path:path>")
+        def serve_kiosk(path=""):
             if not path:
-                path = "chat.html"
-            if path == "SendBirdCall.min.js":
-                chat_sdk = os.path.join(_chatapp_dist, path)
-                kiosk_sdk = os.path.join(_kiosk_web, path)
-                if not os.path.isfile(chat_sdk) and os.path.isfile(kiosk_sdk):
-                    return send_from_directory(_kiosk_web, path)
-            return send_from_directory(_chatapp_dist, path)
-
-        if os.path.isdir(_kiosk_web):
-
-            @app.route("/kiosk/")
-            @app.route("/kiosk/<path:path>")
-            def serve_kiosk(path=""):
-                if not path:
-                    path = "kiosk.html"
-                if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
-                    return send_from_directory(_kiosk_icons, path[6:])
-                return send_from_directory(_kiosk_web, path)
+                path = "kiosk.html"
+            if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
+                return send_from_directory(_kiosk_icons, path[6:])
+            return send_from_directory(_kiosk_web, path)
 
     return app
 

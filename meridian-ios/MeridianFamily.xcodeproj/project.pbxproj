@@ -13,6 +13,7 @@
 		3E8A86CB961A7EDE167B6773 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F6D2321F89EFB06A10B925 /* APIService.swift */; };
 		41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640206CF5CBA2A4150B96A6E /* AlertViewController.swift */; };
 		801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */; };
+		E1C0A1B2C3D4E5F60718293A4 /* LocalDevTLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */; };
 		8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6F681986AB20651305D17B /* RootViewController.swift */; };
 		9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13C91B6ED00D7322EFF6E640 /* Assets.xcassets */; };
 		B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */; };
@@ -30,6 +31,7 @@
 		32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewController.swift; sourceTree = "<group>"; };
 		37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		516554ACFC2387E32EE80CF6 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDevTLS.swift; sourceTree = "<group>"; };
 		5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Meridian.xcodeproj; sourceTree = "<group>"; };
 		640206CF5CBA2A4150B96A6E /* AlertViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertViewController.swift; sourceTree = "<group>"; };
 		9E6F681986AB20651305D17B /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
@@ -56,6 +58,7 @@
 				B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */,
 				516554ACFC2387E32EE80CF6 /* Config.swift */,
 				D7E6F5D4C3B2A190817161514E /* DeveloperViewController.swift */,
+				E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */,
 				F0A1B2C3D4E5F60718293A4B5C /* MeridianFamily-Info.plist */,
 				00D843BEA5D3D3871F086B2E /* LoginViewController.swift */,
 				A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */,
@@ -169,6 +172,7 @@
 				B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */,
 				31E41F9A5077F75E4A63F823 /* Config.swift in Sources */,
 				E7F6D5C4B3A291817161514F /* DeveloperViewController.swift in Sources */,
+				E1C0A1B2C3D4E5F60718293A4 /* LocalDevTLS.swift in Sources */,
 				BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */,
 				C3F0A5E4D3F6927180C5D6E7F /* LocationRefreshHandler.swift in Sources */,
 				801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */,

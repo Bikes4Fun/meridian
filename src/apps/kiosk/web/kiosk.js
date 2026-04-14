@@ -1,3 +1,18 @@
+(function () {
+  if (typeof navigator === 'undefined' || navigator.mediaDevices) return;
+  navigator.mediaDevices = {
+    __meridianMediaDevicesStub: true,
+    getUserMedia: function () {
+      return Promise.reject(new Error('getUserMedia unavailable'));
+    },
+    enumerateDevices: function () {
+      return Promise.resolve([]);
+    },
+    addEventListener: function () {},
+    removeEventListener: function () {}
+  };
+})();
+
 // Top nav (#kiosk-nav) and footer (#kiosk-footer): any click on a [data-screen] button calls Python navigate().
 function bindScreenNav(container) {
   if (!container) return;
@@ -352,16 +367,35 @@ function logKioskCallSocket(eventName, details) {
   } catch (_err2) {}
 }
 
+function _sendbirdUseMediaOrSkip(SendBirdCall) {
+  if (!SendBirdCall || typeof SendBirdCall.useMedia !== 'function') {
+    return Promise.resolve();
+  }
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+    logKioskCallSocket('kiosk_sendbird_use_media_skipped', {
+      reason: 'navigator.mediaDevices unavailable (pywebview or non-secure context)'
+    });
+    return Promise.resolve();
+  }
+  if (navigator.mediaDevices.__meridianMediaDevicesStub) {
+    logKioskCallSocket('kiosk_sendbird_use_media_skipped', {
+      reason: 'meridian stub: skip SendBirdCall.useMedia (no real devices; useMedia would yield e.audio errors)'
+    });
+    return Promise.resolve();
+  }
+  return SendBirdCall.useMedia();
+}
+
 function initKioskCallSocket() {
   if (_kioskCallSocketStarted) return;
-  _kioskCallSocketStarted = true;
   var SendBirdCall = window.SendBirdCall;
   if (!SendBirdCall) {
     logKioskCallSocket('kiosk_calls_sdk_missing', {
-      sdk_script: 'https://cdn.jsdelivr.net/npm/sendbird-calls@1.12.2/SendBirdCall.min.js'
+      sdk_script: 'SendBirdCall.min.js'
     });
     return;
   }
+  _kioskCallSocketStarted = true;
   logKioskCallSocket('kiosk_calls_init_start', {});
   fetch('/api/chat/config', { credentials: 'include' })
     .then(function (r) { return r.json(); })
@@ -388,7 +422,7 @@ function initKioskCallSocket() {
 
       logKioskCallSocket('kiosk_sendbird_call_init', { app_id: cfg.app_id, self_sendbird_user_id: userId });
       SendBirdCall.init(cfg.app_id);
-      return SendBirdCall.useMedia().then(function () {
+      return _sendbirdUseMediaOrSkip(SendBirdCall).then(function () {
         logKioskCallSocket('kiosk_sendbird_call_authenticate_start', { app_id: cfg.app_id, self_sendbird_user_id: userId });
         return new Promise(function (resolve, reject) {
           SendBirdCall.authenticate(

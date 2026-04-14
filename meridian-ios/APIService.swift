@@ -56,13 +56,20 @@ final class APIService {
     static let shared = APIService()
     private var baseURL: String { Config.resolvedApiBaseURL }
     private let session: URLSession
+    #if DEBUG
+    private let tlsSessionDelegate = LocalDevURLSessionDelegate()
+    #endif
 
     private init() {
         let config = URLSessionConfiguration.default
         config.httpCookieStorage = HTTPCookieStorage.shared
         config.httpShouldSetCookies = true
         config.httpCookieAcceptPolicy = .always
+        #if DEBUG
+        self.session = URLSession(configuration: config, delegate: tlsSessionDelegate, delegateQueue: nil)
+        #else
         self.session = URLSession(configuration: config)
+        #endif
     }
 
     /// Call after changing API base URL so session cookies do not target the old host.

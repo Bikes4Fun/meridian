@@ -49,16 +49,18 @@ from flask import (
 try:
     from ...shared.config import (
         get_database_path,
+        get_meridian_ssl_files,
         get_server_host,
         get_server_port,
-        get_uploads_dir
+        get_uploads_dir,
     )
 except ImportError:
     from shared.config import (
         get_database_path,
+        get_meridian_ssl_files,
         get_server_host,
         get_server_port,
-        get_uploads_dir
+        get_uploads_dir,
     )
 try:
     from ...shared.emergency_profile_pdf import build_pdf
@@ -1105,8 +1107,12 @@ def create_server_app(db_path=None):
                 f"Call socket started event={event} source={client_source} device={client_device_id}"
             )
         elif event in issue_events:
+            err_detail = (
+                (data.get("error") or data.get("reason") or "").strip() or ""
+            )[:500]
+            extra = f" detail={err_detail!r}" if err_detail else ""
             _logger.info(
-                f"Call socket issue event={event} source={client_source} device={client_device_id}"
+                f"Call socket issue event={event} source={client_source} device={client_device_id}{extra}"
             )
 
         return jsonify({"data": {"ok": True}})
@@ -1388,6 +1394,11 @@ def create_server_app(db_path=None):
         def serve_chat(path=""):
             if not path:
                 path = "chat.html"
+            if path == "SendBirdCall.min.js":
+                chat_sdk = os.path.join(_chatapp_dist, path)
+                kiosk_sdk = os.path.join(_kiosk_web, path)
+                if not os.path.isfile(chat_sdk) and os.path.isfile(kiosk_sdk):
+                    return send_from_directory(_kiosk_web, path)
             return send_from_directory(_chatapp_dist, path)
 
         if os.path.isdir(_kiosk_web):
@@ -1417,4 +1428,12 @@ def run_server(host=None, port=None):
         pass
     host = host if host is not None else get_server_host()
     port = port if port is not None else get_server_port()
-    app.run(host=host, port=port, debug=False)
+    ssl_files = get_meridian_ssl_files()
+    ssl_kw: dict = {}
+    if ssl_files:
+        cert_path, key_path = ssl_files
+        ssl_kw["ssl_context"] = (cert_path, key_path)
+        _logger.info(
+            f"HTTPS enabled (MERIDIAN_SSL_CERT / MERIDIAN_SSL_KEY): {cert_path}"
+        )
+    app.run(host=host, port=port, debug=False, **ssl_kw)

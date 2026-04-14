@@ -5,12 +5,37 @@ Uses Platform API (issue session token). No Sendbird SDK dependency; requests on
 """
 
 import json
+import logging
 import os
 import time
 import urllib.parse
 import requests
 
 from .safe_query_manager import QueryManager
+
+logger = logging.getLogger(__name__)
+
+_sendbird_insecure_tls_warned = False
+
+
+def _sendbird_platform_requests_verify_tls() -> bool:
+    """True = verify TLS (default). False when SENDBIRD_SSL_VERIFY is 0/false/off (local dev only)."""
+    global _sendbird_insecure_tls_warned
+    raw = (os.getenv("SENDBIRD_SSL_VERIFY") or "1").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        if not _sendbird_insecure_tls_warned:
+            _sendbird_insecure_tls_warned = True
+            try:
+                import urllib3
+
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            except ImportError:
+                pass
+            logger.warning(
+                "SENDBIRD_SSL_VERIFY is off: Sendbird Platform API TLS verification disabled (dev only)"
+            )
+        return False
+    return True
 
 
 class SendbirdService:
@@ -95,6 +120,10 @@ class SendbirdService:
             "Content-Type": "application/json; charset=utf8",
         }
 
+    def platform_api_requests_verify_tls(self) -> bool:
+        """Pass as requests verify= for Sendbird Platform API calls."""
+        return _sendbird_platform_requests_verify_tls()
+
     def issue_session_token(self, user_id: str) -> tuple[bool, str, str]:
         """
         Issue a session token for user_id. Returns (success, token_or_error, error_detail).
@@ -112,6 +141,7 @@ class SendbirdService:
                 headers=self._headers(),
                 json=payload,
                 timeout=10,
+                verify=self.platform_api_requests_verify_tls(),
             )
         except requests.RequestException as exc:
             return False, "", f"Sendbird request failed: {exc}"

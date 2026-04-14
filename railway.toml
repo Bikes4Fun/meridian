@@ -1,0 +1,11 @@
+# Railway config: API + webapp + chatapp (all-in-one)
+# Docs: https://docs.railway.com/reference/config-as-code
+
+[build]
+builder = "RAILPACK"
+buildCommand = "PYTHONPATH=src python -m apps.webapp && PYTHONPATH=src python -m apps.chatapp"
+watchPatterns = ["/src/**"]
+[deploy]
+startCommand = "PYTHONPATH=src python -m apps.server serve"
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"

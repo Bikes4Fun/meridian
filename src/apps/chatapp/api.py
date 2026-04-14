@@ -77,29 +77,10 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
 
     db_path = get_database_path()
     services = create_service_container(db_path)
-    family_svc = services.get_family_service()
     user_svc = services.get_user_service()
     sendbird_svc = services.get_sendbird_service()
 
-    @app.route("/auth")
-    def auth():
-        """Verify token from main server, set session, redirect to chat."""
-        token = (request.args.get("token") or "").strip()
-        if not token:
-            return jsonify({"error": "token required"}), 400
-        payload = _verify_chat_entry_token(app.secret_key, token)
-        if not payload:
-            return jsonify({"error": "Invalid or expired token"}), 403
-        session["user_id"] = payload["user_id"]
-        session["family_circle_id"] = payload["family_circle_id"]
-        path = "/"
-        sb = (payload.get("sendbird_user_id") or "").strip()
-        dn = (payload.get("display_name") or "").strip()
-        if sb:
-            path += "?sendbird_user_id=" + urllib.parse.quote(sb)
-            if dn:
-                path += "&display_name=" + urllib.parse.quote(dn)
-        return redirect(path)
+    register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix="")
 
     @app.route("/api/login", methods=["POST"])
     def api_login():
@@ -190,328 +171,6 @@ def create_chatapp_app(static_dir: str, secret_key: str = None):
         except Exception:
             pass
         return resp
-
-    @app.route("/api/chat/config", methods=["GET"])
-    def api_chat_config():
-        """Return Sendbird app_id for client SDK."""
-        if not sendbird_svc.is_configured():
-            return (
-                jsonify(
-                    {
-                        "error": "Sendbird not configured (SENDBIRD_APP_ID, SENDBIRD_API_TOKEN)"
-                    }
-                ),
-                503,
-            )
-        return jsonify({"app_id": sendbird_svc.get_sendbird_app_id()})
-
-    @app.route("/api/chat/token", methods=["POST"])
-    def api_chat_token():
-        # TODO: remove api.py queries
-        """Issue session token for Sendbird user mapped to app user."""
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        app_user_id = getattr(g, "user_id", None)
-        if not app_user_id:
-            return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
-            app_user_id
-        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
-        if not sendbird_user_id:
-            return (
-                jsonify(
-                    {
-                        "error": "No Sendbird user linked",
-                        "detail": "Add sendbird_user_id to user or set SENDBIRD_USER_ID_MAP.",
-                    }
-                ),
-                400,
-            )
-        try:
-            ok, token_val, err = sendbird_svc.issue_session_token(sendbird_user_id)
-        except Exception as e:
-            err_msg = str(e)
-            if (
-                "resolve" in err_msg.lower()
-                or "nodename" in err_msg.lower()
-                or "ConnectionError" in type(e).__name__
-            ):
-                return (
-                    jsonify(
-                        {
-                            "error": "Cannot reach Sendbird",
-                            "detail": "Check network and SENDBIRD_APP_ID.",
-                        }
-                    ),
-                    502,
-                )
-            logging.exception("Unexpected error while issuing Sendbird session token")
-            _notify_dev_error("Sendbird issue token failed", e)
-            return (
-                jsonify(
-                    {
-                        "error": "Sendbird issue token failed",
-                        "detail": "An internal error occurred while issuing the token.",
-                    }
-                ),
-                502,
-            )
-        if not ok:
-            logging.warning(f"Sendbird issue token failed: {err}")
-            return (
-                jsonify(
-                    {
-                        "error": "Sendbird issue token failed",
-                        "detail": "Failed to issue token from Sendbird.",
-                    }
-                ),
-                502,
-            )
-
-        display_name = user_svc.get_display_name(app_user_id)
-        return jsonify(
-            {
-                "sendbird_user_id": sendbird_user_id,
-                "session_token": token_val,
-                "display_name": display_name,
-            }
-        )
-
-    @app.route("/api/chat/recipient", methods=["GET"])
-    def api_chat_recipient():
-        """Default 1:1 recipient for current user."""
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        family_circle_id = getattr(g, "family_circle_id", None) or ""
-        sendbird_recipient_id, recipient_name = sendbird_svc.get_default_recipient(
-            family_circle_id
-        )
-        if not sendbird_recipient_id:
-            sendbird_recipient_id = (
-                sendbird_svc.get_sendbird_default_recipient_id_from_env()
-            )
-            recipient_name = "Family"
-        if not sendbird_recipient_id:
-            return (
-                jsonify(
-                    {
-                        "error": "No default recipient",
-                        "detail": "Add sendbird_user_id to contact or set SENDBIRD_DEFAULT_RECIPIENT_ID.",
-                    }
-                ),
-                503,
-            )
-        return jsonify(
-            {"sendbird_user_id": sendbird_recipient_id, "name": recipient_name}
-        )
-
-    @app.route("/api/chat/channel", methods=["POST"])
-    def api_chat_channel():
-        # TODO: remove api.py queries
-        """Create 1:1 group channel via Platform API. Returns channel_url for client getChannel."""
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        app_user_id = getattr(g, "user_id", None)
-        if not app_user_id:
-            return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
-            app_user_id
-        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
-        if not sendbird_user_id:
-            return jsonify({"error": "No Sendbird user linked"}), 400
-        data = request.get_json(silent=True) or {}
-        recipient_id = (data.get("recipient_sendbird_user_id") or "").strip()
-        if not recipient_id:
-            family_circle_id = getattr(g, "family_circle_id", None) or ""
-            recipient_id, _ = sendbird_svc.get_default_recipient(family_circle_id)
-        if not recipient_id:
-            recipient_id = sendbird_svc.get_sendbird_default_recipient_id_from_env()
-        if not recipient_id:
-            return jsonify({"error": "No default recipient"}), 503
-        base = sendbird_svc._api_url()
-        if not base:
-            return jsonify({"error": "Sendbird not configured"}), 503
-        payload = {
-            "user_ids": [sendbird_user_id, recipient_id],
-            "is_distinct": True,
-            "name": "Family",
-        }
-        try:
-            r = requests.post(
-                base + "/group_channels",
-                headers=sendbird_svc._headers(),
-                json=payload,
-                timeout=10,
-            )
-        except Exception as e:
-            err_msg = str(e)
-            if (
-                "resolve" in err_msg.lower()
-                or "nodename" in err_msg.lower()
-                or "ConnectionError" in type(e).__name__
-            ):
-                return (
-                    jsonify(
-                        {
-                            "error": "Cannot reach Sendbird",
-                            "detail": "Check network and SENDBIRD_APP_ID.",
-                        }
-                    ),
-                    502,
-                )
-            logging.exception("Create channel failed due to unexpected error")
-            _notify_dev_error("Create channel failed", e)
-            return (
-                jsonify(
-                    {
-                        "error": "Create channel failed",
-                        "detail": "An internal error occurred while creating the channel.",
-                    }
-                ),
-                502,
-            )
-        if r.status_code != 200:
-            body = (
-                r.json()
-                if r.headers.get("content-type", "").startswith("application/json")
-                else {}
-            )
-            msg = body.get("message", r.text)
-            return jsonify({"error": "Create channel failed", "detail": msg}), 502
-        data = r.json()
-        channel_url = (data.get("channel_url") or "").strip()
-        if not channel_url or not channel_url.startswith("sendbird_group_channel_"):
-            return (
-                jsonify(
-                    {
-                        "error": "Create channel failed",
-                        "detail": (
-                            "Invalid channel_url from Sendbird"
-                            if channel_url
-                            else "No channel_url in response"
-                        ),
-                    }
-                ),
-                502,
-            )
-
-        return jsonify({"channel_url": channel_url})
-
-    @app.route("/api/chat/send", methods=["POST"])
-    def api_chat_send():
-        """Proxy: send message via Sendbird Platform API."""
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        app_user_id = getattr(g, "user_id", None)
-        if not app_user_id:
-            return jsonify({"error": "Not logged in"}), 401
-        sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(
-            app_user_id
-        ) or sendbird_svc.get_sendbird_user_id_from_env(app_user_id)
-        if not sendbird_user_id:
-            return jsonify({"error": "No Sendbird user linked"}), 400
-        data = request.get_json(silent=True) or {}
-        channel_url = (data.get("channel_url") or "").strip()
-        message = (data.get("message") or "").strip()
-        if not channel_url or not channel_url.startswith("sendbird_group_channel_"):
-            return jsonify({"error": "channel_url required"}), 400
-        if not message:
-            return jsonify({"error": "message required"}), 400
-        base = sendbird_svc._api_url()
-        if not base:
-            return jsonify({"error": "Sendbird not configured"}), 503
-        payload = {
-            "message_type": "MESG",
-            "user_id": sendbird_user_id,
-            "message": message,
-        }
-        msg_url = (
-            base
-            + "/group_channels/"
-            + urllib.parse.quote(channel_url, safe="")
-            + "/messages"
-        )
-        try:
-            r = requests.post(
-                msg_url, headers=sendbird_svc._headers(), json=payload, timeout=10
-            )
-        except Exception as e:
-            err_msg = str(e)
-            if (
-                "resolve" in err_msg.lower()
-                or "nodename" in err_msg.lower()
-                or "ConnectionError" in type(e).__name__
-            ):
-                return (
-                    jsonify(
-                        {"error": "Cannot reach Sendbird", "detail": "Check network."}
-                    ),
-                    502,
-                )
-            logging.exception("Send message failed")
-            _notify_dev_error("Send message failed", e)
-            return jsonify({"error": "Send failed"}), 502
-        if r.status_code != 200:
-            body = (
-                r.json()
-                if r.headers.get("content-type", "").startswith("application/json")
-                else {}
-            )
-            msg = body.get("message", r.text)
-            return jsonify({"error": "Send failed", "detail": msg}), 502
-        return jsonify(r.json())
-
-    @app.route("/api/chat/messages", methods=["GET"])
-    def api_chat_messages():
-        """Proxy: list messages via Sendbird Platform API."""
-        if not sendbird_svc.is_configured():
-            return jsonify({"error": "Sendbird not configured"}), 503
-        app_user_id = getattr(g, "user_id", None)
-        if not app_user_id:
-            return jsonify({"error": "Not logged in"}), 401
-        channel_url = (request.args.get("channel_url") or "").strip()
-        if not channel_url or not channel_url.startswith("sendbird_group_channel_"):
-            return jsonify({"error": "channel_url required"}), 400
-        base = sendbird_svc._api_url()
-        if not base:
-            return jsonify({"error": "Sendbird not configured"}), 503
-        message_ts = int(time.time() * 1000) + 86400000
-        msg_url = (
-            base
-            + "/group_channels/"
-            + urllib.parse.quote(channel_url, safe="")
-            + "/messages"
-        )
-        params = {"message_ts": message_ts, "prev_limit": 50, "next_limit": 0}
-        try:
-            r = requests.get(
-                msg_url, headers=sendbird_svc._headers(), params=params, timeout=10
-            )
-        except Exception as e:
-            err_msg = str(e)
-            if (
-                "resolve" in err_msg.lower()
-                or "nodename" in err_msg.lower()
-                or "ConnectionError" in type(e).__name__
-            ):
-                return (
-                    jsonify(
-                        {"error": "Cannot reach Sendbird", "detail": "Check network."}
-                    ),
-                    502,
-                )
-            logging.exception("List messages failed")
-            _notify_dev_error("List messages failed", e)
-            return jsonify({"error": "List messages failed"}), 502
-        if r.status_code != 200:
-            body = (
-                r.json()
-                if r.headers.get("content-type", "").startswith("application/json")
-                else {}
-            )
-            msg = body.get("message", r.text)
-            return jsonify({"error": "List messages failed", "detail": msg}), 502
-        return jsonify(r.json())
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
@@ -623,7 +282,7 @@ def register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix: str
                 jsonify(
                     {
                         "error": "Sendbird issue token failed",
-                        "detail": "Failed to issue token from Sendbird.",
+                        "detail": err or "Failed to issue token from Sendbird.",
                     }
                 ),
                 502,
@@ -700,6 +359,7 @@ def register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix: str
                 headers=sendbird_svc._headers(),
                 json=payload,
                 timeout=10,
+                verify=sendbird_svc.platform_api_requests_verify_tls(),
             )
         except Exception as e:
             err_msg = str(e)
@@ -790,7 +450,11 @@ def register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix: str
         )
         try:
             r = requests.post(
-                msg_url, headers=sendbird_svc._headers(), json=payload, timeout=10
+                msg_url,
+                headers=sendbird_svc._headers(),
+                json=payload,
+                timeout=10,
+                verify=sendbird_svc.platform_api_requests_verify_tls(),
             )
         except Exception as e:
             err_msg = str(e)
@@ -842,7 +506,11 @@ def register_chatapp_routes(app, sendbird_svc, user_svc, chat_static_prefix: str
         params = {"message_ts": message_ts, "prev_limit": 50, "next_limit": 0}
         try:
             r = requests.get(
-                msg_url, headers=sendbird_svc._headers(), params=params, timeout=10
+                msg_url,
+                headers=sendbird_svc._headers(),
+                params=params,
+                timeout=10,
+                verify=sendbird_svc.platform_api_requests_verify_tls(),
             )
         except Exception as e:
             err_msg = str(e)

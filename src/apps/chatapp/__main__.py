@@ -47,7 +47,10 @@ def build_chatapp(logger, api_url: str, src_dir: str) -> None:
 
 def main() -> None:
     logger = _set_logging()
-    api_url = get_api_base_url()
+    if "MERIDIAN_BAKE_API_URL" in os.environ:
+        api_url = os.environ["MERIDIAN_BAKE_API_URL"]
+    else:
+        api_url = get_api_base_url()
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     build_chatapp(logger, api_url, src_dir)
 

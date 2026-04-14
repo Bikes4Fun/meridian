@@ -7,6 +7,20 @@
 (function () {
     'use strict';
 
+    (function () {
+        if (typeof navigator === 'undefined' || navigator.mediaDevices) return;
+        navigator.mediaDevices = {
+            getUserMedia: function () {
+                return Promise.reject(new Error('getUserMedia unavailable'));
+            },
+            enumerateDevices: function () {
+                return Promise.resolve([]);
+            },
+            addEventListener: function () {},
+            removeEventListener: function () {}
+        };
+    })();
+
     var _u = '__API_URL__';
     var API_URL = (_u.startsWith('http') ? _u : '').replace(/\/$/, '');
 
@@ -22,8 +36,8 @@
     var callSdkLoadPromise = null;
     var chatClientDeviceId = '';
     var CALL_SDK_CANDIDATES = [
-        'https://cdn.jsdelivr.net/npm/sendbird-calls@1.12.2/SendBirdCall.min.js',
-        'https://unpkg.com/sendbird-calls@1.12.2/SendBirdCall.min.js'
+        'SendBirdCall.min.js',
+        'https://cdn.jsdelivr.net/npm/sendbird-calls@1.10.21/SendBirdCall.min.js'
     ];
 
     function ensureChatClientDeviceId() {
@@ -83,6 +97,19 @@
                 });
             } catch (_err3) {}
         }
+    }
+
+    function sendbirdUseMediaOrSkip(SendBirdCall) {
+        if (!SendBirdCall || typeof SendBirdCall.useMedia !== 'function') {
+            return Promise.resolve();
+        }
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+            logCallLifecycle('sendbird_use_media_skipped', {
+                reason: 'navigator.mediaDevices unavailable (use HTTPS, localhost, or enable getUserMedia)'
+            });
+            return Promise.resolve();
+        }
+        return SendBirdCall.useMedia();
     }
 
     function api(path) {
@@ -248,7 +275,7 @@
                     recipient_sendbird_user_id: callRecipientId || ''
                 });
                 SendBirdCall.init(cfg.app_id);
-                return SendBirdCall.useMedia().then(function () {
+                return sendbirdUseMediaOrSkip(SendBirdCall).then(function () {
                     logCallLifecycle('sendbird_call_authenticate_start', {
                         app_id: cfg.app_id,
                         self_sendbird_user_id: tokenData.sendbird_user_id || ''
@@ -489,7 +516,8 @@
                 var recipientData = results[1];
 
                 if (!tokenData.sendbird_user_id) {
-                    setStatus(tokenData.error || 'No Sendbird user linked.', 'error');
+                    var tokenErr = [tokenData.error, tokenData.detail].filter(Boolean).join(': ');
+                    setStatus(tokenErr || 'No Sendbird user linked.', 'error');
                     return;
                 }
                 if (!recipientData || !recipientData.sendbird_user_id) {

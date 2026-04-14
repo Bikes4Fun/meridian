@@ -123,14 +123,48 @@ def get_server_port() -> int:
     return int(os.getenv("PORT", "8000"))
 
 
-def get_webapp_port() -> int:
-    """Port the webapp static server binds to. Default 3000. Override with WEBAPP_PORT."""
-    return int(os.getenv("WEBAPP_PORT", "3000"))
+def _meridian_repo_root() -> str:
+    """Parent of src/ (directory that contains src/shared/config.py)."""
+    return os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
 
-def get_chatapp_port() -> int:
-    """Port the chatapp static server binds to. Default 3001. Override with CHATAPP_PORT."""
-    return int(os.getenv("CHATAPP_PORT", "3001"))
+def _resolve_ssl_file_path(raw: str) -> str | None:
+    """Absolute path if raw exists; relative paths try cwd then repo root."""
+    p = (raw or "").strip()
+    if not p:
+        return None
+    p = os.path.expanduser(p)
+    candidates: list[str] = []
+    if os.path.isabs(p):
+        candidates.append(os.path.normpath(p))
+    else:
+        rel = os.path.normpath(p)
+        candidates.append(os.path.normpath(os.path.join(os.getcwd(), rel)))
+        candidates.append(os.path.normpath(os.path.join(_meridian_repo_root(), rel)))
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
+def get_meridian_ssl_files() -> tuple[str, str] | None:
+    """Local dev HTTPS: (cert, key) paths when MERIDIAN_SSL_CERT and MERIDIAN_SSL_KEY exist as files. Else None."""
+    cert_raw = (os.getenv("MERIDIAN_SSL_CERT") or "").strip()
+    key_raw = (os.getenv("MERIDIAN_SSL_KEY") or "").strip()
+    if not cert_raw or not key_raw:
+        return None
+    cert = _resolve_ssl_file_path(cert_raw)
+    key = _resolve_ssl_file_path(key_raw)
+    if not cert or not key:
+        _logger.warning(
+            f"MERIDIAN_SSL_CERT / MERIDIAN_SSL_KEY set but file not found "
+            f"(tried cwd then repo root). cert={cert_raw!r} key={key_raw!r}"
+        )
+        return None
+    return (cert, key)
+
 
 
 def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
@@ -212,12 +246,6 @@ def get_webapp_baked_api_url() -> str:
     if "://" not in bake:
         bake = f"https://{bake}"
     return bake.rstrip("/")
-
-
-def get_railway_api_url() -> str:
-    """Compatibility wrapper for legacy call sites."""
-    return get_api_base_url()
-
 
 # APNs (Apple Push Notifications) for "Where is everyone?"
 # Set APNS_AUTH_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID to enable. APNS_BUNDLE_ID defaults to com.deanna.Meridian.

@@ -24,29 +24,6 @@ logger = logging.getLogger(__name__)
 class RemoteServiceError(Exception):
     """Raised when a remote API request fails in an unrecoverable way."""
 
-
-def fetch_photo_b64(url: str, session: Any, headers: dict) -> Optional[str]:
-    """Fetch any photo URL via authenticated session, return data URI or None. Avoids file:// auth for <img>."""
-    if not url:
-        return None
-    try:
-        import requests
-        import base64
-    except ImportError:
-        return None
-    try:
-        client = session if session else requests
-        r = client.get(url, headers=headers, timeout=5)
-        if r.ok and r.content:
-            mime = r.headers.get("Content-Type", "image/jpeg")
-            b64 = base64.b64encode(r.content).decode()
-            return f"data:{mime};base64,{b64}"
-        logger.debug(f"Photo fetch {url} -> {r.status_code}")
-    except Exception as e:
-        logger.debug(f"Photo fetch {url} failed: {e}")
-    return None
-
-
 def _headers(
     kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
@@ -109,10 +86,23 @@ def _request(
             r = client.delete(url, headers=headers or {}, timeout=timeout)
         else:
             return False, None, f"unsupported method {method}"
-        r.raise_for_status()
-        j = r.json() if r.content else {}
+        j = None
+        if r.content:
+            try:
+                j = r.json()
+            except Exception:
+                j = None
+        if not r.ok:
+            if isinstance(j, dict) and "error" in j and j["error"]:
+                return False, None, str(j["error"])
+            body_text = (r.text or "").strip()
+            if body_text:
+                return False, None, body_text
+            return False, None, f"HTTP {r.status_code}"
         if isinstance(j, dict) and "error" in j:
             return False, None, j["error"]
+        if j is None:
+            j = {}
         return True, j, None
     except Exception as e:
         logger.info(f"API {method} {url} -> failed: {e}")
@@ -136,7 +126,6 @@ def _get_raw(
     except Exception as e:
         logger.info(f"API {url} -> failed: {e}")
         return False, None, str(e)
-
 
 class LocalTimeService:
     """Time from the device (no server call)."""
@@ -432,6 +421,42 @@ class RemoteIncomingCallService:
         return ServiceResult.success_result(j or {})
 
 
+class RemoteVoiceService:
+    """Trigger outbound voice calls through server Twilio routes."""
+
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def place_call(self, phone: str) -> Any:
+        phone = (phone or "").strip()
+        if not phone:
+            return ServiceResult.error_result("phone required")
+        ok, j, err = _request(
+            "POST",
+            f"{self._base}/api/voice/call",
+            headers=self._headers,
+            session=self._session,
+            json_body={"to": phone},
+        )
+        if not ok:
+            logger.warning(f"Voice call request failed for {phone}: {err or 'voice call failed'}")
+            return ServiceResult.error_result(err or "voice call failed")
+        logger.info(f"Voice call request succeeded for {phone}")
+        if isinstance(j, dict) and "sid" in j:
+            return ServiceResult.success_result({"sid": j.get("sid")})
+        if isinstance(j, dict) and "data" in j:
+            return ServiceResult.success_result(j.get("data"))
+        return ServiceResult.success_result(j or {})
+
+
 class RemoteEmergencyProfileService:
     """Emergency profile (first responder view), medical summary, and emergency contacts from the server."""
 
@@ -446,6 +471,7 @@ class RemoteEmergencyProfileService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+        self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
 
     def get_emergency_profile(self) -> Any:
         ok, data, err = _get(
@@ -456,6 +482,10 @@ class RemoteEmergencyProfileService:
         if not ok:
             return ServiceResult.error_result(err or "emergency-profile request failed")
         return ServiceResult.success_result(data)
+
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_user_photo_b64(user_id)
 
     def get_medical_summary_from_server(self) -> Any:
         ok, data, err = _get(
@@ -485,47 +515,15 @@ class RemoteEmergencyProfileService:
         return ServiceResult.success_result(data)
 
 
-class RemoteChatEntryService:
-    """Get signed chat entry URL for kiosk webview. Uses same API auth as other kiosk calls."""
-
-    def __init__(
-        self,
-        base_url: str,
-        kiosk_user_id: Optional[str] = None,
-        family_circle_id: Optional[str] = None,
-        session: Optional["requests.Session"] = None,
-    ):
-        self._base = base_url.rstrip("/")
-        self._headers = _headers(kiosk_user_id, family_circle_id)
-        self._session = session
-
-    def get_entry_url(
-        self,
-        recipient_sendbird_user_id: str = "",
-        recipient_display_name: str = "",
-        auto_start_call: bool = False,
-    ) -> Any:
-        """Fetch signed entry URL. recipient = who the kiosk user will chat WITH. Returns ServiceResult with url in data."""
-        params = []
-        if recipient_sendbird_user_id:
-            params.append(
-                f"recipient_sendbird_user_id={urllib.parse.quote(recipient_sendbird_user_id)}"
-            )
-        if recipient_display_name:
-            params.append(
-                f"recipient_display_name={urllib.parse.quote(recipient_display_name)}"
-            )
-        if auto_start_call:
-            params.append("auto_start_call=1")
-        qs = "&".join(params)
-        url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
-        ok, data, err = _get(url, headers=self._headers, session=self._session)
-        if not ok:
-            return ServiceResult.error_result(err or "entry-url request failed")
-        url_val = data.get("url") if isinstance(data, dict) else None
-        if not url_val:
-            return ServiceResult.error_result("entry-url returned no url")
-        return ServiceResult.success_result(url_val)
+    def get_dnr_document_url(self, family_circle_id: str, care_recipient_user_id: str) -> str:
+        fc_id = (family_circle_id or "").strip()
+        user_id = (care_recipient_user_id or "").strip()
+        if not fc_id or not user_id:
+            return ""
+        return (
+            f"{self._base}/api/family_circles/{urllib.parse.quote(fc_id, safe='')}"
+            f"/care-recipients/{urllib.parse.quote(user_id, safe='')}/dnr-document"
+        )
 
 
 class RemoteContactService:
@@ -542,6 +540,7 @@ class RemoteContactService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+        self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
 
     def get_contacts(self) -> Any:
         ok, data, err = _get(
@@ -553,6 +552,15 @@ class RemoteContactService:
             return ServiceResult.error_result(err or "contacts request failed")
         return ServiceResult.success_result(data if data is not None else [])
 
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_user_photo_b64(user_id)
+
+    def get_best_contact_photo_b64(self, user_id: str, contact_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_best_contact_photo_b64(
+            user_id, contact_id, self._fc_id
+        )
 
 class RemoteLocationService:
     def __init__(
@@ -566,6 +574,7 @@ class RemoteLocationService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+        self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
 
     def get_checkins(self, family_circle_id: Optional[str] = None) -> Any:
         fc_id = family_circle_id if family_circle_id is not None else self._fc_id
@@ -633,6 +642,69 @@ class RemoteLocationService:
             data.get("data") if isinstance(data, dict) else data
         )
 
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_user_photo_b64(user_id)
+
+class RemotePhotoService:
+
+    def __init__(
+        self,
+        base_url: str = "",
+        headers: Optional[dict] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = (base_url or "").rstrip("/")
+        self._headers = headers or {}
+        self._session = session
+
+    def fetch_photo_b64(self, url: str) -> Optional[str]:
+        """Fetch any photo URL via authenticated session, return data URI or None."""
+        if not url:
+            return None
+        try:
+            import base64
+        except ImportError:
+            return None
+        try:
+            client = self._session if self._session else requests
+            r = client.get(url, headers=self._headers, timeout=5)
+            if r.ok and r.content:
+                mime = r.headers.get("Content-Type", "image/jpeg")
+                b64 = base64.b64encode(r.content).decode()
+                return f"data:{mime};base64,{b64}"
+            logger.debug(f"Photo fetch {url} -> {r.status_code}")
+        except Exception as e:
+            logger.debug(f"Photo fetch {url} failed: {e}")
+        return None
+
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        user_id = (user_id or "").strip()
+        if not self._base or not user_id:
+            return None
+        quoted = urllib.parse.quote(user_id, safe="")
+        return self.fetch_photo_b64(f"{self._base}/api/users/{quoted}/photo")
+
+    def get_contact_photo_b64(self, family_circle_id: str, contact_id: str) -> Optional[str]:
+        family_circle_id = (family_circle_id or "").strip()
+        contact_id = (contact_id or "").strip()
+        if not self._base or not family_circle_id or not contact_id:
+            return None
+        family_circle_id = urllib.parse.quote(family_circle_id, safe="")
+        contact_id = urllib.parse.quote(contact_id, safe="")
+        return self.fetch_photo_b64(
+            f"{self._base}/api/family_circles/{family_circle_id}/contacts/{contact_id}/photo"
+        )
+
+    def get_best_contact_photo_b64(
+        self, user_id: str, contact_id: str, family_circle_id: str
+    ) -> Optional[str]:
+        avatar_src = self.get_user_photo_b64(user_id)
+        if avatar_src:
+            return avatar_src
+        return self.get_contact_photo_b64(family_circle_id, contact_id)
+
+
     def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
         """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present. user_id = whose photo (any family member)."""
         try:
@@ -688,14 +760,14 @@ class KioskRemoteServiceContainer:
     def get_contact_service(self):
         return self._s.get("contact_service")
 
-    def get_chat_entry_service(self):
-        return self._s.get("chat_entry_service")
-
     def get_alert_service(self):
         return self._s.get("alert_service")
 
     def get_incoming_call_service(self):
         return self._s.get("incoming_call_service")
+
+    def get_voice_service(self):
+        return self._s.get("voice_service")
 
     @property
     def alert_activated_holder(self) -> list:
@@ -737,13 +809,13 @@ def create_kiosk_remote(
         "contact_service": RemoteContactService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
-        "chat_entry_service": RemoteChatEntryService(
-            server_url, kiosk_user_id, family_circle_id, session
-        ),
         "alert_service": RemoteAlertService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "incoming_call_service": RemoteIncomingCallService(
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "voice_service": RemoteVoiceService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "_alert_activated": [False],

@@ -112,6 +112,12 @@ def get_kiosk_tv_fullscreen() -> bool:
     return val in ("1", "true", "yes")
 
 
+def get_kiosk_webview_debug() -> bool:
+    """When True, pywebview passes debug=True to webview.start. Behavior is platform-specific; macOS often has no inspect UI."""
+    val = os.getenv("MERIDIAN_KIOSK_WEBVIEW_DEBUG", "0").lower()
+    return val in ("1", "true", "yes")
+
+
 # Server bind address: single source of truth for host/port (env SERVER_HOST, PORT).
 def get_server_host() -> str:
     """Host the API server binds to. Default 0.0.0.0."""
@@ -123,15 +129,75 @@ def get_server_port() -> int:
     return int(os.getenv("PORT", "8000"))
 
 
-def get_webapp_port() -> int:
-    """Port the webapp static server binds to. Default 3000. Override with WEBAPP_PORT."""
-    return int(os.getenv("WEBAPP_PORT", "3000"))
+def get_local_api_host(host: str | None = None) -> str:
+    """Resolve the host clients should use for local API access."""
+    api_host = host if host is not None else get_server_host()
+    if api_host == "0.0.0.0":
+        public_host = (os.getenv("SERVER_PUBLIC_HOST") or "").strip()
+        if public_host:
+            return public_host
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                return s.getsockname()[0]
+        except OSError:
+            return "127.0.0.1"
+    return api_host
 
 
-def get_chatapp_port() -> int:
-    """Port the chatapp static server binds to. Default 3001. Override with CHATAPP_PORT."""
-    return int(os.getenv("CHATAPP_PORT", "3001"))
+def get_local_api_base_url(
+    host: str | None = None,
+    port: int | None = None,
+    https_enabled: bool = False,
+) -> str:
+    """Build local API URL from host/port and optional HTTPS."""
+    api_host = get_local_api_host(host)
+    api_port = port if port is not None else get_server_port()
+    scheme = "https" if https_enabled else "http"
+    return f"{scheme}://{api_host}:{api_port}".rstrip("/")
 
+
+def _meridian_repo_root() -> str:
+    """Parent of src/ (directory that contains src/shared/config.py)."""
+    return os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+
+
+def _resolve_ssl_file_path(raw: str) -> str | None:
+    """Absolute path if raw exists; relative paths try cwd then repo root."""
+    p = (raw or "").strip()
+    if not p:
+        return None
+    p = os.path.expanduser(p)
+    candidates: list[str] = []
+    if os.path.isabs(p):
+        candidates.append(os.path.normpath(p))
+    else:
+        rel = os.path.normpath(p)
+        candidates.append(os.path.normpath(os.path.join(os.getcwd(), rel)))
+        candidates.append(os.path.normpath(os.path.join(_meridian_repo_root(), rel)))
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
+def get_meridian_ssl_files() -> tuple[str, str] | None:
+    """Local dev HTTPS: (cert, key) paths when MERIDIAN_SSL_CERT and MERIDIAN_SSL_KEY exist as files. Else None."""
+    cert_raw = (os.getenv("MERIDIAN_SSL_CERT") or "").strip()
+    key_raw = (os.getenv("MERIDIAN_SSL_KEY") or "").strip()
+    if not cert_raw or not key_raw:
+        return None
+    cert = _resolve_ssl_file_path(cert_raw)
+    key = _resolve_ssl_file_path(key_raw)
+    if not cert or not key:
+        _logger.warning(
+            f"MERIDIAN_SSL_CERT / MERIDIAN_SSL_KEY set but file not found "
+            f"(tried cwd then repo root). cert={cert_raw!r} key={key_raw!r}"
+        )
+        return None
+    return (cert, key)
 
 def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
     """Try binding to start_port, start_port+1, ...; return first available port."""
@@ -147,76 +213,14 @@ def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
         "No available port in range %s..%s" % (start_port, start_port + max_tries - 1)
     )
 
-
-def _load_api_config():
-    """Load api_config.json. Used by get_api_base_url."""
-    import json
-
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api_config.json")
-    try:
-        with open(path, "r") as f:
-            return json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return {}
-
-
-def get_api_base_url() -> str:
-    """Single source for the public API base URL (baked into webapp/chatapp/kiosk and used at runtime).
-
-    Precedence:
-      1. RAILWAY_API_URL — explicit override
-      2. CHATAPP_API_URL — legacy alias for the same override (prefer RAILWAY_API_URL)
-      3. RAILWAY_PUBLIC_DOMAIN — set by Railway per deployment
-      4. railway_api_url in src/shared/api_config.json
-      5. http://127.0.0.1:<PORT> — local all-in-one when nothing else is configured
-    """
-    for env_var in ("RAILWAY_API_URL", "CHATAPP_API_URL"):
-        url = (os.getenv(env_var) or "").strip()
-        if url:
-            # Normalize env overrides similarly to RAILWAY_PUBLIC_DOMAIN:
-            # if no scheme is provided, default to https://.
-            if "://" not in url:
-                url = f"https://{url}"
-            return url.rstrip("/")
-    domain = (os.getenv("RAILWAY_PUBLIC_DOMAIN") or "").strip()
-    if domain:
-        if "://" in domain:
-            return domain.rstrip("/")
-        return f"https://{domain}".rstrip("/")
-    cfg = _load_api_config()
-    url = (cfg.get("railway_api_url") or "").strip()
-    if url:
-        if "://" not in url:
-            url = f"https://{url}"
-        return url.rstrip("/")
-    host = get_server_host()
-    if host == "0.0.0.0":
-        host = "127.0.0.1"
-    fallback = f"http://{host}:{get_server_port()}"
-    _logger.warning(
-        f"No API URL in env or api_config; using local fallback {fallback}"
-    )
-    return fallback.rstrip("/")
-
-
-def get_webapp_baked_api_url() -> str:
-    """Value baked into webapp JS as __API_URL__. Empty string means same-origin /api.
-
-    Flask serves the webapp and API together; a non-empty URL that does not match the
-    browser's host (e.g. RAILWAY_PUBLIC_DOMAIN vs custom domain) drops session cookies on fetch.
-    Set WEBAPP_API_URL_BAKE when static is served from another origin than the API.
-    """
-    bake = (os.getenv("WEBAPP_API_URL_BAKE") or "").strip()
-    if not bake:
-        return ""
-    if "://" not in bake:
-        bake = f"https://{bake}"
-    return bake.rstrip("/")
-
-
-def get_railway_api_url() -> str:
-    """Compatibility wrapper for legacy call sites."""
-    return get_api_base_url()
+def get_remote_api_base_url() -> str | None:
+    """Remote Railway API URL from RAILWAY_API_URL, or None if unset."""
+    url = (os.getenv("RAILWAY_API_URL") or "").strip()
+    if not url:
+        return None
+    if "://" not in url:
+        url = f"https://{url}"
+    return url.rstrip("/")
 
 
 # APNs (Apple Push Notifications) for "Where is everyone?"
@@ -249,7 +253,10 @@ def is_railway_reachable(timeout: float = 3.0) -> bool:
     try:
         import urllib.request
 
-        url = get_api_base_url().rstrip("/") + "/api/health"
+        base_url = get_remote_api_base_url()
+        if not base_url:
+            return False
+        url = f"{base_url}/api/health"
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status == 200

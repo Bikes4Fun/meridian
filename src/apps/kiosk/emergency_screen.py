@@ -18,10 +18,8 @@ logger = logging.getLogger(__name__)
 def build_emergency_html(services, api_url: str) -> str:
     """Build emergency screen HTML for pywebview."""
     import html as html_mod
-    import urllib.parse
 
     from . import html_primitives as hp
-    from .api_client import fetch_photo_b64
 
     emergency_svc = services.get_emergency_service()
     if not emergency_svc:
@@ -37,14 +35,7 @@ def build_emergency_html(services, api_url: str) -> str:
     care_recipient_user_id = e_data.get("care_recipient_user_id") or ""
     patient_photo_src = None
     if care_recipient_user_id:
-        contact_svc = services.get_contact_service()
-        if contact_svc:
-            base = api_url.rstrip("/")
-            patient_photo_src = fetch_photo_b64(
-                f"{base}/api/users/{care_recipient_user_id}/photo",
-                contact_svc._session,
-                contact_svc._headers,
-            )
+        patient_photo_src = emergency_svc.get_user_photo_b64(care_recipient_user_id)
     e_contacts = {
         "contacts": e_data.get("emergency_contacts") or [],
         "poa_name": e_data.get("poa_name"),
@@ -74,11 +65,7 @@ def build_emergency_html(services, api_url: str) -> str:
     fc_id = (e_data.get("family_circle_id") or "").strip()
     dnr_doc = (e_data.get("dnr_document_path") or "").strip()
     if dnr_doc and care_recipient_user_id and fc_id:
-        base = api_url.rstrip("/")
-        doc_url = (
-            f"{base}/api/family_circles/{urllib.parse.quote(fc_id, safe='')}"
-            f"/care-recipients/{urllib.parse.quote(care_recipient_user_id, safe='')}/dnr-document"
-        )
+        doc_url = emergency_svc.get_dnr_document_url(fc_id, care_recipient_user_id)
         url_esc = html_mod.escape(doc_url, quote=True)
         html_parts.append(
             f'<div class="form-row"><div class="label">POLST / DNR DOCUMENT:</div>'

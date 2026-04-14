@@ -15,6 +15,9 @@ final class MainTabViewController: UITabBarController {
     }
 
     private var callWarmupWebView: WKWebView?
+    #if DEBUG
+    private var callWarmupTLSDelegate: LocalDevWebViewNavigationDelegate?
+    #endif
     private var hasStartedCallWarmup = false
 
     override func viewDidLoad() {
@@ -71,6 +74,11 @@ final class MainTabViewController: UITabBarController {
                 )
                 await MainActor.run {
                     let webView = WKWebView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
+                    #if DEBUG
+                    let tlsDel = LocalDevWebViewNavigationDelegate()
+                    callWarmupTLSDelegate = tlsDel
+                    webView.navigationDelegate = tlsDel
+                    #endif
                     webView.isOpaque = false
                     webView.backgroundColor = .clear
                     view.addSubview(webView)

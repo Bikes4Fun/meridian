@@ -1,14 +1,13 @@
-"""Build webapp static assets: python -m src.apps.webapp."""
+"""Build webapp static assets: python -m apps.webapp."""
 
 import logging
 import os
 import shutil
 
 try:
-    from ...shared.config import get_log_level, get_webapp_baked_api_url
+    from ...shared.config import get_log_level
 except ImportError:
-    from shared.config import get_log_level, get_webapp_baked_api_url
-
+    from shared.config import get_log_level
 
 def _set_logging() -> logging.Logger:
     logging.basicConfig(
@@ -33,7 +32,6 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
     for filename in (
         "login.html",
         "index.html",
-        "ice_editor.html",
         "info.html",
         "app.js",
         "events.js",
@@ -43,6 +41,8 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
     ):
         src_path = os.path.join(client, filename)
         dst_path = os.path.join(dist, filename)
+        if not os.path.isfile(src_path):
+            continue
         with open(src_path, encoding="utf-8") as f:
             content = f.read()
         with open(dst_path, "w", encoding="utf-8") as f:
@@ -84,7 +84,9 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
 
 def main() -> None:
     logger = _set_logging()
-    api_url = get_webapp_baked_api_url()
+    api_url = (os.getenv("MERIDIAN_API_URL") or "").rstrip("/")
+    if not api_url:
+        raise RuntimeError("MERIDIAN_API_URL is required for webapp build")
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     build_webapp(logger, api_url, src_dir)
 

@@ -1,6 +1,6 @@
 """
 User service for Meridian.
-Read/write users. SQLite enforces sendbird_user_id uniqueness per family.
+Read/write users.
 """
 
 import sqlite3
@@ -74,32 +74,25 @@ class UserService:
         display_name: str,
         photo_filename: Optional[str] = None,
         family_circle_id: Optional[str] = None,
-        sendbird_user_id: Optional[str] = None,
     ) -> ServiceResult:
-        """Insert or replace user. Returns error if sendbird_user_id duplicates another user."""
+        """Insert or replace user."""
         try:
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO users
-                    (id, display_name, photo_filename, family_circle_id, sendbird_user_id)
-                    VALUES (?, ?, ?, ?, ?)
+                    (id, display_name, photo_filename, family_circle_id)
+                    VALUES (?, ?, ?, ?)
                     """,
                     (
                         user_id,
                         display_name,
                         photo_filename,
                         family_circle_id,
-                        sendbird_user_id,
                     ),
                 )
                 conn.commit()
             return ServiceResult.success_result({"id": user_id})
         except sqlite3.IntegrityError as e:
-            err = str(e).lower()
-            if "unique" in err or "sendbird" in err:
-                return ServiceResult.error_result(
-                    "Duplicate sendbird_user_id. Each user must have a unique Sendbird ID."
-                )
-            return ServiceResult.error_result("An internal error occurred")
+            return ServiceResult.error_result(str(e))

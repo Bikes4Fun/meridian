@@ -67,8 +67,8 @@ def register_twilio_voice_routes(app):
                 to=to,
                 from_=from_num,
             )
-        except Exception as e:
-            logger.warning(f"Twilio call create failed: {e}")
-            return jsonify({"error": str(e)}), 502
+        except Exception:
+            logger.exception(f"Twilio call create failed {e}")
+            return jsonify({"error": "Unable to place call right now."}), 502
         logger.info(f"Twilio call queued sid={call.sid} to={to}")
         return jsonify({"sid": call.sid})

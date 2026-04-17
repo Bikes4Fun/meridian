@@ -14,7 +14,7 @@
     {
       "id": "contact_002",
       "display_name": "Deanna",
-      "phone": "4357725787",
+      "phone": "18557389731",
       "email": "deanna@family.email",
       "birthday": "1988-03-22",
       "relationship": "child",
@@ -46,7 +46,7 @@
     {
       "id": "contact_003",
       "display_name": "Eleanor",
-      "phone": null,
+      "phone": "4357725787",
       "relationship": "grandchild",
       "emergency_priority": "not_emergency"
     },
@@ -75,7 +75,7 @@
     {
       "id": "contact_patient",
       "display_name": "Marian Foster",
-      "phone": "18557389731",
+      "phone": "14359008919",
       "relationship": "care recipient",
       "emergency_priority": "not_emergency"
     }

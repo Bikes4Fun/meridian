@@ -31,6 +31,8 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
     os.makedirs(dist, exist_ok=True)
     for filename in (
         "login.html",
+        "privacy.html",
+        "terms.html",
         "index.html",
         "info.html",
         "app.js",

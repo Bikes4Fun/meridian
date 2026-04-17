@@ -199,6 +199,8 @@ def create_server_app(db_path=None):
         """Paths that need no session (static assets, login page, kiosk shell)."""
         if path in (
             "/login.html",
+            "/privacy.html",
+            "/terms.html",
             "/app.js",
             "/meridian_api_base.js",
             "/style.css",
@@ -1144,6 +1146,14 @@ def create_server_app(db_path=None):
         @app.route("/login.html")
         def serve_login():
             return send_from_directory(_webapp_dist, "login.html")
+
+        @app.route("/privacy.html")
+        def serve_privacy():
+            return send_from_directory(_webapp_dist, "privacy.html")
+
+        @app.route("/terms.html")
+        def serve_terms():
+            return send_from_directory(_webapp_dist, "terms.html")
 
         @app.route("/ice-editor")
         @app.route("/ice_editor.html")

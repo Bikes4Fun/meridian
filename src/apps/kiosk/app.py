@@ -270,7 +270,6 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        _wv_debug = False
         try:
             webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
         except Exception:
@@ -283,7 +282,7 @@ class MeridianKioskApp:
             try:
                 logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
                 webview.start(
-                    debug=_wv_debug,
+                    debug=False,
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )

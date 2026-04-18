@@ -127,6 +127,7 @@ def set_logging() -> logging.Logger:
     )
     # Intentional: silence connection-pool, Werkzeug, PIL, verbose display/app_factory debug
     logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+    logging.getLogger("twilio.http_client").setLevel(logging.WARNING)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)

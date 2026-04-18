@@ -333,7 +333,10 @@ class MeridianKioskApp:
         logger.info("Kiosk loaded, initializing...")
         vs = self.services.get_voice_service()
         if vs and getattr(vs, "log_twilio_startup_check", None):
-            vs.log_twilio_startup_check()
+            threading.Thread(
+                target=vs.log_twilio_startup_check,
+                daemon=True,
+            ).start()
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()

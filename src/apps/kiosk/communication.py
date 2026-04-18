@@ -16,7 +16,7 @@ _ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
 
 class ChatHandler:
-    """Handle chat screen bridge actions."""
+    """Handle chat screen voice-call actions from the kiosk UI."""
 
     def __init__(self, app):
         self._app = app
@@ -96,7 +96,7 @@ def contact_widget(c, contact_svc, hp) -> str:
 def build_chat_html(
     services, api_url: str, kiosk_user_id: str, family_circle_id: str
 ) -> str:
-    """Build chat screen HTML for pywebview. Contact cards render phone-based call actions."""
+    """Build chat screen HTML for pywebview. Contact cards include optional voice actions."""
     from . import html_primitives as hp
 
     contact_svc = services.get_contact_service()

@@ -144,7 +144,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     if r.ok:
         data = r.json()
         if data.get("timed_medications") or data.get("prn_medications"):
-            logger.info("Demo data already present, skipping seed")
+            logger.debug("Demo data already present, skipping seed")
             return True
 
     r = requests.post(
@@ -361,7 +361,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         if not r.ok:
             logger.warning("Calendar event failed: %s", r.status_code)
 
-    logger.info("Demo data loaded successfully!")
+    logger.debug("Demo data loaded successfully!")
     return True
 
 

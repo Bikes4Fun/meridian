@@ -114,7 +114,6 @@ def create_server_app(db_path=None):
     app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
     app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
     app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
-    register_twilio_voice_routes(app)
 
     def _session_clocks_ok() -> bool:
         """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
@@ -202,7 +201,6 @@ def create_server_app(db_path=None):
             "/privacy.html",
             "/terms.html",
             "/app.js",
-            "/meridian_api_base.js",
             "/style.css",
         ):
             return True
@@ -226,6 +224,10 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         if request.path == "/api/users" and request.method == "POST":
+            g.user_id = None
+            g.family_circle_id = None
+            return
+        if request.path.startswith("/twilio/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -308,6 +310,7 @@ def create_server_app(db_path=None):
     location_svc = container.get_location_service()
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
+    register_twilio_voice_routes(app, user_svc)
 
     @app.before_request
     def verify_family_membership():
@@ -381,6 +384,7 @@ def create_server_app(db_path=None):
             photo_filename=data.get("photo_filename"),
             # TODO far future security: new users may be invited to a family and have an auth code etc but shouldn't be able to simply join a family
             family_circle_id=data.get("family_circle_id"),
+            phone=data.get("phone"),
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -1112,13 +1116,6 @@ def create_server_app(db_path=None):
     _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
     _repo_root = os.path.dirname(_src)
     _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
-    if os.path.isfile(os.path.join(_webapp_client, "meridian_api_base.js")):
-
-        @app.route("/meridian_api_base.js")
-        def serve_meridian_api_base_js():
-            """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
-            return send_from_directory(_webapp_client, "meridian_api_base.js")
-
     if os.path.isdir(_webapp_dist):
         @app.route("/")
         @app.route("/index.html")

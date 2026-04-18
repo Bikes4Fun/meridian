@@ -10,7 +10,7 @@
 |-----|--------|
 | CORS | ✅ `test_cors.py` — wildcard when unset, reflect legitimate origin, unlisted gets first configured. |
 | Chat token security | ✅ `test_chat_token.py` — expired, tampered signature/payload, missing exp, wrong secret. |
-| `apps/chatapp/api.py` | ✅ `test_chatapp.py` — /auth requires token, rejects invalid, accepts valid. Sendbird/token endpoint still untested. |
+~ | `apps/chatapp/api.py` | ✅ `test_chatapp.py` — /auth requires token, rejects invalid, accepts valid. Send bird/token endpoint still untested. | ~
 | `/api/login` input validation | ✅ `test_infrastructure.py` — no body, empty user_id/family_circle_id, missing fields. Oversized input not tested. |
 | Emergency alert UI | API behavior tests exist; Playwright kiosk UI tests not implemented. |
 

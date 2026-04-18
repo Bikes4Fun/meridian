@@ -68,12 +68,35 @@ class UserService:
             return dn if dn else user_id
         return user_id
 
+    def get_user_phone_for_family(
+        self, user_id: str, family_circle_id: str
+    ) -> ServiceResult:
+        """Phone on file for user if they belong to family (caller ID for voice)."""
+        mem = self._family_service.user_belongs_to_family(user_id, family_circle_id)
+        if not mem.success:
+            return mem
+        if not mem.data:
+            return ServiceResult.error_result("user not in family")
+        r = self.db_manager.execute_query(
+            "SELECT u.phone FROM users u "
+            "INNER JOIN user_family_circle ufc ON u.id = ufc.user_id "
+            "WHERE u.id = ? AND ufc.family_circle_id = ?",
+            (user_id, family_circle_id),
+        )
+        if not r.success:
+            return r
+        if not r.data:
+            return ServiceResult.success_result("")
+        p = (r.data[0].get("phone") or "").strip()
+        return ServiceResult.success_result(p)
+
     def add_user(
         self,
         user_id: str,
         display_name: str,
         photo_filename: Optional[str] = None,
         family_circle_id: Optional[str] = None,
+        phone: Optional[str] = None,
     ) -> ServiceResult:
         """Insert or replace user."""
         try:
@@ -82,14 +105,15 @@ class UserService:
                 cursor.execute(
                     """
                     INSERT OR REPLACE INTO users
-                    (id, display_name, photo_filename, family_circle_id)
-                    VALUES (?, ?, ?, ?)
+                    (id, display_name, photo_filename, family_circle_id, phone)
+                    VALUES (?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
                         display_name,
                         photo_filename,
                         family_circle_id,
+                        (phone or "").strip() or None,
                     ),
                 )
                 conn.commit()

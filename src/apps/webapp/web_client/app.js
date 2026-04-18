@@ -1,7 +1,53 @@
 /**
  * Webapp client – single JS file. Handles login, check-in, and chat.
- * __API_URL__ replaced at build; meridian_api_base.js (shared helpers) required first.
+ * __API_URL__ replaced at build. Helpers in the first IIFE are globals for this file, events.js, medications.js, ice_editor.js (no separate meridian_api_base.js).
  */
+(function (global) {
+    'use strict';
+    global.meridianLoginPageWithReturn = function () {
+        return '/login.html?next=' + encodeURIComponent(global.location.pathname + global.location.search);
+    };
+    global.meridianPostLoginRedirectTarget = function () {
+        var next = new URLSearchParams(global.location.search).get('next');
+        if (!next || typeof next !== 'string') return '/';
+        next = next.trim();
+        if (!next || next.indexOf('//') === 0 || next.charAt(0) !== '/' || next.indexOf('://') >= 0) {
+            return '/';
+        }
+        return next;
+    };
+    global.meridianApiBaseNormalize = function (url) {
+        return String(url || '').replace(/\/$/, '');
+    };
+    global.meridianEscapeHtml = function (s) {
+        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    global.meridianEscapeAttr = function (s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    };
+    global.meridianApiBaseForFetch = function (configUrl) {
+        var u = (configUrl || '').trim();
+        if (!u.startsWith('http')) return '';
+        try {
+            var api = new URL(u);
+            var win = global.location;
+            if (api.origin === win.origin) return '';
+            var loopbacks = { localhost: 1, '127.0.0.1': 1, '[::1]': 1 };
+            if (
+                loopbacks[api.hostname] &&
+                loopbacks[win.hostname] &&
+                api.protocol === win.protocol &&
+                String(api.port) === String(win.port)
+            ) {
+                return '';
+            }
+            return u.replace(/\/$/, '');
+        } catch (e) {
+            return '';
+        }
+    };
+})(typeof window !== 'undefined' ? window : this);
+
 (function () {
     'use strict';
 
@@ -354,7 +400,6 @@
 
     function initChatContacts() {
         var grid = document.getElementById('contactsGrid');
-        var statusEl = document.getElementById('openChatStatus');
         if (!grid || !_familyCircleId) return;
         var apiBase = API_BASE || '';
         fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/contacts', { credentials: 'include' })
@@ -363,21 +408,17 @@
                 if (!data || !data.data) return;
                 var chatContacts = data.data.filter(function (c) {
                     var relationship = (c.relationship || '').toLowerCase();
-                    return !!(c.phone || '').trim() && relationship !== 'care recipient' && relationship !== 'care_recipient' && relationship !== 'patient';
+                    return relationship !== 'care recipient' && relationship !== 'care_recipient' && relationship !== 'patient';
                 });
                 if (chatContacts.length === 0) {
-                    grid.innerHTML = '<p class="muted">No contacts with a phone number.</p>';
+                    grid.innerHTML = '<p class="muted">No family contacts to show.</p>';
                     return;
                 }
                 grid.innerHTML = '';
                 chatContacts.forEach(function (c) {
                     var name = c.display_name || c.id || 'Contact';
-                    var phone = (c.phone || '').trim();
                     var tile = document.createElement('div');
                     tile.className = 'contact-tile';
-                    tile.setAttribute('tabindex', '0');
-                    tile.setAttribute('role', 'button');
-                    tile.setAttribute('aria-label', 'Call ' + name);
                     var inner = document.createElement('div');
                     inner.className = 'contact-tile-inner';
                     var avatar = document.createElement('div');
@@ -396,36 +437,6 @@
                     label.textContent = name;
                     inner.appendChild(label);
                     tile.appendChild(inner);
-                    function placeVoiceCall() {
-                        if (statusEl) statusEl.textContent = 'Calling ' + name + '…';
-                        fetch(apiBase + '/api/voice/call', {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ to: phone })
-                        })
-                            .then(function (r) {
-                                return r.json().then(function (body) {
-                                    return { ok: r.ok, body: body || {} };
-                                });
-                            })
-                            .then(function (res) {
-                                if (!res.ok) {
-                                    throw new Error((res.body && (res.body.error || res.body.detail)) || 'Call failed');
-                                }
-                                if (statusEl) statusEl.textContent = 'Calling ' + name;
-                            })
-                            .catch(function (err) {
-                                if (statusEl) statusEl.textContent = 'Error: ' + (err.message || 'Could not place call');
-                            });
-                    }
-                    tile.addEventListener('click', placeVoiceCall);
-                    tile.addEventListener('keydown', function (ev) {
-                        if (ev.key === 'Enter' || ev.key === ' ') {
-                            ev.preventDefault();
-                            placeVoiceCall();
-                        }
-                    });
                     grid.appendChild(tile);
                 });
             })
@@ -471,53 +482,3 @@
         init();
     }
 })();
-
-/**
- * Shared browser helpers (login redirect, API base resolution, HTML/attr escaping). Load before app / ice_editor / meds modules.
- * Scope: small globals on window. Not: feature pages, fetch wrappers, or kiosk-only scripts beyond depending on these utilities.
- */
-(function (global) {
-    'use strict';
-    global.meridianLoginPageWithReturn = function () {
-        return '/login.html?next=' + encodeURIComponent(global.location.pathname + global.location.search);
-    };
-    global.meridianPostLoginRedirectTarget = function () {
-        var next = new URLSearchParams(global.location.search).get('next');
-        if (!next || typeof next !== 'string') return '/';
-        next = next.trim();
-        if (!next || next.indexOf('//') === 0 || next.charAt(0) !== '/' || next.indexOf('://') >= 0) {
-            return '/';
-        }
-        return next;
-    };
-    global.meridianApiBaseNormalize = function (url) {
-        return String(url || '').replace(/\/$/, '');
-    };
-    global.meridianEscapeHtml = function (s) {
-        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    };
-    global.meridianEscapeAttr = function (s) {
-        return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    };
-    global.meridianApiBaseForFetch = function (configUrl) {
-        var u = (configUrl || '').trim();
-        if (!u.startsWith('http')) return '';
-        try {
-            var api = new URL(u);
-            var win = global.location;
-            if (api.origin === win.origin) return '';
-            var loopbacks = { localhost: 1, '127.0.0.1': 1, '[::1]': 1 };
-            if (
-                loopbacks[api.hostname] &&
-                loopbacks[win.hostname] &&
-                api.protocol === win.protocol &&
-                String(api.port) === String(win.port)
-            ) {
-                return '';
-            }
-            return u.replace(/\/$/, '');
-        } catch (e) {
-            return '';
-        }
-    };
-})(typeof window !== 'undefined' ? window : this);

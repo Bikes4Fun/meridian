@@ -30,7 +30,12 @@
   </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="/meridian_api_base.js"></script>
+  <script
+    src="https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js"
+    crossorigin=""
+    onload="window.__twilioSdkLoadState='loaded';"
+    onerror="window.__twilioSdkLoadState='failed';"
+  ></script>
   <script src="/meridian_medications_inline.js"></script>
   <script src="map_widget.js"></script>
   <script src="kiosk.js"></script>

@@ -49,9 +49,6 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
             content = f.read()
         with open(dst_path, "w", encoding="utf-8") as f:
             f.write(_inject_webapp_api_url(content, api_url))
-    base_js = os.path.join(client, "meridian_api_base.js")
-    if os.path.isfile(base_js):
-        shutil.copy2(base_js, os.path.join(dist, "meridian_api_base.js"))
     if os.path.isfile(os.path.join(client, "style.css")):
         shutil.copy2(os.path.join(client, "style.css"), os.path.join(dist, "style.css"))
 
@@ -88,7 +85,12 @@ def main() -> None:
     logger = _set_logging()
     api_url = (os.getenv("MERIDIAN_API_URL") or "").rstrip("/")
     if not api_url:
-        raise RuntimeError("MERIDIAN_API_URL is required for webapp build")
+        # Railway/Railpack build has no deploy URL at image build time; app.js treats a
+        # non-http _u as same-origin (relative /api/*). Set MERIDIAN_API_URL when the
+        # static bundle must target a different host (e.g. local API + separate static).
+        logger.info(
+            "MERIDIAN_API_URL unset; webapp build uses same-origin API base (relative URLs)"
+        )
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     build_webapp(logger, api_url, src_dir)
 

@@ -126,7 +126,7 @@ class KioskBridge:
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
-        logger.info(f"Nav: {screen_name}")
+        logger.debug(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
     def call_phone(self, phone: str, display_name: str = "") -> str:
@@ -135,7 +135,7 @@ class KioskBridge:
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
-        logger.info("Print emergency (button)")
+        logger.debug("Print emergency (button)")
         self._app._print_emergency()
 
     def refresh_events(self):
@@ -224,8 +224,13 @@ class MeridianKioskApp:
         import webview
 
         base = (self.api_url or "").rstrip("/")
+        auth_query = (
+            f"user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+        )
+        if (os.environ.get("MERIDIAN_KIOSK_NGROK_BYPASS") or "").strip() == "1":
+            auth_query = f"{auth_query}&ngrok-skip-browser-warning=true"
         url = (
-            f"{base}/kiosk-auth?user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+            f"{base}/kiosk-auth?{auth_query}"
             if base
             else None
         )
@@ -262,12 +267,38 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        _wv_debug = get_kiosk_webview_debug()
-        if _wv_debug:
+        kiosk_debug = get_kiosk_webview_debug()
+        if kiosk_debug:
             logger.info(
-                "Kiosk pywebview debug on (MERIDIAN_KIOSK_WEBVIEW_DEBUG): Web Inspector enabled where supported"
+                "Kiosk debug flag detected (MERIDIAN_KIOSK_WEBVIEW_DEBUG); inspector popups remain disabled"
             )
-        webview.start(debug=_wv_debug)
+        # Keep kiosk output stable: avoid opening inspectable pages/devtools popup windows.
+        _wv_debug = False
+        try:
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+        except Exception:
+            pass
+        kiosk_user_agent = (
+            os.environ.get("MERIDIAN_KIOSK_USER_AGENT") or "Meridian-Kiosk/1.0"
+        ).strip()
+        gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
+        if gui_pref:
+            try:
+                logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
+                webview.start(
+                    debug=_wv_debug,
+                    gui=gui_pref,
+                    user_agent=kiosk_user_agent,
+                )
+                return
+            except Exception as e:
+                logger.error(
+                    f"Kiosk pywebview GUI '{gui_pref}' unavailable; refusing fallback backend: {e}"
+                )
+                raise RuntimeError(
+                    f"Failed to start kiosk webview with required GUI backend '{gui_pref}'"
+                ) from e
+        raise RuntimeError("MERIDIAN_KIOSK_WEBVIEW_GUI must be set (use 'qt').")
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""
@@ -279,7 +310,7 @@ class MeridianKioskApp:
     def _navigate_to(self, screen_name: str):
         """Show screen by name. Builds HTML and calls showScreen."""
         try:
-            logger.info(f"Building screen: {screen_name}")
+            logger.debug(f"Building screen: {screen_name}")
             html, extra = self._build_screen_html(screen_name)
             escaped = json.dumps(html)
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
@@ -308,10 +339,13 @@ class MeridianKioskApp:
     def _on_ready(self):
         """Runs in background thread after load. Initial screen, clock, meds, events, alerts."""
         logger.info("Kiosk loaded, initializing...")
+        vs = self.services.get_voice_service()
+        if vs and getattr(vs, "log_twilio_startup_check", None):
+            vs.log_twilio_startup_check()
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()
-        self._sensor.start()
+        # self._sensor.start()
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()

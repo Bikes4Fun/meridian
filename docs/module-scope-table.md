@@ -9,7 +9,6 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 | `src/apps/kiosk/schedule_screen.py` | Schedule screen HTML + event overlay markup | Merged timeline strings; modal shell (`#eventEditingId` hidden) | Live modal open/prefill (`kiosk.js` `meridianKioskEvents`), calendar API |
 | `src/apps/kiosk/emergency_screen.py` | Emergency profile HTML + client PDF print | Presentation + photo fetch; `trigger_emergency_print` for alerts/button | Alert poll (`app`), server PDF generation |
 | `src/apps/kiosk/checkin_screen.py` | Family Locations + `LocationHandler` | Layout + hooks for `map_widget` / kiosk JS | Leaflet (`kiosk.js`), check-in creation UX, location API impl |
-| `src/apps/kiosk/chat_screen.py` | Chat grid + `open_chat_window` + entry webview | Contacts list; `open_chat` / `open_chat_with_call` | In-page Sendbird, contact admin APIs |
 | `src/apps/kiosk/map_widget.py` | Map markers + container HTML | Data shaping + embed fragment | Leaflet setup, check-in POST, named-places API impl |
 | `src/apps/kiosk/settings_screen.py` | Settings + monitors; meds editor shell (`build_medications_html`) | Monitor row HTML, settings copy; full editor panel for Medications nav | Temp polling (`app` + sensor), Health timeline |
 | `src/apps/kiosk/html_primitives.py` | Shared kiosk HTML helpers | Markup strings, `kiosk_screen_blocked`, `form_row_html` / `section_bar_html`, tokens in CSS | Service fetch, per-screen business logic, webapp |
@@ -61,7 +60,6 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 > Kiosk Chat: contact grid HTML; `open_chat_window` (subprocess pywebview for chat URL); ChatHandler fetches chat entry URL.  
 > Scope: list contacts and bridge open_chat / open_chat_with_call.  
-> Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 
 **`map_widget.py`**
 

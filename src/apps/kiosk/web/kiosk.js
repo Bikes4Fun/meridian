@@ -1,16 +1,27 @@
 (function () {
-  if (typeof navigator === 'undefined' || navigator.mediaDevices) return;
-  navigator.mediaDevices = {
-    __meridianMediaDevicesStub: true,
-    getUserMedia: function () {
-      return Promise.reject(new Error('getUserMedia unavailable'));
-    },
-    enumerateDevices: function () {
+  if (typeof navigator === 'undefined') return;
+  if (!navigator.mediaDevices) navigator.mediaDevices = {};
+  if (!navigator.mediaDevices.getUserMedia) {
+    var legacyGetUserMedia =
+      navigator.getUserMedia ||
+      navigator.webkitGetUserMedia ||
+      navigator.mozGetUserMedia ||
+      navigator.msGetUserMedia;
+    if (legacyGetUserMedia) {
+      navigator.mediaDevices.getUserMedia = function (constraints) {
+        return new Promise(function (resolve, reject) {
+          legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+        });
+      };
+    }
+  }
+  if (!navigator.mediaDevices.enumerateDevices) {
+    navigator.mediaDevices.enumerateDevices = function () {
       return Promise.resolve([]);
-    },
-    addEventListener: function () {},
-    removeEventListener: function () {}
-  };
+    };
+  }
+  if (!navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener = function () {};
+  if (!navigator.mediaDevices.removeEventListener) navigator.mediaDevices.removeEventListener = function () {};
 })();
 
 // Top nav (#kiosk-nav) and footer (#kiosk-footer): any click on a [data-screen] button calls Python navigate().
@@ -215,15 +226,18 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
+  // Chat contact call: Twilio Voice JS only for kiosk-embedded calling.
+  // Twilio must reach token/TwiML URLs over the public internet (ngrok in dev).
   var callBtn = e.target.closest('.contact-call-btn[data-phone]');
-  if (callBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.call_phone) {
-    var res = pywebview.api.call_phone(callBtn.dataset.phone || '', callBtn.dataset.name || '');
-    function done(msg) {
-      if (!msg) return;
-      if (typeof showToast === 'function') showToast(msg);
-      else alert(msg);
+  if (callBtn) {
+    e.preventDefault();
+    var p = callBtn.dataset.phone || '';
+    var n = callBtn.dataset.name || '';
+    if (typeof kioskStartTwilioSpeakerCall !== 'function') {
+      showToast('Kiosk calling is unavailable');
+      return;
     }
-    (res && res.then) ? res.then(done).catch(function (x) { done(String(x)); }) : done(res);
+    kioskStartTwilioSpeakerCall(p, n);
     return;
   }
   // Must not use closest('[data-screen]') alone: body has data-screen from showScreen() and would
@@ -316,6 +330,118 @@ function showToast(msg) {
   toast._hideTimer = setTimeout(function() {
     toast.classList.add('kiosk-toast--hidden');
   }, 3500);
+}
+
+var _kioskTwilioDevice = null;
+var _kioskTwilioCallerId = '';
+var _kioskTwilioSdkLoadPromise = null;
+var _kioskTwilioSdkSources = [
+  'https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js?ts=',
+  'https://media.twiliocdn.com/sdk/js/voice/latest/twilio.min.js?ts=',
+  'https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.11.0/dist/twilio.min.js?ts=',
+  'https://unpkg.com/@twilio/voice-sdk@2.11.0/dist/twilio.min.js?ts='
+];
+
+function _kioskTryLoadTwilioSdk(index, resolve, reject) {
+  if (typeof Twilio !== 'undefined' && Twilio.Device) {
+    window.__twilioSdkLoadState = 'loaded-before-fallback';
+    resolve(true);
+    return;
+  }
+  if (index >= _kioskTwilioSdkSources.length) {
+    reject(new Error('Twilio SDK fallback sources exhausted'));
+    return;
+  }
+  var src = _kioskTwilioSdkSources[index] + Date.now();
+  var script = document.createElement('script');
+  script.src = src;
+  script.async = true;
+  script.onload = function () {
+    if (typeof Twilio !== 'undefined' && Twilio.Device) {
+      window.__twilioSdkLoadState = 'fallback-loaded-' + index;
+      resolve(true);
+      return;
+    }
+    _kioskTryLoadTwilioSdk(index + 1, resolve, reject);
+  };
+  script.onerror = function () {
+    _kioskTryLoadTwilioSdk(index + 1, resolve, reject);
+  };
+  document.head.appendChild(script);
+}
+
+function kioskEnsureTwilioSdk() {
+  if (typeof Twilio !== 'undefined' && Twilio.Device) return Promise.resolve(true);
+  if (_kioskTwilioSdkLoadPromise) return _kioskTwilioSdkLoadPromise;
+  _kioskTwilioSdkLoadPromise = new Promise(function (resolve, reject) {
+    _kioskTryLoadTwilioSdk(0, resolve, function (err) {
+      window.__twilioSdkLoadState = 'fallback-failed';
+      reject(err);
+    });
+  }).finally(function () {
+    _kioskTwilioSdkLoadPromise = null;
+  });
+  return _kioskTwilioSdkLoadPromise;
+}
+
+function kioskEnsureTwilioDevice() {
+  if (_kioskTwilioDevice) return Promise.resolve(_kioskTwilioDevice);
+  return kioskEnsureTwilioSdk()
+    .catch(function () {
+      return true;
+    })
+    .then(function () {
+      return fetch('/api/voice/token', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+    })
+    .then(function (resp) {
+      if (!resp.ok) return resp.text().then(function (t) { throw new Error(t || ('HTTP ' + resp.status)); });
+      return resp.json();
+    })
+    .then(function (data) {
+      var token = (data && data.token) || '';
+      _kioskTwilioCallerId = (data && data.caller_id) || '';
+      if (!token) throw new Error((data && data.error) || 'Missing Twilio token');
+      if (typeof Twilio === 'undefined' || !Twilio.Device) {
+        throw new Error('Twilio Voice SDK unavailable in kiosk (state=' + (window.__twilioSdkLoadState || 'unknown') + ')');
+      }
+      _kioskTwilioDevice = new Twilio.Device(token, {
+        logLevel: 1,
+        closeProtection: false,
+        codecPreferences: ['opus', 'pcmu']
+      });
+      return _kioskTwilioDevice.register().then(function () {
+        return _kioskTwilioDevice;
+      });
+    });
+}
+
+function kioskStartTwilioSpeakerCall(phone, displayName) {
+  var to = (phone || '').trim();
+  var who = (displayName || to || 'contact').trim();
+  if (!to) {
+    showToast('No phone number for this contact');
+    return;
+  }
+  kioskEnsureTwilioDevice()
+    .then(function (device) {
+      return device.connect({ params: { To: to, callerId: _kioskTwilioCallerId } });
+    })
+    .then(function (call) {
+      showToast('Calling ' + who);
+      call.on('accept', function () {
+        showToast('Connected to ' + who);
+      });
+      call.on('disconnect', function () {
+        showToast('Call ended');
+      });
+    })
+    .catch(function (err) {
+      showToast('Call failed: ' + ((((err && err.message) || err || '') + '').slice(0, 80) || 'unknown error'));
+    });
 }
 
 // Call socket bootstrap removed; voice calls are triggered directly per contact button.

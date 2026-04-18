@@ -1,5 +1,5 @@
 /**
- * Meridian iOS – Chat in WKWebView. Loads server chat URL (Sendbird).
+ * Meridian iOS – Chat in WKWebView. Loads server chat URL (Send bird).
  * Dynamically sized for all phone devices (iPhone SE through Max) with safe area and keyboard handling.
  */
 import UIKit

@@ -28,7 +28,10 @@ def _headers(
     kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
 ) -> dict:
-    out = {}
+    out = {
+        "ngrok-skip-browser-warning": "true",
+        "User-Agent": "Meridian-Kiosk/1.0",
+    }
     if kiosk_user_id:
         out["X-User-Id"] = kiosk_user_id
     if family_circle_id:
@@ -455,6 +458,21 @@ class RemoteVoiceService:
         if isinstance(j, dict) and "data" in j:
             return ServiceResult.success_result(j.get("data"))
         return ServiceResult.success_result(j or {})
+
+    def log_twilio_startup_check(self) -> None:
+        """GET /api/voice/twilio-status — log whether Twilio credentials work."""
+        ok, j, err = _get(
+            f"{self._base}/api/voice/twilio-status",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            logger.warning(f"Twilio startup check failed: {err}")
+            return
+        if isinstance(j, dict) and j.get("ok"):
+            logger.info("Twilio API credentials OK")
+        else:
+            logger.warning(f"Twilio not ready: {j}")
 
 
 class RemoteEmergencyProfileService:

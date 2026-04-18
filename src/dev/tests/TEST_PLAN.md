@@ -9,9 +9,8 @@
 | Gap | Status |
 |-----|--------|
 | CORS | ✅ `test_cors.py` — wildcard when unset, reflect legitimate origin, unlisted gets first configured. |
-| Chat token security | ✅ `test_chat_token.py` — expired, tampered signature/payload, missing exp, wrong secret. |
-~ | `apps/chatapp/api.py` | ✅ `test_chatapp.py` — /auth requires token, rejects invalid, accepts valid. Send bird/token endpoint still untested. | ~
 | `/api/login` input validation | ✅ `test_infrastructure.py` — no body, empty user_id/family_circle_id, missing fields. Oversized input not tested. |
+| Twilio / voice routes | Not covered by pytest yet; add mocked `/api/voice/*` tests. |
 | Emergency alert UI | API behavior tests exist; Playwright kiosk UI tests not implemented. |
 
 ---
@@ -25,14 +24,14 @@ Full-flow tests proving Kiosk ↔ API ↔ iOS/Webapp work together. Each test hi
 - [ ] Emergency profile: PUT → GET round-trip, PDF returns `b"%PDF"` header + patient name in bytes
 - [x] Check-in: POST persists lat/lon → GET checkins returns it (`test_e2e_critical_path.py`)
 - [x] Medication: POST → GET returns it in correct time slot — note `data` is `{timed_medications, prn_medications}` (`test_e2e_critical_path.py`)
-- [ ] Chat: session URL returns valid URL, bootstrap redirects correctly
+- [ ] Chat: `/api/chat/chat-session-url` returns valid URL for kiosk/webapp
 
 **Kiosk UI tests (Playwright)**
 - [ ] Alert polling: `alert-active` CSS class appears within 5s, screen navigates to emergency
 - [ ] Emergency screen: renders name, DNR badge, allergies, patient photo after profile PUT
 - [ ] Family map: Leaflet marker appears after check-in, photo loads (`naturalWidth > 0`)
 - [ ] Home screen: newly added medication appears in correct time slot
-- [ ] Chat handoff: chatapp window opens, not a 404/500
+- [ ] Chat handoff: web chat URL loads in webview, not a 404/500
 
 **iOS layer tests (Detox)**
 - [ ] Alert: push notification/banner appears when alert activated via API

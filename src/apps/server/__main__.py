@@ -12,12 +12,40 @@ if _src not in sys.path:
     sys.path.insert(0, _src)
 
 
+def _should_run_demo_seed() -> bool:
+    """Avoid auto-seeding deployed APIs unless explicitly requested.
+
+    Railway (and similar) set RAILWAY_* env vars → skip seed by default so restarts
+    do not clobber data. To load demo data there, set MERIDIAN_DEMO_SEED=1 on the service.
+    """
+    flag = (os.environ.get("MERIDIAN_DEMO_SEED") or "").strip().lower()
+    if flag in ("1", "true", "yes"):
+        return True
+    if flag in ("0", "false", "no"):
+        return False
+    return not bool(
+        (os.environ.get("RAILWAY_ENVIRONMENT") or "").strip()
+        or (os.environ.get("RAILWAY_SERVICE_NAME") or "").strip()
+    )
+
+
 def _seed_demo_data_after_startup(api_base_url: str, logger=None) -> None:
     """Wait for server health, then seed demo data once."""
     try:
         from ...dev.demo.seed import run_seed
     except ImportError:
         from dev.demo.seed import run_seed
+
+    if not _should_run_demo_seed():
+        msg = (
+            "Auto-seed skipped (deploy env detected). "
+            "Set MERIDIAN_DEMO_SEED=1 on the service to load demo data on Railway."
+        )
+        if logger is not None:
+            logger.info(msg)
+        else:
+            print(msg)
+        return
 
     health_url = f"{api_base_url}/api/health"
     for _ in range(60):

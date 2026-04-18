@@ -16,8 +16,7 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 | `src/apps/kiosk/api_client.py` | Kiosk HTTP + `KioskRemoteServiceContainer` | Remote clients + local time; no UI | Flask, pywebview, server `ServiceContainer` |
 | `src/apps/server/container.py` | Server DB service container | Lazy getters for API process | Kiosk HTTP clients, kiosk imports, route definitions |
 | `src/apps/webapp/web_client/meridian_api_base.js` | Shared browser utilities | `window` helpers: login redirect, API base, escape | Feature pages, fetch wrappers |
-| `src/apps/webapp/web_client/medications.js` | Health/Settings meds UI | `#healthMedsTakeHost` / `#settingsMedsEditor` + fetches | Kiosk embed (`kiosk_medications_embed.js`), FDA, server routes |
-| `src/apps/webapp/web_client/meridian_medications_inline.js` | Inline med row editor | Rows, DOM collect, diff save vs `/medications` | Page layout, ICE non-med fields, Python |
+| `src/apps/webapp/web_client/medications.js` | Health/Settings meds UI + inline row editor (`MeridianMedicationsInline` IIFE) | `#healthMedsTakeHost` / editor hosts + fetches | Kiosk embed (`kiosk_medications_embed.js`), FDA, server routes |
 | `src/apps/webapp/web_client/events.js` | Events tab | `#pageEvents` list + modal CRUD | Kiosk schedule, meds merge, month calendar |
 | `src/apps/webapp/web_client/ice_editor.js` | ICE webapp page | Medical block + contacts/photos/DNR APIs | Kiosk emergency UI, print, pywebview bridge |
 
@@ -109,13 +108,8 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 **`medications.js`**
 
-> Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring. MeridianMedications.init(...). Requires meridian_medications_inline.js.  
+> Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring (`MeridianMedications.init`); inline editor (`MeridianMedicationsInline`) is bundled in this file.  
 > Scope: DOM for #healthMedsTakeHost / #settingsMedsEditor and credentialed fetches. Not: kiosk embed (kiosk_medications_embed.js), FDA search, or server routes.
-
-**`meridian_medications_inline.js`**
-
-> Shared medication row editor: HTML for rows, collect from DOM, sequential diff save/delete vs /medications (api base from caller).  
-> Scope: MeridianMedicationsInline + reusable by webapp Settings, ICE editor, kiosk embed. Not: page layout, ICE non-med fields, or Python.
 
 **`events.js`**
 

@@ -341,7 +341,7 @@ final class APIService {
         }
 
         if let kioskContact = contacts.first(where: {
-            $0.send birdUserId == defaultRecipient.send birdUserId && // TODO: remove all reference to send bird
+            // $0.send birdUserId == defaultRecipient.send birdUserId && // TODO: remove all reference to send bird
             ($0.userId?.isEmpty == false)
         }), let targetUserId = kioskContact.userId {
             try await requestCall(toUserId: targetUserId)

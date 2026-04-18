@@ -31,6 +31,14 @@ def _redact_phone(raw: str) -> str:
     return f"***{digits[-4:]}"
 
 
+def _sid_suffix(sid: str) -> str:
+    """Last segment of Twilio SIDs for logs (avoid full resource ids in clear text)."""
+    s = (sid or "").strip()
+    if len(s) <= 8:
+        return "***" if s else "(none)"
+    return f"...{s[-8:]}"
+
+
 def _twilio_public_request_url() -> str:
     """URL Twilio used for signature validation (honor reverse-proxy HTTPS)."""
     url = request.url
@@ -156,7 +164,7 @@ def register_twilio_voice_routes(app, user_svc):
             ).strip()
             if from_num:
                 logger.warning(
-                    f"Twilio outbound: user {g.user_id} has no phone on file; using TWILIO_PHONE_NUMBER as From"
+                    "Twilio outbound: user has no phone on file; using TWILIO_PHONE_NUMBER as From"
                 )
         logger.info(
             f"/api/voice/call requested: from={_redact_phone(from_num)} to={_redact_phone(to)}"
@@ -193,7 +201,7 @@ def register_twilio_voice_routes(app, user_svc):
             call_to = client.calls.create(to=to, from_=from_num, twiml=twiml_str)
             if from_num == to:
                 logger.info(
-                    f"Twilio call queued sid={call_to.sid} "
+                    f"Twilio call queued sid={_sid_suffix(call_to.sid)} "
                     f"from={_redact_phone(from_num)} to={_redact_phone(to)} (single party)"
                 )
                 return jsonify({"sid": call_to.sid})
@@ -209,12 +217,12 @@ def register_twilio_voice_routes(app, user_svc):
             return jsonify({"error": "Unable to place call right now."}), 502
         if call_from is not None:
             logger.info(
-                f"Twilio conference {room}: leg_to sid={call_to.sid} to={_redact_phone(to)}, "
-                f"leg_from sid={call_from.sid} to={_redact_phone(from_num)}"
+                f"Twilio conference {room}: leg_to sid={_sid_suffix(call_to.sid)} to={_redact_phone(to)}, "
+                f"leg_from sid={_sid_suffix(call_from.sid)} to={_redact_phone(from_num)}"
             )
             return jsonify({"sid": call_to.sid, "sid_caller": call_from.sid, "conference": room})
         logger.info(
-            f"Twilio conference {room}: leg_to sid={call_to.sid} "
+            f"Twilio conference {room}: leg_to sid={_sid_suffix(call_to.sid)} "
             f"to={_redact_phone(to)} (second leg failed)"
         )
         return jsonify({"sid": call_to.sid, "conference": room, "second_leg_failed": True})

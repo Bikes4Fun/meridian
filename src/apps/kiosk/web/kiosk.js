@@ -446,7 +446,7 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
 
 // Call socket bootstrap removed; voice calls are triggered directly per contact button.
 /**
- * Kiosk Medications screen: same inline editor as the webapp (meridian_medications_inline.js).
+ * Kiosk Medications screen: same inline editor as the webapp (bundled in webapp medications.js).
  * Runs after each showScreen via window.onKioskScreenShown (scripts in injected HTML do not run).
  */
 (function () {

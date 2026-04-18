@@ -23,11 +23,7 @@ from .api_client import KioskRemoteServiceContainer, create_kiosk_remote
 from .communication import ChatHandler
 from .map_screen import LocationHandler
 from .schedule_screen import ScheduleHandler, build_schedule_html
-from .communication import ChatHandler
-from .map_screen import LocationHandler
-from .schedule_screen import ScheduleHandler, build_schedule_html
 from .health_screen import HealthHandler
-from .sensor_widgets import SensorHandler
 from .sensor_widgets import SensorHandler
 
 logger = logging.getLogger(__name__)
@@ -341,7 +337,7 @@ class MeridianKioskApp:
         time.sleep(0.3)
         self._navigate_to("home")
         self._refresh_clock()
-        # self._sensor.start()
+        # self._sensor.start_stove_sensor()
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()

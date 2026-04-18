@@ -37,7 +37,6 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
         "info.html",
         "app.js",
         "events.js",
-        "meridian_medications_inline.js",
         "medications.js",
         "ice_editor.js",
     ):

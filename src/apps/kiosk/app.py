@@ -16,7 +16,6 @@ from typing import Optional
 from shared.config import (
     get_kiosk_tv_fullscreen,
     get_kiosk_tv_mode,
-    get_kiosk_webview_debug,
     get_kiosk_window_size,
 )
 
@@ -24,7 +23,11 @@ from .api_client import KioskRemoteServiceContainer, create_kiosk_remote
 from .communication import ChatHandler
 from .map_screen import LocationHandler
 from .schedule_screen import ScheduleHandler, build_schedule_html
+from .communication import ChatHandler
+from .map_screen import LocationHandler
+from .schedule_screen import ScheduleHandler, build_schedule_html
 from .health_screen import HealthHandler
+from .sensor_widgets import SensorHandler
 from .sensor_widgets import SensorHandler
 
 logger = logging.getLogger(__name__)
@@ -267,12 +270,6 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        kiosk_debug = get_kiosk_webview_debug()
-        if kiosk_debug:
-            logger.info(
-                "Kiosk debug flag detected (MERIDIAN_KIOSK_WEBVIEW_DEBUG); inspector popups remain disabled"
-            )
-        # Keep kiosk output stable: avoid opening inspectable pages/devtools popup windows.
         _wv_debug = False
         try:
             webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False

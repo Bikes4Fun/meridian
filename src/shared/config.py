@@ -111,13 +111,6 @@ def get_kiosk_tv_fullscreen() -> bool:
     val = os.getenv("KIOSK_TV_FULLSCREEN", "1").lower()
     return val in ("1", "true", "yes")
 
-
-def get_kiosk_webview_debug() -> bool:
-    """When True, pywebview passes debug=True to webview.start. Behavior is platform-specific; macOS often has no inspect UI."""
-    val = os.getenv("MERIDIAN_KIOSK_WEBVIEW_DEBUG", "0").lower()
-    return val in ("1", "true", "yes")
-
-
 # Server bind address: single source of truth for host/port (env SERVER_HOST, PORT).
 def get_server_host() -> str:
     """Host the API server binds to. Default 0.0.0.0."""

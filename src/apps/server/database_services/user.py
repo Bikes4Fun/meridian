@@ -4,6 +4,7 @@ Read/write users.
 """
 
 import sqlite3
+import logging
 from typing import Optional
 
 from .safe_query_manager import QueryManager
@@ -14,6 +15,8 @@ try:
     from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -119,4 +122,5 @@ class UserService:
                 conn.commit()
             return ServiceResult.success_result({"id": user_id})
         except sqlite3.IntegrityError as e:
-            return ServiceResult.error_result(str(e))
+            logger.warning(f"User insert integrity error: {e}")
+            return ServiceResult.error_result("Unable to save user due to a data conflict")

@@ -1,5 +1,5 @@
 /**
- * Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring. MeridianMedications.init(...). Requires meridian_medications_inline.js.
+ * Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring. MeridianMedications.init(...). Inline editor module is bundled below in this same file.
  * Scope: DOM for #healthMedsTakeHost / #healthMedsEditorHost and credentialed fetches. Not: kiosk embed (kiosk_medications_embed.js), FDA search, or server routes.
  */
 (function () {

@@ -114,7 +114,6 @@ def create_server_app(db_path=None):
     app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
     app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
     app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
-
     def _session_clocks_ok() -> bool:
         """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
         now = int(time.time())
@@ -1110,6 +1109,7 @@ def create_server_app(db_path=None):
         return jsonify({"ok": True, "requested_count": data.get("requested_count", 0)})
 
     # Static routes (webapp + kiosk) for Railway all-in-one deploy
+    # Static routes (webapp + kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
@@ -1160,10 +1160,6 @@ def create_server_app(db_path=None):
         @app.route("/info.html")
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
-
-        @app.route("/meridian_medications_inline.js")
-        def serve_meridian_medications_inline_js():
-            return send_from_directory(_webapp_dist, "meridian_medications_inline.js")
 
         @app.route("/app.js")
         def serve_app_js():

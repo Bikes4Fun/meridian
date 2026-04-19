@@ -7,7 +7,6 @@ Not here: Twilio/session logic inside the chat web page, or contact administrati
 
 import html
 import logging
-import os
 import re
 
 from .html_primitives import avatar_img
@@ -77,16 +76,7 @@ def contact_widget(c, contact_svc, hp) -> str:
     name = c.get("display_name") or c.get("id") or "Contact"
     phone = (c.get("phone") or "").strip()
     user_id = c.get("user_id") or ""
-    contact_id = c.get("id") or ""
-    # Inline base64 avatars mean one HTTP GET per photo through the API (slow on ngrok/Qt).
-    # Initials-only is instant; set MERIDIAN_KIOSK_CHAT_AVATARS=1 to fetch photos (slower).
-    avatar_src = None
-    if (os.environ.get("MERIDIAN_KIOSK_CHAT_AVATARS") or "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-    ):
-        avatar_src = contact_svc.get_best_contact_photo_b64(user_id, contact_id)
+    avatar_src = contact_svc.get_user_photo_b64(user_id)
     tile = contact_tile(avatar_src, name, data_name=name)
     safe_phone = html.escape(phone)
     safe_name = html.escape(name)

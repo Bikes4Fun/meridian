@@ -1,8 +1,8 @@
 # Railway config: API + webapp (all-in-one)
 # Docs: https://docs.railway.com/reference/config-as-code
 #
-# Service variables (set in Railway UI → service → Variables, not in this file):
-MERIDIAN_DEMO_SEED=1  — run demo seed after deploy (see apps.server __main__)
+# Service variables (set in Railway UI -> service -> Variables, not in this file):
+# MERIDIAN_DEMO_SEED=1 - run demo seed after deploy (see apps.server __main__)
 
 [build]
 builder = "RAILPACK"

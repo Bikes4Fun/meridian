@@ -304,6 +304,18 @@ function showScreen(name, html) {
   }
 }
 
+function setBootLoading(active, message) {
+  var overlay = document.getElementById('kiosk-boot-overlay');
+  if (!overlay) return;
+  var msgEl = document.getElementById('kiosk-boot-overlay-msg');
+  if (msgEl && message) msgEl.textContent = message;
+  if (active) {
+    overlay.classList.remove('kiosk-boot-overlay--hidden');
+    return;
+  }
+  overlay.classList.add('kiosk-boot-overlay--hidden');
+}
+
 function updateEl(id, content) {
   var el = document.getElementById(id);
   if (el) el.innerHTML = content;

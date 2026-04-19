@@ -73,6 +73,56 @@ body {
   flex-direction: column;
 }
 
+.kiosk-boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244, 243, 241, 0.9);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 220ms ease, visibility 220ms ease;
+}
+
+.kiosk-boot-overlay--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.kiosk-boot-overlay__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.kiosk-boot-overlay__spinner {
+  width: 7vh;
+  height: 7vh;
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 999px;
+  border: 0.75vh solid var(--surface-muted);
+  border-top-color: var(--accent);
+  animation: kioskBootSpin 900ms linear infinite;
+}
+
+.kiosk-boot-overlay__msg {
+  font-size: var(--font-body-large);
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+@keyframes kioskBootSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* =============================================================================
    LAYOUT COMPONENTS
    ============================================================================= */

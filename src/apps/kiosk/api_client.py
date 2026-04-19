@@ -7,8 +7,10 @@ Not here: Flask routes, pywebview, or server DB ServiceContainer (see server con
 """
 
 import logging
+import math
 import os
 import urllib.parse
+import hashlib
 from datetime import datetime
 from typing import Any, Optional, Tuple
 import requests
@@ -19,7 +21,6 @@ except ImportError:
     from shared.interfaces import ServiceResult
 
 logger = logging.getLogger(__name__)
-
 
 class RemoteServiceError(Exception):
     """Raised when a remote API request fails in an unrecoverable way."""
@@ -574,11 +575,6 @@ class RemoteContactService:
         # could use photo service directly but this maintains current call structure.
         return self._photo_service.get_user_photo_b64(user_id)
 
-    def get_best_contact_photo_b64(self, user_id: str, contact_id: str) -> Optional[str]:
-        # could use photo service directly but this maintains current call structure.
-        return self._photo_service.get_best_contact_photo_b64(
-            user_id, contact_id, self._fc_id
-        )
 
 class RemoteLocationService:
     def __init__(
@@ -593,6 +589,61 @@ class RemoteLocationService:
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
         self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
+
+    @staticmethod
+    def osm_tile_cache_dir() -> Optional[str]:
+        """Disk folder for OSM map tiles; same tree Flask serves at /kiosk/osm-tiles/..."""
+        base = RemotePhotoService.kiosk_cache_root()
+        if not base:
+            return None
+        return os.path.join(base, "osm_tiles")
+
+    @staticmethod
+    def _deg2num(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
+        lat_rad = math.radians(lat_deg)
+        n = 2.0**zoom
+        xtile = int((lon_deg + 180.0) / 360.0 * n)
+        ytile = int(
+            (1.0 - math.log(math.tan(lat_rad) + 1.0 / math.cos(lat_rad)) / math.pi)
+            / 2.0
+            * n
+        )
+        return xtile, ytile
+
+    def warm_osm_tiles_around(
+        self,
+        lat: float,
+        lon: float,
+        zooms: Tuple[int, ...] = (13, 14),
+        radius: int = 1,
+    ) -> None:
+        """Prefetch OSM raster tiles into osm_tile_cache_dir."""
+        root = self.osm_tile_cache_dir()
+        if not root:
+            return
+        headers = {
+            "User-Agent": "MeridianKiosk/1.0 (https://github.com/Bikes4Fun/meridian)"
+        }
+        for z in zooms:
+            x0, y0 = self._deg2num(lat, lon, z)
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    x, y = x0 + dx, y0 + dy
+                    m = 2**z
+                    if x < 0 or y < 0 or x >= m or y >= m:
+                        continue
+                    dest = os.path.join(root, str(z), str(x), f"{y}.png")
+                    if os.path.isfile(dest) and os.path.getsize(dest) > 200:
+                        continue
+                    url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    try:
+                        r = requests.get(url, headers=headers, timeout=12)
+                        if r.ok and len(r.content) > 200:
+                            os.makedirs(os.path.dirname(dest), exist_ok=True)
+                            with open(dest, "wb") as wf:
+                                wf.write(r.content)
+                    except Exception as e:
+                        logger.debug("OSM tile warm %s: %s", url, e)
 
     def get_checkins(self, family_circle_id: Optional[str] = None) -> Any:
         fc_id = family_circle_id if family_circle_id is not None else self._fc_id
@@ -666,85 +717,127 @@ class RemoteLocationService:
 
 class RemotePhotoService:
 
+    @staticmethod
+    def _safe_cache_key(s: str) -> str:
+        return "".join(
+            ch if ch.isalnum() or ch in "._-" else "_" for ch in (s or "").strip()
+        ) or "x"
+
+    @staticmethod
+    def _sniff_image_mime(data: bytes) -> str:
+        if len(data) >= 2 and data[0:2] == b"\xff\xd8":
+            return "image/jpeg"
+        if len(data) >= 8 and data[0:8] == b"\x89PNG\r\n\x1a\n":
+            return "image/png"
+        if len(data) >= 6 and data[0:6] in (b"GIF87a", b"GIF89a"):
+            return "image/gif"
+        if len(data) >= 12 and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
+            return "image/webp"
+        return "image/jpeg"
+
+    @staticmethod
+    def kiosk_cache_root() -> Optional[str]:
+        """Disk cache root for kiosk asset caches (photos and OSM tiles)."""
+        flag = (os.environ.get("MERIDIAN_KIOSK_PHOTO_CACHE") or "1").strip().lower()
+        if flag in ("0", "false", "no"):
+            return None
+        custom = (os.environ.get("MERIDIAN_KIOSK_CACHE_DIR") or "").strip()
+        if custom:
+            return os.path.abspath(custom)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+
     def __init__(
         self,
         base_url: str = "",
         headers: Optional[dict] = None,
         session: Optional["requests.Session"] = None,
+        photo_cache_root: Optional[str] = None,
     ):
         self._base = (base_url or "").rstrip("/")
         self._headers = headers or {}
         self._session = session
+        self._cache_root = (
+            photo_cache_root
+            if photo_cache_root is not None
+            else self.kiosk_cache_root()
+        )
+        self._photo_cache_dir = (
+            os.path.join(self._cache_root, "photos") if self._cache_root else None
+        )
+        if self._photo_cache_dir:
+            try:
+                os.makedirs(self._photo_cache_dir, exist_ok=True)
+            except Exception:
+                self._photo_cache_dir = None
 
-    def fetch_photo_b64(self, url: str) -> Optional[str]:
-        """Fetch any photo URL via authenticated session, return data URI or None."""
-        if not url:
+    def _cache_path_for_url(self, url: str) -> Optional[str]:
+        if not self._photo_cache_dir:
+            return None
+        digest = hashlib.sha256((url or "").encode("utf-8")).hexdigest()
+        safe = self._safe_cache_key(digest)
+        return os.path.join(self._photo_cache_dir, safe)
+
+    def _data_uri_from_bytes(self, raw: bytes, mime_hint: str = "") -> Optional[str]:
+        if not raw:
             return None
         try:
             import base64
         except ImportError:
             return None
+        mime = (mime_hint or "").strip() or self._sniff_image_mime(raw)
+        b64 = base64.b64encode(raw).decode()
+        return f"data:{mime};base64,{b64}"
+
+    def _read_cached_photo_b64(self, url: str) -> Optional[str]:
+        cache_path = self._cache_path_for_url(url)
+        if not cache_path or not os.path.exists(cache_path):
+            return None
+        try:
+            with open(cache_path, "rb") as f:
+                raw = f.read()
+            return self._data_uri_from_bytes(raw, "")
+        except Exception as e:
+            logger.debug(f"Photo cache read failed for {url}: {e}")
+            return None
+
+    def _write_cached_photo(self, url: str, raw: bytes) -> bool:
+        cache_path = self._cache_path_for_url(url)
+        if not cache_path or not raw:
+            return False
+        try:
+            with open(cache_path, "wb") as f:
+                f.write(raw)
+            return True
+        except Exception as e:
+            logger.debug(f"Photo cache write failed for {url}: {e}")
+            return False
+
+    def fetch_photo_b64(self, url: str) -> Optional[str]:
+        """Fetch any photo URL via authenticated session, return data URI or None."""
+        if not url:
+            return None
+        cached = self._read_cached_photo_b64(url)
+        if cached:
+            return cached
         try:
             client = self._session if self._session else requests
             r = client.get(url, headers=self._headers, timeout=5)
             if r.ok and r.content:
                 mime = r.headers.get("Content-Type", "image/jpeg")
-                b64 = base64.b64encode(r.content).decode()
-                return f"data:{mime};base64,{b64}"
+                self._write_cached_photo(url, r.content)
+                return self._data_uri_from_bytes(r.content, mime)
             logger.debug(f"Photo fetch {url} -> {r.status_code}")
         except Exception as e:
             logger.debug(f"Photo fetch {url} failed: {e}")
         return None
 
+
     def get_user_photo_b64(self, user_id: str) -> Optional[str]:
         user_id = (user_id or "").strip()
-        if not self._base or not user_id:
+        if not user_id:
             return None
         quoted = urllib.parse.quote(user_id, safe="")
         return self.fetch_photo_b64(f"{self._base}/api/users/{quoted}/photo")
-
-    def get_contact_photo_b64(self, family_circle_id: str, contact_id: str) -> Optional[str]:
-        family_circle_id = (family_circle_id or "").strip()
-        contact_id = (contact_id or "").strip()
-        if not self._base or not family_circle_id or not contact_id:
-            return None
-        family_circle_id = urllib.parse.quote(family_circle_id, safe="")
-        contact_id = urllib.parse.quote(contact_id, safe="")
-        return self.fetch_photo_b64(
-            f"{self._base}/api/family_circles/{family_circle_id}/contacts/{contact_id}/photo"
-        )
-
-    def get_best_contact_photo_b64(
-        self, user_id: str, contact_id: str, family_circle_id: str
-    ) -> Optional[str]:
-        avatar_src = self.get_user_photo_b64(user_id)
-        if avatar_src:
-            return avatar_src
-        return self.get_contact_photo_b64(family_circle_id, contact_id)
-
-
-    def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
-        """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present. user_id = whose photo (any family member)."""
-        try:
-            import requests
-        except ImportError:
-            return None
-        photo_dir = os.path.join(cache_dir, "photos")
-        os.makedirs(photo_dir, exist_ok=True)
-        cached = os.path.join(photo_dir, user_id)
-        if os.path.exists(cached):
-            return cached
-        try:
-            url = f"{self._base}/api/users/{user_id}/photo"
-            client = self._session if self._session else requests
-            r = client.get(url, headers=self._headers, timeout=10)
-            r.raise_for_status()
-            with open(cached, "wb") as f:
-                f.write(r.content)
-            return cached
-        except Exception as e:
-            logger.debug(f"Photo fetch failed for {user_id}: {e}")
-            return None
 
 
 class KioskRemoteServiceContainer:

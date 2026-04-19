@@ -17,6 +17,12 @@
     <button type="button" class="nav-tab" data-screen="chat">Chat</button>
   </nav>
   <div id="screen-content" role="main"><!-- Python injects screen HTML here --></div>
+  <div id="kiosk-boot-overlay" class="kiosk-boot-overlay" aria-live="polite">
+    <div class="kiosk-boot-overlay__card">
+      <div class="kiosk-boot-overlay__spinner" aria-hidden="true"></div>
+      <div id="kiosk-boot-overlay-msg" class="kiosk-boot-overlay__msg">Loading Meridian...</div>
+    </div>
+  </div>
   <nav id="kiosk-footer" aria-label="More">
     <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="settings">Settings</button>
     <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="health">Health</button>

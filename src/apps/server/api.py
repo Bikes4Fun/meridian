@@ -25,6 +25,7 @@ import time
 import uuid
 import datetime
 import urllib.parse
+import urllib.request
 import logging
 import threading
 from dataclasses import asdict
@@ -38,6 +39,7 @@ from flask import (
     request,
     g,
     send_from_directory,
+    send_file,
     Response,
     redirect,
     session,
@@ -434,6 +436,7 @@ def create_server_app(db_path=None):
                 emergency_priority=data.get("emergency_priority"),
                 photo_filename=data.get("photo_filename"),
                 notes=data.get("notes"),
+                linked_user_id=data.get("linked_user_id"),
             )
             if not r.success:
                 return jsonify({"error": "add contact failed"}), 500
@@ -1109,13 +1112,11 @@ def create_server_app(db_path=None):
         return jsonify({"ok": True, "requested_count": data.get("requested_count", 0)})
 
     # Static routes (webapp + kiosk) for Railway all-in-one deploy
-    # Static routes (webapp + kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
     _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
-    _repo_root = os.path.dirname(_src)
-    _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
+    _kiosk_icons = os.path.join(_src, "shared", "assets", "icons")
     if os.path.isdir(_webapp_dist):
         @app.route("/")
         @app.route("/index.html")
@@ -1207,6 +1208,37 @@ def create_server_app(db_path=None):
             return send_from_directory(os.path.join(_src, "shared"), path)
 
     if os.path.isdir(_kiosk_web):
+
+        @app.route("/kiosk/osm-tiles/<int:z>/<int:x>/<int:y>.png")
+        def serve_kiosk_osm_tile(z, x, y):
+            try:
+                from apps.kiosk.api_client import RemoteLocationService
+            except ImportError:
+                abort(404)
+            root = RemoteLocationService.osm_tile_cache_dir()
+            if not root:
+                abort(404)
+            dest = os.path.join(root, str(z), str(x), f"{y}.png")
+            if os.path.isfile(dest):
+                return send_file(dest, mimetype="image/png")
+            url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "MeridianServer/1.0 (tile cache; +https://github.com/Bikes4Fun/meridian)"
+                },
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = resp.read()
+                if len(data) < 100:
+                    abort(502)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                with open(dest, "wb") as wf:
+                    wf.write(data)
+                return Response(data, mimetype="image/png")
+            except Exception:
+                abort(502)
 
         @app.route("/kiosk/")
         @app.route("/kiosk/<path:path>")

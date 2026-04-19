@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     emergency_priority TEXT,
     photo_filename TEXT,
     notes TEXT,
+    linked_user_id TEXT,
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 

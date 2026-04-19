@@ -1208,6 +1208,56 @@ def create_server_app(db_path=None):
             return send_from_directory(os.path.join(_src, "shared"), path)
 
     if os.path.isdir(_kiosk_web):
+        def _server_osm_tile_cache_root() -> str:
+            custom = (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_DIR") or "").strip()
+            if custom:
+                return custom
+            return os.path.join(os.environ.get("TMPDIR") or "/tmp", "meridian-osm-tiles")
+
+        def _prune_osm_tile_cache(root_real: str) -> None:
+            now = int(time.time())
+            last_run = getattr(_prune_osm_tile_cache, "_last_run", 0)
+            if now - last_run < 300:
+                return
+            _prune_osm_tile_cache._last_run = now
+            try:
+                ttl_sec = int(
+                    (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_TTL_SEC") or "1209600").strip()
+                )
+            except ValueError:
+                ttl_sec = 1209600
+            try:
+                max_files = int(
+                    (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_MAX_FILES") or "12000").strip()
+                )
+            except ValueError:
+                max_files = 12000
+            keep = []
+            for dirpath, _dirnames, filenames in os.walk(root_real):
+                for name in filenames:
+                    if not name.endswith(".png"):
+                        continue
+                    path = os.path.join(dirpath, name)
+                    try:
+                        st = os.stat(path)
+                    except OSError:
+                        continue
+                    if ttl_sec > 0 and now - int(st.st_mtime) > ttl_sec:
+                        try:
+                            os.remove(path)
+                        except OSError:
+                            pass
+                        continue
+                    keep.append((st.st_mtime, path))
+            overflow = len(keep) - max_files
+            if overflow > 0:
+                keep.sort(key=lambda item: item[0])
+                for _mtime, path in keep[:overflow]:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+
         def _resolve_osm_tile_cache_path(root: str, z: int, x: int, y: int) -> tuple[str, str]:
             # Accept only valid OSM tile coordinates so we never build out-of-range paths.
             if z < 0 or z > 19:
@@ -1226,13 +1276,7 @@ def create_server_app(db_path=None):
 
         @app.route("/kiosk/osm-tiles/<int:z>/<int:x>/<int:y>.png")
         def serve_kiosk_osm_tile(z, x, y):
-            try:
-                from apps.kiosk.api_client import RemoteLocationService
-            except ImportError:
-                abort(404)
-            root = RemoteLocationService.osm_tile_cache_dir()
-            if not root:
-                abort(404)
+            root = _server_osm_tile_cache_root()
             # Centralize all coordinate and path traversal checks in one place.
             root_real, dest_real = _resolve_osm_tile_cache_path(root, z, x, y)
             if os.path.isfile(dest_real):
@@ -1252,6 +1296,7 @@ def create_server_app(db_path=None):
                 os.makedirs(root_real, exist_ok=True)
                 with open(dest_real, "wb") as wf:
                     wf.write(data)
+                _prune_osm_tile_cache(root_real)
                 return Response(data, mimetype="image/png")
             except Exception:
                 abort(502)

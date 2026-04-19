@@ -24,7 +24,15 @@ from dev.tests.conftest import (
 API_HEADERS = {"X-User-Id": TEST_USER_ID, "X-Family-Circle-Id": FAMILY_CIRCLE_ID}
 
 
-def _install_fake_twilio_modules(monkeypatch, *, validate_result=True, jwt_value=b"fake-jwt"):
+def _install_fake_twilio_modules(
+    monkeypatch,
+    *,
+    validate_result=True,
+    jwt_value=b"fake-jwt",
+    jwt_raises=False,
+    include_rest=False,
+    fail_second_leg=False,
+):
     twilio_mod = types.ModuleType("twilio")
     request_validator_mod = types.ModuleType("twilio.request_validator")
     twiml_mod = types.ModuleType("twilio.twiml")
@@ -46,6 +54,9 @@ def _install_fake_twilio_modules(monkeypatch, *, validate_result=True, jwt_value
 
         def number(self, value):
             self.numbers.append(value)
+
+        def conference(self, room, beep="false"):
+            self.numbers.append((room, beep))
 
     class FakeVoiceResponse:
         def __init__(self):
@@ -76,6 +87,8 @@ def _install_fake_twilio_modules(monkeypatch, *, validate_result=True, jwt_value
             self.grants.append(grant)
 
         def to_jwt(self):
+            if jwt_raises:
+                raise RuntimeError("jwt failed")
             return jwt_value
 
     request_validator_mod.RequestValidator = FakeRequestValidator
@@ -90,6 +103,26 @@ def _install_fake_twilio_modules(monkeypatch, *, validate_result=True, jwt_value
     monkeypatch.setitem(sys.modules, "twilio.jwt", jwt_mod)
     monkeypatch.setitem(sys.modules, "twilio.jwt.access_token", access_token_mod)
     monkeypatch.setitem(sys.modules, "twilio.jwt.access_token.grants", grants_mod)
+    if include_rest:
+        rest_mod = types.ModuleType("twilio.rest")
+
+        class FakeCalls:
+            def __init__(self):
+                self._count = 0
+
+            def create(self, **_kwargs):
+                self._count += 1
+                if fail_second_leg and self._count == 2:
+                    raise RuntimeError("second leg failed")
+                sid = "CA_TO" if self._count == 1 else "CA_FROM"
+                return types.SimpleNamespace(sid=sid)
+
+        class FakeClient:
+            def __init__(self, _account_sid, _auth_token):
+                self.calls = FakeCalls()
+
+        rest_mod.Client = FakeClient
+        monkeypatch.setitem(sys.modules, "twilio.rest", rest_mod)
 
 
 @pytest.mark.integration
@@ -257,6 +290,48 @@ def test_twilio_voice_token_success_returns_token_and_caller_id(api_client, monk
     assert r.status_code == 200
     assert body.get("token") == "jwt-123"
     assert body.get("caller_id") == "+14155550199"
+
+
+@pytest.mark.integration
+def test_twilio_voice_token_handles_jwt_failure(api_client, monkeypatch):
+    _install_fake_twilio_modules(monkeypatch, jwt_raises=True)
+    monkeypatch.setenv("TWILIO_ACCOUNT_SID", "AC123")
+    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "auth123")
+    monkeypatch.setenv("TWILIO_API_KEY_SID", "SK123")
+    monkeypatch.setenv("TWILIO_API_KEY_SECRET", "secret123")
+    monkeypatch.setenv("TWILIO_TWIML_APP_SID", "AP123")
+    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
+    r = api_client.get("/api/voice/token", headers=API_HEADERS)
+    assert r.status_code == 500
+    assert (r.get_json() or {}).get("error") == "Could not create voice token"
+
+
+@pytest.mark.integration
+def test_twilio_voice_call_requires_to_phone(api_client, monkeypatch):
+    monkeypatch.setenv("TWILIO_ACCOUNT_SID", "AC123")
+    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "auth123")
+    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
+    r = api_client.post("/api/voice/call", json={}, headers=API_HEADERS)
+    assert r.status_code == 400
+    assert (r.get_json() or {}).get("error") == "to phone required"
+
+
+@pytest.mark.integration
+def test_twilio_voice_call_conference_success(api_client, monkeypatch):
+    _install_fake_twilio_modules(monkeypatch, include_rest=True)
+    monkeypatch.setenv("TWILIO_ACCOUNT_SID", "AC123")
+    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "auth123")
+    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
+    r = api_client.post(
+        "/api/voice/call",
+        json={"to": "+14155550100"},
+        headers=API_HEADERS,
+    )
+    body = r.get_json() or {}
+    assert r.status_code == 200
+    assert body.get("sid") == "CA_TO"
+    assert body.get("sid_caller") == "CA_FROM"
+    assert body.get("conference")
 
 
 # @pytest.mark.integration

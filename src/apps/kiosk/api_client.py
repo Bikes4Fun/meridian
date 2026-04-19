@@ -138,7 +138,9 @@ class LocalTimeService:
         pass
 
     def get_time(self) -> str:
-        return datetime.now().strftime("%-I:%M %p").replace(" 0", " ").lstrip()
+        now = datetime.now()
+        hour_12 = now.hour % 12 or 12
+        return f"{hour_12}:{now.strftime('%M %p')}"
 
     def get_dayof_week(self) -> str:
         return datetime.now().strftime("%A")
@@ -161,10 +163,12 @@ class LocalTimeService:
         return f"{self.get_month_day()}, {self.get_year()}"
 
     def get_date(self) -> str:
-        return datetime.now().strftime("%B %-d, %Y").replace(" 0", " ").lstrip()
+        now = datetime.now()
+        return f"{now.strftime('%B')} {now.day}, {now.year}"
 
     def get_month_day(self) -> str:
-        return datetime.now().strftime("%B %-d").replace(" 0", " ").lstrip()
+        now = datetime.now()
+        return f"{now.strftime('%B')} {now.day}"
 
     def get_year(self) -> str:
         return str(datetime.now().year)

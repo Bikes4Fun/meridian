@@ -632,14 +632,14 @@ class RemoteLocationService:
                     m = 2**z
                     if x < 0 or y < 0 or x >= m or y >= m:
                         continue
-                    dest = os.path.join(root, str(z), str(x), f"{y}.png")
+                    dest = os.path.join(root, f"{z}_{x}_{y}.png")
                     if os.path.isfile(dest) and os.path.getsize(dest) > 200:
                         continue
                     url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                     try:
                         r = requests.get(url, headers=headers, timeout=12)
                         if r.ok and len(r.content) > 200:
-                            os.makedirs(os.path.dirname(dest), exist_ok=True)
+                            os.makedirs(root, exist_ok=True)
                             with open(dest, "wb") as wf:
                                 wf.write(r.content)
                     except Exception as e:

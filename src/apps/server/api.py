@@ -1208,6 +1208,21 @@ def create_server_app(db_path=None):
             return send_from_directory(os.path.join(_src, "shared"), path)
 
     if os.path.isdir(_kiosk_web):
+        def _resolve_osm_tile_cache_path(root: str, z: int, x: int, y: int) -> tuple[str, str]:
+            # Accept only valid OSM tile coordinates so we never build out-of-range paths.
+            if z < 0 or z > 19:
+                abort(404)
+            tile_limit = 2**z
+            if x < 0 or y < 0 or x >= tile_limit or y >= tile_limit:
+                abort(404)
+            # Resolve to absolute canonical paths and enforce dest remains under root.
+            root_real = os.path.realpath(root)
+            dest_real = os.path.realpath(
+                os.path.join(root_real, str(z), str(x), f"{y}.png")
+            )
+            if os.path.commonpath([root_real, dest_real]) != root_real:
+                abort(404)
+            return root_real, dest_real
 
         @app.route("/kiosk/osm-tiles/<int:z>/<int:x>/<int:y>.png")
         def serve_kiosk_osm_tile(z, x, y):
@@ -1218,9 +1233,10 @@ def create_server_app(db_path=None):
             root = RemoteLocationService.osm_tile_cache_dir()
             if not root:
                 abort(404)
-            dest = os.path.join(root, str(z), str(x), f"{y}.png")
-            if os.path.isfile(dest):
-                return send_file(dest, mimetype="image/png")
+            # Centralize all coordinate and path traversal checks in one place.
+            root_real, dest_real = _resolve_osm_tile_cache_path(root, z, x, y)
+            if os.path.isfile(dest_real):
+                return send_file(dest_real, mimetype="image/png")
             url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
             req = urllib.request.Request(
                 url,
@@ -1233,8 +1249,8 @@ def create_server_app(db_path=None):
                     data = resp.read()
                 if len(data) < 100:
                     abort(502)
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                with open(dest, "wb") as wf:
+                os.makedirs(root_real, exist_ok=True)
+                with open(dest_real, "wb") as wf:
                     wf.write(data)
                 return Response(data, mimetype="image/png")
             except Exception:

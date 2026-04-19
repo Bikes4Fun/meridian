@@ -1,5 +1,5 @@
 /**
- * Meridian iOS – Chat in WKWebView. Loads server chat URL (Sendbird).
+ * Meridian iOS – Chat in WKWebView. Loads server chat URL from the Meridian API.
  * Dynamically sized for all phone devices (iPhone SE through Max) with safe area and keyboard handling.
  */
 import UIKit
@@ -123,7 +123,7 @@ final class ChatWebViewController: UIViewController {
         Task {
             do {
                 let url = try await APIService.shared.getChatSessionURL(
-                    recipientSendbirdUserId: recipientSendbirdUserId,
+                    // recipientSendbirdUserId: recipientSendbirdUserId, TODO: remove all reference to send bird
                     recipientDisplayName: recipientDisplayName
                 )
                 await MainActor.run {

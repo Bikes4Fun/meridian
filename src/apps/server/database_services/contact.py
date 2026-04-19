@@ -46,11 +46,12 @@ class ContactService:
         query = """
             SELECT c.id, c.display_name, c.phone, c.email, c.birthday, c.relationship,
                    c.emergency_priority, c.photo_filename,
-                   (SELECT u.id FROM users u
-                    INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
-                    WHERE ufc.family_circle_id = c.family_circle_id
-                      AND u.display_name = c.display_name
-                    LIMIT 1) AS user_id
+                   COALESCE(NULLIF(TRIM(c.linked_user_id), ''),
+                     (SELECT u.id FROM users u
+                      INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
+                      WHERE ufc.family_circle_id = c.family_circle_id
+                        AND u.display_name = c.display_name
+                      LIMIT 1)) AS user_id
             FROM contacts c
             WHERE c.family_circle_id = ?
         """
@@ -77,11 +78,12 @@ class ContactService:
         query = """
             SELECT c.id, c.display_name, c.phone, c.email, c.birthday, c.relationship,
                    c.emergency_priority, c.photo_filename,
-                   (SELECT u.id FROM users u
-                    INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
-                    WHERE ufc.family_circle_id = c.family_circle_id
-                      AND u.display_name = c.display_name
-                    LIMIT 1) AS user_id
+                   COALESCE(NULLIF(TRIM(c.linked_user_id), ''),
+                     (SELECT u.id FROM users u
+                      INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
+                      WHERE ufc.family_circle_id = c.family_circle_id
+                        AND u.display_name = c.display_name
+                      LIMIT 1)) AS user_id
             FROM contacts c
             WHERE c.family_circle_id = ? AND c.emergency_priority IN ('primary_emergency', 'secondary_emergency')
         """
@@ -116,12 +118,13 @@ class ContactService:
         emergency_priority: Optional[str] = None,
         photo_filename: Optional[str] = None,
         notes: Optional[str] = None,
+        linked_user_id: Optional[str] = None,
     ) -> ServiceResult:
         """Insert or replace contact."""
         return self.db_manager.execute_update(
             """INSERT OR REPLACE INTO contacts
-            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, family_circle_id, display_name, phone, email, birthday, relationship, emergency_priority, photo_filename, notes, linked_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 contact_id,
                 family_circle_id,
@@ -133,6 +136,7 @@ class ContactService:
                 emergency_priority,
                 photo_filename,
                 notes,
+                linked_user_id,
             ),
         )
 

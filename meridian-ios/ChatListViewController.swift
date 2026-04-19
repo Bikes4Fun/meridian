@@ -63,7 +63,7 @@ final class ChatListViewController: UIViewController {
     }
 
     private func openChat(recipient: Contact, autoStartCall: Bool = false) {
-        guard session != nil, let sb = recipient.sendbirdUserId else { return }
+        // guard session != nil, let sb = recipient.send birdUserId else { return } // TODO: remove all reference to send bird
         if autoStartCall, let targetUserId = recipient.userId, !targetUserId.isEmpty {
             Task {
                 try? await APIService.shared.requestCall(toUserId: targetUserId)
@@ -71,7 +71,7 @@ final class ChatListViewController: UIViewController {
         }
         let chatVC = ChatWebViewController()
         chatVC.loadChat(
-            recipientSendbirdUserId: sb,
+            // recipientSend birdUserId: sb, TODO: remove all reference to send bird
             recipientDisplayName: recipient.displayName,
             autoStartCall: autoStartCall
         )

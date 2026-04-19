@@ -1,7 +1,7 @@
 # Meridian
 
 <p align="center">
-  <img src="assets/icons/original_banner_logo.png" alt="Meridian banner" width="420">
+  <img src="src/shared/assets/icons/original_banner_logo.png" alt="Meridian banner" width="420">
 </p>
 
 
@@ -143,9 +143,7 @@ meridian/
 │   │   │   └── cache/          # Map tile cache
 │   │   ├── server/             # Flask API, DB, services
 │   │   │   ├── api.py
-│   │   │   ├── database.py
-│   │   │   ├── schema.sql
-│   │   │   └── services/
+│   │   │   └── database_services/   # schema.sql (SQLite DDL), QueryManager, domain services
 │   │   └── webapp/             # Caregiver web client
 │   ├── dev/
 │   │   ├── demo/               # Seed demo data

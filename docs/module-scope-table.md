@@ -9,7 +9,6 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 | `src/apps/kiosk/schedule_screen.py` | Schedule screen HTML + event overlay markup | Merged timeline strings; modal shell (`#eventEditingId` hidden) | Live modal open/prefill (`kiosk.js` `meridianKioskEvents`), calendar API |
 | `src/apps/kiosk/emergency_screen.py` | Emergency profile HTML + client PDF print | Presentation + photo fetch; `trigger_emergency_print` for alerts/button | Alert poll (`app`), server PDF generation |
 | `src/apps/kiosk/checkin_screen.py` | Family Locations + `LocationHandler` | Layout + hooks for `map_widget` / kiosk JS | Leaflet (`kiosk.js`), check-in creation UX, location API impl |
-| `src/apps/kiosk/chat_screen.py` | Chat grid + `open_chat_window` + entry webview | Contacts list; `open_chat` / `open_chat_with_call` | In-page Sendbird, contact admin APIs |
 | `src/apps/kiosk/map_widget.py` | Map markers + container HTML | Data shaping + embed fragment | Leaflet setup, check-in POST, named-places API impl |
 | `src/apps/kiosk/settings_screen.py` | Settings + monitors; meds editor shell (`build_medications_html`) | Monitor row HTML, settings copy; full editor panel for Medications nav | Temp polling (`app` + sensor), Health timeline |
 | `src/apps/kiosk/html_primitives.py` | Shared kiosk HTML helpers | Markup strings, `kiosk_screen_blocked`, `form_row_html` / `section_bar_html`, tokens in CSS | Service fetch, per-screen business logic, webapp |
@@ -17,8 +16,7 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 | `src/apps/kiosk/api_client.py` | Kiosk HTTP + `KioskRemoteServiceContainer` | Remote clients + local time; no UI | Flask, pywebview, server `ServiceContainer` |
 | `src/apps/server/container.py` | Server DB service container | Lazy getters for API process | Kiosk HTTP clients, kiosk imports, route definitions |
 | `src/apps/webapp/web_client/meridian_api_base.js` | Shared browser utilities | `window` helpers: login redirect, API base, escape | Feature pages, fetch wrappers |
-| `src/apps/webapp/web_client/medications.js` | Health/Settings meds UI | `#healthMedsTakeHost` / `#settingsMedsEditor` + fetches | Kiosk embed (`kiosk_medications_embed.js`), FDA, server routes |
-| `src/apps/webapp/web_client/meridian_medications_inline.js` | Inline med row editor | Rows, DOM collect, diff save vs `/medications` | Page layout, ICE non-med fields, Python |
+| `src/apps/webapp/web_client/medications.js` | Health/Settings meds UI + inline row editor (`MeridianMedicationsInline` IIFE) | `#healthMedsTakeHost` / editor hosts + fetches | Kiosk embed (`kiosk_medications_embed.js`), FDA, server routes |
 | `src/apps/webapp/web_client/events.js` | Events tab | `#pageEvents` list + modal CRUD | Kiosk schedule, meds merge, month calendar |
 | `src/apps/webapp/web_client/ice_editor.js` | ICE webapp page | Medical block + contacts/photos/DNR APIs | Kiosk emergency UI, print, pywebview bridge |
 
@@ -61,7 +59,6 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 > Kiosk Chat: contact grid HTML; `open_chat_window` (subprocess pywebview for chat URL); ChatHandler fetches chat entry URL.  
 > Scope: list contacts and bridge open_chat / open_chat_with_call.  
-> Not here: Sendbird/session logic inside the chat web page, or contact administration APIs.
 
 **`map_widget.py`**
 
@@ -111,13 +108,8 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 **`medications.js`**
 
-> Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring. MeridianMedications.init(...). Requires meridian_medications_inline.js.  
+> Webapp Health/Settings meds UI: today’s list + mark-taken; Settings inline editor wiring (`MeridianMedications.init`); inline editor (`MeridianMedicationsInline`) is bundled in this file.  
 > Scope: DOM for #healthMedsTakeHost / #settingsMedsEditor and credentialed fetches. Not: kiosk embed (kiosk_medications_embed.js), FDA search, or server routes.
-
-**`meridian_medications_inline.js`**
-
-> Shared medication row editor: HTML for rows, collect from DOM, sequential diff save/delete vs /medications (api base from caller).  
-> Scope: MeridianMedicationsInline + reusable by webapp Settings, ICE editor, kiosk embed. Not: page layout, ICE non-med fields, or Python.
 
 **`events.js`**
 

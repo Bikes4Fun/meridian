@@ -25,6 +25,7 @@ import time
 import uuid
 import datetime
 import urllib.parse
+import urllib.request
 import logging
 import threading
 from dataclasses import asdict
@@ -38,6 +39,7 @@ from flask import (
     request,
     g,
     send_from_directory,
+    send_file,
     Response,
     redirect,
     session,
@@ -114,8 +116,6 @@ def create_server_app(db_path=None):
     app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
     app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
     app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
-    register_twilio_voice_routes(app)
-
     def _session_clocks_ok() -> bool:
         """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
         now = int(time.time())
@@ -199,8 +199,9 @@ def create_server_app(db_path=None):
         """Paths that need no session (static assets, login page, kiosk shell)."""
         if path in (
             "/login.html",
+            "/privacy.html",
+            "/terms.html",
             "/app.js",
-            "/meridian_api_base.js",
             "/style.css",
         ):
             return True
@@ -224,6 +225,10 @@ def create_server_app(db_path=None):
             g.family_circle_id = None
             return
         if request.path == "/api/users" and request.method == "POST":
+            g.user_id = None
+            g.family_circle_id = None
+            return
+        if request.path.startswith("/twilio/"):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -306,6 +311,7 @@ def create_server_app(db_path=None):
     location_svc = container.get_location_service()
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
+    register_twilio_voice_routes(app, user_svc)
 
     @app.before_request
     def verify_family_membership():
@@ -379,6 +385,7 @@ def create_server_app(db_path=None):
             photo_filename=data.get("photo_filename"),
             # TODO far future security: new users may be invited to a family and have an auth code etc but shouldn't be able to simply join a family
             family_circle_id=data.get("family_circle_id"),
+            phone=data.get("phone"),
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -429,6 +436,7 @@ def create_server_app(db_path=None):
                 emergency_priority=data.get("emergency_priority"),
                 photo_filename=data.get("photo_filename"),
                 notes=data.get("notes"),
+                linked_user_id=data.get("linked_user_id"),
             )
             if not r.success:
                 return jsonify({"error": "add contact failed"}), 500
@@ -1108,15 +1116,7 @@ def create_server_app(db_path=None):
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
     _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
-    _repo_root = os.path.dirname(_src)
-    _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
-    if os.path.isfile(os.path.join(_webapp_client, "meridian_api_base.js")):
-
-        @app.route("/meridian_api_base.js")
-        def serve_meridian_api_base_js():
-            """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
-            return send_from_directory(_webapp_client, "meridian_api_base.js")
-
+    _kiosk_icons = os.path.join(_src, "shared", "assets", "icons")
     if os.path.isdir(_webapp_dist):
         @app.route("/")
         @app.route("/index.html")
@@ -1145,6 +1145,14 @@ def create_server_app(db_path=None):
         def serve_login():
             return send_from_directory(_webapp_dist, "login.html")
 
+        @app.route("/privacy.html")
+        def serve_privacy():
+            return send_from_directory(_webapp_dist, "privacy.html")
+
+        @app.route("/terms.html")
+        def serve_terms():
+            return send_from_directory(_webapp_dist, "terms.html")
+
         @app.route("/ice-editor")
         @app.route("/ice_editor.html")
         def serve_ice_editor():
@@ -1153,10 +1161,6 @@ def create_server_app(db_path=None):
         @app.route("/info.html")
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
-
-        @app.route("/meridian_medications_inline.js")
-        def serve_meridian_medications_inline_js():
-            return send_from_directory(_webapp_dist, "meridian_medications_inline.js")
 
         @app.route("/app.js")
         def serve_app_js():
@@ -1204,6 +1208,98 @@ def create_server_app(db_path=None):
             return send_from_directory(os.path.join(_src, "shared"), path)
 
     if os.path.isdir(_kiosk_web):
+        def _server_osm_tile_cache_root() -> str:
+            custom = (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_DIR") or "").strip()
+            if custom:
+                return custom
+            return os.path.join(os.environ.get("TMPDIR") or "/tmp", "meridian-osm-tiles")
+
+        def _prune_osm_tile_cache(root_real: str) -> None:
+            now = int(time.time())
+            last_run = getattr(_prune_osm_tile_cache, "_last_run", 0)
+            if now - last_run < 300:
+                return
+            _prune_osm_tile_cache._last_run = now
+            try:
+                ttl_sec = int(
+                    (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_TTL_SEC") or "1209600").strip()
+                )
+            except ValueError:
+                ttl_sec = 1209600
+            try:
+                max_files = int(
+                    (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_MAX_FILES") or "12000").strip()
+                )
+            except ValueError:
+                max_files = 12000
+            keep = []
+            for dirpath, _dirnames, filenames in os.walk(root_real):
+                for name in filenames:
+                    if not name.endswith(".png"):
+                        continue
+                    path = os.path.join(dirpath, name)
+                    try:
+                        st = os.stat(path)
+                    except OSError:
+                        continue
+                    if ttl_sec > 0 and now - int(st.st_mtime) > ttl_sec:
+                        try:
+                            os.remove(path)
+                        except OSError:
+                            pass
+                        continue
+                    keep.append((st.st_mtime, path))
+            overflow = len(keep) - max_files
+            if overflow > 0:
+                keep.sort(key=lambda item: item[0])
+                for _mtime, path in keep[:overflow]:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+
+        def _resolve_osm_tile_cache_path(root: str, z: int, x: int, y: int) -> tuple[str, str]:
+            # Accept only valid OSM tile coordinates so we never build out-of-range paths.
+            if z < 0 or z > 19:
+                abort(404)
+            tile_limit = 2**z
+            if x < 0 or y < 0 or x >= tile_limit or y >= tile_limit:
+                abort(404)
+            # Resolve to absolute canonical paths and enforce dest remains under root.
+            root_real = os.path.realpath(root)
+            dest_real = os.path.realpath(
+                os.path.join(root_real, str(z), str(x), f"{y}.png")
+            )
+            if os.path.commonpath([root_real, dest_real]) != root_real:
+                abort(404)
+            return root_real, dest_real
+
+        @app.route("/kiosk/osm-tiles/<int:z>/<int:x>/<int:y>.png")
+        def serve_kiosk_osm_tile(z, x, y):
+            root = _server_osm_tile_cache_root()
+            # Centralize all coordinate and path traversal checks in one place.
+            root_real, dest_real = _resolve_osm_tile_cache_path(root, z, x, y)
+            if os.path.isfile(dest_real):
+                return send_file(dest_real, mimetype="image/png")
+            url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "MeridianServer/1.0 (tile cache; +https://github.com/Bikes4Fun/meridian)"
+                },
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = resp.read()
+                if len(data) < 100:
+                    abort(502)
+                os.makedirs(root_real, exist_ok=True)
+                with open(dest_real, "wb") as wf:
+                    wf.write(data)
+                _prune_osm_tile_cache(root_real)
+                return Response(data, mimetype="image/png")
+            except Exception:
+                abort(502)
 
         @app.route("/kiosk/")
         @app.route("/kiosk/<path:path>")

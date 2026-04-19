@@ -58,6 +58,22 @@ def load_json_file(filename: str) -> Dict[str, Any]:
         return json.load(f)
 
 
+def _demo_phone_env_key(user_id: str) -> str:
+    normalized = "".join(ch if ch.isalnum() else "_" for ch in str(user_id)).upper()
+    return f"MERIDIAN_DEMO_PHONE_{normalized}"
+
+
+def _apply_demo_user_phone_overrides(users: list[dict]) -> None:
+    """Override demo user phone numbers from environment variables."""
+    for user in users:
+        user_id = user.get("id")
+        if not user_id:
+            continue
+        phone = (os.environ.get(_demo_phone_env_key(user_id)) or "").strip()
+        if phone:
+            user["phone"] = phone
+
+
 def _resolve_event_time(value: str, today: date) -> str:
     """Resolve TODAY_, TOMORROW_, PLUS_N_DAYS_ placeholders to ISO datetime strings."""
     if not value:
@@ -144,7 +160,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     if r.ok:
         data = r.json()
         if data.get("timed_medications") or data.get("prn_medications"):
-            logger.info("Demo data already present, skipping seed")
+            logger.debug("Demo data already present, skipping seed")
             return True
 
     r = requests.post(
@@ -160,6 +176,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     users = load_json_file("users.json")
     for user in users:
         user["photo_filename"] = resolve_photo_filename(user.get("photo_filename"))
+    _apply_demo_user_phone_overrides(users)
     for user in users:
         r = requests.post(
             f"{base}/api/users",
@@ -361,7 +378,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         if not r.ok:
             logger.warning("Calendar event failed: %s", r.status_code)
 
-    logger.info("Demo data loaded successfully!")
+    logger.debug("Demo data loaded successfully!")
     return True
 
 

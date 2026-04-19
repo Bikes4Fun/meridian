@@ -759,7 +759,7 @@
                     </section>
                     <section id="chatSection" class="card card--pad card--secondary mobile-section--page-anchor">
                         <h2 class="page-section-title page-section-title--minor">Chat</h2>
-                        <p class="muted page-lead page-lead--tight">Tap a contact to place a voice call.</p>
+                        <p class="muted page-lead page-lead--tight">Live voice with the person at home uses the kiosk speakerphone (Twilio Voice JS / WebRTC). Use the message field below for text.</p>
                         <div id="contactsSection">
                             <div id="contactsGrid"></div>
                         </div>
@@ -921,8 +921,8 @@
           <div class="section-card">
             <div class="section-label sl-kiosk">Kiosk</div>
             <h1>Chat screen</h1>
-            <p class="page-lead">Send messages and start video calls with family members.</p>
-            <p>Lists family members available to contact. Tapping a name opens a conversation. Video calls can also be started from this screen. Family members join from the web dashboard or mobile app.</p>
+            <p class="page-lead">Text messages and live voice on the kiosk.</p>
+            <p>Lists family contacts. The person at home hears and speaks only through the kiosk browser (Twilio Voice JS / WebRTC speakerphone), not a separate phone line. Twilio must reach your app over the public internet (use ngrok in local development; a real HTTPS URL in production). The web dashboard Mobile tab is for text; voice media runs through the kiosk client.</p>
           </div>
         </div>
     
@@ -1293,11 +1293,14 @@
             </div>
 
             <div id="status" class="status-stack" role="status" aria-live="polite"></div>
+            <p class="muted" style="margin-top:16px;">
+                <a href="/privacy.html" class="app-link">Privacy Policy</a>
+                <span aria-hidden="true"> · </span>
+                <a href="/terms.html" class="app-link">Terms and Conditions</a>
+            </p>
         </main>
     </div>
 
-    <script src="/meridian_api_base.js"></script>
-    <script src="/meridian_medications_inline.js"></script>
     <script src="/events.js"></script>
     <script src="/medications.js"></script>
     <script src="/app.js"></script>

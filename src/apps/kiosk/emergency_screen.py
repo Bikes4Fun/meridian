@@ -1,7 +1,7 @@
 """
 Kiosk Emergency screen: load emergency profile via remote service; build read-only HTML (patient, medical, contacts).
 
-Scope: presentation + photo fetch for this screen; client-side emergency PDF print pipeline (trigger from app on alert).
+Scope: presentation + photo for this screen; client-side emergency PDF print pipeline (trigger from app on alert).
 Not here: alert activation/polling (app), or server-side PDF generation.
 """
 
@@ -153,8 +153,8 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
 
 
 def _run_emergency_print(emergency_svc, status_label=None) -> None:
-    """Fetch PDF, print, update status_label if provided, schedule job polling when job_id and label."""
-    logger.info("Emergency print: fetching PDF...")
+    """Print PDF, update status_label if provided, schedule job polling when job_id and label."""
+
     if status_label is not None:
         status_label.text = "Printing..."
     result = emergency_svc.get_emergency_profile_pdf()

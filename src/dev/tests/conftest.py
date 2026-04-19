@@ -112,21 +112,38 @@ def populated_test_db(test_db_manager, sample_contacts_data):
         "INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (OTHER_FAMILY_ID,)
     )
 
+    # Align with apps.server.database_services.user.UserService.add_user / schema.sql users columns.
     db.execute_update(
-        "INSERT OR REPLACE INTO users (id, display_name) VALUES (?, ?)",
-        (TEST_USER_ID, "Test User"),
+        """
+        INSERT OR REPLACE INTO users
+        (id, display_name, photo_filename, family_circle_id, phone)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (TEST_USER_ID, "Test User", None, FAMILY_CIRCLE_ID, None),
     )
     db.execute_update(
-        "INSERT OR REPLACE INTO users (id, display_name) VALUES (?, ?)",
-        (CARE_RECIPIENT_USER_ID, "Care Recipient"),
+        """
+        INSERT OR REPLACE INTO users
+        (id, display_name, photo_filename, family_circle_id, phone)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (CARE_RECIPIENT_USER_ID, "Care Recipient", None, FAMILY_CIRCLE_ID, None),
     )
     db.execute_update(
-        "INSERT OR REPLACE INTO users (id, display_name) VALUES (?, ?)",
-        (OTHER_FAMILY_USER_ID, "Other User"),
+        """
+        INSERT OR REPLACE INTO users
+        (id, display_name, photo_filename, family_circle_id, phone)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (OTHER_FAMILY_USER_ID, "Other User", None, OTHER_FAMILY_ID, None),
     )
     db.execute_update(
-        "INSERT OR REPLACE INTO users (id, display_name, photo_filename) VALUES (?, ?, ?)",
-        (PATH_TRAVERSAL_USER_ID, "Path Traversal Test", "../evil"),
+        """
+        INSERT OR REPLACE INTO users
+        (id, display_name, photo_filename, family_circle_id, phone)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (PATH_TRAVERSAL_USER_ID, "Path Traversal Test", "../evil", FAMILY_CIRCLE_ID, None),
     )
     db.execute_update(
         "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?, ?)",

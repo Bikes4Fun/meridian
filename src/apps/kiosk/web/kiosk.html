@@ -17,6 +17,12 @@
     <button type="button" class="nav-tab" data-screen="chat">Chat</button>
   </nav>
   <div id="screen-content" role="main"><!-- Python injects screen HTML here --></div>
+  <div id="kiosk-boot-overlay" class="kiosk-boot-overlay" aria-live="polite">
+    <div class="kiosk-boot-overlay__card">
+      <div class="kiosk-boot-overlay__spinner" aria-hidden="true"></div>
+      <div id="kiosk-boot-overlay-msg" class="kiosk-boot-overlay__msg">Loading Meridian...</div>
+    </div>
+  </div>
   <nav id="kiosk-footer" aria-label="More">
     <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="settings">Settings</button>
     <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="health">Health</button>
@@ -30,8 +36,12 @@
   </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="/meridian_api_base.js"></script>
-  <script src="/meridian_medications_inline.js"></script>
+  <script
+    src="https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js"
+    crossorigin=""
+    onload="window.__twilioSdkLoadState='loaded';"
+    onerror="window.__twilioSdkLoadState='failed';"
+  ></script>
   <script src="map_widget.js"></script>
   <script src="kiosk.js"></script>
 </body>

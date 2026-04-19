@@ -16,7 +16,6 @@ from typing import Optional
 from shared.config import (
     get_kiosk_tv_fullscreen,
     get_kiosk_tv_mode,
-    get_kiosk_webview_debug,
     get_kiosk_window_size,
 )
 
@@ -126,7 +125,7 @@ class KioskBridge:
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
-        logger.info(f"Nav: {screen_name}")
+        logger.debug(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
     def call_phone(self, phone: str, display_name: str = "") -> str:
@@ -135,7 +134,7 @@ class KioskBridge:
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
-        logger.info("Print emergency (button)")
+        logger.debug("Print emergency (button)")
         self._app._print_emergency()
 
     def refresh_events(self):
@@ -224,8 +223,13 @@ class MeridianKioskApp:
         import webview
 
         base = (self.api_url or "").rstrip("/")
+        auth_query = (
+            f"user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+        )
+        if (os.environ.get("MERIDIAN_KIOSK_NGROK_BYPASS") or "").strip() == "1":
+            auth_query = f"{auth_query}&ngrok-skip-browser-warning=true"
         url = (
-            f"{base}/kiosk-auth?user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+            f"{base}/kiosk-auth?{auth_query}"
             if base
             else None
         )
@@ -262,12 +266,31 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        _wv_debug = get_kiosk_webview_debug()
-        if _wv_debug:
-            logger.info(
-                "Kiosk pywebview debug on (MERIDIAN_KIOSK_WEBVIEW_DEBUG): Web Inspector enabled where supported"
-            )
-        webview.start(debug=_wv_debug)
+        try:
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+        except Exception:
+            pass
+        kiosk_user_agent = (
+            os.environ.get("MERIDIAN_KIOSK_USER_AGENT") or "Meridian-Kiosk/1.0"
+        ).strip()
+        gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
+        if gui_pref:
+            try:
+                logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
+                webview.start(
+                    debug=False,
+                    gui=gui_pref,
+                    user_agent=kiosk_user_agent,
+                )
+                return
+            except Exception as e:
+                logger.error(
+                    f"Kiosk pywebview GUI '{gui_pref}' unavailable; refusing fallback backend: {e}"
+                )
+                raise RuntimeError(
+                    f"Failed to start kiosk webview with required GUI backend '{gui_pref}'"
+                ) from e
+        raise RuntimeError("MERIDIAN_KIOSK_WEBVIEW_GUI must be set (use 'qt').")
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""
@@ -279,7 +302,7 @@ class MeridianKioskApp:
     def _navigate_to(self, screen_name: str):
         """Show screen by name. Builds HTML and calls showScreen."""
         try:
-            logger.info(f"Building screen: {screen_name}")
+            logger.debug(f"Building screen: {screen_name}")
             html, extra = self._build_screen_html(screen_name)
             escaped = json.dumps(html)
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
@@ -308,13 +331,116 @@ class MeridianKioskApp:
     def _on_ready(self):
         """Runs in background thread after load. Initial screen, clock, meds, events, alerts."""
         logger.info("Kiosk loaded, initializing...")
+        self._set_boot_loading(True, "Starting Meridian...")
         time.sleep(0.3)
+        self._set_boot_loading(True, "Loading home data...")
         self._navigate_to("home")
+        self._set_boot_loading(True, "Loading clock...")
         self._refresh_clock()
-        self._sensor.start()
+        self._set_boot_loading(True, "Loading contacts...")
+        threading.Thread(target=self._boot_cache_warmup, daemon=True).start()
+        self._set_boot_loading(True, "Finalizing startup...")
+        vs = self.services.get_voice_service()
+        if vs and getattr(vs, "log_twilio_startup_check", None):
+            threading.Thread(
+                target=vs.log_twilio_startup_check,
+                daemon=True,
+            ).start()
+        # self._sensor.start_stove_sensor()
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()
+        # Do not hide here: _boot_cache_warmup owns final hide to avoid overlay flicker.
+
+    def _home_map_center(self):
+        """Lat/lon for named 'home' place (same logic as family map)."""
+        loc = self.services.get_location_service()
+        if not loc:
+            return None, None
+        fc = (self.family_circle_id or "").strip()
+        if not fc:
+            return None, None
+        r = loc.get_named_places(fc)
+        if not r.success or not r.data:
+            return None, None
+        home_place = None
+        for p in r.data:
+            if "home" in (p.get("location_name") or "").lower():
+                home_place = p
+                break
+        if not home_place:
+            home_place = r.data[0]
+        lat = home_place.get("gps_latitude")
+        lon = home_place.get("gps_longitude")
+        if lat is None or lon is None:
+            return None, None
+        try:
+            return float(lat), float(lon)
+        except (TypeError, ValueError):
+            return None, None
+
+    def _boot_cache_warmup(self) -> None:
+        """Background: contact photos + OSM tiles (shared disk cache helpers in api_client)."""
+        try:
+            self._start_photo_warmup()
+            lat, lon = self._home_map_center()
+            loc = self.services.get_location_service()
+            if loc and lat is not None and lon is not None:
+                loc.warm_osm_tiles_around(lat, lon)
+        except Exception as e:
+            logger.warning("Map tile warmup failed: %s", e)
+        finally:
+            # Warmup thread can re-show the overlay while reporting progress;
+            # always clear it when all boot cache work is done.
+            self._set_boot_loading(False)
+
+    def _start_photo_warmup(self) -> None:
+        """Warm user/contact photo cache in background after first paint."""
+        scanned = 0
+        loaded = 0
+        skipped_no_linked_user = 0
+        no_photo = 0
+        try:
+            contact_svc = self.services.get_contact_service()
+            if not contact_svc:
+                logger.info("Photo warmup skipped: contact service unavailable")
+                return
+            result = contact_svc.get_contacts()
+            if not result.success or not result.data:
+                logger.info("Photo warmup skipped: no contacts")
+                return
+            total = len(result.data)
+            for c in result.data:
+                scanned += 1
+                user_id = (c.get("user_id") or "").strip()
+                if not user_id:
+                    skipped_no_linked_user += 1
+                else:
+                    avatar_src = contact_svc.get_user_photo_b64(user_id)
+                    if avatar_src:
+                        loaded += 1
+                    else:
+                        no_photo += 1
+                if scanned == 1 or scanned == total or scanned % 3 == 0:
+                    self._set_boot_loading(
+                        True,
+                        f"Loading photos... ({scanned}/{total})",
+                    )
+            logger.info(
+                "Photo warmup complete: contacts=%s loaded=%s skipped_no_linked_user=%s no_photo=%s",
+                scanned,
+                loaded,
+                skipped_no_linked_user,
+                no_photo,
+            )
+        except Exception as e:
+            logger.warning(f"Photo warmup failed: {e}")
+
+    def _set_boot_loading(self, active: bool, message: str = "") -> None:
+        """Show/hide boot overlay with optional status text."""
+        self._eval(
+            f"setBootLoading({json.dumps(bool(active))}, {json.dumps(message)})"
+        )
 
     def _refresh_clock(self):
         """Full clock update: day, date line, time, period label + sprite."""

@@ -63,7 +63,7 @@ class SensorHandler:
         self._stove_alert_armed = False
         self._push_thread: Optional[threading.Thread] = None
 
-    def start(self) -> None:
+    def start_stove_sensor(self) -> None:
         if self._temp_sensor is None:
             self._temp_sensor = TemperatureSensor()
             self._temp_sensor.start()

@@ -1209,10 +1209,11 @@ def create_server_app(db_path=None):
 
     if os.path.isdir(_kiosk_web):
         def _server_osm_tile_cache_root() -> str:
-            custom = (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_DIR") or "").strip()
-            if custom:
-                return custom
-            return os.path.join(os.environ.get("TMPDIR") or "/tmp", "meridian-osm-tiles")
+            return "/tmp/meridian-osm-tiles"
+
+        def _path_in_cache_root(root_real: str, candidate: str) -> bool:
+            candidate_real = os.path.realpath(candidate)
+            return os.path.commonpath([root_real, candidate_real]) == root_real
 
         def _prune_osm_tile_cache(root_real: str) -> None:
             now = int(time.time())
@@ -1237,7 +1238,9 @@ def create_server_app(db_path=None):
                 for name in filenames:
                     if not name.endswith(".png"):
                         continue
-                    path = os.path.join(dirpath, name)
+                    path = os.path.realpath(os.path.join(dirpath, name))
+                    if not _path_in_cache_root(root_real, path):
+                        continue
                     try:
                         st = os.stat(path)
                     except OSError:
@@ -1253,6 +1256,8 @@ def create_server_app(db_path=None):
             if overflow > 0:
                 keep.sort(key=lambda item: item[0])
                 for _mtime, path in keep[:overflow]:
+                    if not _path_in_cache_root(root_real, path):
+                        continue
                     try:
                         os.remove(path)
                     except OSError:
@@ -1293,7 +1298,12 @@ def create_server_app(db_path=None):
                     data = resp.read()
                 if len(data) < 100:
                     abort(502)
-                os.makedirs(root_real, exist_ok=True)
+                if not _path_in_cache_root(root_real, dest_real):
+                    abort(404)
+                parent_real = os.path.realpath(os.path.dirname(dest_real))
+                if not _path_in_cache_root(root_real, parent_real):
+                    abort(404)
+                os.makedirs(parent_real, exist_ok=True)
                 with open(dest_real, "wb") as wf:
                     wf.write(data)
                 _prune_osm_tile_cache(root_real)

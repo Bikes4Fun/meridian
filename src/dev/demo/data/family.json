@@ -63,6 +63,36 @@
       "contact_id": null
     }
   ],
+  "seed_family_permissions": [
+    {
+      "user_id": "fm_001",
+      "permissions": [
+        "family_permissions.manage",
+        "family_members.invite",
+        "family_members.remove",
+        "medications.write",
+        "emergency_alert.manage",
+        "emergency_call.911",
+        "care_recipient.write",
+        "emergency_contacts.write",
+        "calendar.write"
+      ]
+    },
+    {
+      "user_id": "fm_002",
+      "permissions": [
+        "family_permissions.manage",
+        "family_members.invite",
+        "family_members.remove",
+        "medications.write",
+        "emergency_alert.manage",
+        "emergency_call.911",
+        "care_recipient.write",
+        "emergency_contacts.write",
+        "calendar.write"
+      ]
+    }
+  ],
   "named_places": [
     {
       "location_id": "loc_001",

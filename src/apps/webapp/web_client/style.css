@@ -2673,6 +2673,17 @@ body.dashboard-view--info .app-main {
     white-space: nowrap;
 }
 
+.admin-perm-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.admin-perm-actions .btn-health-secondary {
+    white-space: nowrap;
+}
+
 .admin-pill {
     display: inline-block;
     margin-left: 6px;

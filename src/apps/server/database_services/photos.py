@@ -105,7 +105,11 @@ def remove_replaced_file_in_uploads_dir(
         return
     old_path = os.path.join(uploads_dir, old_basename)
     uploads_abs = os.path.abspath(uploads_dir)
-    if os.path.abspath(old_path).startswith(uploads_abs + os.sep):
+    try:
+        in_uploads = os.path.commonpath([uploads_abs, os.path.abspath(old_path)]) == uploads_abs
+    except ValueError:
+        in_uploads = False
+    if in_uploads:
         try:
             os.remove(old_path)
         except OSError:

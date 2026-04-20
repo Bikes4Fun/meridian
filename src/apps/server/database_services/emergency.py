@@ -12,7 +12,7 @@ try:
     from ....shared.interfaces import ServiceResult
 except ImportError:
     from shared.interfaces import ServiceResult
-from .contact import ContactService
+from .user import ContactService
 
 
 class EmergencyService:

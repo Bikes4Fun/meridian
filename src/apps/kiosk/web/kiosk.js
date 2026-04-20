@@ -316,6 +316,22 @@ function setBootLoading(active, message) {
   overlay.classList.add('kiosk-boot-overlay--hidden');
 }
 
+function setKioskCornerBootLoading(active, message) {
+  var root = document.getElementById('kiosk-boot-corner');
+  if (!root) return;
+  var msgEl = document.getElementById('kiosk-boot-corner-msg');
+  if (msgEl && message !== undefined && message !== null) {
+    msgEl.textContent = message || '';
+  }
+  if (active) {
+    root.classList.remove('kiosk-boot-corner--hidden');
+    root.setAttribute('aria-busy', 'true');
+  } else {
+    root.classList.add('kiosk-boot-corner--hidden');
+    root.removeAttribute('aria-busy');
+  }
+}
+
 function updateEl(id, content) {
   var el = document.getElementById(id);
   if (el) el.innerHTML = content;
@@ -467,6 +483,18 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
   var _inlineSnapshot = [];
   var _kioskMedAutosave = null;
 
+  function kioskMedicationNamesUnique(rows) {
+    var seen = {};
+    for (var i = 0; i < rows.length; i++) {
+      var n = (rows[i].name || '').trim();
+      if (!n) continue;
+      var k = n.toLowerCase();
+      if (seen[k]) return 'Each medication name must be unique.';
+      seen[k] = true;
+    }
+    return null;
+  }
+
   var SAVE_MEDS_DISK_SVG =
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><line x1="7" y1="3" x2="17" y2="3"/></svg>';
@@ -541,6 +569,14 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
               return;
           }
           var rows = MeridianMedicationsInline.collectRows(inlineList);
+          var dupErr =
+              typeof MeridianMedicationsInline.validateUniqueMedicationNames === 'function'
+                  ? MeridianMedicationsInline.validateUniqueMedicationNames(rows)
+                  : kioskMedicationNamesUnique(rows);
+          if (dupErr) {
+              if (!silent) statusMsg(dupErr);
+              return;
+          }
           var result = pywebview.api.save_medications_editor_rows(
               JSON.stringify(rows),
               JSON.stringify(_inlineSnapshot)

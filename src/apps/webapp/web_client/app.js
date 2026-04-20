@@ -75,6 +75,7 @@
                 initCheckin();
                 initLogoutLink();
                 initIdleLogout();
+                initSettingsAdmin();
                 var apiRoot = API_BASE || '';
                 if (window.MeridianMedications) {
                     MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
@@ -306,6 +307,9 @@
             ) {
                 MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
             }
+            if (pageId === 'settings') {
+                loadAdminPermissions();
+            }
             if (pageId === 'mobile' && !_mobileChatLoaded) {
                 _mobileChatLoaded = true;
                 initChatContacts();
@@ -387,6 +391,315 @@
                 openSettingsKioskControls();
             });
         }
+    }
+
+    function adminApiFetch(url, options) {
+        return fetch(url, options).then(function (r) {
+            return r.json().then(function (data) {
+                if (!r.ok) throw new Error((data && data.error) || 'Request failed');
+                return data || {};
+            });
+        });
+    }
+
+    var ADMIN_PERMISSION_LABELS = {
+        'family_members.invite': 'Invite family members',
+        'family_members.remove': 'Remove family members',
+        'family_permissions.manage': 'Change member permissions',
+        'medications.write': 'Change medications',
+        'emergency_alert.manage': 'Trigger emergency alert',
+        'emergency_call.911': 'Call 911 (planned)',
+        'care_recipient.write': 'Update care recipient profile',
+        'emergency_contacts.write': 'Update emergency contacts',
+        'calendar.write': 'Edit calendar'
+    };
+    var ADMIN_PERMISSION_DEFAULT_ORDER = [
+        'family_members.invite',
+        'family_members.remove',
+        'family_permissions.manage',
+        'medications.write',
+        'emergency_alert.manage',
+        'emergency_call.911',
+        'care_recipient.write',
+        'emergency_contacts.write',
+        'calendar.write'
+    ];
+    var ADMIN_ACCESS_PRESETS = {
+        other: [],
+        family: ['emergency_alert.manage', 'emergency_call.911'],
+        admin: [
+            'family_members.invite',
+            'family_members.remove',
+            'family_permissions.manage',
+            'medications.write',
+            'emergency_alert.manage',
+            'emergency_call.911',
+            'care_recipient.write',
+            'emergency_contacts.write',
+            'calendar.write'
+        ]
+    };
+    var _adminPermissionCatalog = [];
+    var _adminPermissionsState = {};
+
+    function setAdminPermissionsStatus(message, type) {
+        var el = document.getElementById('adminPermissionsStatus');
+        if (!el) return;
+        el.textContent = message || '';
+        el.className = type === 'error'
+            ? 'admin-subsection__lead error'
+            : type === 'success'
+                ? 'admin-subsection__lead success'
+                : 'muted admin-subsection__lead';
+    }
+
+    function permissionLabel(permission) {
+        return ADMIN_PERMISSION_LABELS[permission] || permission;
+    }
+
+    function permissionSummary(permissions) {
+        var labels = (permissions || []).map(function (permission) {
+            return permissionLabel(permission);
+        });
+        if (!labels.length) return 'No explicit permissions';
+        if (labels.length <= 3) return labels.join(', ');
+        return labels.slice(0, 3).join(', ') + ' +' + (labels.length - 3) + ' more';
+    }
+
+    function roleFromPermissions(permissions) {
+        var sorted = (permissions || []).slice().sort().join('|');
+        if (sorted === ADMIN_ACCESS_PRESETS.admin.slice().sort().join('|')) return 'admin';
+        if (sorted === ADMIN_ACCESS_PRESETS.family.slice().sort().join('|')) return 'family';
+        return 'other';
+    }
+
+    function collectRowPermissions(row) {
+        var checks = row.querySelectorAll('.admin-perm-checkbox');
+        var out = [];
+        checks.forEach(function (cb) {
+            if (cb.checked) out.push(cb.getAttribute('data-permission'));
+        });
+        return out.sort();
+    }
+
+    function setRowDirtyState(row, uid) {
+        var saveBtn = row.querySelector('.admin-perm-save');
+        if (!saveBtn) return;
+        var current = collectRowPermissions(row);
+        var initial = (_adminPermissionsState[uid] && _adminPermissionsState[uid].initial) || [];
+        var dirty = current.join('|') !== initial.join('|');
+        saveBtn.disabled = !dirty || uid === _userId;
+    }
+
+    function renderAdminPermissionsRows(members) {
+        var tbody = document.getElementById('adminPermissionsTableBody');
+        if (!tbody) return;
+        if (!members || members.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="muted">No family members found.</td></tr>';
+            return;
+        }
+        var catalogSet = {};
+        ADMIN_PERMISSION_DEFAULT_ORDER.forEach(function (p) { catalogSet[p] = true; });
+        members.forEach(function (m) {
+            (Array.isArray(m.permissions) ? m.permissions : []).forEach(function (p) {
+                if (p) catalogSet[p] = true;
+            });
+        });
+        _adminPermissionCatalog = ADMIN_PERMISSION_DEFAULT_ORDER.filter(function (p) {
+            return !!catalogSet[p];
+        });
+        Object.keys(catalogSet)
+            .sort()
+            .forEach(function (p) {
+                if (_adminPermissionCatalog.indexOf(p) < 0) _adminPermissionCatalog.push(p);
+            });
+        _adminPermissionsState = {};
+        var html = members.map(function (m) {
+            var uid = (m.id || '').trim();
+            var name = (m.display_name || uid || 'Unknown').trim();
+            var permissions = (Array.isArray(m.permissions) ? m.permissions.slice() : []).sort();
+            _adminPermissionsState[uid] = { initial: permissions.slice() };
+            var accessType = roleFromPermissions(permissions);
+            var summaryText = permissionSummary(permissions);
+            var disabled = uid === _userId ? ' disabled title="Cannot change your own access here"' : '';
+            var permissionControls = _adminPermissionCatalog.map(function (permission) {
+                var checked = permissions.indexOf(permission) >= 0 ? ' checked' : '';
+                return (
+                    '<label class="admin-checkbox-label admin-checkbox-label--table">' +
+                    '<input type="checkbox" class="admin-perm-checkbox" data-permission="' + meridianEscapeAttr(permission) + '"' + checked + disabled + '> ' +
+                    meridianEscapeHtml(permissionLabel(permission)) +
+                    '</label>'
+                );
+            }).join(' ');
+            return (
+                '<tr data-user-id="' + meridianEscapeAttr(uid) + '">' +
+                '<td>' + meridianEscapeHtml(name) + '</td>' +
+                '<td><code class="admin-code">' + meridianEscapeHtml(uid) + '</code></td>' +
+                '<td>' +
+                '<select class="admin-table-select admin-access-select"' + disabled + '>' +
+                '<option value="admin"' + (accessType === 'admin' ? ' selected' : '') + '>Admin</option>' +
+                '<option value="family"' + (accessType === 'family' ? ' selected' : '') + '>Family</option>' +
+                '<option value="other"' + (accessType === 'other' ? ' selected' : '') + '>Other</option>' +
+                '</select>' +
+                '</td>' +
+                '<td>' +
+                '<div class="muted admin-perm-summary">' + meridianEscapeHtml(summaryText) + '</div>' +
+                '<div class="admin-perm-editor" style="display:none;">' +
+                permissionControls +
+                '</div>' +
+                '</td>' +
+                '<td>' +
+                '<div class="admin-perm-actions">' +
+                '<button type="button" class="btn-health-secondary admin-perm-customize"' + disabled + '>Customize</button>' +
+                '<button type="button" class="btn-health-secondary admin-perm-save" disabled' + disabled + '>Save</button>' +
+                '</div>' +
+                '</td>' +
+                '</tr>'
+            );
+        }).join('');
+        tbody.innerHTML = html;
+    }
+
+    function loadAdminPermissions() {
+        if (!_familyCircleId) return;
+        var tbody = document.getElementById('adminPermissionsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">Loading...</td></tr>';
+        setAdminPermissionsStatus('Loading members and permissions...');
+        var apiBase = API_BASE || '';
+        Promise.all([
+            adminApiFetch(
+                apiBase + '/api/family_circles/' + _familyCircleId + '/family-members',
+                { credentials: 'include' }
+            ),
+            adminApiFetch(
+                apiBase + '/api/family_circles/' + _familyCircleId + '/permissions',
+                { credentials: 'include' }
+            )
+        ])
+            .then(function (results) {
+                var membersData = (results[0] && results[0].data) || [];
+                var permsByUser = (results[1] && results[1].data) || {};
+                var members = (membersData || []).map(function (m) {
+                    var copy = Object.assign({}, m);
+                    var uid = (copy.id || '').trim();
+                    copy.permissions = Array.isArray(permsByUser[uid]) ? permsByUser[uid] : [];
+                    return copy;
+                });
+                renderAdminPermissionsRows(members);
+                setAdminPermissionsStatus('Loaded.');
+            })
+            .catch(function (err) {
+                tbody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load members: ' + meridianEscapeHtml(err.message || String(err)) + '</td></tr>';
+                setAdminPermissionsStatus('Failed to load permissions.', 'error');
+            });
+    }
+
+    function initSettingsAdmin() {
+        var refreshBtn = document.getElementById('adminPermissionsRefreshBtn');
+        var tbody = document.getElementById('adminPermissionsTableBody');
+        if (!refreshBtn || !tbody) return;
+        refreshBtn.addEventListener('click', function () {
+            loadAdminPermissions();
+        });
+        tbody.addEventListener('change', function (e) {
+            var raw = e.target;
+            var row = raw && raw.closest ? raw.closest('tr') : null;
+            if (!row) return;
+            var uid = (row.getAttribute('data-user-id') || '').trim();
+            if (!uid || !_familyCircleId) return;
+            if (raw.classList && raw.classList.contains('admin-access-select')) {
+                var preset = raw.value;
+                if (ADMIN_ACCESS_PRESETS[preset]) {
+                    var target = ADMIN_ACCESS_PRESETS[preset];
+                    row.querySelectorAll('.admin-perm-checkbox').forEach(function (cb) {
+                        cb.checked = target.indexOf(cb.getAttribute('data-permission')) >= 0;
+                    });
+                }
+            }
+            if (
+                (raw.classList && raw.classList.contains('admin-access-select')) ||
+                (raw.classList && raw.classList.contains('admin-perm-checkbox'))
+            ) {
+                setRowDirtyState(row, uid);
+            }
+        });
+        tbody.addEventListener('click', function (e) {
+            var raw = e.target;
+            var customizeBtn = raw && raw.closest ? raw.closest('.admin-perm-customize') : null;
+            if (customizeBtn && !customizeBtn.disabled) {
+                var customizeRow = customizeBtn.closest('tr');
+                if (!customizeRow) return;
+                var editor = customizeRow.querySelector('.admin-perm-editor');
+                if (!editor) return;
+                var isOpen = editor.style.display !== 'none';
+                editor.style.display = isOpen ? 'none' : 'block';
+                customizeBtn.textContent = isOpen ? 'Customize' : 'Close';
+                return;
+            }
+            var btn = raw && raw.closest ? raw.closest('.admin-perm-save') : null;
+            if (!btn || btn.disabled) return;
+            var row = btn.closest('tr');
+            if (!row) return;
+            var uid = (row.getAttribute('data-user-id') || '').trim();
+            if (!uid || !_familyCircleId) return;
+            var current = collectRowPermissions(row);
+            var initial = (_adminPermissionsState[uid] && _adminPermissionsState[uid].initial) || [];
+            var toGrant = current.filter(function (p) { return initial.indexOf(p) < 0; });
+            var toRevoke = initial.filter(function (p) { return current.indexOf(p) < 0; });
+            if (toGrant.length === 0 && toRevoke.length === 0) {
+                setAdminPermissionsStatus('No permission changes to save.');
+                return;
+            }
+            btn.disabled = true;
+            var apiBase = API_BASE || '';
+            var requests = [];
+            toGrant.forEach(function (permission) {
+                requests.push(
+                    adminApiFetch(apiBase + '/api/family_circles/' + _familyCircleId + '/permissions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            user_id: uid,
+                            permission: permission,
+                            granted: true
+                        })
+                    })
+                );
+            });
+            toRevoke.forEach(function (permission) {
+                requests.push(
+                    adminApiFetch(apiBase + '/api/family_circles/' + _familyCircleId + '/permissions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            user_id: uid,
+                            permission: permission,
+                            granted: false
+                        })
+                    })
+                );
+            });
+            Promise.all(requests)
+                .then(function () {
+                    _adminPermissionsState[uid].initial = current.slice().sort();
+                    var summaryEl = row.querySelector('.admin-perm-summary');
+                    if (summaryEl) summaryEl.textContent = permissionSummary(current);
+                    var editorEl = row.querySelector('.admin-perm-editor');
+                    if (editorEl) editorEl.style.display = 'none';
+                    var customizeEl = row.querySelector('.admin-perm-customize');
+                    if (customizeEl) customizeEl.textContent = 'Customize';
+                    setAdminPermissionsStatus('Permissions updated.', 'success');
+                    setRowDirtyState(row, uid);
+                })
+                .catch(function (err) {
+                    setAdminPermissionsStatus('Permission update failed: ' + (err.message || String(err)), 'error');
+                    btn.disabled = false;
+                });
+        });
+        loadAdminPermissions();
     }
 
     function initCheckin() {

@@ -7,7 +7,7 @@ REMOVAL: Required on server. Can be omitted from client deployment when SERVER_U
 import logging
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .safe_query_manager import QueryManager
 
@@ -88,6 +88,27 @@ class MedicationService:
             (family_circle_id,),
         )
         return r.data[0]["care_recipient_user_id"] if r.success and r.data else None
+
+    def _medication_name_conflicts(
+        self,
+        care_recipient_user_id: str,
+        name: str,
+        exclude_medication_id: Optional[int] = None,
+    ) -> bool:
+        """True if another medication for this care recipient already uses the same name (trimmed, case-insensitive)."""
+        nm = (name or "").strip()
+        if not nm:
+            return False
+        q = (
+            "SELECT 1 FROM medications WHERE care_recipient_user_id = ? "
+            "AND TRIM(LOWER(name)) = TRIM(LOWER(?))"
+        )
+        params: Tuple[Any, ...] = (care_recipient_user_id, nm)
+        if exclude_medication_id is not None:
+            q += " AND id != ?"
+            params = (care_recipient_user_id, nm, exclude_medication_id)
+        r = self.db_manager.execute_query(q, params)
+        return bool(r.success and r.data)
 
     def _load_medication_data(self, family_circle_id: str) -> None:
         self.timed_medications = []
@@ -226,6 +247,8 @@ class MedicationService:
             return ServiceResult.error_result("No care recipient for family circle")
         if not name or not medication_times:
             return ServiceResult.error_result("name and medication_times required")
+        if self._medication_name_conflicts(care_recipient_user_id, name):
+            return ServiceResult.error_result("A medication with this name already exists")
         rx = (fda_rxcui or "").strip() or None
         result = self.db_manager.execute_insert(
             """INSERT INTO medications
@@ -310,6 +333,10 @@ class MedicationService:
         )
         if not r.success or not r.data:
             return ServiceResult.error_result("Medication not found")
+        if self._medication_name_conflicts(
+            care_recipient_user_id, name, exclude_medication_id=medication_id
+        ):
+            return ServiceResult.error_result("A medication with this name already exists")
         rx = (fda_rxcui or "").strip() or None
         self.db_manager.execute_update(
             "UPDATE medications SET name = ?, dosage = ?, frequency = ?, fda_rxcui = ? WHERE id = ?",

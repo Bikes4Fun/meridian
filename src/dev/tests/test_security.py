@@ -5,7 +5,7 @@ Uses the Flask test client; no running server required.
 API auth (from apps.server.api set_user_id / verify_family_membership / _require_family_access):
 - No auth: GET /api/health, POST /api/login, GET /login.html
 - Session only (no headers): GET /api/session (401) — requires session user_id + family_circle_id
-- Both X-User-Id and X-Family-Circle-Id (or session): all other API routes must match a row in user_family_circle; family-scoped routes also require URL family_circle_id == header family.
+- Both X-User-Id and X-Family-Circle-Id (or session): all other API routes must match a row in family_memberships; family-scoped routes also require URL family_circle_id == header family.
 """
 
 import sys
@@ -132,7 +132,7 @@ def test_every_protected_post_put_route_requires_both_headers_401(api_client):
 # --- Security: fake credentials rejected ---
 @pytest.mark.integration
 def test_fake_credentials_rejected(api_client):
-    """Headers with no user_family_circle row are rejected (verify_family_membership)."""
+    """Headers with no family_memberships row are rejected (verify_family_membership)."""
     r = api_client.get(
         "/api/family_circles/FAKEFAMILY/emergency-profile",
         headers={"X-User-Id": "FAKEUSER", "X-Family-Circle-Id": "FAKEFAMILY"},

@@ -20,7 +20,8 @@ _KNOWN_TABLE_NAMES = frozenset(
     {
         "users",
         "family_circles",
-        "user_family_circle",
+        "family_memberships",
+        "family_permissions",
         "contacts",
         "medication_time_templates",
         "medication_times",

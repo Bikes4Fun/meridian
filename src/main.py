@@ -13,7 +13,6 @@ import json
 import os
 
 # Load .env from repo root if python-dotenv is available.
-# TODO: if this is not used by everything then it should only exist in the section it is used by
 try:
     from dotenv import load_dotenv
 

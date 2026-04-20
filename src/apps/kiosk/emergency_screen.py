@@ -136,11 +136,10 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
             if job_id:
                 logger.info(f"Print job id: {job_id}")
         else:
-            r = subprocess.run(
-                ["start", "/p", path], capture_output=True, shell=True, timeout=10
-            )
-            if r.returncode != 0:
-                return False, "Print command failed", None
+            try:
+                os.startfile(path, "print")
+            except OSError as e:
+                return False, str(e), None
         msg = f"Sent to printer (job {job_id})" if job_id else "Sent to printer"
         return True, msg, job_id
     except subprocess.TimeoutExpired:

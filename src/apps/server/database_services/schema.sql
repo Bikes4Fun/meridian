@@ -13,10 +13,19 @@ CREATE TABLE IF NOT EXISTS family_circles (
     id TEXT PRIMARY KEY
 );
 
-CREATE TABLE IF NOT EXISTS user_family_circle (
+CREATE TABLE IF NOT EXISTS family_memberships (
     user_id TEXT NOT NULL,
     family_circle_id TEXT NOT NULL,
     PRIMARY KEY (user_id, family_circle_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+);
+
+CREATE TABLE IF NOT EXISTS family_permissions (
+    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    PRIMARY KEY (user_id, family_circle_id, permission),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );

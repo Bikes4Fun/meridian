@@ -29,9 +29,9 @@
                 </div>
                 <nav id="appNav" class="app-nav app-nav--tabs" aria-label="Main sections">
                     <div class="app-nav__primary">
-                        <button type="button" class="nav-btn active" data-page="health" data-target-id="pageHealth">Patient health data</button>
+                        <button type="button" class="nav-btn" data-page="health" data-target-id="pageHealth">Patient health data</button>
                         <button type="button" class="nav-btn" data-page="events" data-target-id="pageEvents">Events</button>
-                        <button type="button" class="nav-btn" data-page="settings" data-target-id="pageSettings">Settings</button>
+                        <button type="button" class="nav-btn active" data-page="settings" data-target-id="pageSettings">Settings</button>
                         <button type="button" class="nav-btn" data-page="mobile" data-target-id="pageMobile">Mobile</button>
                         <button type="button" class="nav-btn" data-page="info" data-target-id="pageInfo">Info</button>
                     </div>
@@ -40,7 +40,7 @@
         </header>
         <main class="app-main">
             <div class="app-page-stack">
-                <div id="pageHealth" class="page active">
+                <div id="pageHealth" class="page">
                     <!-- meridian-page-layout + meridian-inpage-nav: same pattern as Events, Mobile, Settings, Info -->
                     <div class="meridian-page-layout">
                         <nav class="meridian-inpage-nav" aria-label="Health page sections">
@@ -139,13 +139,12 @@
                         </div>
                     </div>
                 </div>
-                <div id="pageSettings" class="page">
+                <div id="pageSettings" class="page active">
                     <div class="meridian-page-layout">
                         <nav class="meridian-inpage-nav" aria-label="Settings sections">
                             <div class="meridian-inpage-nav__group">
                                 <p class="meridian-inpage-nav__heading">On this page</p>
                                 <ul class="meridian-inpage-nav__list">
-                                    <li><a class="meridian-inpage-nav__link" href="#settings-admin-preview">Admin preview note</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#settings-section-permissions">Members &amp; roles</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#settings-section-notifications">Notifications</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#settings-section-session">Session &amp; devices</a></li>
@@ -158,45 +157,57 @@
                         </nav>
                         <div class="meridian-page-main">
                     <h1 class="page-title">Settings</h1>
-                    <p class="muted page-lead">Family manager controls. Security and permissions blocks below are a <strong>single UI preview</strong> so product and engineering can see everything in one place; controls are not wired to the server yet.</p>
+                    <p class="muted page-lead">Family manager controls for this Family Circle. Any control marked with <strong>*</strong> is not implemented yet.</p>
 
                     <div class="meridian-fold-stack">
-                    <details id="settings-admin-preview" class="admin-ui-preview-note card card--pad meridian-fold settings-section--page-anchor" open role="note">
-                        <summary class="meridian-fold__summary">Admin &amp; security — layout preview</summary>
-                        <div class="meridian-fold__body">
-                        <p class="admin-ui-preview-note__body">Nothing in this column persists. Use it to review fields, tables, and flows before implementing APIs, audit storage, roles on <code class="admin-code">user_family_circle</code>, backup encryption, Pi TLS, and delete cascades.</p>
-                        <ul class="admin-preview-checklist">
-                            <li>HTTP security headers &amp; CSP (when serving HTML/JS)</li>
-                            <li>Rate limits on login and sensitive POSTs</li>
-                            <li>Secrets &amp; key rotation (session secret, backup encryption, chat tokens)</li>
-                            <li>Static/code analysis (e.g. CodeQL) and dependency updates</li>
-                        </ul>
-                        </div>
-                    </details>
-
-                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor">
+                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor" open>
                         <summary class="meridian-fold__summary">Members &amp; roles</summary>
                         <div class="meridian-fold__body">
-                            <p class="muted page-lead page-lead--tight">Who belongs to this family circle, their role, and (later) fine-grained write access. Backend: <code class="admin-code">user_family_circle</code> + role column + invite tokens.</p>
+                            <p class="muted page-lead page-lead--tight">Manage members in this Family Circle, role presets, and explicit permission keys.</p>
 
                             <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">Invite someone</h3>
+                                <h3 class="page-section-title page-section-title--minor">Live members and permissions</h3>
+                                <p class="muted admin-subsection__lead">Role presets: <strong>Admin</strong>, <strong>Family</strong>, <strong>Other</strong>. Manual permission edits do not auto-change the selected role.</p>
+                                <div class="admin-form-row">
+                                    <button type="button" class="btn-health-secondary" id="adminPermissionsRefreshBtn">Refresh</button>
+                                </div>
+                                <p id="adminPermissionsStatus" class="muted admin-subsection__lead"></p>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">User ID</th>
+                                                <th scope="col">Access type</th>
+                                                <th scope="col">Permissions</th>
+                                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminPermissionsTableBody">
+                                            <tr><td colspan="5" class="muted">Open Settings to load live data.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Invite members *</h3>
                                 <div class="admin-form-row">
                                     <label class="field-label" for="adminInviteEmail">Email</label>
                                     <input type="email" id="adminInviteEmail" name="adminInviteEmail" autocomplete="off" placeholder="caregiver@example.com" disabled>
                                     <label class="field-label" for="adminInviteRole">Role</label>
                                     <select id="adminInviteRole" name="adminInviteRole" disabled aria-disabled="true">
-                                        <option>Primary caregiver</option>
-                                        <option>Family member</option>
-                                        <option>View only</option>
+                                        <option>Admin</option>
+                                        <option>Family</option>
+                                        <option>Other</option>
                                     </select>
-                                    <button type="button" class="btn-health-secondary" disabled title="Preview only">Send invite</button>
+                                    <button type="button" class="btn-health-secondary" disabled title="Not implemented yet">Send invite *</button>
                                 </div>
                             </div>
 
                             <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">Pending invitations</h3>
-                                <p class="muted admin-subsection__lead">Invites that are sent but not yet accepted. Resend or revoke before they join.</p>
+                                <h3 class="page-section-title page-section-title--minor">Pending invitations *</h3>
+                                <p class="muted admin-subsection__lead">Invite workflow is not implemented yet. This list will show real pending invites once wired.</p>
                                 <div class="admin-table-wrap">
                                     <table class="admin-table">
                                         <thead>
@@ -208,129 +219,10 @@
                                                 <th scope="col"><span class="visually-hidden">Actions</span></th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="adminInviteTableBody">
                                             <tr>
-                                                <td class="muted">aide.wellness@example.com</td>
-                                                <td>Family member</td>
-                                                <td class="muted">Mar 28, 2026</td>
-                                                <td class="muted">Apr 11, 2026</td>
-                                                <td>
-                                                    <button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Resend</button>
-                                                    <button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Revoke</button>
-                                                </td>
+                                                <td colspan="5" class="muted">No invite data yet *</td>
                                             </tr>
-                                            <tr>
-                                                <td class="muted">cousin.sam@example.com</td>
-                                                <td>View only</td>
-                                                <td class="muted">Apr 1, 2026</td>
-                                                <td class="muted">Apr 15, 2026</td>
-                                                <td>
-                                                    <button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Resend</button>
-                                                    <button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Revoke</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">People in this circle</h3>
-                                <div class="admin-table-wrap">
-                                    <table class="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Name</th>
-                                                <th scope="col">Email</th>
-                                                <th scope="col">Role</th>
-                                                <th scope="col">Access expires</th>
-                                                <th scope="col">Last active</th>
-                                                <th scope="col"><span class="visually-hidden">Actions</span></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>You <span class="admin-pill">Signed in</span></td>
-                                                <td class="muted">you@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" disabled aria-label="Your role" title="Preview only">
-                                                        <option selected>Primary caregiver</option>
-                                                    </select>
-                                                </td>
-                                                <td class="muted">—</td>
-                                                <td class="muted">Now</td>
-                                                <td>—</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Jamie Lee</td>
-                                                <td class="muted">jamie@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" aria-label="Role for Jamie Lee" title="Preview only">
-                                                        <option>Primary caregiver</option>
-                                                        <option selected>Family member</option>
-                                                        <option>View only</option>
-                                                    </select>
-                                                </td>
-                                                <td class="muted">—</td>
-                                                <td class="muted">2 days ago</td>
-                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Taylor Nguyen <span class="admin-pill admin-pill--temp">Temporary</span></td>
-                                                <td class="muted">taylor.homehealth@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" aria-label="Role for Taylor Nguyen" title="Preview only">
-                                                        <option>Primary caregiver</option>
-                                                        <option selected>Family member</option>
-                                                        <option>View only</option>
-                                                    </select>
-                                                </td>
-                                                <td><span class="admin-expiry">Apr 30, 2026</span></td>
-                                                <td class="muted">Today</td>
-                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Alex Kim</td>
-                                                <td class="muted">alex@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" aria-label="Role for Alex Kim" title="Preview only">
-                                                        <option>Primary caregiver</option>
-                                                        <option>Family member</option>
-                                                        <option selected>View only</option>
-                                                    </select>
-                                                </td>
-                                                <td class="muted">—</td>
-                                                <td class="muted">1 week ago</td>
-                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p class="muted admin-footnote"><strong>Time-limited access:</strong> set an end date for aides or short-term helpers; access should revoke automatically on the server when implemented.</p>
-                            </div>
-
-                            <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">Role capabilities (target policy)</h3>
-                                <p class="muted admin-subsection__lead">Reference matrix for gating routes; implement with server-side checks, not UI alone.</p>
-                                <div class="admin-table-wrap">
-                                    <table class="admin-table admin-cap-matrix">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Capability</th>
-                                                <th scope="col">Primary caregiver</th>
-                                                <th scope="col">Family member</th>
-                                                <th scope="col">View only</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr><td>View PHI (meds, ICE, calendar)</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-                                            <tr><td>Edit medications &amp; ICE</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
-                                            <tr><td>Calendar &amp; events write</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
-                                            <tr><td>Check-ins &amp; location</td><td>Yes</td><td>Yes</td><td>View</td></tr>
-                                            <tr><td>Kiosk emergency alert</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
-                                            <tr><td>Export audit log / full export</td><td>Yes</td><td>No</td><td>No</td></tr>
-                                            <tr><td>Delete family data</td><td>Yes</td><td>No</td><td>No</td></tr>
-                                            <tr><td>Manage members &amp; roles</td><td>Yes</td><td>No</td><td>No</td></tr>
                                         </tbody>
                                     </table>
                                 </div>

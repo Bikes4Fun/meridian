@@ -289,6 +289,18 @@ class HealthHandler:
         if not isinstance(rows, list) or not isinstance(initial, list):
             return "invalid medication payload"
 
+        seen_names: set[str] = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = (row.get("name") or "").strip()
+            if not name:
+                continue
+            nk = name.lower()
+            if nk in seen_names:
+                return "Each medication name must be unique"
+            seen_names.add(nk)
+
         current_by_id: dict[int, dict] = {}
         for row in rows:
             if not isinstance(row, dict):

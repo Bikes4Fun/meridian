@@ -7,6 +7,7 @@ Not here: Leaflet init (kiosk.js), creating check-ins from this module, or locat
 
 import json
 import logging
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ def build_checkin_html(
     family_circle_id: str,
     *,
     kiosk_user_id: str = "",
+    runtime_cache: Any = None,
 ) -> tuple[str, str, str]:
     """Build Family Locations screen HTML, markers JSON, and places JSON. Uses map_widget for map."""
     from . import html_primitives as hp
@@ -38,6 +40,8 @@ def build_checkin_html(
     loc_svc = services.get_location_service()
     checkins_html = hp.loading_state("Loading check-ins...")
     places = []
+    places_result = None
+    checkins_result = None
 
     if loc_svc:
         places_result = loc_svc.get_named_places(family_circle_id)
@@ -92,8 +96,44 @@ def build_checkin_html(
     top_content = header_row + hp.spacer(16) + checkins_panel + hp.spacer(16)
     map_html = map_container_html()
     markers = get_map_markers(
-        services, api_url, family_circle_id, kiosk_user_id=kiosk_user_id
+        services,
+        api_url,
+        family_circle_id,
+        kiosk_user_id=kiosk_user_id,
+        places_result=places_result,
+        checkins_result=checkins_result,
     )
+    raw_places = places_result.data if places_result and places_result.success else None
+    raw_checkins = checkins_result.data if checkins_result and checkins_result.success else None
+    center: Optional[tuple[float, float]] = None
+    if raw_places:
+        home_place = None
+        for p in raw_places:
+            if "home" in (p.get("location_name") or "").lower():
+                home_place = p
+                break
+        if not home_place:
+            home_place = raw_places[0]
+        la = home_place.get("gps_latitude")
+        lo = home_place.get("gps_longitude")
+        if la is not None and lo is not None:
+            try:
+                center = (float(la), float(lo))
+            except (TypeError, ValueError):
+                pass
+    if runtime_cache is not None:
+        runtime_cache.put(
+            "family_locations",
+            {
+                "named_places": raw_places,
+                "checkins": raw_checkins,
+                "map_markers": markers,
+                "map_places": places,
+                "center": center,
+            },
+        )
+        if center:
+            runtime_cache.put("last_map_center", center)
     layout = (
         '<div class="family-locations-layout">'
         '<div class="family-locations-top">'
@@ -104,18 +144,6 @@ def build_checkin_html(
     )
     return layout, json.dumps(markers), json.dumps(places)
 
-"""
-Kiosk map: marker payloads and map container HTML for the Family screen (uses location service + photo helper).
-
-Scope: data shaping and HTML fragment for embedding.
-Not here: Leaflet setup, check-in POST flows, or named-places API implementation.
-"""
-
-import json
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 def get_map_markers(
     services,
@@ -123,6 +151,8 @@ def get_map_markers(
     family_circle_id: str,
     *,
     kiosk_user_id: str = "",
+    places_result=None,
+    checkins_result=None,
 ) -> list:
     """Build markers for the map: patient at home, then family check-ins. Returns list of marker dicts."""
     loc_svc = services.get_location_service()
@@ -131,7 +161,8 @@ def get_map_markers(
     if not loc_svc:
         return markers
 
-    places_result = loc_svc.get_named_places(family_circle_id)
+    if places_result is None:
+        places_result = loc_svc.get_named_places(family_circle_id)
 
     # Patient/self at home first (so map centers on them)
     home_place = None
@@ -146,7 +177,7 @@ def get_map_markers(
         lat = home_place.get("gps_latitude")
         lon = home_place.get("gps_longitude")
         if lat is not None and lon is not None:
-            photo_src = loc_svc.get_user_photo_b64(kiosk_user_id)
+            photo_src = loc_svc.get_user_photo_b64((kiosk_user_id or "").strip())
             patient_m = {
                 "lat": lat,
                 "lon": lon,
@@ -159,7 +190,8 @@ def get_map_markers(
             markers.append(patient_m)
 
     # Family check-ins
-    checkins_result = loc_svc.get_checkins(family_circle_id)
+    if checkins_result is None:
+        checkins_result = loc_svc.get_checkins(family_circle_id)
     if checkins_result.success and checkins_result.data:
         for c in checkins_result.data:
             lat = c.get("latitude")
@@ -169,7 +201,7 @@ def get_map_markers(
             name = c.get("contact_name", "Unknown")
             loc = c.get("location_name") or ""
             user_id = c.get("user_id") or ""
-            photo_src = loc_svc.get_user_photo_b64(user_id)
+            photo_src = loc_svc.get_user_photo_b64((user_id or "").strip())
             m = {"lat": lat, "lon": lon, "name": name, "location_name": loc}
             if photo_src:
                 m["photo_src"] = photo_src

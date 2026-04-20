@@ -103,7 +103,7 @@ class PushNotificationService:
         query = """
             SELECT u.id, u.display_name, upt.device_token
             FROM users u
-            INNER JOIN user_family_circle ufc ON u.id = ufc.user_id
+            INNER JOIN family_memberships ufc ON u.id = ufc.user_id
             LEFT JOIN user_push_tokens upt ON upt.user_id = u.id AND upt.platform = 'ios'
             WHERE ufc.family_circle_id = ? AND u.id != ?
             ORDER BY u.display_name

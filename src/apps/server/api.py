@@ -21,6 +21,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import tempfile
 import time
 import uuid
 import datetime
@@ -66,7 +67,10 @@ except ImportError:
 try:
     from ...shared.emergency_profile_pdf import build_pdf
 except ImportError:
-    from shared.emergency_profile_pdf import build_pdf
+    try:
+        from shared.emergency_profile_pdf import build_pdf
+    except ImportError:
+        build_pdf = None
 from .database_services.db_service_registry import create_service_container
 from .twilio_voice import register_twilio_voice_routes
 
@@ -101,7 +105,8 @@ def create_server_app(db_path=None):
     db_path = db_path or get_database_path()
     container = create_service_container(db_path)
     # TODO: whats the point here if it isn't being checked?
-    container.ensure_schema()
+    if not container.ensure_schema():
+        raise RuntimeError("Failed to ensure database schema")
 
     app = Flask(__name__)
     _secret = os.environ.get("SECRET_KEY")
@@ -316,7 +321,7 @@ def create_server_app(db_path=None):
 
     @app.before_request
     def verify_family_membership():
-        """Reject API calls where user_id + family_circle_id are not linked in user_family_circle.
+        """Reject API calls where user_id + family_circle_id are not linked in family_memberships.
 
         Headers alone used to satisfy _require_family_access when URL family matched X-Family-Circle-Id
         even if X-User-Id was not a member of that family.
@@ -362,6 +367,14 @@ def create_server_app(db_path=None):
         if family_circle_id != g.family_circle_id:
             abort(403, "family circle mismatch")
 
+    def _require_family_permission(permission: str):
+        r = family_svc.user_has_permission(g.user_id, g.family_circle_id, permission)
+        if not r.success:
+            return jsonify({"error": r.error or "Database query failed"}), 500
+        if not r.data:
+            return jsonify({"error": "forbidden"}), 403
+        return None
+
     @app.route("/api/health")
     def api_health():
         return jsonify({"status": "ok"})
@@ -385,7 +398,23 @@ def create_server_app(db_path=None):
             display_name=data.get("display_name") or "",
             photo_filename=data.get("photo_filename"),
             # TODO far future security: new users may be invited to a family and have an auth code etc but shouldn't be able to simply join a family
-            family_circle_id=data.get("family_circle_id"),
+            # They should have an auth code from the admin family member
+            # The auth code should reference the family circle id in some way or they should need to input the family circle id
+            # The auth code should be a one-time use code that is sent to the user's email or phone
+            # The auth code should be valid for a limited time
+            # The auth code should be used to verify the user's identity
+            # The auth code should be used to create a new user in the database
+            # The auth code should be used to link the user to the family circle
+            # The auth code should be used to create a new user in the database
+            # The admin should receive / maintain a list of auth codes and their status (used, expired, etc.)
+            # The admin should be able to revoke auth codes
+            # The admin should be able to view the list of users and their family circle memberships
+            # The admin should be able to view the list of auth codes and their status
+            # The admin should be able to revoke auth codes
+            # The admin should be able to view the list of users and their family circle memberships
+            # The admin should be able to view the list of auth codes and their status
+            # The admin should be able to revoke auth codes
+            family_circle_id=None,
             phone=data.get("phone"),
         )
         if not r.success:
@@ -408,13 +437,84 @@ def create_server_app(db_path=None):
         r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
+        perms_r = family_svc.get_permissions(family_circle_id)
+        if not perms_r.success:
+            return jsonify({"error": perms_r.error}), 500
+        permissions_by_user = perms_r.data or {}
         base = request.url_root.rstrip("/")
         members = [dict(m) for m in (r.data or [])]
         for m in members:
             m["photo_url"] = (
                 "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
             )
+            uid = (m.get("id") or "").strip()
+            m["permissions"] = permissions_by_user.get(uid, [])
         return jsonify({"data": members})
+
+    @app.route("/api/family_circles/<family_circle_id>/permissions", methods=["GET", "POST"])
+    def api_family_permissions(family_circle_id):
+        """
+        GET: all or a specific user's family/user permissions; ? TODO: clarify what this is for
+        POST: grant/revoke a family-scoped permission.
+        """
+        _require_family_access(family_circle_id)
+        if request.method == "GET":
+            target_user_id = (request.args.get("user_id") or "").strip()
+            if target_user_id and target_user_id != g.user_id:
+                can_manage_r = family_svc.can_manage_family_permissions(
+                    g.user_id, g.family_circle_id
+                )
+                if not can_manage_r.success:
+                    return jsonify({"error": can_manage_r.error or "Database query failed"}), 500
+                if not can_manage_r.data:
+                    return jsonify({"error": "forbidden"}), 403
+                perms_r = family_svc.get_permissions(family_circle_id, target_user_id)
+                if not perms_r.success:
+                    return jsonify({"error": perms_r.error or "Database query failed"}), 500
+                return jsonify(
+                    {
+                        "data": {
+                            "user_id": target_user_id,
+                            "permissions": perms_r.data or [],
+                        }
+                    }
+                )
+            if target_user_id:
+                perms_r = family_svc.get_permissions(family_circle_id, target_user_id)
+                if not perms_r.success:
+                    return jsonify({"error": perms_r.error or "Database query failed"}), 500
+                return jsonify(
+                    {"data": {"user_id": target_user_id, "permissions": perms_r.data or []}}
+                )
+            can_manage_r = family_svc.can_manage_family_permissions(
+                g.user_id, g.family_circle_id
+            )
+            if not can_manage_r.success:
+                return jsonify({"error": can_manage_r.error or "Database query failed"}), 500
+            if not can_manage_r.data:
+                return jsonify({"error": "forbidden"}), 403
+            perms_r = family_svc.get_permissions(family_circle_id)
+            if not perms_r.success:
+                return jsonify({"error": perms_r.error or "Database query failed"}), 500
+            return jsonify({"data": perms_r.data or {}})
+
+        data = request.get_json() or {}
+        user_id = (data.get("user_id") or "").strip()
+        permission = (data.get("permission") or "").strip()
+        if not user_id or not permission:
+            return jsonify({"error": "user_id and permission required"}), 400
+        granted = bool(data.get("granted", True))
+        can_manage_r = family_svc.can_manage_family_permissions(g.user_id, g.family_circle_id)
+        if not can_manage_r.success:
+            return jsonify({"error": can_manage_r.error or "Database query failed"}), 500
+        if not can_manage_r.data:
+            return jsonify({"error": "forbidden"}), 403
+        update_r = family_svc.set_permission(user_id, family_circle_id, permission, granted)
+        if not update_r.success:
+            if update_r.error == "target user not in family":
+                return jsonify({"error": "forbidden"}), 403
+            return jsonify({"error": update_r.error or "Database query failed"}), 500
+        return jsonify({"data": update_r.data})
 
     @app.route(
         "/api/family_circles/<family_circle_id>/contacts", methods=["GET", "POST"]
@@ -653,7 +753,13 @@ def create_server_app(db_path=None):
         if not os.path.isfile(path):
             abort(404)
         uploads_abs = os.path.abspath(uploads)
-        if not os.path.abspath(path).startswith(uploads_abs + os.sep):
+        try:
+            in_uploads = (
+                os.path.commonpath([uploads_abs, os.path.abspath(path)]) == uploads_abs
+            )
+        except ValueError:
+            in_uploads = False
+        if not in_uploads:
             abort(404)
         mt, _ = mimetypes.guess_type(fn)
         if not mt:
@@ -869,11 +975,17 @@ def create_server_app(db_path=None):
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
+        denied = _require_family_permission("emergency_alert.manage")
+        if denied is not None:
+            return denied
         return jsonify({"data": {"activated": _get_alert_activated(g.family_circle_id)}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
+        denied = _require_family_permission("emergency_alert.manage")
+        if denied is not None:
+            return denied
         data = request.get_json() or {}
         activated = _set_alert_activated(
             g.family_circle_id, bool(data.get("activated", False))
@@ -958,15 +1070,10 @@ def create_server_app(db_path=None):
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
 
-        if (
-            request.method != "PUT"
-        ):  # TODO: why are we allowing a PUT method in the route, and then 'defensive'ly failing it?
-            return  # defensive
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
         # TODO: why does emergency profile need to ever PUT or update care recipient?
-        care_recipient_svc = container.get_care_recipient_service()
         r = care_recipient_svc.update_care_recipient(family_circle_id, data)
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -975,6 +1082,8 @@ def create_server_app(db_path=None):
     @app.route("/api/family_circles/<family_circle_id>/emergency-profile/pdf")
     def api_emergency_profile_pdf(family_circle_id):
         _require_family_access(family_circle_id)
+        if build_pdf is None:
+            return jsonify({"error": "PDF generation unavailable: reportlab not installed"}), 503
         r = emergency_svc.get_emergency_profile(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -996,6 +1105,13 @@ def create_server_app(db_path=None):
                 "family_circle_id": g.family_circle_id,
             }
         )
+
+    @app.route("/api/me/permissions")
+    def api_me_permissions():
+        r = family_svc.get_permissions(g.family_circle_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data or []})
 
     @app.route("/kiosk-auth", methods=["GET"])
     def kiosk_auth():
@@ -1047,15 +1163,15 @@ def create_server_app(db_path=None):
         if not data:
             return jsonify({"error": "no data provided"}), 400
 
-        user_id = data.get("user_id")
+        user_id = data.get("user_id") or g.user_id
         latitude = data.get("latitude")
         longitude = data.get("longitude")
         notes = data.get("notes")
         # location_name is always resolved from GPS in create_checkin; never from client
 
-        if not user_id or latitude is None or longitude is None:
+        if latitude is None or longitude is None:
             return (
-                jsonify({"error": "user_id, latitude, and longitude are required"}),
+                jsonify({"error": "latitude and longitude are required"}),
                 400,
             )
         if user_id != g.user_id:
@@ -1210,11 +1326,17 @@ def create_server_app(db_path=None):
 
     if os.path.isdir(_kiosk_web):
         def _server_osm_tile_cache_root() -> str:
-            return "/tmp/meridian-osm-tiles"
+            custom = (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_DIR") or "").strip()
+            if custom:
+                return custom
+            return os.path.join(tempfile.gettempdir(), "meridian-osm-tiles")
 
         def _path_in_cache_root(root_real: str, candidate: str) -> bool:
             candidate_real = os.path.realpath(candidate)
-            return os.path.commonpath([root_real, candidate_real]) == root_real
+            try:
+                return os.path.commonpath([root_real, candidate_real]) == root_real
+            except ValueError:
+                return False
 
         def _prune_osm_tile_cache(root_real: str) -> None:
             now = int(time.time())
@@ -1276,7 +1398,11 @@ def create_server_app(db_path=None):
             dest_real = os.path.realpath(
                 os.path.join(root_real, str(z), str(x), f"{y}.png")
             )
-            if os.path.commonpath([root_real, dest_real]) != root_real:
+            try:
+                in_root = os.path.commonpath([root_real, dest_real]) == root_real
+            except ValueError:
+                in_root = False
+            if not in_root:
                 abort(404)
             return root_real, dest_real
 

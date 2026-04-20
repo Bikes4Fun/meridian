@@ -38,7 +38,7 @@ def ensure_local_seed_prerequisites(db_path: str) -> None:
                 (uid, name, None, fam),
             )
             conn.execute(
-                "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?,?)",
+                "INSERT OR IGNORE INTO family_memberships (user_id, family_circle_id) VALUES (?,?)",
                 (uid, fam),
             )
         conn.commit()
@@ -151,6 +151,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     fam_id = DEMO_FAMILY_CIRCLE_ID
     user_id = user_id or DEMO_USER_ID
     resolve_photo_filename = _make_photo_filename_resolver()
+    family_data = load_json_file("family.json")
 
     r = requests.get(
         f"{base}/api/family_circles/{fam_id}/medications",
@@ -198,6 +199,31 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             if not r.ok:
                 logger.error(
                     "Add user %s to family failed: %s", user.get("id"), r.status_code
+                )
+                return False
+
+    seed_family_permissions = family_data.get("seed_family_permissions", [])
+    for permission_set in seed_family_permissions:
+        admin_user_id = (permission_set.get("user_id") or "").strip()
+        if not admin_user_id:
+            continue
+        for permission in permission_set.get("permissions", []):
+            permission = (permission or "").strip()
+            if not permission:
+                continue
+            r = requests.post(
+                f"{base}/api/family_circles/{fam_id}/permissions",
+                json={
+                    "user_id": admin_user_id,
+                    "permission": permission,
+                    "granted": True,
+                },
+                headers=_headers(user_id, fam_id),
+                timeout=5,
+            )
+            if not r.ok:
+                logger.error(
+                    f"Grant demo admin permission {permission} to {admin_user_id} failed: {r.status_code}"
                 )
                 return False
 
@@ -303,7 +329,6 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
                 timeout=5,
             )
 
-    family_data = load_json_file("family.json")
     for loc in family_data.get("named_places", []):
         r = requests.post(
             f"{base}/api/family_circles/{fam_id}/named-places",

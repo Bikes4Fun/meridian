@@ -11,7 +11,8 @@ import logging
 import os
 import threading
 import time
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 from shared.config import (
     get_kiosk_tv_fullscreen,
@@ -27,6 +28,33 @@ from .health_screen import HealthHandler
 from .sensor_widgets import SensorHandler
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class KioskRuntimeCache:
+    """Session in-memory cache for reusable kiosk runtime data.
+
+    Generic key/value + scoped key/value stores so all kiosk flows use one cache API.
+    """
+
+    values: dict[str, Any] = field(default_factory=dict)
+    scoped_values: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def put(self, key: str, value: Any) -> None:
+        self.values[str(key)] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.values.get(str(key), default)
+
+    def put_scoped(self, scope: str, key: str, value: Any) -> None:
+        skey = str(scope)
+        if skey not in self.scoped_values:
+            self.scoped_values[skey] = {}
+        self.scoped_values[skey][str(key)] = value
+
+    def get_scoped(self, scope: str, key: str, default: Any = None) -> Any:
+        return self.scoped_values.get(str(scope), {}).get(str(key), default)
+
 
 NAV_BUTTONS = [
     {"text": "Home", "screen": "home"},
@@ -70,6 +98,7 @@ def _get_screen_registry():
             app.api_url,
             app.family_circle_id,
             kiosk_user_id=app.kiosk_user_id,
+            runtime_cache=app._runtime_cache,
         )
         return (
             html,
@@ -217,6 +246,7 @@ class MeridianKioskApp:
         self._alert_was_activated = False
         self._last_incoming_call_id = 0
         self._sensor = SensorHandler(self)
+        self._runtime_cache = KioskRuntimeCache()
 
     def run(self):
         """Create window, wire bridge, start webview loop."""
@@ -304,12 +334,17 @@ class MeridianKioskApp:
         try:
             logger.debug(f"Building screen: {screen_name}")
             html, extra = self._build_screen_html(screen_name)
+            self._runtime_cache.put_scoped("screen_html", screen_name, html)
+            if extra:
+                self._runtime_cache.put_scoped("screen_extra_js", screen_name, extra)
             escaped = json.dumps(html)
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
             if extra:
                 self._eval(extra)
             if screen_name == "settings":
                 self._sensor.push_stove_temp_display()
+            if screen_name == "home":
+                self._load_home_schedule()
         except Exception as e:
             logger.exception(f"navigate failed: {e}")
 
@@ -329,17 +364,24 @@ class MeridianKioskApp:
         trigger_emergency_print(self.services)
 
     def _on_ready(self):
-        """Runs in background thread after load. Initial screen, clock, meds, events, alerts."""
+        """Runs in background thread after load. Initial screen, clock, meds, events, alerts.
+
+        Boot is two phases: (1) Full-screen watermark (#kiosk-boot-overlay) from first line below
+        until home shell + schedule + clock are ready. (2) Watermark off; fixed corner floater
+        (#kiosk-boot-corner) with status text until _boot_cache_warmup (photos, places, tiles) finishes.
+        The corner floater persists across navigations until caching completes.
+        """
         logger.info("Kiosk loaded, initializing...")
+        self._set_corner_boot_loading(False, "")
         self._set_boot_loading(True, "Starting Meridian...")
         time.sleep(0.3)
         self._set_boot_loading(True, "Loading home data...")
         self._navigate_to("home")
         self._set_boot_loading(True, "Loading clock...")
         self._refresh_clock()
-        self._set_boot_loading(True, "Loading contacts...")
+        self._set_boot_loading(False)
+        self._set_corner_boot_loading(True, "Loading…")
         threading.Thread(target=self._boot_cache_warmup, daemon=True).start()
-        self._set_boot_loading(True, "Finalizing startup...")
         vs = self.services.get_voice_service()
         if vs and getattr(vs, "log_twilio_startup_check", None):
             threading.Thread(
@@ -350,7 +392,6 @@ class MeridianKioskApp:
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()
-        # Do not hide here: _boot_cache_warmup owns final hide to avoid overlay flicker.
 
     def _home_map_center(self):
         """Lat/lon for named 'home' place (same logic as family map)."""
@@ -380,19 +421,22 @@ class MeridianKioskApp:
             return None, None
 
     def _boot_cache_warmup(self) -> None:
-        """Background: contact photos + OSM tiles (shared disk cache helpers in api_client)."""
+        """Background cache: photos, named places (home center), OSM tiles. Clears #kiosk-boot-corner in finally."""
         try:
             self._start_photo_warmup()
+            self._set_corner_boot_loading(True, "Loading places…")
             lat, lon = self._home_map_center()
+            if lat is not None and lon is not None:
+                self._runtime_cache.put("last_map_center", (float(lat), float(lon)))
             loc = self.services.get_location_service()
             if loc and lat is not None and lon is not None:
+                self._set_corner_boot_loading(True, "Loading map tiles…")
                 loc.warm_osm_tiles_around(lat, lon)
         except Exception as e:
             logger.warning("Map tile warmup failed: %s", e)
         finally:
-            # Warmup thread can re-show the overlay while reporting progress;
-            # always clear it when all boot cache work is done.
             self._set_boot_loading(False)
+            self._set_corner_boot_loading(False, "")
 
     def _start_photo_warmup(self) -> None:
         """Warm user/contact photo cache in background after first paint."""
@@ -422,9 +466,8 @@ class MeridianKioskApp:
                     else:
                         no_photo += 1
                 if scanned == 1 or scanned == total or scanned % 3 == 0:
-                    self._set_boot_loading(
-                        True,
-                        f"Loading photos... ({scanned}/{total})",
+                    self._set_corner_boot_loading(
+                        True, f"Loading photos… ({scanned}/{total})"
                     )
             logger.info(
                 "Photo warmup complete: contacts=%s loaded=%s skipped_no_linked_user=%s no_photo=%s",
@@ -440,6 +483,12 @@ class MeridianKioskApp:
         """Show/hide boot overlay with optional status text."""
         self._eval(
             f"setBootLoading({json.dumps(bool(active))}, {json.dumps(message)})"
+        )
+
+    def _set_corner_boot_loading(self, active: bool, message: str = "") -> None:
+        """Show/hide #kiosk-boot-corner spinner + caption (kiosk.html / setKioskCornerBootLoading)."""
+        self._eval(
+            f"setKioskCornerBootLoading({json.dumps(bool(active))}, {json.dumps(message)})"
         )
 
     def _refresh_clock(self):
@@ -490,6 +539,18 @@ class MeridianKioskApp:
         )
 
         items, now = load_schedule_items(self.services)
+        self._runtime_cache.put(
+            "home_schedule",
+            {
+                "items": items,
+                "now": now,
+                "calendar_events_today": [
+                    it.get("event_data")
+                    for it in items
+                    if it.get("type") == "event" and it.get("event_data")
+                ],
+            },
+        )
         self._eval_el("up_next_content", build_up_next_html(items, now))
         self._eval_el("timeline_content", build_timeline_html(items))
 

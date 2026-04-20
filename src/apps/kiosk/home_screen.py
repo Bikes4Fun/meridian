@@ -49,17 +49,14 @@ def build_clock_html(services) -> str:
 def build_home_html(
     services, api_url: str, family_circle_id: str = "", kiosk_user_id: str = ""
 ) -> str:
-    """Up Next, today's timeline, (Health lives in footer)."""
+    """Home shell: clock (local) + schedule regions. MeridianKioskApp hydrates via _load_home_schedule (API)."""
     from . import html_primitives as hp
 
     clock = build_clock_html(services)
-    items, now = load_schedule_items(services)
-    up_next_html = build_up_next_html(items, now)
-    timeline_html = build_timeline_html(items)
-    up_next = f'<div class="up-next-card" id="up_next_content">{up_next_html}</div>'
+    up_next = f'<div class="up-next-card" id="up_next_content"><div class="up-next-card-inner">{hp.loading_state("Loading schedule…")}</div></div>'
     timeline = f"""<div class="timeline-card">
         <div class="timeline-header">WHAT'S NEXT TODAY</div>
-        <div id="timeline_content" class="timeline-list">{timeline_html}</div>
+        <div id="timeline_content" class="timeline-list">{hp.loading_state("Loading schedule…")}</div>
     </div>"""
     inner = (
         clock

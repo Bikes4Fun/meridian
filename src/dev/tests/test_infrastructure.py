@@ -135,7 +135,7 @@ def test_api_health_no_headers(api_client):
 
 @pytest.mark.integration
 def test_api_login_accessible_without_auth(api_client):
-    """POST /api/login is public entry point; body must match user_family_circle."""
+    """POST /api/login is public entry point; body must match family_memberships."""
     r = api_client.post(
         "/api/login",
         json={"user_id": TEST_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},

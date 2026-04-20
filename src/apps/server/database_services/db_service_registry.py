@@ -13,14 +13,12 @@ try:
 except ImportError:
     from shared.config import DatabaseConfig
 from .safe_query_manager import QueryManager
-from .contact import ContactService
-from .user import UserService
+from .user import ContactService, FamilyService, UserService
 from .calendar import CalendarService
 from .medical import MedicationService
 from .location import LocationService
 from .emergency import EmergencyService
 from .care_recipient import CareRecipientService
-from .family import FamilyService
 from .notification import PushNotificationService
 from .photos import PhotoUploadService
 from .call_signal import CallSignalService

@@ -635,6 +635,18 @@
         }
     }
 
+    function validateUniqueMedicationNames(rows) {
+        var seen = {};
+        for (var i = 0; i < rows.length; i++) {
+            var n = (rows[i].name || '').trim();
+            if (!n) continue;
+            var k = n.toLowerCase();
+            if (seen[k]) return 'Each medication name must be unique.';
+            seen[k] = true;
+        }
+        return null;
+    }
+
     function collectRows(listEl) {
         var out = [];
         if (!listEl) return out;
@@ -781,6 +793,8 @@
     }
 
     function saveDiff(apiBase, familyCircleId, initial, rows) {
+        var dupErr = validateUniqueMedicationNames(rows);
+        if (dupErr) return Promise.reject(new Error(dupErr));
         var chain = Promise.resolve();
         var currentById = {};
         rows.forEach(function (m) {
@@ -883,6 +897,7 @@
         htmlToEl: htmlToEl,
         renderRows: renderRows,
         collectRows: collectRows,
+        validateUniqueMedicationNames: validateUniqueMedicationNames,
         wireList: wireList,
         wireAutoSave: wireAutoSave,
         cloneSnapshot: cloneSnapshot,

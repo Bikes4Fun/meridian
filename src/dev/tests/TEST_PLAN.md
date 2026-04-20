@@ -81,7 +81,7 @@ Full-flow tests proving Kiosk ↔ API ↔ iOS/Webapp work together. Each test hi
 
 ## Conftest (match schema)
 
-- `users` + `user_family_circle` for test user and care-recipient; `care_recipients` row.
+- `users` + `family_memberships` for test user and care-recipient; `care_recipients` row.
 - Medications: `care_recipient_user_id` (not `family_circle_id`); align medication_times / medication_to_time.
 - Contacts: `primary_emergency` / `secondary_emergency` (not `'emergency'`).
 - Calendar: `REF_DATE` (e.g. `2024-01-15`), seed events on that date.

@@ -27,6 +27,8 @@ def _default_stove_serial_port() -> str:
     raw = os.environ.get("STOVE_SERIAL_PORT")
     if raw is not None and str(raw).strip():
         return str(raw).strip()
+    if sys.platform.startswith("win"):
+        return "COM3"
     if sys.platform == "darwin":
         matches = sorted(
             glob.glob("/dev/cu.usbserial*") + glob.glob("/dev/cu.wchusbserial*")

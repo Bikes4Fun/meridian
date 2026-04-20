@@ -21,7 +21,7 @@ class CallSignalService:
         r = self.db_manager.execute_query(
             """
             SELECT 1
-            FROM user_family_circle
+            FROM family_memberships
             WHERE user_id = ? AND family_circle_id = ?
             LIMIT 1
             """,

@@ -4,7 +4,7 @@
    Shared tokens; webapp extends in apps/webapp (Clinical Clarity / design plan).
    ============================================================================= */
 
-/* Webapp+kiosk typical load order: base.css → web_client/style.css → kiosk.css (kiosk only). */
+/* Webapp+kiosk typical load order: base.css → web_client/style.css OR kiosk.css (kiosk only). */
 
 /* =============================================================================
    DESIGN TOKENS (CSS custom properties)

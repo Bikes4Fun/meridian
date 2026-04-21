@@ -60,7 +60,7 @@ NAV_BUTTONS = [
     {"text": "Home", "screen": "home"},
     {"text": "Schedule", "screen": "schedule"},
     {"text": "Family", "screen": "family"},
-    {"text": "Chat", "screen": "chat"},
+    {"text": "Settings", "screen": "settings"},
 ]
 
 _SCREEN_REGISTRY: dict[str, object] | None = None
@@ -72,9 +72,7 @@ def _get_screen_registry():
     if _SCREEN_REGISTRY is not None:
         return _SCREEN_REGISTRY
     from .map_screen import build_checkin_html
-    from .communication import build_chat_html
     from .emergency_screen import build_emergency_html
-    from .health_screen import build_health_html
     from .home_screen import build_home_html
     from .settings_screen import build_medications_html, build_settings_html
 
@@ -105,20 +103,6 @@ def _get_screen_registry():
             f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})",
         )
 
-    def chat(app: "MeridianKioskApp"):
-        return (
-            build_chat_html(
-                app.services,
-                app.api_url,
-                app.kiosk_user_id,
-                app.family_circle_id,
-            ),
-            None,
-        )
-
-    def health(app: "MeridianKioskApp"):
-        return build_health_html(app.services, app.api_url), None
-
     def schedule(app: "MeridianKioskApp"):
         return build_schedule_html(app.services, app.api_url), None
 
@@ -132,8 +116,6 @@ def _get_screen_registry():
         "home": home,
         "emergency": emergency,
         "family": family,
-        "chat": chat,
-        "health": health,
         "schedule": schedule,
         "settings": settings,
         "medications": medications,
@@ -161,6 +143,10 @@ class KioskBridge:
         """Place a phone call via server Twilio endpoint."""
         return self._chat.call_phone(phone, display_name)
 
+    def get_voice_token(self):
+        """Get Twilio voice token for kiosk browser SDK via Python bridge."""
+        return self._chat.get_voice_token()
+
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
         logger.debug("Print emergency (button)")
@@ -177,10 +163,8 @@ class KioskBridge:
             self._app._load_home_schedule()
             return
         if sid in (
-            "health",
             "schedule",
             "family",
-            "chat",
             "settings",
             "medications",
             "emergency",
@@ -208,6 +192,9 @@ class KioskBridge:
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
         return self._health.mark_medication_taken(medication_id, time_slot, taken)
+
+    def mark_all_non_prn_taken(self) -> str:
+        return self._health.mark_all_non_prn_taken()
 
     def get_medications_editor_rows(self) -> str:
         return self._health.get_medications_editor_rows()
@@ -583,7 +570,7 @@ class MeridianKioskApp:
             self._alert_was_activated = activated
 
     def _start_incoming_call_poll(self):
-        """Poll incoming call signal and open chat window for auto-answer flow."""
+        """Poll incoming call signal and open Family screen for auto-answer flow."""
         while True:
             time.sleep(1)
             call_svc = self.services.get_incoming_call_service()
@@ -600,7 +587,7 @@ class MeridianKioskApp:
             if not caller_user_id:
                 continue
             self._last_incoming_call_id = call_id
-            self._navigate_to("chat")
+            self._navigate_to("family")
             call_svc.acknowledge_incoming_call(call_id)
 
 def create_app(

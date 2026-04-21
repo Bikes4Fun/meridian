@@ -419,17 +419,15 @@ function kioskEnsureTwilioDevice() {
       return true;
     })
     .then(function () {
-      return fetch('/api/voice/token', {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      });
-    })
-    .then(function (resp) {
-      if (!resp.ok) return resp.text().then(function (t) { throw new Error(t || ('HTTP ' + resp.status)); });
-      return resp.json();
+      if (!(typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.get_voice_token)) {
+        throw new Error('Voice token bridge unavailable');
+      }
+      return pywebview.api.get_voice_token();
     })
     .then(function (data) {
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data || '{}'); } catch (_e) { data = { error: data }; }
+      }
       var token = (data && data.token) || '';
       _kioskTwilioCallerId = (data && data.caller_id) || '';
       if (!token) throw new Error((data && data.error) || 'Missing Twilio token');

@@ -2,7 +2,7 @@
 Kiosk Settings: monitors section HTML, static kiosk copy.
 
 Scope: composition of primitives + monitor rows (stove id for live updates).
-Not here: live temperature polling (app + TemperatureSensor), medication editing (Health screen).
+Not here: live temperature polling (app + TemperatureSensor), medication editing (Medications screen from Settings).
 """
 
 import html as html_module
@@ -45,7 +45,7 @@ def build_medications_html(services, api_url: str) -> str:
         + hp.spacer(10)
         + '<div id="kioskMedsEditorRoot"></div>'
         + hp.spacer(14)
-        + '<button type="button" class="add-event-btn btn-large kiosk-settings-back-btn kiosk-meds-panel-back" data-screen="health">Back to Health</button>'
+        + '<button type="button" class="add-event-btn btn-large kiosk-settings-back-btn kiosk-meds-panel-back" data-screen="settings">Back to Settings</button>'
         + "</div></section></div>"
     )
     return hp.panel(inner, class_name="settings-panel kiosk-meds-panel")

@@ -159,8 +159,11 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         timeout=5,
     )
     if r.ok:
-        data = r.json()
-        if data.get("timed_medications") or data.get("prn_medications"):
+        body = r.json() if r.content else {}
+        med_data = body.get("data") if isinstance(body, dict) else {}
+        if not isinstance(med_data, dict):
+            med_data = {}
+        if med_data.get("timed_medications") or med_data.get("prn_medications"):
             logger.debug("Demo data already present, skipping seed")
             return True
 
@@ -295,9 +298,15 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             timeout=5,
         )
         if not r.ok:
-            logger.warning(
-                f"Medication seed request for {med.get('name')!r} failed with status {r.status_code}"
-            )
+            name = med.get("name")
+            if r.status_code in (400, 409):
+                logger.debug(
+                    f"Medication seed request for {name!r} was already present (status {r.status_code})"
+                )
+            else:
+                logger.warning(
+                    f"Medication seed request for {name!r} failed with status {r.status_code}"
+                )
 
     care_recipient_user_id = cr.get("user_id") if cr else None
     for a in medical.get("allergies", []):

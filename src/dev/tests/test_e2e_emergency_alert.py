@@ -24,6 +24,8 @@ OTHER_API_HEADERS = {
     "X-Family-Circle-Id": OTHER_FAMILY_ID,
 }
 
+KIOSK_JS_PATH = src_dir / "apps" / "kiosk" / "web" / "kiosk.js"
+
 
 @pytest.fixture(autouse=True)
 def reset_alert_state(api_client):
@@ -78,3 +80,43 @@ def test_alert_status_is_scoped_per_family(api_client):
     r = api_client.get("/api/emergency/alert/status", headers=OTHER_API_HEADERS)
     assert r.status_code == 200
     assert r.get_json()["data"]["activated"] is False
+
+
+@pytest.mark.e2e
+def test_kiosk_alert_shortcut_wires_to_activate_alert(api_client):
+    """Webapp contract: shortcut exists on dashboard and its click path calls activateAlert()."""
+    login = api_client.post(
+        "/api/login",
+        json={"user_id": TEST_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},
+    )
+    assert login.status_code == 200
+
+    dashboard = api_client.get("/")
+    assert dashboard.status_code == 200
+    html = dashboard.get_data(as_text=True)
+    assert 'id="kioskAlertShortcutBtn"' in html
+
+    app_js = api_client.get("/src/features/app.js")
+    assert app_js.status_code == 200
+    js = app_js.get_data(as_text=True)
+    assert "function initKioskAlertShortcut()" in js
+    assert "activateAlert();" in js
+
+    # API-side assertion for the click action target.
+    status_before = api_client.get("/api/emergency/alert/status", headers=API_HEADERS)
+    assert status_before.status_code == 200
+    assert status_before.get_json()["data"]["activated"] is False
+
+    activate = api_client.post(
+        "/api/emergency/alert", headers=API_HEADERS, json={"activated": True}
+    )
+    assert activate.status_code == 200
+    assert activate.get_json()["data"]["activated"] is True
+
+
+@pytest.mark.integration
+def test_kiosk_js_uses_bridge_for_voice_token():
+    """Kiosk web JS should not fetch voice token directly; use pywebview bridge API."""
+    js = KIOSK_JS_PATH.read_text(encoding="utf-8")
+    assert "fetch('/api/voice/token'" not in js
+    assert "pywebview.api.get_voice_token" in js

@@ -900,6 +900,47 @@ button:focus-visible {
     margin-top: 0;
 }
 
+.health-meds-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 var(--space-sm);
+}
+
+.health-meds-list-host {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    max-height: min(62vh, 34rem);
+}
+
+.health-meds-timed-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.health-meds-prn-sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--web-surface);
+    border-top: 1px solid var(--warm-border);
+    padding-top: var(--space-xs);
+}
+
+.health-meds-prn-sticky__title {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--web-muted);
+}
+
+.list-panel--prn-sticky {
+    margin-bottom: 0;
+}
+
 .med-corrections {
     margin-top: var(--space-md);
     padding-top: var(--space-md);
@@ -2009,20 +2050,6 @@ html.info-embed body.info-doc-body .doc-section {
     body.info-doc-body {
         scroll-behavior: smooth;
     }
-}
-
-/* Info tab: user guide uses full viewport width below masthead (info.html layout) */
-body.dashboard-view--info .masthead-inner {
-    max-width: none;
-    padding-left: var(--app-shell-pad-x);
-    padding-right: var(--app-shell-pad-x);
-}
-
-body.dashboard-view--info .app-main {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    width: 100%;
 }
 
 .page--info {

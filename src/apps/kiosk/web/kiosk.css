@@ -215,7 +215,7 @@ body {
 #kiosk-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   min-height: var(--touch-min);
   padding: 0 var(--safe-margin);
   gap: var(--space-md);
@@ -286,6 +286,23 @@ body {
   padding: var(--content-pad-y) var(--content-pad-x);
 }
 
+/* Emergency mode and alert-active mode: prioritize content over navigation chrome. */
+body[data-screen="emergency"] #kiosk-nav,
+body[data-screen="emergency"] #kiosk-footer,
+body.alert-active #kiosk-nav,
+body.alert-active #kiosk-footer {
+  display: none;
+}
+
+body[data-screen="emergency"] #screen-content,
+body.alert-active #screen-content {
+  padding: 8px 10px 10px;
+}
+
+body[data-screen="emergency"] #screen-content {
+  overflow: hidden;
+}
+
 /* Home: fill main area; scroll inside “What’s next today” instead of the whole screen */
 #screen-content:has(> .home-screen) {
   display: flex;
@@ -306,14 +323,14 @@ body {
   flex-shrink: 0;
 }
 
-#screen-content:has(> .home-screen) > .home-screen > .timeline-card {
+#screen-content:has(> .home-screen) > .home-screen > .timeline-card--home-whats-next {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-#screen-content:has(> .home-screen) > .home-screen > .timeline-card > .timeline-header {
+#screen-content:has(> .home-screen) > .home-screen > .timeline-card--home-whats-next > .timeline-header {
   flex-shrink: 0;
 }
 
@@ -518,6 +535,29 @@ body {
   flex: 1 1 0;
   min-height: 250px;
   height: 100%;
+}
+
+.family-checkins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.family-checkin-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75em;
+}
+
+.family-checkin-line {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-body);
+}
+
+.family-checkin-actions {
+  flex-shrink: 0;
 }
 
 /* =============================================================================
@@ -916,6 +956,398 @@ body {
   height: var(--avatar-large);
 }
 
+/* Warm ICE layout */
+.kiosk-panel.emergency-warm-panel {
+  padding: 0;
+  background: #faf8f3;
+  border: 1px solid #e8e2d9;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.emergency-warm-shell {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.emergency-warm-top-bar {
+  background: #2e7d9b;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emergency-warm-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  animation: emergency-warm-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes emergency-warm-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.emergency-warm-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.emergency-warm-updated {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.emergency-warm-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px;
+}
+
+.emergency-warm-hero {
+  background: #fff;
+  padding: 18px 20px 16px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 2px solid #e8e2d9;
+}
+
+.emergency-warm-photo {
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  background: #f5efe7;
+  border: 2px solid #e8e2d9;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.emergency-warm-photo .avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.emergency-warm-photo-initials {
+  font-size: 28px;
+  font-weight: 700;
+  color: #c8b4a0;
+}
+
+.emergency-warm-hero-details {
+  flex: 1;
+}
+
+.emergency-warm-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #4a4a4a;
+  line-height: 1.2;
+}
+
+.emergency-warm-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+
+.emergency-warm-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.emergency-warm-chip-dob {
+  background: #f5efe7;
+  color: #6e6760;
+  border: 1px solid #dcd5cb;
+}
+
+.emergency-warm-chip-code {
+  background: #14532d22;
+  color: #14532d;
+  border: 1px solid #7a9b7640;
+}
+
+.emergency-warm-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #8a8075;
+}
+
+.emergency-warm-section {
+  padding: 14px 20px 4px;
+}
+
+.emergency-warm-section-head {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #aaa49c;
+  margin-bottom: 9px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #ece7df;
+}
+
+.emergency-warm-allergies {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.emergency-warm-allergy-pill {
+  background: #fff3ec;
+  color: #c85a3f;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 6px;
+  border: 1.5px solid #f0c4b0;
+}
+
+.emergency-warm-info-row {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0ebe3;
+}
+
+.emergency-warm-info-row:last-child {
+  border-bottom: none;
+}
+
+.emergency-warm-info-label {
+  width: 90px;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #aaa49c;
+  padding-top: 2px;
+}
+
+.emergency-warm-info-value {
+  flex: 1;
+  font-size: 13px;
+  color: #4a4a4a;
+  line-height: 1.45;
+}
+
+.emergency-warm-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0ebe3;
+}
+
+.emergency-warm-contact-row:last-child {
+  border-bottom: none;
+}
+
+.emergency-warm-contact-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f5efe7;
+  border: 1.5px solid #dcd5cb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e6760;
+  flex-shrink: 0;
+}
+
+.emergency-warm-contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.emergency-warm-contact-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4a4a4a;
+}
+
+.emergency-warm-contact-relation {
+  font-size: 11px;
+  color: #8a8075;
+  margin-top: 1px;
+}
+
+.emergency-warm-primary-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #edf5f9;
+  color: #2e7d9b;
+  border: 1px solid #b5d4e8;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.emergency-warm-contact-phone {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2e7d9b;
+  background: #edf5f9;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid #b5d4e8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.emergency-warm-contact-phone-empty {
+  color: #b8b1aa;
+  background: transparent;
+  border-color: transparent;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.emergency-warm-empty {
+  font-size: 12px;
+  color: #9a9389;
+  padding: 4px 0;
+}
+
+.emergency-warm-print-wrap {
+  padding: 14px 20px;
+}
+
+.emergency-warm-print-wrap .kiosk-button {
+  width: 100%;
+  min-height: 0;
+  background: #f5efe7;
+  color: #6e6760;
+  border: 1.5px solid #dcd5cb;
+  border-radius: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.emergency-warm-print-wrap .kiosk-button:active:not(.kiosk-button--no-feedback) {
+  background: #ede5d8;
+}
+
+.emergency-warm-call-floater {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  animation: emergency-warm-drift 3.5s ease-in-out infinite;
+}
+
+@keyframes emergency-warm-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.emergency-warm-call-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid rgba(122, 155, 118, 0.4);
+  transform: translate(-50%, -50%);
+  animation: emergency-warm-expand 2.2s ease-out infinite;
+}
+
+.emergency-warm-call-ring:nth-child(2) {
+  animation-delay: 0.75s;
+}
+
+.emergency-warm-call-ring:nth-child(3) {
+  animation-delay: 1.5s;
+}
+
+@keyframes emergency-warm-expand {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+.emergency-warm-call-bubble {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #7a9b76;
+  border: 2px solid #6d8c69;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 2px 10px rgba(122, 155, 118, 0.35);
+  animation: emergency-warm-breathe 2s ease-in-out infinite;
+}
+
+@keyframes emergency-warm-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.emergency-warm-call-bubble svg {
+  width: 20px;
+  height: 20px;
+}
+
+.emergency-warm-call-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a9b76;
+  background: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #c4d9c1;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.emergency-warm-call-name {
+  font-size: 10px;
+  color: #8a8075;
+  white-space: nowrap;
+}
+
 /* =============================================================================
    MODALS & OVERLAYS
    ============================================================================= */
@@ -1072,6 +1504,31 @@ body {
   font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 0.5em;
+}
+
+.timeline-header--with-action {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: 0.45em;
+}
+
+.timeline-header--with-action .timeline-header__title {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  letter-spacing: 0.02em;
+}
+
+.timeline-action-btn--header-inline {
+  min-height: 36px;
+  padding: 0.2em 0.55em;
+  font-size: calc(var(--font-caption) * 0.95);
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .timeline-list {

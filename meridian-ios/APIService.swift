@@ -28,7 +28,6 @@ struct Contact {
     let id: String
     let displayName: String
     let relationship: String?
-    // let send birdUserId: String? TODO: remove all reference to send bird
     let userId: String?
 }
 
@@ -43,7 +42,7 @@ struct CheckIn {
 }
 
 struct ChatRecipient {
-    // let send birdUserId: String TODO: remove all reference to send bird
+    let userId: String?
     let displayName: String
 }
 
@@ -96,6 +95,15 @@ final class APIService {
         return (data, http)
     }
 
+    private func serverErrorMessage(from data: Data, fallback: String) -> String {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let msg = json["error"] as? String,
+              !msg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return fallback
+        }
+        return msg
+    }
+
     // MARK: - Login
 
     func login(userId: String, familyCircleId: String) async throws {
@@ -123,15 +131,23 @@ final class APIService {
     // MARK: - Alert
 
     func setAlert(activated: Bool) async throws {
-        let (_, res) = try await request("/api/emergency/alert", method: "POST", body: ["activated": activated])
+        let (data, res) = try await request("/api/emergency/alert", method: "POST", body: ["activated": activated])
+        if res.statusCode == 401 { throw APIError.unauthorized }
         if res.statusCode != 200 {
-            throw APIError.serverError("Alert request failed")
+            throw APIError.serverError(
+                serverErrorMessage(from: data, fallback: "Alert request failed")
+            )
         }
     }
 
     func getEmergencyAlertStatus() async throws -> Bool {
         let (data, res) = try await request("/api/emergency/alert/status")
-        if res.statusCode != 200 { throw APIError.serverError("Alert status failed") }
+        if res.statusCode == 401 { throw APIError.unauthorized }
+        if res.statusCode != 200 {
+            throw APIError.serverError(
+                serverErrorMessage(from: data, fallback: "Alert status failed")
+            )
+        }
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let dataObj = json["data"] as? [String: Any],
@@ -264,10 +280,9 @@ final class APIService {
             guard let id = row["id"] as? String,
                   let name = row["display_name"] as? String else { return nil }
             let relationship = row["relationship"] as? String
-            // let sb = row["send bird_user_id"] as? String TODO: remove all reference to send bird
             let uid = row["user_id"] as? String
             return Contact(id: id, displayName: name, relationship: relationship, userId: uid)
-        // }.filter { $0.send birdUserId != nil && !($0.send birdUserId?.isEmpty ?? true) } TODO: remove all reference to send bird
+        }
     }
 
     // MARK: - Device token (push)
@@ -287,21 +302,24 @@ final class APIService {
     func getDefaultChatRecipient() async throws -> ChatRecipient {
         let (data, res) = try await request("/api/chat/recipient")
         if res.statusCode != 200 { throw APIError.serverError("Recipient lookup failed") }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              // let sb = (json["send bird_user_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), TODO: remove all reference to send bird
-              !sb.isEmpty else {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw APIError.invalidResponse
         }
-        let name = ((json["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? sb)
-        return ChatRecipient(displayName: name) // TODO: remove all reference to send bird
+        let payload = (json["data"] as? [String: Any]) ?? json
+        let userId = ((payload["user_id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = (((payload["name"] as? String) ?? (payload["display_name"] as? String) ?? ""))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty { throw APIError.invalidResponse }
+        return ChatRecipient(userId: userId.isEmpty ? nil : userId, displayName: name)
     }
 
-    // func getChatSessionURL(recipientSend birdUserId: String, recipientDisplayName: String) async throws -> URL { TODO: remove all reference to send bird
+    func getChatSessionURL(recipientUserId: String?, recipientDisplayName: String) async throws -> URL {
         var comp = URLComponents(string: baseURL + "/api/chat/chat-session-url")
-        comp?.queryItems = [
-            // URLQueryItem(name: "recipient_send bird_user_id", value: recipientSend birdUserId), TODO: remove all reference to send bird
-            URLQueryItem(name: "recipient_display_name", value: recipientDisplayName)
-        ]
+        var queryItems = [URLQueryItem(name: "recipient_display_name", value: recipientDisplayName)]
+        if let recipientUserId, !recipientUserId.isEmpty {
+            queryItems.append(URLQueryItem(name: "recipient_user_id", value: recipientUserId))
+        }
+        comp?.queryItems = queryItems
         guard let u = comp?.url else { throw APIError.invalidResponse }
         var req = URLRequest(url: u)
         req.httpMethod = "GET"
@@ -329,7 +347,6 @@ final class APIService {
 
     func requestCallToDefaultRecipient() async throws {
         let sessionInfo = try await getSession()
-        let defaultRecipient = try await getDefaultChatRecipient()
         let contacts = try await getContacts(familyCircleId: sessionInfo.familyCircleId)
 
         if let careRecipientContact = contacts.first(where: {
@@ -341,7 +358,6 @@ final class APIService {
         }
 
         if let kioskContact = contacts.first(where: {
-            // $0.send birdUserId == defaultRecipient.send birdUserId && // TODO: remove all reference to send bird
             ($0.userId?.isEmpty == false)
         }), let targetUserId = kioskContact.userId {
             try await requestCall(toUserId: targetUserId)

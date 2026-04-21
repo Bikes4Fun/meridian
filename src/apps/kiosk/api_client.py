@@ -7,8 +7,10 @@ Not here: Flask routes, pywebview, or server DB ServiceContainer (see server con
 """
 
 import logging
+import math
 import os
 import urllib.parse
+import hashlib
 from datetime import datetime
 from typing import Any, Optional, Tuple
 import requests
@@ -20,38 +22,17 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-
 class RemoteServiceError(Exception):
     """Raised when a remote API request fails in an unrecoverable way."""
-
-
-def fetch_photo_b64(url: str, session: Any, headers: dict) -> Optional[str]:
-    """Fetch any photo URL via authenticated session, return data URI or None. Avoids file:// auth for <img>."""
-    if not url:
-        return None
-    try:
-        import requests
-        import base64
-    except ImportError:
-        return None
-    try:
-        client = session if session else requests
-        r = client.get(url, headers=headers, timeout=5)
-        if r.ok and r.content:
-            mime = r.headers.get("Content-Type", "image/jpeg")
-            b64 = base64.b64encode(r.content).decode()
-            return f"data:{mime};base64,{b64}"
-        logger.debug(f"Photo fetch {url} -> {r.status_code}")
-    except Exception as e:
-        logger.debug(f"Photo fetch {url} failed: {e}")
-    return None
-
 
 def _headers(
     kiosk_user_id: Optional[str] = None,
     family_circle_id: Optional[str] = None,
 ) -> dict:
-    out = {}
+    out = {
+        "ngrok-skip-browser-warning": "true",
+        "User-Agent": "Meridian-Kiosk/1.0",
+    }
     if kiosk_user_id:
         out["X-User-Id"] = kiosk_user_id
     if family_circle_id:
@@ -109,10 +90,23 @@ def _request(
             r = client.delete(url, headers=headers or {}, timeout=timeout)
         else:
             return False, None, f"unsupported method {method}"
-        r.raise_for_status()
-        j = r.json() if r.content else {}
+        j = None
+        if r.content:
+            try:
+                j = r.json()
+            except Exception:
+                j = None
+        if not r.ok:
+            if isinstance(j, dict) and "error" in j and j["error"]:
+                return False, None, str(j["error"])
+            body_text = (r.text or "").strip()
+            if body_text:
+                return False, None, body_text
+            return False, None, f"HTTP {r.status_code}"
         if isinstance(j, dict) and "error" in j:
             return False, None, j["error"]
+        if j is None:
+            j = {}
         return True, j, None
     except Exception as e:
         logger.info(f"API {method} {url} -> failed: {e}")
@@ -137,7 +131,6 @@ def _get_raw(
         logger.info(f"API {url} -> failed: {e}")
         return False, None, str(e)
 
-
 class LocalTimeService:
     """Time from the device (no server call)."""
 
@@ -145,7 +138,9 @@ class LocalTimeService:
         pass
 
     def get_time(self) -> str:
-        return datetime.now().strftime("%-I:%M %p").replace(" 0", " ").lstrip()
+        now = datetime.now()
+        hour_12 = now.hour % 12 or 12
+        return f"{hour_12}:{now.strftime('%M %p')}"
 
     def get_dayof_week(self) -> str:
         return datetime.now().strftime("%A")
@@ -168,10 +163,12 @@ class LocalTimeService:
         return f"{self.get_month_day()}, {self.get_year()}"
 
     def get_date(self) -> str:
-        return datetime.now().strftime("%B %-d, %Y").replace(" 0", " ").lstrip()
+        now = datetime.now()
+        return f"{now.strftime('%B')} {now.day}, {now.year}"
 
     def get_month_day(self) -> str:
-        return datetime.now().strftime("%B %-d").replace(" 0", " ").lstrip()
+        now = datetime.now()
+        return f"{now.strftime('%B')} {now.day}"
 
     def get_year(self) -> str:
         return str(datetime.now().year)
@@ -432,6 +429,57 @@ class RemoteIncomingCallService:
         return ServiceResult.success_result(j or {})
 
 
+class RemoteVoiceService:
+    """Trigger outbound voice calls through server Twilio routes."""
+
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def place_call(self, phone: str) -> Any:
+        phone = (phone or "").strip()
+        if not phone:
+            return ServiceResult.error_result("phone required")
+        ok, j, err = _request(
+            "POST",
+            f"{self._base}/api/voice/call",
+            headers=self._headers,
+            session=self._session,
+            json_body={"to": phone},
+        )
+        if not ok:
+            logger.warning(f"Voice call request failed for {phone}: {err or 'voice call failed'}")
+            return ServiceResult.error_result(err or "voice call failed")
+        logger.info(f"Voice call request succeeded for {phone}")
+        if isinstance(j, dict) and "sid" in j:
+            return ServiceResult.success_result({"sid": j.get("sid")})
+        if isinstance(j, dict) and "data" in j:
+            return ServiceResult.success_result(j.get("data"))
+        return ServiceResult.success_result(j or {})
+
+    def log_twilio_startup_check(self) -> None:
+        """GET /api/voice/twilio-status — log whether Twilio credentials work."""
+        ok, j, err = _get(
+            f"{self._base}/api/voice/twilio-status",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            logger.warning(f"Twilio startup check failed: {err}")
+            return
+        if isinstance(j, dict) and j.get("ok"):
+            logger.info("Twilio API credentials OK")
+        else:
+            logger.warning(f"Twilio not ready: {j}")
+
+
 class RemoteEmergencyProfileService:
     """Emergency profile (first responder view), medical summary, and emergency contacts from the server."""
 
@@ -446,6 +494,7 @@ class RemoteEmergencyProfileService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+        self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
 
     def get_emergency_profile(self) -> Any:
         ok, data, err = _get(
@@ -456,6 +505,10 @@ class RemoteEmergencyProfileService:
         if not ok:
             return ServiceResult.error_result(err or "emergency-profile request failed")
         return ServiceResult.success_result(data)
+
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_user_photo_b64(user_id)
 
     def get_medical_summary_from_server(self) -> Any:
         ok, data, err = _get(
@@ -485,47 +538,15 @@ class RemoteEmergencyProfileService:
         return ServiceResult.success_result(data)
 
 
-class RemoteChatEntryService:
-    """Get signed chat entry URL for kiosk webview. Uses same API auth as other kiosk calls."""
-
-    def __init__(
-        self,
-        base_url: str,
-        kiosk_user_id: Optional[str] = None,
-        family_circle_id: Optional[str] = None,
-        session: Optional["requests.Session"] = None,
-    ):
-        self._base = base_url.rstrip("/")
-        self._headers = _headers(kiosk_user_id, family_circle_id)
-        self._session = session
-
-    def get_entry_url(
-        self,
-        recipient_sendbird_user_id: str = "",
-        recipient_display_name: str = "",
-        auto_start_call: bool = False,
-    ) -> Any:
-        """Fetch signed entry URL. recipient = who the kiosk user will chat WITH. Returns ServiceResult with url in data."""
-        params = []
-        if recipient_sendbird_user_id:
-            params.append(
-                f"recipient_sendbird_user_id={urllib.parse.quote(recipient_sendbird_user_id)}"
-            )
-        if recipient_display_name:
-            params.append(
-                f"recipient_display_name={urllib.parse.quote(recipient_display_name)}"
-            )
-        if auto_start_call:
-            params.append("auto_start_call=1")
-        qs = "&".join(params)
-        url = f"{self._base}/api/chat/chat-session-url" + ("?" + qs if qs else "")
-        ok, data, err = _get(url, headers=self._headers, session=self._session)
-        if not ok:
-            return ServiceResult.error_result(err or "entry-url request failed")
-        url_val = data.get("url") if isinstance(data, dict) else None
-        if not url_val:
-            return ServiceResult.error_result("entry-url returned no url")
-        return ServiceResult.success_result(url_val)
+    def get_dnr_document_url(self, family_circle_id: str, care_recipient_user_id: str) -> str:
+        fc_id = (family_circle_id or "").strip()
+        user_id = (care_recipient_user_id or "").strip()
+        if not fc_id or not user_id:
+            return ""
+        return (
+            f"{self._base}/api/family_circles/{urllib.parse.quote(fc_id, safe='')}"
+            f"/care-recipients/{urllib.parse.quote(user_id, safe='')}/dnr-document"
+        )
 
 
 class RemoteContactService:
@@ -542,6 +563,7 @@ class RemoteContactService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+        self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
 
     def get_contacts(self) -> Any:
         ok, data, err = _get(
@@ -552,6 +574,10 @@ class RemoteContactService:
         if not ok:
             return ServiceResult.error_result(err or "contacts request failed")
         return ServiceResult.success_result(data if data is not None else [])
+
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_user_photo_b64(user_id)
 
 
 class RemoteLocationService:
@@ -566,6 +592,62 @@ class RemoteLocationService:
         self._fc_id = family_circle_id or ""
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
+        self._photo_service = RemotePhotoService(self._base, self._headers, self._session)
+
+    @staticmethod
+    def osm_tile_cache_dir() -> Optional[str]:
+        """Disk folder for OSM map tiles; same tree Flask serves at /kiosk/osm-tiles/..."""
+        base = RemotePhotoService.kiosk_cache_root()
+        if not base:
+            return None
+        return os.path.join(base, "osm_tiles")
+
+    @staticmethod
+    def _deg2num(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
+        lat_rad = math.radians(lat_deg)
+        n = 2.0**zoom
+        xtile = int((lon_deg + 180.0) / 360.0 * n)
+        ytile = int(
+            (1.0 - math.log(math.tan(lat_rad) + 1.0 / math.cos(lat_rad)) / math.pi)
+            / 2.0
+            * n
+        )
+        return xtile, ytile
+
+    def warm_osm_tiles_around(
+        self,
+        lat: float,
+        lon: float,
+        zooms: Tuple[int, ...] = (13, 14),
+        radius: int = 1,
+    ) -> None:
+        """Prefetch OSM raster tiles into osm_tile_cache_dir."""
+        root = self.osm_tile_cache_dir()
+        if not root:
+            return
+        headers = {
+            "User-Agent": "MeridianKiosk/1.0 (https://github.com/Bikes4Fun/meridian)"
+        }
+        for z in zooms:
+            x0, y0 = self._deg2num(lat, lon, z)
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    x, y = x0 + dx, y0 + dy
+                    m = 2**z
+                    if x < 0 or y < 0 or x >= m or y >= m:
+                        continue
+                    dest = os.path.join(root, f"{z}_{x}_{y}.png")
+                    if os.path.isfile(dest) and os.path.getsize(dest) > 200:
+                        continue
+                    url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    try:
+                        r = requests.get(url, headers=headers, timeout=12)
+                        if r.ok and len(r.content) > 200:
+                            os.makedirs(root, exist_ok=True)
+                            with open(dest, "wb") as wf:
+                                wf.write(r.content)
+                    except Exception as e:
+                        logger.debug("OSM tile warm %s: %s", url, e)
 
     def get_checkins(self, family_circle_id: Optional[str] = None) -> Any:
         fc_id = family_circle_id if family_circle_id is not None else self._fc_id
@@ -633,28 +715,133 @@ class RemoteLocationService:
             data.get("data") if isinstance(data, dict) else data
         )
 
-    def fetch_photo_to_cache(self, user_id: str, cache_dir: str) -> Optional[str]:
-        """Fetch photo from server and save to cache. Returns local path or None. Reuses cache if present. user_id = whose photo (any family member)."""
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        # could use photo service directly but this maintains current call structure.
+        return self._photo_service.get_user_photo_b64(user_id)
+
+class RemotePhotoService:
+
+    @staticmethod
+    def _safe_cache_key(s: str) -> str:
+        return "".join(
+            ch if ch.isalnum() or ch in "._-" else "_" for ch in (s or "").strip()
+        ) or "x"
+
+    @staticmethod
+    def _sniff_image_mime(data: bytes) -> str:
+        if len(data) >= 2 and data[0:2] == b"\xff\xd8":
+            return "image/jpeg"
+        if len(data) >= 8 and data[0:8] == b"\x89PNG\r\n\x1a\n":
+            return "image/png"
+        if len(data) >= 6 and data[0:6] in (b"GIF87a", b"GIF89a"):
+            return "image/gif"
+        if len(data) >= 12 and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
+            return "image/webp"
+        return "image/jpeg"
+
+    @staticmethod
+    def kiosk_cache_root() -> Optional[str]:
+        """Disk cache root for kiosk asset caches (photos and OSM tiles)."""
+        flag = (os.environ.get("MERIDIAN_KIOSK_PHOTO_CACHE") or "1").strip().lower()
+        if flag in ("0", "false", "no"):
+            return None
+        custom = (os.environ.get("MERIDIAN_KIOSK_CACHE_DIR") or "").strip()
+        if custom:
+            return os.path.abspath(custom)
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+
+    def __init__(
+        self,
+        base_url: str = "",
+        headers: Optional[dict] = None,
+        session: Optional["requests.Session"] = None,
+        photo_cache_root: Optional[str] = None,
+    ):
+        self._base = (base_url or "").rstrip("/")
+        self._headers = headers or {}
+        self._session = session
+        self._cache_root = (
+            photo_cache_root
+            if photo_cache_root is not None
+            else self.kiosk_cache_root()
+        )
+        self._photo_cache_dir = (
+            os.path.join(self._cache_root, "photos") if self._cache_root else None
+        )
+        if self._photo_cache_dir:
+            try:
+                os.makedirs(self._photo_cache_dir, exist_ok=True)
+            except Exception:
+                self._photo_cache_dir = None
+
+    def _cache_path_for_url(self, url: str) -> Optional[str]:
+        if not self._photo_cache_dir:
+            return None
+        digest = hashlib.sha256((url or "").encode("utf-8")).hexdigest()
+        safe = self._safe_cache_key(digest)
+        return os.path.join(self._photo_cache_dir, safe)
+
+    def _data_uri_from_bytes(self, raw: bytes, mime_hint: str = "") -> Optional[str]:
+        if not raw:
+            return None
         try:
-            import requests
+            import base64
         except ImportError:
             return None
-        photo_dir = os.path.join(cache_dir, "photos")
-        os.makedirs(photo_dir, exist_ok=True)
-        cached = os.path.join(photo_dir, user_id)
-        if os.path.exists(cached):
+        mime = (mime_hint or "").strip() or self._sniff_image_mime(raw)
+        b64 = base64.b64encode(raw).decode()
+        return f"data:{mime};base64,{b64}"
+
+    def _read_cached_photo_b64(self, url: str) -> Optional[str]:
+        cache_path = self._cache_path_for_url(url)
+        if not cache_path or not os.path.exists(cache_path):
+            return None
+        try:
+            with open(cache_path, "rb") as f:
+                raw = f.read()
+            return self._data_uri_from_bytes(raw, "")
+        except Exception as e:
+            logger.debug(f"Photo cache read failed for {url}: {e}")
+            return None
+
+    def _write_cached_photo(self, url: str, raw: bytes) -> bool:
+        cache_path = self._cache_path_for_url(url)
+        if not cache_path or not raw:
+            return False
+        try:
+            with open(cache_path, "wb") as f:
+                f.write(raw)
+            return True
+        except Exception as e:
+            logger.debug(f"Photo cache write failed for {url}: {e}")
+            return False
+
+    def fetch_photo_b64(self, url: str) -> Optional[str]:
+        """Fetch any photo URL via authenticated session, return data URI or None."""
+        if not url:
+            return None
+        cached = self._read_cached_photo_b64(url)
+        if cached:
             return cached
         try:
-            url = f"{self._base}/api/users/{user_id}/photo"
             client = self._session if self._session else requests
-            r = client.get(url, headers=self._headers, timeout=10)
-            r.raise_for_status()
-            with open(cached, "wb") as f:
-                f.write(r.content)
-            return cached
+            r = client.get(url, headers=self._headers, timeout=5)
+            if r.ok and r.content:
+                mime = r.headers.get("Content-Type", "image/jpeg")
+                self._write_cached_photo(url, r.content)
+                return self._data_uri_from_bytes(r.content, mime)
+            logger.debug(f"Photo fetch {url} -> {r.status_code}")
         except Exception as e:
-            logger.debug(f"Photo fetch failed for {user_id}: {e}")
+            logger.debug(f"Photo fetch {url} failed: {e}")
+        return None
+
+
+    def get_user_photo_b64(self, user_id: str) -> Optional[str]:
+        user_id = (user_id or "").strip()
+        if not user_id:
             return None
+        quoted = urllib.parse.quote(user_id, safe="")
+        return self.fetch_photo_b64(f"{self._base}/api/users/{quoted}/photo")
 
 
 class KioskRemoteServiceContainer:
@@ -688,14 +875,14 @@ class KioskRemoteServiceContainer:
     def get_contact_service(self):
         return self._s.get("contact_service")
 
-    def get_chat_entry_service(self):
-        return self._s.get("chat_entry_service")
-
     def get_alert_service(self):
         return self._s.get("alert_service")
 
     def get_incoming_call_service(self):
         return self._s.get("incoming_call_service")
+
+    def get_voice_service(self):
+        return self._s.get("voice_service")
 
     @property
     def alert_activated_holder(self) -> list:
@@ -737,13 +924,13 @@ def create_kiosk_remote(
         "contact_service": RemoteContactService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
-        "chat_entry_service": RemoteChatEntryService(
-            server_url, kiosk_user_id, family_circle_id, session
-        ),
         "alert_service": RemoteAlertService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "incoming_call_service": RemoteIncomingCallService(
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "voice_service": RemoteVoiceService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "_alert_activated": [False],

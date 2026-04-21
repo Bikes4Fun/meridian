@@ -1,15 +1,22 @@
-"""
-Main entry point for Meridian.
-In local mode, starts the API server (DB + REST) in a background thread and runs the pywebview kiosk client.
-In Railway/remote mode (with --railway-run), uses a remote Railway API (no local API server thread).
+"""Main entry point for Meridian local development.
 
+<<<<<<< HEAD
 API_URL empty string = same-origin (served from same server as API).
+=======
+Public HTTPS for Twilio (optional):
+- Pass `--ngrok` to spawn `ngrok http <PORT>` after the API starts and set MERIDIAN_API_URL
+  to the tunnel URL (same Flask process; ngrok only proxies).
+- Or set MERIDIAN_PUBLIC_API_URL in repo-root `.env` if you run ngrok yourself.
+
+`--ngrok` uses ngrok’s local API (default http://127.0.0.1:4040). Stop any other ngrok agent
+using that port, or automatic startup will fail.
+>>>>>>> main
 """
 
+import json
 import os
 
-# Load .env from repo root if python-dotenv is available (SENDBIRD_APP_ID, etc.)
-# TODO: if this is not used by everything then it should only exist in the section it is used by
+# Load .env from repo root if python-dotenv is available.
 try:
     from dotenv import load_dotenv
 
@@ -19,97 +26,14 @@ except ImportError:
     pass
 
 
-# --- FUTURE contents of apps/webapp/build_webapp.py --- #
-def build_webapp(logger, api_url: str, src_dir: str):
-    import os
-    import shutil
-
-    client = os.path.join(src_dir, "apps", "webapp", "web_client")
-    dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
-    os.makedirs(dist, exist_ok=True)
-    for filename in (
-        "login.html",
-        "index.html",
-        "ice_editor.html",
-        "info.html",
-        "app.js",
-        "events.js",
-        "meridian_medications_inline.js",
-        "medications.js",
-        "ice_editor.js",
-    ):
-        src_path = os.path.join(client, filename)
-        dst_path = os.path.join(dist, filename)
-        with open(src_path, encoding="utf-8") as f:
-            content = f.read()
-        with open(dst_path, "w", encoding="utf-8") as f:
-            f.write(content.replace("__API_URL__", api_url))
-    if os.path.isfile(os.path.join(client, "style.css")):
-        shutil.copy2(os.path.join(client, "style.css"), os.path.join(dist, "style.css"))
-    font_src = os.path.join(src_dir, "shared", "fonts", "Atkinson_Hyperlegible")
-    font_dst = os.path.join(dist, "fonts")
-    if os.path.isdir(font_src):
-        os.makedirs(font_dst, exist_ok=True)
-        for f in (
-            "AtkinsonHyperlegible-Regular.ttf",
-            "AtkinsonHyperlegible-Bold.ttf",
-            "AtkinsonHyperlegible-Italic.ttf",
-            "AtkinsonHyperlegible-BoldItalic.ttf",
-        ):
-            if os.path.isfile(os.path.join(font_src, f)):
-                shutil.copy2(os.path.join(font_src, f), os.path.join(font_dst, f))
-    logger.debug(
-        "Webapp built: login, index, ice_editor, info, app/events/meds JS, style.css"
-    )
-
-
-# --- FUTURE contents of apps/chatapp/build_chatapp.py --- #
-def build_chatapp(logger, api_url: str, src_dir: str):
-    import os
-    import shutil
-
-    client = os.path.join(src_dir, "apps", "chatapp", "chat_client")
-    dist = os.path.join(src_dir, "apps", "chatapp", "chat_server", "dist")
-    os.makedirs(dist, exist_ok=True)
-    chat_html_src = os.path.join(client, "chat.html")
-    chat_html_dst = os.path.join(dist, "chat.html")
-    with open(chat_html_src, encoding="utf-8") as f:
-        chat_html = f.read().replace("__API_URL__", api_url)
-    with open(chat_html_dst, "w", encoding="utf-8") as f:
-        f.write(chat_html)
-    chat_js_src = os.path.join(client, "chat.js")
-    chat_js_dst = os.path.join(dist, "chat.js")
-    with open(chat_js_src, encoding="utf-8") as f:
-        chat_js = f.read().replace("__API_URL__", api_url)
-    with open(chat_js_dst, "w", encoding="utf-8") as f:
-        f.write(chat_js)
-    if os.path.isfile(os.path.join(client, "chat.css")):
-        shutil.copy2(os.path.join(client, "chat.css"), os.path.join(dist, "chat.css"))
-    logger.debug("Chatapp built: chat.html, chat.js, chat.css")
-
-
-# --- FUTURE contents of apps/kiosk/run_kiosk.py OR use  kiosk/app and keep this one thing here --- #
-def run_kiosk(logger, api_url):
-    # Kiosk runs as the kiosk user (often care recipient). Webapp user logs in as Dylan (fm_005) to chat with kiosk user.
-    KIOSK_USER_ID = "fm_care_001"
-    PATIENT_FAMILY_CIRCLE_ID = "F00000"
-
-    app = create_app(
-        api_url=api_url,
-        kiosk_user_id=KIOSK_USER_ID,
-        family_circle_id=PATIENT_FAMILY_CIRCLE_ID,
-    )
-    logger.debug("Kiosk started")
-    app.run()
-
-
-# --- FUTURE contents of src/main.py --- #
-
-import sys
-import threading
-import time
+import shutil
+import subprocess
 import logging
-import socket
+import sys
+import time
+import urllib.error
+import urllib.request
+from urllib.parse import urlparse
 
 # Ensure src is on path for new package layout
 _src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -123,60 +47,91 @@ if "--fullscreen" in sys.argv:
 if "--win-kiosk" in sys.argv:
     os.environ["KIOSK_WIN_KIOSK"] = "1"
 
-from shared.config import (
-    get_log_level,
-    get_database_path,
-    get_api_base_url,
-    get_server_host,
-    get_server_port,
-    find_available_port,
-)
+from shared.config import get_log_level, get_remote_api_base_url
 
+<<<<<<< HEAD
 # from apps.chatapp.build_chatapp import build_chatapp
 # from apps.webapp.build_webapp import build_webapp
 # perhaps kiosk/app is 'run_kiosk' ...
 from apps.kiosk.app import create_app
 from apps.webapp.__main__ import build_webapp
+=======
+_NGROK_API = "http://127.0.0.1:4040/api/tunnels"
+>>>>>>> main
 
 
-def _start_local_api_server(logger):
-    """Start API server in background. Returns api_url."""
-    from apps.server.api import run_server
+def _parse_port_from_api_base(api_url: str) -> int:
+    p = urlparse(api_url)
+    if p.port is not None:
+        return p.port
+    return 80 if (p.scheme or "http") == "http" else 443
 
-    host = get_server_host()
-    start_port = get_server_port()
-    port = find_available_port(host, start_port)
-    if port != start_port:
-        logger.warning(
-            f"Port {start_port} in use, using port {port} instead. Stop any separate "
-            "'python -m apps.server' so web app and TV use the same server."
+
+def _is_ngrok_url(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host.endswith(".ngrok-free.dev") or host.endswith(".ngrok.io")
+
+
+def _terminate_ngrok(proc: subprocess.Popen | None) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=8)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+def _start_ngrok_tunnel(port: int, logger: logging.Logger) -> tuple[str, subprocess.Popen]:
+    """Run `ngrok http <port>`, poll local API for https public URL, return (base url, process)."""
+    ngrok_bin = shutil.which("ngrok")
+    if not ngrok_bin:
+        raise RuntimeError(
+            "ngrok not found in PATH. Install from https://ngrok.com/download or set MERIDIAN_PUBLIC_API_URL in .env."
         )
-    os.environ["PORT"] = str(port)
-
-    logger.debug("Starting local API server...")
-    server_thread = threading.Thread(
-        target=run_server, kwargs={"port": port}, daemon=True
+    proc = subprocess.Popen(
+        [ngrok_bin, "http", str(port)],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
     )
-    server_thread.start()
-    time.sleep(0.5)
+    time.sleep(0.6)
+    if proc.poll() is not None:
+        err = ""
+        if proc.stderr:
+            err = proc.stderr.read().decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"ngrok exited immediately.{(' ' + err) if err else ''}")
 
-    api_host = host
-    if host == "0.0.0.0":
-        public_host = (os.getenv("SERVER_PUBLIC_HOST") or "").strip()
-        if public_host:
-            api_host = public_host
-        else:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                    s.connect(("8.8.8.8", 80))
-                    api_host = s.getsockname()[0]
-            except OSError:
-                api_host = "127.0.0.1"
+    deadline = time.monotonic() + 35.0
+    public_base = ""
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(_NGROK_API, timeout=2.0) as resp:
+                raw = resp.read().decode("utf-8")
+            data = json.loads(raw)
+            for t in data.get("tunnels") or []:
+                if (t.get("proto") or "") != "https":
+                    continue
+                u = (t.get("public_url") or "").strip().rstrip("/")
+                if u:
+                    public_base = u
+                    break
+        except (urllib.error.URLError, json.JSONDecodeError, OSError):
+            pass
+        if public_base:
+            break
+        time.sleep(0.35)
 
-    api_url = f"http://{api_host}:{port}"
-    return api_url
+    if not public_base:
+        _terminate_ngrok(proc)
+        raise RuntimeError(
+            "ngrok started but no HTTPS tunnel URL was read from http://127.0.0.1:4040/api/tunnels. "
+            "Is another process using the ngrok local API port?"
+        )
+    logger.info(f"ngrok tunnel: {public_base} → localhost:{port}")
+    return public_base, proc
 
 
+<<<<<<< HEAD
 def run_local_server_and_db(logger):
     logger.debug("Database: local - %s", get_database_path())
     local_api_url = _start_local_api_server(logger)
@@ -223,71 +178,99 @@ def use_railway_api_and_db(logger):
 
 
 def set_logging():
+=======
+def set_logging() -> logging.Logger:
+>>>>>>> main
     logging.basicConfig(
         level=getattr(logging, get_log_level().upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     # Intentional: silence connection-pool, Werkzeug, PIL, verbose display/app_factory debug
     logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+    logging.getLogger("twilio.http_client").setLevel(logging.WARNING)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.app").setLevel(logging.WARNING)
     logging.getLogger("pywebview").setLevel(logging.WARNING)
     logging.getLogger("apps.kiosk.api_client").setLevel(logging.WARNING)
-    logging.getLogger("apps.server.database_services.location").setLevel(
-        logging.WARNING
-    )
-    logging.getLogger("apps.server.database_services.safe_query_manager").setLevel(
-        logging.WARNING
-    )
-    logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.location").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.safe_query_manager").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
     return logger
 
 
-def main():
-    """Start pywebview kiosk. Use Railway API if reachable, else start local server + DB."""
+def _run_module(logger: logging.Logger, module_name: str, args: list[str]) -> None:
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(src_dir)
+    env = {**os.environ, "PYTHONPATH": src_dir}
+    cmd = [sys.executable, "-m", module_name, *args]
+    logger.debug(f"Running {' '.join(cmd)}")
+    subprocess.run(cmd, check=True, cwd=repo_root, env=env)
+
+
+def main() -> None:
+    """Run local stack or remote kiosk mode; pass through kiosk flags."""
     logger = set_logging()
-    api_url = ""
+    kiosk_args = [arg for arg in sys.argv[1:] if arg != "--ngrok"]
+    use_ngrok = "--ngrok" in sys.argv[1:]
+    remote_run = "--remote-api" in kiosk_args
+    ngrok_proc: subprocess.Popen | None = None
 
-    if "--railway-run" not in sys.argv:
-        logger.debug(
-            "Starting local server, getting DB, and serving local webapp/chatapp"
-        )
-        try:
-            api_url = run_local_server_and_db(logger)
-        except Exception as e:
-            logger.error(f"Local server / DB setup failed: {e}")
-            raise
+    try:
+        if remote_run:
+            if use_ngrok:
+                logger.warning("--ngrok is ignored with --remote-api (API is not local).")
+            remote_api_url = get_remote_api_base_url()
+            if not remote_api_url:
+                raise RuntimeError("RAILWAY_API_URL is required when using --remote-api")
+            os.environ["MERIDIAN_API_URL"] = remote_api_url
+            _run_module(logger, "apps.kiosk", kiosk_args)
+            return
 
-        logger.debug("Starting Meridian Kiosk...")
-        try:
-            run_kiosk(logger, api_url)
-        except Exception as e:
-            logger.error(f"Meridian startup failed: {e}")
-            raise
+        else:
+            from apps.server.__main__ import start_local_api_server
 
-    else:
-        logger.info("Obtaining remote railway API, webapp, and chatapp")
-        try:
-            api_url = use_railway_api_and_db(logger)
-        except Exception as e:
-            logger.error(f"Railway API setup failed: {e}")
-            raise
+            api_url = start_local_api_server(logger).rstrip("/")
+            if use_ngrok:
+                public_url, ngrok_proc = _start_ngrok_tunnel(_parse_port_from_api_base(api_url), logger)
+                os.environ["MERIDIAN_PUBLIC_API_URL"] = public_url
+                os.environ["MERIDIAN_API_URL"] = public_url
+                os.environ["MERIDIAN_KIOSK_NGROK_BYPASS"] = "1"
+                os.environ["MERIDIAN_KIOSK_USER_AGENT"] = "Meridian-Kiosk/1.0"
+                logger.info(
+                    f"MERIDIAN_API_URL set to ngrok URL (Flask still bound locally — see Local API URL above)"
+                )
+            else:
+                public_url = (os.environ.get("MERIDIAN_PUBLIC_API_URL") or "").strip().rstrip("/")
+                if public_url:
+                    os.environ["MERIDIAN_API_URL"] = public_url
+                    if _is_ngrok_url(public_url):
+                        os.environ["MERIDIAN_KIOSK_NGROK_BYPASS"] = "1"
+                        os.environ["MERIDIAN_KIOSK_USER_AGENT"] = "Meridian-Kiosk/1.0"
+                    else:
+                        os.environ.pop("MERIDIAN_KIOSK_NGROK_BYPASS", None)
+                    logger.info(
+                        f"MERIDIAN_PUBLIC_API_URL set: kiosk/webapp use {public_url} "
+                        f"(API process still bound locally — see Local API URL above; tunnel must forward to that port)"
+                    )
+                else:
+                    os.environ["MERIDIAN_API_URL"] = api_url
+                    os.environ.pop("MERIDIAN_KIOSK_NGROK_BYPASS", None)
+                    if (os.environ.get("TWILIO_ACCOUNT_SID") or "").strip():
+                        logger.warning(
+                            "Twilio is configured but MERIDIAN_PUBLIC_API_URL is unset. "
+                            "Voice/TwiML webhooks need a public HTTPS base: run `python main.py --ngrok`, "
+                            "or add MERIDIAN_PUBLIC_API_URL=https://<ngrok-host> to .env, and set the TwiML App "
+                            "Voice URL to https://<ngrok-host>/twilio/voice/client (same base as MERIDIAN_PUBLIC_API_URL)."
+                        )
+            _run_module(logger, "apps.webapp", [])
+            _run_module(logger, "apps.kiosk", kiosk_args)
 
-        src_dir = os.path.dirname(os.path.abspath(__file__))
-        try:
-            build_webapp(logger, api_url, src_dir)
-            build_chatapp(logger, api_url, src_dir)
-        except Exception as e:
-            logger.error(f"Meridian's Railway build prep failed: {e}")
-            raise
-        logger.info("Railway run prep complete; skipping kiosk startup")
-        return
-
-    if not api_url:
-        logger.error("No API URL; aborting.")
-        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Meridian startup failed: {e}")
+        raise
+    finally:
+        _terminate_ngrok(ngrok_proc)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 /**
- * Meridian iOS – Chat in WKWebView. Loads server chat URL (Sendbird).
+ * Meridian iOS – Chat in WKWebView. Loads server chat URL from the Meridian API.
  * Dynamically sized for all phone devices (iPhone SE through Max) with safe area and keyboard handling.
  */
 import UIKit
@@ -123,7 +123,7 @@ final class ChatWebViewController: UIViewController {
         Task {
             do {
                 let url = try await APIService.shared.getChatSessionURL(
-                    recipientSendbirdUserId: recipientSendbirdUserId,
+                    // recipientSendbirdUserId: recipientSendbirdUserId, TODO: remove all reference to send bird
                     recipientDisplayName: recipientDisplayName
                 )
                 await MainActor.run {
@@ -151,6 +151,22 @@ final class ChatWebViewController: UIViewController {
 }
 
 extension ChatWebViewController: WKNavigationDelegate {
+    func webView(
+        _ webView: WKWebView,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        #if DEBUG
+        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+           let trust = challenge.protectionSpace.serverTrust,
+           LocalDevNetwork.allowsInsecureDevTLS(forHost: challenge.protectionSpace.host) {
+            completionHandler(.useCredential, URLCredential(trust: trust))
+            return
+        }
+        #endif
+        completionHandler(.performDefaultHandling, nil)
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         webView.evaluateJavaScript(ChatWebViewController.mobileStyleScript)
         guard shouldAutoStartCall else { return }

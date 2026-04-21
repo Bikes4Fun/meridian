@@ -28,7 +28,7 @@ struct Contact {
     let id: String
     let displayName: String
     let relationship: String?
-    let sendbirdUserId: String?
+    // let send birdUserId: String? TODO: remove all reference to send bird
     let userId: String?
 }
 
@@ -43,7 +43,7 @@ struct CheckIn {
 }
 
 struct ChatRecipient {
-    let sendbirdUserId: String
+    // let send birdUserId: String TODO: remove all reference to send bird
     let displayName: String
 }
 
@@ -56,13 +56,20 @@ final class APIService {
     static let shared = APIService()
     private var baseURL: String { Config.resolvedApiBaseURL }
     private let session: URLSession
+    #if DEBUG
+    private let tlsSessionDelegate = LocalDevURLSessionDelegate()
+    #endif
 
     private init() {
         let config = URLSessionConfiguration.default
         config.httpCookieStorage = HTTPCookieStorage.shared
         config.httpShouldSetCookies = true
         config.httpCookieAcceptPolicy = .always
+        #if DEBUG
+        self.session = URLSession(configuration: config, delegate: tlsSessionDelegate, delegateQueue: nil)
+        #else
         self.session = URLSession(configuration: config)
+        #endif
     }
 
     /// Call after changing API base URL so session cookies do not target the old host.
@@ -257,10 +264,10 @@ final class APIService {
             guard let id = row["id"] as? String,
                   let name = row["display_name"] as? String else { return nil }
             let relationship = row["relationship"] as? String
-            let sb = row["sendbird_user_id"] as? String
+            // let sb = row["send bird_user_id"] as? String TODO: remove all reference to send bird
             let uid = row["user_id"] as? String
-            return Contact(id: id, displayName: name, relationship: relationship, sendbirdUserId: sb, userId: uid)
-        }.filter { $0.sendbirdUserId != nil && !($0.sendbirdUserId?.isEmpty ?? true) }
+            return Contact(id: id, displayName: name, relationship: relationship, userId: uid)
+        // }.filter { $0.send birdUserId != nil && !($0.send birdUserId?.isEmpty ?? true) } TODO: remove all reference to send bird
     }
 
     // MARK: - Device token (push)
@@ -281,18 +288,18 @@ final class APIService {
         let (data, res) = try await request("/api/chat/recipient")
         if res.statusCode != 200 { throw APIError.serverError("Recipient lookup failed") }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let sb = (json["sendbird_user_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              // let sb = (json["send bird_user_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), TODO: remove all reference to send bird
               !sb.isEmpty else {
             throw APIError.invalidResponse
         }
         let name = ((json["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? sb)
-        return ChatRecipient(sendbirdUserId: sb, displayName: name)
+        return ChatRecipient(displayName: name) // TODO: remove all reference to send bird
     }
 
-    func getChatSessionURL(recipientSendbirdUserId: String, recipientDisplayName: String) async throws -> URL {
+    // func getChatSessionURL(recipientSend birdUserId: String, recipientDisplayName: String) async throws -> URL { TODO: remove all reference to send bird
         var comp = URLComponents(string: baseURL + "/api/chat/chat-session-url")
         comp?.queryItems = [
-            URLQueryItem(name: "recipient_sendbird_user_id", value: recipientSendbirdUserId),
+            // URLQueryItem(name: "recipient_send bird_user_id", value: recipientSend birdUserId), TODO: remove all reference to send bird
             URLQueryItem(name: "recipient_display_name", value: recipientDisplayName)
         ]
         guard let u = comp?.url else { throw APIError.invalidResponse }
@@ -334,7 +341,7 @@ final class APIService {
         }
 
         if let kioskContact = contacts.first(where: {
-            $0.sendbirdUserId == defaultRecipient.sendbirdUserId &&
+            // $0.send birdUserId == defaultRecipient.send birdUserId && // TODO: remove all reference to send bird
             ($0.userId?.isEmpty == false)
         }), let targetUserId = kioskContact.userId {
             try await requestCall(toUserId: targetUserId)

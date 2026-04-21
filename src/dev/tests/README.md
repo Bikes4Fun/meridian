@@ -72,7 +72,6 @@ Security and infrastructure only (no feature-specific tests):
 - `test_infrastructure.py` - API infrastructure: health, login (public endpoints), calendar stack check (integration)
 - `test_database.py` - DatabaseManager: schema, persistence, invalid path (integration)
 
-Out of scope for this suite: `test_time_service.py` is empty (time formatting is not security/infrastructure).
 
 ## Test Markers
 

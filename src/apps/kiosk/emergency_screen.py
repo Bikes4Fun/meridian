@@ -1,7 +1,7 @@
 """
 Kiosk Emergency screen: load emergency profile via remote service; build read-only HTML (patient, medical, contacts).
 
-Scope: presentation + photo fetch for this screen; client-side emergency PDF print pipeline (trigger from app on alert).
+Scope: presentation + photo for this screen; client-side emergency PDF print pipeline (trigger from app on alert).
 Not here: alert activation/polling (app), or server-side PDF generation.
 """
 
@@ -18,10 +18,8 @@ logger = logging.getLogger(__name__)
 def build_emergency_html(services, api_url: str) -> str:
     """Build emergency screen HTML for pywebview."""
     import html as html_mod
-    import urllib.parse
 
     from . import html_primitives as hp
-    from .api_client import fetch_photo_b64
 
     emergency_svc = services.get_emergency_service()
     if not emergency_svc:
@@ -37,14 +35,7 @@ def build_emergency_html(services, api_url: str) -> str:
     care_recipient_user_id = e_data.get("care_recipient_user_id") or ""
     patient_photo_src = None
     if care_recipient_user_id:
-        contact_svc = services.get_contact_service()
-        if contact_svc:
-            base = api_url.rstrip("/")
-            patient_photo_src = fetch_photo_b64(
-                f"{base}/api/users/{care_recipient_user_id}/photo",
-                contact_svc._session,
-                contact_svc._headers,
-            )
+        patient_photo_src = emergency_svc.get_user_photo_b64(care_recipient_user_id)
     e_contacts = {
         "contacts": e_data.get("emergency_contacts") or [],
         "poa_name": e_data.get("poa_name"),
@@ -74,11 +65,7 @@ def build_emergency_html(services, api_url: str) -> str:
     fc_id = (e_data.get("family_circle_id") or "").strip()
     dnr_doc = (e_data.get("dnr_document_path") or "").strip()
     if dnr_doc and care_recipient_user_id and fc_id:
-        base = api_url.rstrip("/")
-        doc_url = (
-            f"{base}/api/family_circles/{urllib.parse.quote(fc_id, safe='')}"
-            f"/care-recipients/{urllib.parse.quote(care_recipient_user_id, safe='')}/dnr-document"
-        )
+        doc_url = emergency_svc.get_dnr_document_url(fc_id, care_recipient_user_id)
         url_esc = html_mod.escape(doc_url, quote=True)
         html_parts.append(
             f'<div class="form-row"><div class="label">POLST / DNR DOCUMENT:</div>'
@@ -149,11 +136,10 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
             if job_id:
                 logger.info(f"Print job id: {job_id}")
         else:
-            r = subprocess.run(
-                ["start", "/p", path], capture_output=True, shell=True, timeout=10
-            )
-            if r.returncode != 0:
-                return False, "Print command failed", None
+            try:
+                os.startfile(path, "print")
+            except OSError as e:
+                return False, str(e), None
         msg = f"Sent to printer (job {job_id})" if job_id else "Sent to printer"
         return True, msg, job_id
     except subprocess.TimeoutExpired:
@@ -166,8 +152,8 @@ def _print_pdf_bytes(pdf_bytes: bytes) -> tuple[bool, str, str | None]:
 
 
 def _run_emergency_print(emergency_svc, status_label=None) -> None:
-    """Fetch PDF, print, update status_label if provided, schedule job polling when job_id and label."""
-    logger.info("Emergency print: fetching PDF...")
+    """Print PDF, update status_label if provided, schedule job polling when job_id and label."""
+
     if status_label is not None:
         status_label.text = "Printing..."
     result = emergency_svc.get_emergency_profile_pdf()

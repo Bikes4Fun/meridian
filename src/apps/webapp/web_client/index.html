@@ -29,9 +29,9 @@
                 </div>
                 <nav id="appNav" class="app-nav app-nav--tabs" aria-label="Main sections">
                     <div class="app-nav__primary">
-                        <button type="button" class="nav-btn active" data-page="health" data-target-id="pageHealth">Patient health data</button>
+                        <button type="button" class="nav-btn" data-page="health" data-target-id="pageHealth">Patient health data</button>
                         <button type="button" class="nav-btn" data-page="events" data-target-id="pageEvents">Events</button>
-                        <button type="button" class="nav-btn" data-page="settings" data-target-id="pageSettings">Settings</button>
+                        <button type="button" class="nav-btn active" data-page="settings" data-target-id="pageSettings">Settings</button>
                         <button type="button" class="nav-btn" data-page="mobile" data-target-id="pageMobile">Mobile</button>
                         <button type="button" class="nav-btn" data-page="info" data-target-id="pageInfo">Info</button>
                     </div>
@@ -40,7 +40,7 @@
         </header>
         <main class="app-main">
             <div class="app-page-stack">
-                <div id="pageHealth" class="page active">
+                <div id="pageHealth" class="page">
                     <!-- meridian-page-layout + meridian-inpage-nav: same pattern as Events, Mobile, Settings, Info -->
                     <div class="meridian-page-layout">
                         <nav class="meridian-inpage-nav" aria-label="Health page sections">
@@ -139,13 +139,12 @@
                         </div>
                     </div>
                 </div>
-                <div id="pageSettings" class="page">
+                <div id="pageSettings" class="page active">
                     <div class="meridian-page-layout">
                         <nav class="meridian-inpage-nav" aria-label="Settings sections">
                             <div class="meridian-inpage-nav__group">
                                 <p class="meridian-inpage-nav__heading">On this page</p>
                                 <ul class="meridian-inpage-nav__list">
-                                    <li><a class="meridian-inpage-nav__link" href="#settings-admin-preview">Admin preview note</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#settings-section-permissions">Members &amp; roles</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#settings-section-notifications">Notifications</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#settings-section-session">Session &amp; devices</a></li>
@@ -158,45 +157,57 @@
                         </nav>
                         <div class="meridian-page-main">
                     <h1 class="page-title">Settings</h1>
-                    <p class="muted page-lead">Family manager controls. Security and permissions blocks below are a <strong>single UI preview</strong> so product and engineering can see everything in one place; controls are not wired to the server yet.</p>
+                    <p class="muted page-lead">Family manager controls for this Family Circle. Any control marked with <strong>*</strong> is not implemented yet.</p>
 
                     <div class="meridian-fold-stack">
-                    <details id="settings-admin-preview" class="admin-ui-preview-note card card--pad meridian-fold settings-section--page-anchor" open role="note">
-                        <summary class="meridian-fold__summary">Admin &amp; security — layout preview</summary>
-                        <div class="meridian-fold__body">
-                        <p class="admin-ui-preview-note__body">Nothing in this column persists. Use it to review fields, tables, and flows before implementing APIs, audit storage, roles on <code class="admin-code">user_family_circle</code>, backup encryption, Pi TLS, and delete cascades.</p>
-                        <ul class="admin-preview-checklist">
-                            <li>HTTP security headers &amp; CSP (when serving HTML/JS)</li>
-                            <li>Rate limits on login and sensitive POSTs</li>
-                            <li>Secrets &amp; key rotation (session secret, backup encryption, chat tokens)</li>
-                            <li>Static/code analysis (e.g. CodeQL) and dependency updates</li>
-                        </ul>
-                        </div>
-                    </details>
-
-                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor">
+                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor" open>
                         <summary class="meridian-fold__summary">Members &amp; roles</summary>
                         <div class="meridian-fold__body">
-                            <p class="muted page-lead page-lead--tight">Who belongs to this family circle, their role, and (later) fine-grained write access. Backend: <code class="admin-code">user_family_circle</code> + role column + invite tokens.</p>
+                            <p class="muted page-lead page-lead--tight">Manage members in this Family Circle, role presets, and explicit permission keys.</p>
 
                             <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">Invite someone</h3>
+                                <h3 class="page-section-title page-section-title--minor">Live members and permissions</h3>
+                                <p class="muted admin-subsection__lead">Role presets: <strong>Admin</strong>, <strong>Family</strong>, <strong>Other</strong>. Manual permission edits do not auto-change the selected role.</p>
+                                <div class="admin-form-row">
+                                    <button type="button" class="btn-health-secondary" id="adminPermissionsRefreshBtn">Refresh</button>
+                                </div>
+                                <p id="adminPermissionsStatus" class="muted admin-subsection__lead"></p>
+                                <div class="admin-table-wrap">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">User ID</th>
+                                                <th scope="col">Access type</th>
+                                                <th scope="col">Permissions</th>
+                                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminPermissionsTableBody">
+                                            <tr><td colspan="5" class="muted">Open Settings to load live data.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="admin-subsection">
+                                <h3 class="page-section-title page-section-title--minor">Invite members *</h3>
                                 <div class="admin-form-row">
                                     <label class="field-label" for="adminInviteEmail">Email</label>
                                     <input type="email" id="adminInviteEmail" name="adminInviteEmail" autocomplete="off" placeholder="caregiver@example.com" disabled>
                                     <label class="field-label" for="adminInviteRole">Role</label>
                                     <select id="adminInviteRole" name="adminInviteRole" disabled aria-disabled="true">
-                                        <option>Primary caregiver</option>
-                                        <option>Family member</option>
-                                        <option>View only</option>
+                                        <option>Admin</option>
+                                        <option>Family</option>
+                                        <option>Other</option>
                                     </select>
-                                    <button type="button" class="btn-health-secondary" disabled title="Preview only">Send invite</button>
+                                    <button type="button" class="btn-health-secondary" disabled title="Not implemented yet">Send invite *</button>
                                 </div>
                             </div>
 
                             <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">Pending invitations</h3>
-                                <p class="muted admin-subsection__lead">Invites that are sent but not yet accepted. Resend or revoke before they join.</p>
+                                <h3 class="page-section-title page-section-title--minor">Pending invitations *</h3>
+                                <p class="muted admin-subsection__lead">Invite workflow is not implemented yet. This list will show real pending invites once wired.</p>
                                 <div class="admin-table-wrap">
                                     <table class="admin-table">
                                         <thead>
@@ -208,129 +219,10 @@
                                                 <th scope="col"><span class="visually-hidden">Actions</span></th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="adminInviteTableBody">
                                             <tr>
-                                                <td class="muted">aide.wellness@example.com</td>
-                                                <td>Family member</td>
-                                                <td class="muted">Mar 28, 2026</td>
-                                                <td class="muted">Apr 11, 2026</td>
-                                                <td>
-                                                    <button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Resend</button>
-                                                    <button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Revoke</button>
-                                                </td>
+                                                <td colspan="5" class="muted">No invite data yet *</td>
                                             </tr>
-                                            <tr>
-                                                <td class="muted">cousin.sam@example.com</td>
-                                                <td>View only</td>
-                                                <td class="muted">Apr 1, 2026</td>
-                                                <td class="muted">Apr 15, 2026</td>
-                                                <td>
-                                                    <button type="button" class="btn-health-secondary admin-table-action" title="Preview only">Resend</button>
-                                                    <button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Revoke</button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">People in this circle</h3>
-                                <div class="admin-table-wrap">
-                                    <table class="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Name</th>
-                                                <th scope="col">Email</th>
-                                                <th scope="col">Role</th>
-                                                <th scope="col">Access expires</th>
-                                                <th scope="col">Last active</th>
-                                                <th scope="col"><span class="visually-hidden">Actions</span></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>You <span class="admin-pill">Signed in</span></td>
-                                                <td class="muted">you@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" disabled aria-label="Your role" title="Preview only">
-                                                        <option selected>Primary caregiver</option>
-                                                    </select>
-                                                </td>
-                                                <td class="muted">—</td>
-                                                <td class="muted">Now</td>
-                                                <td>—</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Jamie Lee</td>
-                                                <td class="muted">jamie@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" aria-label="Role for Jamie Lee" title="Preview only">
-                                                        <option>Primary caregiver</option>
-                                                        <option selected>Family member</option>
-                                                        <option>View only</option>
-                                                    </select>
-                                                </td>
-                                                <td class="muted">—</td>
-                                                <td class="muted">2 days ago</td>
-                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Taylor Nguyen <span class="admin-pill admin-pill--temp">Temporary</span></td>
-                                                <td class="muted">taylor.homehealth@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" aria-label="Role for Taylor Nguyen" title="Preview only">
-                                                        <option>Primary caregiver</option>
-                                                        <option selected>Family member</option>
-                                                        <option>View only</option>
-                                                    </select>
-                                                </td>
-                                                <td><span class="admin-expiry">Apr 30, 2026</span></td>
-                                                <td class="muted">Today</td>
-                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Alex Kim</td>
-                                                <td class="muted">alex@example.com</td>
-                                                <td>
-                                                    <select class="admin-table-select" aria-label="Role for Alex Kim" title="Preview only">
-                                                        <option>Primary caregiver</option>
-                                                        <option>Family member</option>
-                                                        <option selected>View only</option>
-                                                    </select>
-                                                </td>
-                                                <td class="muted">—</td>
-                                                <td class="muted">1 week ago</td>
-                                                <td><button type="button" class="btn-inline btn-delete admin-table-action" title="Preview only">Remove</button></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p class="muted admin-footnote"><strong>Time-limited access:</strong> set an end date for aides or short-term helpers; access should revoke automatically on the server when implemented.</p>
-                            </div>
-
-                            <div class="admin-subsection">
-                                <h3 class="page-section-title page-section-title--minor">Role capabilities (target policy)</h3>
-                                <p class="muted admin-subsection__lead">Reference matrix for gating routes; implement with server-side checks, not UI alone.</p>
-                                <div class="admin-table-wrap">
-                                    <table class="admin-table admin-cap-matrix">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Capability</th>
-                                                <th scope="col">Primary caregiver</th>
-                                                <th scope="col">Family member</th>
-                                                <th scope="col">View only</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr><td>View PHI (meds, ICE, calendar)</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-                                            <tr><td>Edit medications &amp; ICE</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
-                                            <tr><td>Calendar &amp; events write</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
-                                            <tr><td>Check-ins &amp; location</td><td>Yes</td><td>Yes</td><td>View</td></tr>
-                                            <tr><td>Kiosk emergency alert</td><td>Yes</td><td>Configurable</td><td>No</td></tr>
-                                            <tr><td>Export audit log / full export</td><td>Yes</td><td>No</td><td>No</td></tr>
-                                            <tr><td>Delete family data</td><td>Yes</td><td>No</td><td>No</td></tr>
-                                            <tr><td>Manage members &amp; roles</td><td>Yes</td><td>No</td><td>No</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -759,7 +651,7 @@
                     </section>
                     <section id="chatSection" class="card card--pad card--secondary mobile-section--page-anchor">
                         <h2 class="page-section-title page-section-title--minor">Chat</h2>
-                        <p class="muted page-lead page-lead--tight">Opens in a separate window.</p>
+                        <p class="muted page-lead page-lead--tight">Live voice with the person at home uses the kiosk speakerphone (Twilio Voice JS / WebRTC). Use the message field below for text.</p>
                         <div id="contactsSection">
                             <div id="contactsGrid"></div>
                         </div>
@@ -774,16 +666,533 @@
                     </div>
                 </div>
                 <div id="pageInfo" class="page page--info">
-                    <iframe class="info-doc-frame" src="/info.html?embed=1" title="Meridian user guide"></iframe>
+      <div class="meridian-page-layout">
+        <nav class="meridian-inpage-nav" aria-label="Info page sections">
+        <div class="meridian-inpage-nav__group">
+          <p class="meridian-inpage-nav__heading">Overview</p>
+          <ul class="meridian-inpage-nav__list">
+            <li><a class="meridian-inpage-nav__link" href="#what-is-meridian">What is Meridian?</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#family-circles">Family Circles</a></li>
+          </ul>
+        </div>
+        <div class="meridian-inpage-nav__group">
+          <p class="meridian-inpage-nav__heading">Kiosk</p>
+          <ul class="meridian-inpage-nav__list">
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-nav">Navigation</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-home">Home</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-schedule">Schedule</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-family">Family</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-chat">Chat</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-health">Health</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-emergency">Emergency</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#kiosk-settings">Settings</a></li>
+          </ul>
+        </div>
+        <div class="meridian-inpage-nav__group">
+          <p class="meridian-inpage-nav__heading">Web Dashboard</p>
+          <ul class="meridian-inpage-nav__list">
+            <li><a class="meridian-inpage-nav__link" href="#web-health">Health tab</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#web-ice">ICE / POLST editor</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#web-events">Events</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#web-settings">Settings</a></li>
+          </ul>
+        </div>
+        <div class="meridian-inpage-nav__group">
+          <p class="meridian-inpage-nav__heading">Mobile</p>
+          <ul class="meridian-inpage-nav__list">
+            <li><a class="meridian-inpage-nav__link" href="#mobile-checkin">Check-in</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#where-is-everyone">Where is everyone?</a></li>
+          </ul>
+        </div>
+        <div class="meridian-inpage-nav__group">
+          <p class="meridian-inpage-nav__heading">Reference</p>
+          <ul class="meridian-inpage-nav__list">
+            <li><a class="meridian-inpage-nav__link" href="#named-locations">Named locations</a></li>
+            <li><a class="meridian-inpage-nav__link" href="#data-privacy">Data &amp; privacy</a></li>
+          </ul>
+        </div>
+        </nav>
+      <div class="meridian-page-main">
+    
+        <!-- OVERVIEW -->
+        <div class="doc-section" id="what-is-meridian">
+          <div class="section-card">
+            <div class="section-label sl-ref">Overview</div>
+            <h1>What is Meridian?</h1>
+            <p class="page-lead">A home system for people living with cognitive decline and the families who support them.</p>
+            <p>Meridian is built around a <strong>kiosk</strong> — a large-format touchscreen meant to stay in one place, stay visible, and stay on. The person at home uses it to check the time and schedule, see where family members are, read messages, manage medications, and reach emergency information. No login required.</p>
+            <p>Family members use the <strong>web dashboard</strong> to manage shared data: events, medications, and the emergency/ICE profile. The <strong>mobile app</strong> (iOS, in development) handles location check-ins and responses to "Where is everyone?" requests.</p>
+            <div class="notice n-warn">
+              <span class="ni">⚠️</span>
+              <div class="nb"><strong>Early access</strong>Authentication and encryption are not yet production-hardened. Use test or demo data only unless your administrator has confirmed the deployment is ready.</div>
+            </div>
+            <h2>The three surfaces</h2>
+            <table>
+              <thead><tr><th>Surface</th><th>Who uses it</th><th>What it does</th></tr></thead>
+              <tbody>
+                <tr><td>Kiosk</td><td>The care recipient, at home</td><td>Time, schedule, family locations, medications, chat, emergency info. No login.</td></tr>
+                <tr><td>Web dashboard</td><td>Family members, caregivers</td><td>Manage events, medications, the ICE/POLST profile, emergency alerts.</td></tr>
+                <tr><td>Mobile app</td><td>Family members</td><td>Check-in with location, respond to check-in requests. <span class="badge b-soon">In progress</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="family-circles">
+          <div class="section-card">
+            <div class="section-label sl-ref">Overview</div>
+            <h1>Family Circles</h1>
+            <p class="page-lead">All data in Meridian belongs to a Family Circle — visible only to people you've invited.</p>
+            <p>Each circle has one <strong>care recipient</strong>. Everyone else joins with a role controlling what they can see and change. The kiosk is pre-authenticated to the circle — the care recipient never signs in.</p>
+          </div>
+        </div>
+    
+        <!-- KIOSK -->
+        <div class="doc-section" id="kiosk-nav">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Navigation</h1>
+            <p class="page-lead">A top bar for main screens and a footer bar with secondary screens and the always-visible Emergency button.</p>
+            <div class="nav-diagram">
+              <div class="nav-row">
+                <span class="nav-row-label">Top</span>
+                <span class="nav-chip">Home</span>
+                <span class="nav-chip">Schedule</span>
+                <span class="nav-chip">Family</span>
+                <span class="nav-chip">Chat</span>
+              </div>
+              <div class="nav-row">
+                <span class="nav-row-label">Footer</span>
+                <span class="nav-chip">Settings</span>
+                <span class="nav-chip">Health</span>
+                <span class="nav-chip emerg">⚠ Emergency</span>
+              </div>
+            </div>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-home">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Home screen</h1>
+            <p class="page-lead">The default screen. Shows the time, date, upcoming events, and today's medications.</p>
+            <ul>
+              <li><strong>Clock</strong> — large-format current time</li>
+              <li><strong>Date and time of day</strong> — morning / afternoon / evening, for orientation</li>
+              <li><strong>Up Next</strong> — the next upcoming calendar event</li>
+              <li><strong>Today's medications</strong> — doses for the current time window, each with a Mark taken button</li>
+            </ul>
+            <p>Marking a dose taken refreshes the screen automatically.</p>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-schedule">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Schedule screen</h1>
+            <p class="page-lead">A full view of upcoming events from the shared family calendar.</p>
+            <p>Events are listed in chronological order. Managed from the web dashboard — changes appear on the kiosk the next time the screen loads.</p>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-family">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Family screen</h1>
+            <p class="page-lead">Shows where family members are. Includes the "Where is everyone?" button.</p>
+            <p>Displays a map with each family member's most recent check-in. If the check-in falls within a <a href="#named-locations">named location</a>, the kiosk shows the label (e.g. <em>"Anne is at work downtown"</em>) instead of a pin.</p>
+            <p>Tapping <strong>Where is everyone?</strong> sends a check-in request to all family members' phones.</p>
+            <div class="notice n-tip">
+              <span class="ni">💡</span>
+              <div class="nb">The kiosk's own location can be named — so the care recipient sees <em>"You are at your home on Maple Street"</em> rather than a pin at their address.</div>
+            </div>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-chat">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Chat screen</h1>
+            <p class="page-lead">Text messages and live voice on the kiosk.</p>
+            <p>Lists family contacts. The person at home hears and speaks only through the kiosk browser (Twilio Voice JS / WebRTC speakerphone), not a separate phone line. Twilio must reach your app over the public internet (use ngrok in local development; a real HTTPS URL in production). The web dashboard Mobile tab is for text; voice media runs through the kiosk client.</p>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-health">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Health screen</h1>
+            <p class="page-lead">Full medication schedule with Mark taken buttons.</p>
+            <p>Medications are grouped by time of day (morning, afternoon, evening) and PRN (as needed). The list is managed from the web dashboard — changes sync immediately.</p>
+            <div class="notice n-tip">
+              <span class="ni">💡</span>
+              <div class="nb">Doses can also be marked taken from the Home screen during the relevant time window, without navigating here.</div>
+            </div>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-emergency">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Emergency screen</h1>
+            <p class="page-lead">The care recipient's full emergency profile. Accessible any time via the red Emergency button in the footer.</p>
+            <p>Displays everything from the ICE profile maintained in the web dashboard:</p>
+            <ul>
+              <li>Name, date of birth, DNR / code status</li>
+              <li>Conditions and allergies</li>
+              <li>Current medications</li>
+              <li>Emergency contacts (primary and secondary)</li>
+              <li>Medical proxy and power of attorney (name and phone)</li>
+              <li>Notes</li>
+              <li><strong>Open document</strong> — if a POLST or DNR file has been uploaded</li>
+            </ul>
+            <p>A <strong>Print</strong> button generates a formatted emergency PDF. The kiosk may auto-print when an alert is active, depending on configuration.</p>
+            <div class="notice n-warn">
+              <span class="ni">⚠️</span>
+              <div class="nb"><strong>Keep it current</strong>Review medications and code status after any medical appointment or change in directives.</div>
+            </div>
+            <h2>Emergency alert mode</h2>
+            <p>Activating an emergency alert from the web dashboard (Settings → Kiosk &amp; TV) switches the kiosk to this screen. Canceling it from the dashboard returns the kiosk to normal. Use only in a real emergency.</p>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="kiosk-settings">
+          <div class="section-card">
+            <div class="section-label sl-kiosk">Kiosk</div>
+            <h1>Settings screen</h1>
+            <p class="page-lead">Kiosk-side settings, including inline medication management.</p>
+            <p>Medications can be added, edited, or removed from the same list that appears on the Health screen and in the emergency profile.</p>
+            <div class="notice n-soon">
+              <span class="ni">🕐</span>
+              <div class="nb"><strong>In design</strong>The web dashboard <strong>Settings</strong> tab includes a layout for <strong>supervised kiosk mode</strong> (home + emergency only), per-screen <strong>allowed hours</strong>, idle/PIN, and transport notes. Those controls are not applied on the kiosk until the server implements them.</div>
+            </div>
+          </div>
+        </div>
+    
+        <!-- WEB DASHBOARD -->
+        <div class="doc-section" id="web-health">
+          <div class="section-card">
+            <div class="section-label sl-web">Web Dashboard</div>
+            <h1>Health tab</h1>
+            <p class="page-lead">Main entry point for health data — POLST profile, medications, and the kiosk emergency alert.</p>
+            <p>Sections such as <strong>Today&rsquo;s medications</strong> and <strong>Medications</strong> use <strong>folding panels</strong>: click the section title to open or close. The same <code>meridian-fold</code> pattern is used on the Settings admin blocks.</p>
+            <ul>
+              <li><strong>POLST &amp; emergency (ICE)</strong> — link to the ICE profile editor</li>
+              <li><strong>Kiosk emergency alert</strong> — activate or cancel the alert on the kiosk</li>
+              <li><strong>Medications</strong> — inline add/edit/remove, and mark doses taken</li>
+              <li><strong>Medication history</strong> — log of recorded doses <span class="badge b-soon">Coming soon</span></li>
+            </ul>
+            <h2>Managing medications</h2>
+            <p>The same list that appears on the kiosk Health screen and in the emergency profile. Changes sync immediately.</p>
+            <p>To remove medications: check the box next to each one, then choose <strong>Remove selected</strong>. <strong>Select all</strong> selects every row; clicking again clears the selection.</p>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="web-ice">
+          <div class="section-card">
+            <div class="section-label sl-web">Web Dashboard</div>
+            <h1>ICE / POLST editor</h1>
+            <p class="page-lead">Open from Health → "Open emergency &amp; ICE profile".</p>
+    
+            <h2>Basic info</h2>
+            <table>
+              <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Name</td><td></td></tr>
+                <tr><td>Date of birth</td><td></td></tr>
+                <tr><td>DNR</td><td>Checkbox — checked means do not resuscitate</td></tr>
+                <tr><td>Notes</td><td>Free-form clinical or care context</td></tr>
+              </tbody>
+            </table>
+    
+            <h2>Medical proxy &amp; POA</h2>
+            <p>Name and phone for both the medical proxy and power of attorney. Both appear on the kiosk Emergency screen.</p>
+    
+            <h2>Emergency contacts</h2>
+            <p>Each contact has a name, phone, relationship, and priority: <strong>Primary emergency</strong>, <strong>Secondary emergency</strong>, or <strong>Not on ICE list</strong>. Only primary and secondary contacts appear on the Emergency screen. Use <strong>Add emergency contact</strong> to add a row; remove with the Remove button. Saved with <strong>Save profile</strong>.</p>
+    
+            <h2>Conditions, allergies &amp; medications</h2>
+            <p>Conditions and allergies are read-only (pulled from the medical record). The medication list is editable inline. Save with <strong>Save profile</strong>.</p>
+    
+            <h2>Photo &amp; DNR document</h2>
+            <p>Two separate uploads, each with its own upload button. Both save immediately on file selection — no need to hit Save profile.</p>
+            <ul>
+              <li><strong>Care recipient photo</strong> — shown on the kiosk Emergency screen</li>
+              <li><strong>DNR or POLST file</strong> (PDF, image, DOC, DOCX) — after upload, a <strong>View uploaded document</strong> link appears here and an <strong>Open document</strong> button appears on the kiosk Emergency screen</li>
+            </ul>
+    
+            <div class="notice n-tip">
+              <span class="ni">💡</span>
+              <div class="nb"><strong>Saving</strong>Use <strong>Save profile</strong> for name, DOB, DNR status, notes, proxy/POA, contacts, and medications together. Photo and document uploads save on their own immediately.</div>
+            </div>
+    
+            <h2>Print emergency document</h2>
+            <p><strong>Print Emergency Document</strong> opens a formatted PDF summary in a new tab. Use your browser's print dialog to print or save as PDF.</p>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="web-events">
+          <div class="section-card">
+            <div class="section-label sl-web">Web Dashboard</div>
+            <h1>Events tab</h1>
+            <p class="page-lead">Manage the shared family calendar. Events appear on the kiosk Home and Schedule screens.</p>
+            <div class="notice n-soon">
+              <span class="ni">🕐</span>
+              <div class="nb"><strong>In progress</strong>The full events interface is being built out.</div>
+            </div>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="web-settings">
+          <div class="section-card">
+            <div class="section-label sl-web">Web Dashboard</div>
+            <h1>Settings tab</h1>
+            <p class="page-lead">Account, security, and circle configuration for the family manager. Use the <strong>On this page</strong> menu to jump between sections.</p>
+            <p>Each major block is a <strong>folding panel</strong> (same pattern as <strong>Patient health data</strong>): click the title bar to expand or collapse. Deep links from the sidebar open the matching panel.</p>
+            <div class="notice n-tip">
+              <span class="ni">💡</span>
+              <div class="nb"><strong>UI preview</strong>Most security and admin blocks are visible so you can review the full plan in one place. Saving, invites, audit export, and kiosk rules are <strong>not active</strong> until backend work ships.</div>
+            </div>
+            <table>
+              <thead><tr><th>Section</th><th>What it covers</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>Admin preview note</td><td>Explains preview vs live; ops checklist (headers, rate limits, secrets)</td><td><span class="badge b-soon">Reference</span></td></tr>
+                <tr><td>Members &amp; roles</td><td>Invites, <strong>pending invitations</strong> (resend/revoke), active members, roles, <strong>time-limited access</strong> for aides, role capability matrix</td><td><span class="badge b-soon">UI only</span></td></tr>
+                <tr><td>Notifications &amp; quiet hours</td><td><strong>Routing by role</strong> (who gets push/email for emergencies, meds, check-ins, future geofence); <strong>quiet hours</strong> for non-urgent noise</td><td><span class="badge b-soon">UI only</span></td></tr>
+                <tr><td>Session &amp; sign-in</td><td>Session length, idle timeout, active devices, revoke sessions</td><td><span class="badge b-soon">Partial / UI only</span></td></tr>
+                <tr><td>PHI access &amp; change log</td><td>Filterable audit table, retention notes, CSV export (planned)</td><td><span class="badge b-soon">UI only</span></td></tr>
+                <tr><td>Data export, backups &amp; deletion</td><td>Family export, backup encryption options, <strong>re-auth</strong> and <strong>two-person rule</strong> before export/delete, destructive delete zone</td><td><span class="badge b-soon">UI only</span></td></tr>
+                <tr><td>Kiosk, TV &amp; transport</td><td><strong>Supervised vs unsupervised</strong> mode, <strong>per-screen allowed hours</strong>, idle/PIN, HTTPS-on-Pi note, <strong>kiosk emergency alert</strong> (live)</td><td><span class="badge b-soon">Mixed</span></td></tr>
+                <tr><td>Medications</td><td>Shortcut to the same medication editor as the Health tab</td><td><span class="badge b-live">Available</span></td></tr>
+              </tbody>
+            </table>
+            <h2>Supervised kiosk mode</h2>
+            <p>When enabled (future), the person at home would see only what you consider safe—typically <strong>Home</strong> and <strong>Emergency</strong>—to reduce confusion or unsafe browsing at night. Unsupervised mode respects the per-screen toggles and time windows instead.</p>
+            <h2>Per-screen hours</h2>
+            <p>Optional windows (for example, hide the family map after 9&nbsp;pm) are configured per screen. Times are intended to be evaluated on the kiosk in its local timezone.</p>
+            <h2>Invites &amp; temporary access</h2>
+            <p><strong>Pending invitations</strong> lists email invites that have not been accepted; you can resend or revoke them. <strong>Access expires</strong> on a member row is for short-term helpers (e.g. home health); access should end automatically on that date when implemented.</p>
+            <h2>Exports, deletes, and two-person rule</h2>
+            <p>Full family export and permanent delete are high-risk. The Settings layout includes options to require <strong>password re-entry</strong> and, optionally, a <strong>second primary caregiver</strong> to approve before an export is generated or data is destroyed.</p>
+            <h2>Notification routing &amp; quiet hours</h2>
+            <p>Separate from roles for <em>editing</em> data: you can define which roles receive <strong>push</strong> or <strong>email</strong> for emergencies, medication digests, check-in requests, and (later) geofence events. <strong>Quiet hours</strong> delay routine messages; true emergencies may still break through per policy.</p>
+          </div>
+        </div>
+    
+        <!-- MOBILE -->
+        <div class="doc-section" id="mobile-checkin">
+          <div class="section-card">
+            <div class="section-label sl-mobile">Mobile App</div>
+            <h1>Check-in &amp; location</h1>
+            <p class="page-lead">How family members share their location so it appears on the kiosk Family screen.</p>
+            <p>A check-in submits the family member's current location, which is matched against any <a href="#named-locations">named locations</a> set up for the circle. Check-ins can include an optional notes field that appears alongside the location on the kiosk.</p>
+            <div class="notice n-soon">
+              <span class="ni">🕐</span>
+              <div class="nb"><strong>iOS app in development</strong>The check-in flow is currently available via the web dashboard's mobile-optimized view.</div>
+            </div>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="where-is-everyone">
+          <div class="section-card">
+            <div class="section-label sl-mobile">Mobile App</div>
+            <h1>Where is everyone?</h1>
+            <p class="page-lead">Tapping this on the kiosk Family screen sends a push notification to family members asking them to check in.</p>
+            <ol class="steps">
+              <li>The kiosk user taps <strong>Where is everyone?</strong> on the Family screen.</li>
+              <li>A push notification goes out to all participating family members.</li>
+              <li>The next time they open the app, they can accept or decline. <span class="badge b-soon">In progress</span></li>
+              <li>If they accept, their location is submitted. They can also add a short note. <span class="badge b-soon">Video messages planned</span></li>
+              <li>Their location appears on the kiosk Family screen.</li>
+            </ol>
+            <h2>Rules &amp; limits</h2>
+            <ul>
+              <li>Requests expire after 24 hours if unanswered <span class="badge b-soon">Coming</span></li>
+              <li>Only one active request per family member at a time <span class="badge b-soon">Coming</span></li>
+              <li>Max request frequency is configurable <span class="badge b-soon">Coming</span></li>
+              <li>Location sharing is always opt-in — family members can decline any request</li>
+            </ul>
+            <div class="notice n-tip">
+              <span class="ni">💡</span>
+              <div class="nb">Push notifications require APNs configuration on the server. Without it, requests are logged but not delivered. Contact your administrator if notifications aren't arriving.</div>
+            </div>
+          </div>
+        </div>
+    
+        <!-- REFERENCE -->
+        <div class="doc-section" id="named-locations">
+          <div class="section-card">
+            <div class="section-label sl-ref">Reference</div>
+            <h1>Named locations</h1>
+            <p class="page-lead">Give common places a plain-language label. When a check-in falls within the location's radius, the kiosk shows the label instead of a map pin.</p>
+            <p>Location matching uses a haversine distance calculation. The nearest matching location wins when areas overlap. The default radius is 150 meters; each location's radius is configurable.</p>
+            <div class="notice n-soon">
+              <span class="ni">🕐</span>
+              <div class="nb"><strong>Editor in progress</strong>Server-side matching is live. Once the editor ships, locations you define apply to new check-ins immediately.</div>
+            </div>
+            <h2>How families write labels</h2>
+            <p>Labels can be brief or descriptive — the goal is that whoever reads it, including someone who may be disoriented, immediately understands where the person is and that it's somewhere expected.</p>
+            <ul>
+              <li><em>"Anne is at work downtown"</em></li>
+              <li><em>"Evan is at High School in Colorado Springs"</em></li>
+              <li><em>"Dave's Office"</em></li>
+              <li><em>"You are at your home on Maple Street in Denver"</em> — for the kiosk's own location</li>
+            </ul>
+          </div>
+        </div>
+    
+        <div class="doc-section" id="data-privacy">
+          <div class="section-card">
+            <div class="section-label sl-ref">Reference</div>
+            <h1>Data &amp; privacy</h1>
+            <p class="page-lead">What Meridian stores, who can see it, and what's protected.</p>
+            <h2>Circle isolation</h2>
+            <p>All data is scoped to your Family Circle. No other users or circles can access it. The kiosk is pre-authenticated — no credentials are ever exposed to the care recipient.</p>
+            <h2>Location data</h2>
+            <p>Location is submitted only when a family member actively responds to a check-in. No passive background tracking. Location history is not stored by default.</p>
+            <h2>Health &amp; medical data</h2>
+            <p>Medications, conditions, allergies, and ICE documents are stored within your circle only. Uploaded POLST/DNR documents can be deleted at any time from the ICE editor.</p>
+            <h2>Transport</h2>
+            <p>All data is transmitted over TLS. Uploaded documents use access-controlled storage links.</p>
+            <div class="notice n-warn">
+              <span class="ni">⚠️</span>
+              <div class="nb"><strong>Not yet production-hardened</strong>Full encryption at rest, authentication hardening, and compliance certifications are in progress. Do not store real private or medical data unless your administrator has confirmed the deployment is ready.</div>
+            </div>
+          </div>
+        </div>
+    
+      </div>
+    </div>
+                </div>
+                <div id="pageIce" class="page ice-pending">Loading…</div>
+                <div id="iceApp" class="ice-app" hidden>
+                    <header class="ice-masthead">
+                        <a href="/" class="app-link ice-back">← Dashboard</a>
+                        <h1 class="ice-title">Emergency &amp; ICE profile</h1>
+                        <p class="muted ice-sub">Information shown on the kiosk emergency screen and in the printable document.</p>
+                    </header>
+            
+                    <div id="iceBanner" class="ice-banner" role="status" hidden></div>
+            
+                    <div class="ice-actions-top">
+                        <a id="icePdfLink" class="btn-add" href="#" target="_blank" rel="noopener">Print emergency document (PDF)</a>
+                    </div>
+            
+                    <form id="iceForm" class="ice-form">
+                        <input type="hidden" id="iceCareRecipientId" name="care_recipient_user_id" value="">
+            
+                        <section class="card card--pad ice-section">
+                            <h2 class="page-section-title">Care recipient</h2>
+                            <label class="field-label" for="iceName">Full name</label>
+                            <input type="text" id="iceName" name="name" autocomplete="name" required>
+            
+                            <label class="field-label" for="iceDob">Date of birth</label>
+                            <input type="date" id="iceDob" name="dob">
+            
+                            <div class="ice-toggle">
+                                <input type="checkbox" id="iceDnr" name="dnr">
+                                <label for="iceDnr">Do not resuscitate (DNR) on file</label>
+                            </div>
+            
+                            <label class="field-label" for="iceNotes">Notes for responders</label>
+                            <textarea id="iceNotes" name="notes" rows="3" class="ice-textarea" placeholder="Other instructions, device IDs, etc."></textarea>
+                        </section>
+            
+                        <section class="card card--pad ice-section">
+                            <h2 class="page-section-title">Medical proxy &amp; POA</h2>
+                            <label class="field-label" for="iceProxyName">Medical proxy name</label>
+                            <input type="text" id="iceProxyName" name="proxy_name" autocomplete="name">
+            
+                            <label class="field-label" for="iceProxyPhone">Medical proxy phone</label>
+                            <input type="tel" id="iceProxyPhone" name="proxy_phone" autocomplete="tel">
+            
+                            <label class="field-label" for="icePoaName">Power of attorney name</label>
+                            <input type="text" id="icePoaName" name="poa_name" autocomplete="name">
+            
+                            <label class="field-label" for="icePoaPhone">Power of attorney phone</label>
+                            <input type="tel" id="icePoaPhone" name="poa_phone" autocomplete="tel">
+                        </section>
+            
+                        <section class="card card--pad ice-section">
+                            <h2 class="page-section-title">Emergency contacts (ICE)</h2>
+                            <p class="muted ice-hint">Shown on the emergency flow when marked primary or secondary. Saved with <strong>Save profile</strong> (same as medications).</p>
+                            <div id="iceEmergencyContacts" class="ice-emergency-contacts" aria-live="polite"></div>
+                            <button type="button" class="btn-add ice-add-ec-btn" id="iceAddEmergencyContactBtn">Add emergency contact</button>
+                        </section>
+            
+                        <section class="card card--pad ice-section ice-section--uploads">
+                            <h2 class="page-section-title">Photo &amp; DNR document</h2>
+                            <p class="muted ice-hint">Choose a file, then use the upload button for each item. Uploaded photo and DNR/POLST files are used by kiosk emergency and ICE views immediately.</p>
+                            <label class="field-label" for="icePhoto">Care recipient photo</label>
+                            <input type="file" id="icePhoto" accept="image/*">
+                            <button type="button" class="btn-inline" id="icePhotoUploadBtn" disabled>Upload photo</button>
+                            <p id="icePhotoName" class="muted ice-file-name"></p>
+                            <div class="ice-preview-wrap">
+                                <img id="icePhotoPreview" class="ice-photo-preview" alt="" hidden>
+                            </div>
+            
+                            <label class="field-label" for="iceDnrDoc">DNR or POLST file (PDF, image, DOC, or DOCX)</label>
+                            <input type="file" id="iceDnrDoc" accept=".pdf,.doc,.docx,image/*">
+                            <button type="button" class="btn-inline" id="iceDnrUploadBtn" disabled>Upload document</button>
+                            <p id="iceDnrDocName" class="muted ice-file-name"></p>
+                            <p class="ice-dnr-doc-view-wrap"><a id="iceDnrDocLink" class="muted" href="#" target="_blank" rel="noopener" hidden>View uploaded document</a></p>
+                        </section>
+            
+                        <section class="card card--pad ice-section">
+                            <h2 class="page-section-title">Conditions, allergies &amp; medications</h2>
+                            <p class="muted ice-hint">Conditions and allergies are display-only here for now. Edit all medications inline below; use <strong>Save profile</strong> to apply meds, contacts, and the rest together.</p>
+                            <div class="ice-readonly-block">
+                                <h3 class="ice-readonly-title">Conditions</h3>
+                                <p id="iceConditions" class="ice-readonly-text">—</p>
+                            </div>
+                            <div class="ice-readonly-block">
+                                <h3 class="ice-readonly-title">Allergies</h3>
+                                <ul id="iceAllergies" class="ice-readonly-list"></ul>
+                            </div>
+                            <div class="ice-readonly-block ice-meds-block">
+                                <h3 class="ice-readonly-title">Medications</h3>
+                                <div class="ice-med-toolbar-top">
+                                    <button type="button" class="btn-inline ice-med-select-all-btn" id="iceMedsSelectAllBtn">Select all</button>
+                                    <label class="ice-med-autosave-label">
+                                        <input type="checkbox" id="iceMedsAutoSave" class="ice-med-autosave-cb">
+                                        Save as you go</label>
+                                </div>
+                                <div id="iceMedications" class="ice-medications-editor" aria-live="polite"></div>
+                                <div class="ice-med-editor-actions ice-med-block-actions">
+                                    <button type="button" class="btn-add ice-add-med-btn" id="iceAddMedBtn">Add medication</button>
+                                    <button type="button" class="btn-inline btn-delete ice-med-delete-selected-btn" id="iceMedsDeleteSelectedBtn">
+                                        <span class="ice-med-delete-selected-btn__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></span>
+                                        <span>Delete selected</span></button>
+                                </div>
+                            </div>
+                        </section>
+            
+                        <section class="card card--pad ice-section ice-section--log">
+                            <h2 class="page-section-title">Change history</h2>
+                            <p class="muted ice-hint">Last five changes with who and when — backend not wired yet.</p>
+                            <ul id="iceVersionLog" class="ice-version-log">
+                                <li class="muted">No history yet.</li>
+                            </ul>
+                        </section>
+            
+                        <div class="ice-form-actions">
+                            <button type="submit" class="btn-add" id="iceSaveBtn">Save profile</button>
+                        </div>
+                    </form>
+            
+                    <div id="iceStatus" class="status-stack ice-status" role="status" aria-live="polite"></div>
                 </div>
             </div>
 
             <div id="status" class="status-stack" role="status" aria-live="polite"></div>
+            <p class="muted" style="margin-top:16px;">
+                <a href="/privacy.html" class="app-link">Privacy Policy</a>
+                <span aria-hidden="true"> · </span>
+                <a href="/terms.html" class="app-link">Terms and Conditions</a>
+            </p>
         </main>
     </div>
 
-    <script src="/meridian_api_base.js"></script>
-    <script src="/meridian_medications_inline.js"></script>
     <script src="/events.js"></script>
     <script src="/medications.js"></script>
     <script src="/app.js"></script>

@@ -34,11 +34,11 @@ def ensure_local_seed_prerequisites(db_path: str) -> None:
         conn.execute("INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (fam,))
         for uid, name in (("fm_001", "Dean"), (kiosk, "Kiosk")):
             conn.execute(
-                "INSERT OR IGNORE INTO users (id, display_name, photo_filename, family_circle_id, sendbird_user_id) VALUES (?,?,?,?,?)",
-                (uid, name, None, fam, None),
+                "INSERT OR IGNORE INTO users (id, display_name, photo_filename, family_circle_id) VALUES (?,?,?,?)",
+                (uid, name, None, fam),
             )
             conn.execute(
-                "INSERT OR IGNORE INTO user_family_circle (user_id, family_circle_id) VALUES (?,?)",
+                "INSERT OR IGNORE INTO family_memberships (user_id, family_circle_id) VALUES (?,?)",
                 (uid, fam),
             )
         conn.commit()
@@ -56,6 +56,22 @@ def load_json_file(filename: str) -> Dict[str, Any]:
     file_path = os.path.join(get_data_dir(), filename)
     with open(file_path, "r") as f:
         return json.load(f)
+
+
+def _demo_phone_env_key(user_id: str) -> str:
+    normalized = "".join(ch if ch.isalnum() else "_" for ch in str(user_id)).upper()
+    return f"MERIDIAN_DEMO_PHONE_{normalized}"
+
+
+def _apply_demo_user_phone_overrides(users: list[dict]) -> None:
+    """Override demo user phone numbers from environment variables."""
+    for user in users:
+        user_id = user.get("id")
+        if not user_id:
+            continue
+        phone = (os.environ.get(_demo_phone_env_key(user_id)) or "").strip()
+        if phone:
+            user["phone"] = phone
 
 
 def _resolve_event_time(value: str, today: date) -> str:
@@ -135,6 +151,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     fam_id = DEMO_FAMILY_CIRCLE_ID
     user_id = user_id or DEMO_USER_ID
     resolve_photo_filename = _make_photo_filename_resolver()
+    family_data = load_json_file("family.json")
 
     r = requests.get(
         f"{base}/api/family_circles/{fam_id}/medications",
@@ -144,7 +161,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     if r.ok:
         data = r.json()
         if data.get("timed_medications") or data.get("prn_medications"):
-            logger.info("Demo data already present, skipping seed")
+            logger.debug("Demo data already present, skipping seed")
             return True
 
     r = requests.post(
@@ -160,6 +177,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     users = load_json_file("users.json")
     for user in users:
         user["photo_filename"] = resolve_photo_filename(user.get("photo_filename"))
+    _apply_demo_user_phone_overrides(users)
     for user in users:
         r = requests.post(
             f"{base}/api/users",
@@ -181,6 +199,31 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             if not r.ok:
                 logger.error(
                     "Add user %s to family failed: %s", user.get("id"), r.status_code
+                )
+                return False
+
+    seed_family_permissions = family_data.get("seed_family_permissions", [])
+    for permission_set in seed_family_permissions:
+        admin_user_id = (permission_set.get("user_id") or "").strip()
+        if not admin_user_id:
+            continue
+        for permission in permission_set.get("permissions", []):
+            permission = (permission or "").strip()
+            if not permission:
+                continue
+            r = requests.post(
+                f"{base}/api/family_circles/{fam_id}/permissions",
+                json={
+                    "user_id": admin_user_id,
+                    "permission": permission,
+                    "granted": True,
+                },
+                headers=_headers(user_id, fam_id),
+                timeout=5,
+            )
+            if not r.ok:
+                logger.error(
+                    f"Grant demo admin permission {permission} to {admin_user_id} failed: {r.status_code}"
                 )
                 return False
 
@@ -286,7 +329,6 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
                 timeout=5,
             )
 
-    family_data = load_json_file("family.json")
     for loc in family_data.get("named_places", []):
         r = requests.post(
             f"{base}/api/family_circles/{fam_id}/named-places",
@@ -361,7 +403,7 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
         if not r.ok:
             logger.warning("Calendar event failed: %s", r.status_code)
 
-    logger.info("Demo data loaded successfully!")
+    logger.debug("Demo data loaded successfully!")
     return True
 
 
@@ -371,7 +413,7 @@ if __name__ == "__main__":
     try:
         from shared.config import get_server_host, get_server_port
 
-        host = "127.0.0.1" if get_server_host() == "0.0.0.0" else get_server_host()
+        host = get_server_host()
         default_url = f"http://{host}:{get_server_port()}"
     except ImportError:
         default_url = "http://127.0.0.1:8000"

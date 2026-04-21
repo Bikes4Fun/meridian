@@ -1,24 +1,31 @@
 -- Schema for Meridian
--- sendbird user id's are not enforced as unique
 
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     display_name TEXT,
     photo_filename TEXT,
     family_circle_id TEXT,
-    sendbird_user_id TEXT,
-    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
-    UNIQUE (family_circle_id, sendbird_user_id)
+    phone TEXT,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS family_circles (
     id TEXT PRIMARY KEY
 );
 
-CREATE TABLE IF NOT EXISTS user_family_circle (
+CREATE TABLE IF NOT EXISTS family_memberships (
     user_id TEXT NOT NULL,
     family_circle_id TEXT NOT NULL,
     PRIMARY KEY (user_id, family_circle_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+);
+
+CREATE TABLE IF NOT EXISTS family_permissions (
+    user_id TEXT NOT NULL,
+    family_circle_id TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    PRIMARY KEY (user_id, family_circle_id, permission),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
@@ -34,9 +41,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     emergency_priority TEXT,
     photo_filename TEXT,
     notes TEXT,
-    sendbird_user_id TEXT,
-    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
-    UNIQUE (family_circle_id, sendbird_user_id)
+    linked_user_id TEXT,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
 CREATE TABLE IF NOT EXISTS medication_time_templates (
@@ -194,7 +200,6 @@ CREATE TABLE IF NOT EXISTS call_signals (
     family_circle_id TEXT NOT NULL,
     from_user_id TEXT NOT NULL,
     to_user_id TEXT NOT NULL,
-    from_sendbird_user_id TEXT,
     from_display_name TEXT,
     status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested', 'acknowledged')),
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,

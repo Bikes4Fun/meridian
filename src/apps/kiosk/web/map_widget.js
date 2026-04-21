@@ -228,9 +228,17 @@ function initMap(markersJson, placesJson) {
 
       var map = L.map('map').setView(center, zoom);
       window._meridianMap = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+      var isHttpOrigin = origin && /^https?:\/\//i.test(origin);
+      var osmRemote = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      var tileUrl = isHttpOrigin ? (origin + '/kiosk/osm-tiles/{z}/{x}/{y}.png') : osmRemote;
+      var tileOpts = {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(map);
+      };
+      if (tileUrl.indexOf('openstreetmap') >= 0) {
+        tileOpts.subdomains = 'abc';
+      }
+      L.tileLayer(tileUrl, tileOpts).addTo(map);
       drawPlaceCircles(map, places);
       var markerLayer = null;
       function placeMarkers() {

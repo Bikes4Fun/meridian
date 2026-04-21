@@ -17,6 +17,22 @@
     <button type="button" class="nav-tab" data-screen="chat">Chat</button>
   </nav>
   <div id="screen-content" role="main"><!-- Python injects screen HTML here --></div>
+  <div id="kiosk-boot-overlay" class="kiosk-boot-overlay" aria-live="polite">
+    <div class="kiosk-boot-overlay__card">
+      <div class="kiosk-boot-overlay__spinner" aria-hidden="true"></div>
+      <div id="kiosk-boot-overlay-msg" class="kiosk-boot-overlay__msg">Loading Meridian...</div>
+    </div>
+  </div>
+  <div
+    id="kiosk-boot-corner"
+    class="kiosk-boot-corner kiosk-boot-corner--hidden"
+    aria-live="polite"
+    role="status"
+    aria-label="Background setup in progress"
+  >
+    <div class="kiosk-boot-corner__spinner" aria-hidden="true"></div>
+    <div id="kiosk-boot-corner-msg" class="kiosk-boot-corner__msg"></div>
+  </div>
   <nav id="kiosk-footer" aria-label="More">
     <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="settings">Settings</button>
     <button type="button" class="nav-tab nav-tab--footer-wide" data-screen="health">Health</button>
@@ -30,11 +46,13 @@
   </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="https://cdn.jsdelivr.net/npm/sendbird-calls@1.12.2/SendBirdCall.min.js"></script>
-  <script src="/meridian_api_base.js"></script>
-  <script src="/meridian_medications_inline.js"></script>
+  <script
+    src="https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js"
+    crossorigin=""
+    onload="window.__twilioSdkLoadState='loaded';"
+    onerror="window.__twilioSdkLoadState='failed';"
+  ></script>
   <script src="map_widget.js"></script>
-  <script src="kiosk_medications_embed.js"></script>
   <script src="kiosk.js"></script>
 </body>
 </html>

@@ -11,7 +11,8 @@ import logging
 import os
 import threading
 import time
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 from shared.config import (
     get_kiosk_tv_fullscreen,
@@ -20,13 +21,40 @@ from shared.config import (
 )
 
 from .api_client import KioskRemoteServiceContainer, create_kiosk_remote
-from .chat_screen import ChatHandler
-from .checkin_screen import LocationHandler
-from .schedule_screen import build_schedule_html
+from .communication import ChatHandler
+from .map_screen import LocationHandler
+from .schedule_screen import ScheduleHandler, build_schedule_html
 from .health_screen import HealthHandler
-from .temperature_sensor import TemperatureSensor
+from .sensor_widgets import SensorHandler
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class KioskRuntimeCache:
+    """Session in-memory cache for reusable kiosk runtime data.
+
+    Generic key/value + scoped key/value stores so all kiosk flows use one cache API.
+    """
+
+    values: dict[str, Any] = field(default_factory=dict)
+    scoped_values: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def put(self, key: str, value: Any) -> None:
+        self.values[str(key)] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.values.get(str(key), default)
+
+    def put_scoped(self, scope: str, key: str, value: Any) -> None:
+        skey = str(scope)
+        if skey not in self.scoped_values:
+            self.scoped_values[skey] = {}
+        self.scoped_values[skey][str(key)] = value
+
+    def get_scoped(self, scope: str, key: str, default: Any = None) -> Any:
+        return self.scoped_values.get(str(scope), {}).get(str(key), default)
+
 
 NAV_BUTTONS = [
     {"text": "Home", "screen": "home"},
@@ -43,8 +71,8 @@ def _get_screen_registry():
     global _SCREEN_REGISTRY
     if _SCREEN_REGISTRY is not None:
         return _SCREEN_REGISTRY
-    from .checkin_screen import build_checkin_html
-    from .chat_screen import build_chat_html
+    from .map_screen import build_checkin_html
+    from .communication import build_chat_html
     from .emergency_screen import build_emergency_html
     from .health_screen import build_health_html
     from .home_screen import build_home_html
@@ -70,6 +98,7 @@ def _get_screen_registry():
             app.api_url,
             app.family_circle_id,
             kiosk_user_id=app.kiosk_user_id,
+            runtime_cache=app._runtime_cache,
         )
         return (
             html,
@@ -120,23 +149,21 @@ class KioskBridge:
         self._chat = ChatHandler(app)
         self._health = HealthHandler(app)
         self._location = LocationHandler(app)
+        self._schedule = ScheduleHandler(app)
+        self._sensor = app._sensor
 
     def navigate(self, screen_name: str):
         """Switch to screen. Called from JS nav click handler."""
-        logger.info(f"Nav: {screen_name}")
+        logger.debug(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def open_chat(self, sendbird_user_id: str, display_name: str) -> None:
-        """Fetch chat entry URL and open in new pywebview window. No window.open in JS."""
-        self._chat.open_chat(sendbird_user_id, display_name)
-
-    def open_chat_with_call(self, sendbird_user_id: str, display_name: str) -> None:
-        """Open chat entry URL and auto-start a video call."""
-        self._chat.open_chat(sendbird_user_id, display_name, auto_start_call=True)
+    def call_phone(self, phone: str, display_name: str = "") -> str:
+        """Place a phone call via server Twilio endpoint."""
+        return self._chat.call_phone(phone, display_name)
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
-        logger.info("Print emergency (button)")
+        logger.debug("Print emergency (button)")
         self._app._print_emergency()
 
     def refresh_events(self):
@@ -161,10 +188,10 @@ class KioskBridge:
             self._app._navigate_to(sid)
 
     def submit_event_form(self, payload_json: str) -> str:
-        return self._app._submit_event_form(payload_json)
+        return self._schedule.submit_event_form(payload_json)
 
     def add_event(self, payload_json: str) -> str:
-        return self._app._submit_event_form(payload_json)
+        return self._schedule.submit_event_form(payload_json)
 
     def update_event(self, event_id: str, payload_json: str) -> str:
         try:
@@ -172,19 +199,29 @@ class KioskBridge:
         except json.JSONDecodeError as e:
             return str(e)
         data["id"] = event_id
-        return self._app._submit_event_form(json.dumps(data))
+        return self._schedule.submit_event_form(json.dumps(data))
 
     def delete_event(self, event_id: str) -> str:
-        return self._app._delete_event(event_id)
+        return self._schedule.delete_event(event_id)
 
     def mark_medication_taken(
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
         return self._health.mark_medication_taken(medication_id, time_slot, taken)
 
+    def get_medications_editor_rows(self) -> str:
+        return self._health.get_medications_editor_rows()
+
+    def save_medications_editor_rows(
+        self, rows_json: str, initial_snapshot_json: str
+    ) -> str:
+        return self._health.save_medications_editor_rows(
+            rows_json, initial_snapshot_json
+        )
+
     def snooze_stove_temp(self) -> None:
         """Snooze stove warnings and clear emergency alert (same POST as webapp cancel)."""
-        self._app._snooze_stove_temp()
+        self._sensor.snooze_stove_alerts()
 
     def where_is_everyone(self) -> str:
         return self._location.where_is_everyone()
@@ -208,16 +245,21 @@ class MeridianKioskApp:
         self._bridge = None
         self._alert_was_activated = False
         self._last_incoming_call_id = 0
-        self._temp_sensor = None
-        self._stove_alert_armed = False
+        self._sensor = SensorHandler(self)
+        self._runtime_cache = KioskRuntimeCache()
 
     def run(self):
         """Create window, wire bridge, start webview loop."""
         import webview
 
         base = (self.api_url or "").rstrip("/")
+        auth_query = (
+            f"user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+        )
+        if (os.environ.get("MERIDIAN_KIOSK_NGROK_BYPASS") or "").strip() == "1":
+            auth_query = f"{auth_query}&ngrok-skip-browser-warning=true"
         url = (
-            f"{base}/kiosk-auth?user_id={self.kiosk_user_id}&family_circle_id={self.family_circle_id}"
+            f"{base}/kiosk-auth?{auth_query}"
             if base
             else None
         )
@@ -254,7 +296,31 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        webview.start(debug=False)
+        try:
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+        except Exception:
+            pass
+        kiosk_user_agent = (
+            os.environ.get("MERIDIAN_KIOSK_USER_AGENT") or "Meridian-Kiosk/1.0"
+        ).strip()
+        gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
+        if gui_pref:
+            try:
+                logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
+                webview.start(
+                    debug=False,
+                    gui=gui_pref,
+                    user_agent=kiosk_user_agent,
+                )
+                return
+            except Exception as e:
+                logger.error(
+                    f"Kiosk pywebview GUI '{gui_pref}' unavailable; refusing fallback backend: {e}"
+                )
+                raise RuntimeError(
+                    f"Failed to start kiosk webview with required GUI backend '{gui_pref}'"
+                ) from e
+        raise RuntimeError("MERIDIAN_KIOSK_WEBVIEW_GUI must be set (use 'qt').")
 
     def _eval(self, js: str):
         """Run JS in webview. Handles threading/platform quirks."""
@@ -266,23 +332,21 @@ class MeridianKioskApp:
     def _navigate_to(self, screen_name: str):
         """Show screen by name. Builds HTML and calls showScreen."""
         try:
-            logger.info(f"Building screen: {screen_name}")
+            logger.debug(f"Building screen: {screen_name}")
             html, extra = self._build_screen_html(screen_name)
+            self._runtime_cache.put_scoped("screen_html", screen_name, html)
+            if extra:
+                self._runtime_cache.put_scoped("screen_extra_js", screen_name, extra)
             escaped = json.dumps(html)
             self._eval(f"showScreen({json.dumps(screen_name)}, {escaped})")
             if extra:
                 self._eval(extra)
             if screen_name == "settings":
-                self._push_stove_temp_display()
+                self._sensor.push_stove_temp_display()
+            if screen_name == "home":
+                self._load_home_schedule()
         except Exception as e:
             logger.exception(f"navigate failed: {e}")
-
-    def _push_stove_temp_display(self) -> None:
-        """Refresh Settings → Monitors stove value immediately (background thread also updates every ~2s)."""
-        sensor = self._temp_sensor
-        if not sensor:
-            return
-        self._eval_el("stove-temp", sensor.get_display())
 
     def _build_screen_html(self, screen_name: str) -> tuple[str, Optional[str]]:
         """Build HTML for screen. Returns (html, extra_js) where extra_js runs after showScreen (e.g. initMap)."""
@@ -300,17 +364,132 @@ class MeridianKioskApp:
         trigger_emergency_print(self.services)
 
     def _on_ready(self):
-        """Runs in background thread after load. Initial screen, clock, meds, events, alerts."""
+        """Runs in background thread after load. Initial screen, clock, meds, events, alerts.
+
+        Boot is two phases: (1) Full-screen watermark (#kiosk-boot-overlay) from first line below
+        until home shell + schedule + clock are ready. (2) Watermark off; fixed corner floater
+        (#kiosk-boot-corner) with status text until _boot_cache_warmup (photos, places, tiles) finishes.
+        The corner floater persists across navigations until caching completes.
+        """
         logger.info("Kiosk loaded, initializing...")
+        self._set_corner_boot_loading(False, "")
+        self._set_boot_loading(True, "Starting Meridian...")
         time.sleep(0.3)
+        self._set_boot_loading(True, "Loading home data...")
         self._navigate_to("home")
+        self._set_boot_loading(True, "Loading clock...")
         self._refresh_clock()
-        self._temp_sensor = TemperatureSensor()
-        self._temp_sensor.start()
+        self._set_boot_loading(False)
+        self._set_corner_boot_loading(True, "Loading…")
+        threading.Thread(target=self._boot_cache_warmup, daemon=True).start()
+        vs = self.services.get_voice_service()
+        if vs and getattr(vs, "log_twilio_startup_check", None):
+            threading.Thread(
+                target=vs.log_twilio_startup_check,
+                daemon=True,
+            ).start()
+        # self._sensor.start_stove_sensor()
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
-        threading.Thread(target=self._start_temp_push, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()
+
+    def _home_map_center(self):
+        """Lat/lon for named 'home' place (same logic as family map)."""
+        loc = self.services.get_location_service()
+        if not loc:
+            return None, None
+        fc = (self.family_circle_id or "").strip()
+        if not fc:
+            return None, None
+        r = loc.get_named_places(fc)
+        if not r.success or not r.data:
+            return None, None
+        home_place = None
+        for p in r.data:
+            if "home" in (p.get("location_name") or "").lower():
+                home_place = p
+                break
+        if not home_place:
+            home_place = r.data[0]
+        lat = home_place.get("gps_latitude")
+        lon = home_place.get("gps_longitude")
+        if lat is None or lon is None:
+            return None, None
+        try:
+            return float(lat), float(lon)
+        except (TypeError, ValueError):
+            return None, None
+
+    def _boot_cache_warmup(self) -> None:
+        """Background cache: photos, named places (home center), OSM tiles. Clears #kiosk-boot-corner in finally."""
+        try:
+            self._start_photo_warmup()
+            self._set_corner_boot_loading(True, "Loading places…")
+            lat, lon = self._home_map_center()
+            if lat is not None and lon is not None:
+                self._runtime_cache.put("last_map_center", (float(lat), float(lon)))
+            loc = self.services.get_location_service()
+            if loc and lat is not None and lon is not None:
+                self._set_corner_boot_loading(True, "Loading map tiles…")
+                loc.warm_osm_tiles_around(lat, lon)
+        except Exception as e:
+            logger.warning("Map tile warmup failed: %s", e)
+        finally:
+            self._set_boot_loading(False)
+            self._set_corner_boot_loading(False, "")
+
+    def _start_photo_warmup(self) -> None:
+        """Warm user/contact photo cache in background after first paint."""
+        scanned = 0
+        loaded = 0
+        skipped_no_linked_user = 0
+        no_photo = 0
+        try:
+            contact_svc = self.services.get_contact_service()
+            if not contact_svc:
+                logger.info("Photo warmup skipped: contact service unavailable")
+                return
+            result = contact_svc.get_contacts()
+            if not result.success or not result.data:
+                logger.info("Photo warmup skipped: no contacts")
+                return
+            total = len(result.data)
+            for c in result.data:
+                scanned += 1
+                user_id = (c.get("user_id") or "").strip()
+                if not user_id:
+                    skipped_no_linked_user += 1
+                else:
+                    avatar_src = contact_svc.get_user_photo_b64(user_id)
+                    if avatar_src:
+                        loaded += 1
+                    else:
+                        no_photo += 1
+                if scanned == 1 or scanned == total or scanned % 3 == 0:
+                    self._set_corner_boot_loading(
+                        True, f"Loading photos… ({scanned}/{total})"
+                    )
+            logger.info(
+                "Photo warmup complete: contacts=%s loaded=%s skipped_no_linked_user=%s no_photo=%s",
+                scanned,
+                loaded,
+                skipped_no_linked_user,
+                no_photo,
+            )
+        except Exception as e:
+            logger.warning(f"Photo warmup failed: {e}")
+
+    def _set_boot_loading(self, active: bool, message: str = "") -> None:
+        """Show/hide boot overlay with optional status text."""
+        self._eval(
+            f"setBootLoading({json.dumps(bool(active))}, {json.dumps(message)})"
+        )
+
+    def _set_corner_boot_loading(self, active: bool, message: str = "") -> None:
+        """Show/hide #kiosk-boot-corner spinner + caption (kiosk.html / setKioskCornerBootLoading)."""
+        self._eval(
+            f"setKioskCornerBootLoading({json.dumps(bool(active))}, {json.dumps(message)})"
+        )
 
     def _refresh_clock(self):
         """Full clock update: day, date line, time, period label + sprite."""
@@ -351,46 +530,6 @@ class MeridianKioskApp:
             self._eval_el("clock-time", time_svc.get_time())
             self._eval_clock_period(time_svc)
 
-    def _start_temp_push(self):
-        """Push stove temperature to UI and post/clear emergency alert via server (same as webapp)."""
-        while True:
-            time.sleep(2)
-            if self._temp_sensor:
-                reading = self._temp_sensor.get_display()
-                self._eval_el("stove-temp", reading)
-                self._maybe_stove_emergency_alert()
-
-    def _maybe_stove_emergency_alert(self) -> None:
-        sensor = self._temp_sensor
-        alert_svc = self.services.get_alert_service()
-        if not sensor or not alert_svc or not getattr(
-            alert_svc, "set_alert_activated", None
-        ):
-            return
-        if sensor.should_activate_stove_emergency():
-            if not self._stove_alert_armed:
-                r = alert_svc.set_alert_activated(True)
-                if r.success:
-                    self._stove_alert_armed = True
-                    logger.info("Stove temperature sustained over threshold; alert activated")
-            return
-        if self._stove_alert_armed and sensor.reading_below_threshold_c():
-            r = alert_svc.set_alert_activated(False)
-            if r.success:
-                logger.info("Stove temperature normalized; alert cleared")
-                self._stove_alert_armed = False
-
-    def _snooze_stove_temp(self) -> None:
-        if self._temp_sensor:
-            self._temp_sensor.snooze()
-        alert_svc = self.services.get_alert_service()
-        if alert_svc and getattr(alert_svc, "set_alert_activated", None):
-            r = alert_svc.set_alert_activated(False)
-            if r.success:
-                self._stove_alert_armed = False
-        else:
-            self._stove_alert_armed = False
-
     def _load_home_schedule(self):
         """Update Up Next and timeline. Fetches data via home_screen, pushes to webview."""
         from .home_screen import (
@@ -400,41 +539,20 @@ class MeridianKioskApp:
         )
 
         items, now = load_schedule_items(self.services)
+        self._runtime_cache.put(
+            "home_schedule",
+            {
+                "items": items,
+                "now": now,
+                "calendar_events_today": [
+                    it.get("event_data")
+                    for it in items
+                    if it.get("type") == "event" and it.get("event_data")
+                ],
+            },
+        )
         self._eval_el("up_next_content", build_up_next_html(items, now))
         self._eval_el("timeline_content", build_timeline_html(items))
-
-    def _submit_event_form(self, payload_json: str) -> str:
-        """POST/PUT calendar event via remote service. Payload may include id for update."""
-        try:
-            data = json.loads(payload_json)
-        except json.JSONDecodeError as e:
-            return str(e)
-        if not data.get("title") or not data.get("start_time"):
-            return "title and start_time required"
-        cal = self.services.get_calendar_service()
-        if not cal:
-            return "calendar service unavailable"
-        event_id = data.pop("id", None)
-        if event_id:
-            r = cal.update_event(str(event_id), data)
-        else:
-            r = cal.add_event(data)
-        if r.success:
-            self._load_home_schedule()
-            self._refresh_schedule_if_shown()
-            return "ok"
-        return r.error or "failed"
-
-    def _delete_event(self, event_id: str) -> str:
-        cal = self.services.get_calendar_service()
-        if not cal:
-            return "calendar service unavailable"
-        r = cal.delete_event(event_id)
-        if r.success:
-            self._load_home_schedule()
-            self._refresh_schedule_if_shown()
-            return "ok"
-        return r.error or "failed"
 
     def _refresh_schedule_if_shown(self) -> None:
         """Tell kiosk.js to reload Schedule screen if it is active."""
@@ -477,14 +595,12 @@ class MeridianKioskApp:
             call_id = int(result.data.get("call_id") or 0)
             if call_id <= 0 or call_id == self._last_incoming_call_id:
                 continue
-            sendbird_user_id = (result.data.get("from_sendbird_user_id") or "").strip()
+            caller_user_id = (result.data.get("from_user_id") or "").strip()
             display_name = (result.data.get("from_display_name") or "").strip()
-            if not sendbird_user_id:
+            if not caller_user_id:
                 continue
             self._last_incoming_call_id = call_id
             self._navigate_to("chat")
-            if self._bridge:
-                self._bridge.open_chat(sendbird_user_id, display_name or "Family")
             call_svc.acknowledge_incoming_call(call_id)
 
 def create_app(

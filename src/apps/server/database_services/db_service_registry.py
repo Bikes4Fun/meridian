@@ -13,16 +13,13 @@ try:
 except ImportError:
     from shared.config import DatabaseConfig
 from .safe_query_manager import QueryManager
-from .contact import ContactService
-from .user import UserService
+from .user import ContactService, FamilyService, UserService
 from .calendar import CalendarService
 from .medical import MedicationService
 from .location import LocationService
 from .emergency import EmergencyService
 from .care_recipient import CareRecipientService
-from .family import FamilyService
 from .notification import PushNotificationService
-from .sendbird import SendbirdService
 from .photos import PhotoUploadService
 from .call_signal import CallSignalService
 
@@ -109,12 +106,6 @@ class DatabaseServices:
         return self._get_or_create(
             "notification_service",
             lambda: PushNotificationService(self._get_query_manager()),
-        )
-
-    def get_sendbird_service(self):
-        return self._get_or_create(
-            "sendbird_service",
-            lambda: SendbirdService(self._get_query_manager()),
         )
 
     def get_photo_upload_service(self):

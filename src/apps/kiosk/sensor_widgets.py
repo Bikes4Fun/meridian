@@ -27,6 +27,8 @@ def _default_stove_serial_port() -> str:
     raw = os.environ.get("STOVE_SERIAL_PORT")
     if raw is not None and str(raw).strip():
         return str(raw).strip()
+    if sys.platform.startswith("win"):
+        return "COM3"
     if sys.platform == "darwin":
         matches = sorted(
             glob.glob("/dev/cu.usbserial*") + glob.glob("/dev/cu.wchusbserial*")
@@ -56,6 +58,68 @@ def _both_from_value(val: float, unit_c: bool) -> Tuple[float, float]:
         return val, val * 9.0 / 5.0 + 32.0
     return (val - 32.0) * 5.0 / 9.0, val
 
+class SensorHandler:
+    def __init__(self, app):
+        self._app = app
+        self._temp_sensor: Optional["TemperatureSensor"] = None
+        self._stove_alert_armed = False
+        self._push_thread: Optional[threading.Thread] = None
+
+    def start_stove_sensor(self) -> None:
+        if self._temp_sensor is None:
+            self._temp_sensor = TemperatureSensor()
+            self._temp_sensor.start()
+        if self._push_thread is not None:
+            return
+        self._push_thread = threading.Thread(target=self._start_temp_push, daemon=True)
+        self._push_thread.start()
+
+    def push_stove_temp_display(self) -> None:
+        """Refresh Settings → Monitors stove value immediately."""
+        sensor = self._temp_sensor
+        if not sensor:
+            return
+        self._app._eval_el("stove-temp", sensor.get_display())
+
+    def _start_temp_push(self):
+        """Push stove temperature to UI and post/clear emergency alert via server (same as webapp)."""
+        while True:
+            time.sleep(2)
+            if self._temp_sensor:
+                reading = self._temp_sensor.get_display()
+                self._app._eval_el("stove-temp", reading)
+                self._maybe_stove_emergency_alert()
+
+    def snooze_stove_alerts(self) -> None:
+        if self._temp_sensor:
+            self._temp_sensor._snooze_local_timer()
+        alert_svc = self._app.services.get_alert_service()
+        if alert_svc and getattr(alert_svc, "set_alert_activated", None):
+            r = alert_svc.set_alert_activated(False)
+            if r.success:
+                self._stove_alert_armed = False
+        else:
+            self._stove_alert_armed = False
+
+    def _maybe_stove_emergency_alert(self) -> None:
+        sensor = self._temp_sensor
+        alert_svc = self._app.services.get_alert_service()
+        if not sensor or not alert_svc or not getattr(
+            alert_svc, "set_alert_activated", None
+        ):
+            return
+        if sensor.should_activate_stove_emergency():
+            if not self._stove_alert_armed:
+                r = alert_svc.set_alert_activated(True)
+                if r.success:
+                    self._stove_alert_armed = True
+                    logger.info("Stove temperature sustained over threshold; alert activated")
+            return
+        if self._stove_alert_armed and sensor.reading_below_threshold_c():
+            r = alert_svc.set_alert_activated(False)
+            if r.success:
+                logger.info("Stove temperature normalized; alert cleared")
+                self._stove_alert_armed = False
 
 class TemperatureSensor:
     """Daemon thread reads serial lines; latest temperature and stove-emergency gating."""
@@ -121,8 +185,8 @@ class TemperatureSensor:
             if self._above_since is None:
                 self._above_since = now
 
-    def snooze(self) -> None:
-        """Snooze alerts and clear sustained-over-threshold timer."""
+    def _snooze_local_timer(self) -> None:
+        """Sensor-local snooze window; does not touch server alert state."""
         with self._lock:
             self._ignore_until = time.time() + float(STOVE_SNOOZE_MINUTES * 60)
             self._above_since = None
@@ -204,3 +268,5 @@ class TemperatureSensor:
                 except Exception:
                     pass
             time.sleep(2)
+
+

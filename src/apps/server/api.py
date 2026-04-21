@@ -17,16 +17,17 @@ client/, display/, app_factory.py, icons/, and the kiosk client are not needed o
 they can be omitted or relocated to a client-only repo.
 """
 
-import base64
 import hashlib
-import hmac
 import json
 import mimetypes
 import os
+import tempfile
 import time
 import uuid
 import datetime
 import urllib.parse
+import urllib.request
+import urllib.request
 import logging
 import threading
 from dataclasses import asdict
@@ -40,6 +41,7 @@ from flask import (
     request,
     g,
     send_from_directory,
+    send_file,
     Response,
     redirect,
     session,
@@ -49,37 +51,33 @@ from flask import (
 try:
     from ...shared.config import (
         get_database_path,
+        get_meridian_ssl_files,
         get_server_host,
         get_server_port,
-        get_uploads_dir
+        get_uploads_dir,
     )
 except ImportError:
     from shared.config import (
         get_database_path,
+        get_meridian_ssl_files,
         get_server_host,
         get_server_port,
-        get_uploads_dir
+        get_uploads_dir,
     )
 try:
     from ...shared.emergency_profile_pdf import build_pdf
 except ImportError:
-    from shared.emergency_profile_pdf import build_pdf
+    try:
+        from shared.emergency_profile_pdf import build_pdf
+    except ImportError:
+        build_pdf = None
 from .database_services.db_service_registry import create_service_container
-
-try:
-    from ...apps.chatapp.api import register_chatapp_routes
-except ImportError:
-    from apps.chatapp.api import register_chatapp_routes
+from .twilio_voice import register_twilio_voice_routes
 
 
 _alert_activation_by_family = {}
 _alert_activation_lock = threading.Lock()
 _logger = logging.getLogger(__name__)
-
-_ENTRY_TOKEN_TTL_SEC = 300  # 5 minutes
-_CHAT_ENTRY_TOKEN_PURPOSE = "chat_session_bootstrap"
-_USED_CHAT_ENTRY_TOKEN_SIGS = {}
-_USED_CHAT_ENTRY_TOKEN_LOCK = threading.Lock()
 
 _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
@@ -98,69 +96,6 @@ def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
         return _alert_activation_by_family[family_circle_id]
 
 
-def _create_chat_entry_token(
-    secret: str,
-    user_id: str,
-    family_circle_id: str,
-    sendbird_user_id: str = "",
-    display_name: str = "",
-    auto_start_call: bool = False,
-) -> str:
-    """Create a signed token for chat entry. Valid for _ENTRY_TOKEN_TTL_SEC."""
-    payload = {
-        "purpose": _CHAT_ENTRY_TOKEN_PURPOSE,
-        "user_id": user_id,
-        "family_circle_id": family_circle_id,
-        "sendbird_user_id": sendbird_user_id,
-        "display_name": display_name,
-        "auto_start_call": bool(auto_start_call),
-        "exp": int(time.time()) + _ENTRY_TOKEN_TTL_SEC,
-    }
-    payload_b64 = (
-        base64.urlsafe_b64encode(json.dumps(payload, sort_keys=True).encode())
-        .rstrip(b"=")
-        .decode()
-    )
-    sig = hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
-    return payload_b64 + "." + sig
-
-
-def _verify_chat_entry_token(secret: str, token: str) -> dict | None:
-    """Verify token, return payload dict or None if invalid/expired."""
-    try:
-        parts = token.split(".")
-        if len(parts) != 2:
-            return None
-        payload_b64, sig = parts[0], parts[1]
-        payload_b64_padded = payload_b64 + "=" * (-len(payload_b64) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64_padded).decode())
-        exp = int(payload.get("exp", 0) or 0)
-        if exp < time.time():
-            return None
-        if (payload.get("purpose") or "") != _CHAT_ENTRY_TOKEN_PURPOSE:
-            return None
-        expected = hmac.new(
-            secret.encode(), payload_b64.encode(), hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(expected, sig):
-            return None
-        now = int(time.time())
-        with _USED_CHAT_ENTRY_TOKEN_LOCK:
-            expired_sigs = [
-                token_sig
-                for token_sig, token_exp in _USED_CHAT_ENTRY_TOKEN_SIGS.items()
-                if int(token_exp or 0) <= now
-            ]
-            for token_sig in expired_sigs:
-                _USED_CHAT_ENTRY_TOKEN_SIGS.pop(token_sig, None)
-            if sig in _USED_CHAT_ENTRY_TOKEN_SIGS:
-                return None
-            _USED_CHAT_ENTRY_TOKEN_SIGS[sig] = exp
-        return payload
-    except Exception:
-        return None
-
-
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
     Functionality is provided by container (via create_service_container).
@@ -170,7 +105,8 @@ def create_server_app(db_path=None):
     db_path = db_path or get_database_path()
     container = create_service_container(db_path)
     # TODO: whats the point here if it isn't being checked?
-    container.ensure_schema()
+    if not container.ensure_schema():
+        raise RuntimeError("Failed to ensure database schema")
 
     app = Flask(__name__)
     _secret = os.environ.get("SECRET_KEY")
@@ -186,7 +122,6 @@ def create_server_app(db_path=None):
     app.config["MERIDIAN_SESSION_MAX_AGE_SEC"] = _sess_max
     app.config["MERIDIAN_SESSION_IDLE_SEC"] = _sess_idle
     app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(seconds=_sess_max)
-
     def _session_clocks_ok() -> bool:
         """Absolute max age + idle timeout. Missing stamps (older cookies): set now and allow once."""
         now = int(time.time())
@@ -267,19 +202,18 @@ def create_server_app(db_path=None):
             return Response(status=204)
 
     def _webapp_public_path(path: str) -> bool:
-        """Paths that need no session (static assets, login page, chatapp/kiosk shells)."""
+        """Paths that need no session (static assets, login page, kiosk shell)."""
         if path in (
             "/login.html",
+            "/privacy.html",
+            "/terms.html",
             "/app.js",
-            "/meridian_api_base.js",
             "/style.css",
         ):
             return True
-        if path in ("/chatapp", "/kiosk"):
+        if path == "/kiosk":
             return True
-        if path.startswith(
-            ("/chatapp/", "/kiosk/", "/fonts/", "/shared/", "/brand/")
-        ):
+        if path.startswith(("/kiosk/", "/fonts/", "/shared/", "/brand/")):
             return True
         return False
 
@@ -300,6 +234,10 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
+        if request.path.startswith("/twilio/"):
+            g.user_id = None
+            g.family_circle_id = None
+            return
         if _webapp_public_path(request.path):
             g.user_id = None
             g.family_circle_id = None
@@ -307,12 +245,6 @@ def create_server_app(db_path=None):
 
         # All /api/*: JSON clients — 401 if unauthenticated (no redirect)
         if request.path.startswith("/api"):
-            # chat-session-bootstrap: new webview; token verified in handler.
-            if request.path == "/api/chat/chat-session-bootstrap":
-                g.user_id = None
-                g.family_circle_id = None
-                return
-
             # /api/session: session only.
             if request.path == "/api/session":
                 if not _session_valid():
@@ -327,24 +259,6 @@ def create_server_app(db_path=None):
                 _touch_session_activity_if_cookie_auth()
                 return
 
-            # chat-session-url: session OR X-User-Id + X-Family-Circle-Id (kiosk uses headers).
-            if request.path == "/api/chat/chat-session-url":
-                uid = request.headers.get("X-User-Id")
-                fid = request.headers.get("X-Family-Circle-Id")
-                if (not uid or not fid) and _session_valid():
-                    uid = uid or session.get("user_id")
-                    fid = fid or session.get("family_circle_id")
-                elif not uid or not fid:
-                    session.clear()
-                if not uid or not fid:
-                    abort(
-                        401,
-                        "Log in at /login.html first or provide X-User-Id and X-Family-Circle-Id",
-                    )
-                g.user_id = uid
-                g.family_circle_id = fid
-                _touch_session_activity_if_cookie_auth()
-                return
             # API: headers or session
             user_id = request.headers.get("X-User-Id")
             family_circle_id = request.headers.get("X-Family-Circle-Id")
@@ -396,72 +310,6 @@ def create_server_app(db_path=None):
         session["_login_at"] = now
         session["_last_activity"] = now
 
-    def _session_identity_from_payload(payload: dict) -> tuple[str, str]:
-        """Extract normalized identity from signed payload."""
-        user_id = (payload.get("user_id") or "").strip()
-        family_circle_id = (payload.get("family_circle_id") or "").strip()
-        return user_id, family_circle_id
-
-    def _chat_redirect_path_from_payload(payload: dict) -> str:
-        """Build chat destination path from signed payload context."""
-        path = "/chatapp/chat.html"
-        recipient_sb = (payload.get("sendbird_user_id") or "").strip()
-        recipient_name = (payload.get("display_name") or "").strip()
-        auto_start_call = bool(payload.get("auto_start_call"))
-        if recipient_sb:
-            path += "?sendbird_user_id=" + urllib.parse.quote(recipient_sb)
-            if recipient_name:
-                path += "&display_name=" + urllib.parse.quote(recipient_name)
-            if auto_start_call:
-                path += "&auto_start_call=1"
-        return path
-
-    @app.route("/api/chat/chat-session-url", methods=["GET"])
-    def api_chat_session_url():
-        """Returns a URL; when opened in a webview, establishes session for chat. Auth: session or X-User-Id + X-Family-Circle-Id.
-        recipient_sendbird_user_id, recipient_display_name = who the kiosk user will chat WITH (from headers).
-        """
-        recipient_sb = (
-            request.args.get("recipient_sendbird_user_id")
-            or request.args.get("sendbird_user_id")
-            or ""
-        ).strip()
-        recipient_name = (
-            request.args.get("recipient_display_name")
-            or request.args.get("display_name")
-            or ""
-        ).strip()
-        auto_start_call = (
-            (request.args.get("auto_start_call") or "").strip().lower()
-            in ("1", "true", "yes", "on")
-        )
-        token = _create_chat_entry_token(
-            app.secret_key,
-            g.user_id,
-            g.family_circle_id,
-            recipient_sb,
-            recipient_name,
-            auto_start_call=auto_start_call,
-        )
-        base_url = request.url_root.rstrip("/")
-        bootstrap_url = f"{base_url}/api/chat/chat-session-bootstrap?token={urllib.parse.quote(token)}"
-        return jsonify({"url": bootstrap_url})
-
-    @app.route("/api/chat/chat-session-bootstrap", methods=["GET"])
-    def api_chat_session_bootstrap():
-        """URL target. Verifies token, sets session cookie, redirects to chatapp. For webapp/kiosk/mobile opening chat in a fresh webview."""
-        token = (request.args.get("token") or "").strip()
-        if not token:
-            return jsonify({"error": "token required"}), 400
-        payload = _verify_chat_entry_token(app.secret_key, token)
-        if not payload:
-            return jsonify({"error": "Invalid or expired token"}), 403
-        user_id, family_circle_id = _session_identity_from_payload(payload)
-        if not user_id or not family_circle_id:
-            return jsonify({"error": "Invalid token payload"}), 403
-        _set_authenticated_session(user_id, family_circle_id)
-        return redirect(_chat_redirect_path_from_payload(payload))
-
     user_svc = container.get_user_service()
     calendar_svc = container.get_calendar_service()
     medication_svc = container.get_medication_service()
@@ -469,10 +317,11 @@ def create_server_app(db_path=None):
     location_svc = container.get_location_service()
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
+    register_twilio_voice_routes(app, user_svc)
 
     @app.before_request
     def verify_family_membership():
-        """Reject API calls where user_id + family_circle_id are not linked in user_family_circle.
+        """Reject API calls where user_id + family_circle_id are not linked in family_memberships.
 
         Headers alone used to satisfy _require_family_access when URL family matched X-Family-Circle-Id
         even if X-User-Id was not a member of that family.
@@ -489,8 +338,6 @@ def create_server_app(db_path=None):
             return
         if request.path == "/api/users" and request.method == "POST":
             return
-        if request.path == "/api/chat/chat-session-bootstrap":
-            return
         uid = getattr(g, "user_id", None)
         fid = getattr(g, "family_circle_id", None)
         if not uid or not fid:
@@ -503,7 +350,6 @@ def create_server_app(db_path=None):
 
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
-    sendbird_svc = container.get_sendbird_service()
     call_signal_svc = container.get_call_signal_service()
 
     def _parse_date_param():
@@ -520,6 +366,14 @@ def create_server_app(db_path=None):
         """Verify requester has access to family_circle_id. Abort 403 if not."""
         if family_circle_id != g.family_circle_id:
             abort(403, "family circle mismatch")
+
+    def _require_family_permission(permission: str):
+        r = family_svc.user_has_permission(g.user_id, g.family_circle_id, permission)
+        if not r.success:
+            return jsonify({"error": r.error or "Database query failed"}), 500
+        if not r.data:
+            return jsonify({"error": "forbidden"}), 403
+        return None
 
     @app.route("/api/health")
     def api_health():
@@ -544,8 +398,24 @@ def create_server_app(db_path=None):
             display_name=data.get("display_name") or "",
             photo_filename=data.get("photo_filename"),
             # TODO far future security: new users may be invited to a family and have an auth code etc but shouldn't be able to simply join a family
-            family_circle_id=data.get("family_circle_id"),
-            sendbird_user_id=data.get("sendbird_user_id"),
+            # They should have an auth code from the admin family member
+            # The auth code should reference the family circle id in some way or they should need to input the family circle id
+            # The auth code should be a one-time use code that is sent to the user's email or phone
+            # The auth code should be valid for a limited time
+            # The auth code should be used to verify the user's identity
+            # The auth code should be used to create a new user in the database
+            # The auth code should be used to link the user to the family circle
+            # The auth code should be used to create a new user in the database
+            # The admin should receive / maintain a list of auth codes and their status (used, expired, etc.)
+            # The admin should be able to revoke auth codes
+            # The admin should be able to view the list of users and their family circle memberships
+            # The admin should be able to view the list of auth codes and their status
+            # The admin should be able to revoke auth codes
+            # The admin should be able to view the list of users and their family circle memberships
+            # The admin should be able to view the list of auth codes and their status
+            # The admin should be able to revoke auth codes
+            family_circle_id=None,
+            phone=data.get("phone"),
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -567,19 +437,90 @@ def create_server_app(db_path=None):
         r = family_svc.get_family_members(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
+        perms_r = family_svc.get_permissions(family_circle_id)
+        if not perms_r.success:
+            return jsonify({"error": perms_r.error}), 500
+        permissions_by_user = perms_r.data or {}
         base = request.url_root.rstrip("/")
         members = [dict(m) for m in (r.data or [])]
         for m in members:
             m["photo_url"] = (
                 "%s/api/users/%s/photo" % (base, m["id"]) if m.get("id") else None
             )
+            uid = (m.get("id") or "").strip()
+            m["permissions"] = permissions_by_user.get(uid, [])
         return jsonify({"data": members})
+
+    @app.route("/api/family_circles/<family_circle_id>/permissions", methods=["GET", "POST"])
+    def api_family_permissions(family_circle_id):
+        """
+        GET: all or a specific user's family/user permissions; ? TODO: clarify what this is for
+        POST: grant/revoke a family-scoped permission.
+        """
+        _require_family_access(family_circle_id)
+        if request.method == "GET":
+            target_user_id = (request.args.get("user_id") or "").strip()
+            if target_user_id and target_user_id != g.user_id:
+                can_manage_r = family_svc.can_manage_family_permissions(
+                    g.user_id, g.family_circle_id
+                )
+                if not can_manage_r.success:
+                    return jsonify({"error": can_manage_r.error or "Database query failed"}), 500
+                if not can_manage_r.data:
+                    return jsonify({"error": "forbidden"}), 403
+                perms_r = family_svc.get_permissions(family_circle_id, target_user_id)
+                if not perms_r.success:
+                    return jsonify({"error": perms_r.error or "Database query failed"}), 500
+                return jsonify(
+                    {
+                        "data": {
+                            "user_id": target_user_id,
+                            "permissions": perms_r.data or [],
+                        }
+                    }
+                )
+            if target_user_id:
+                perms_r = family_svc.get_permissions(family_circle_id, target_user_id)
+                if not perms_r.success:
+                    return jsonify({"error": perms_r.error or "Database query failed"}), 500
+                return jsonify(
+                    {"data": {"user_id": target_user_id, "permissions": perms_r.data or []}}
+                )
+            can_manage_r = family_svc.can_manage_family_permissions(
+                g.user_id, g.family_circle_id
+            )
+            if not can_manage_r.success:
+                return jsonify({"error": can_manage_r.error or "Database query failed"}), 500
+            if not can_manage_r.data:
+                return jsonify({"error": "forbidden"}), 403
+            perms_r = family_svc.get_permissions(family_circle_id)
+            if not perms_r.success:
+                return jsonify({"error": perms_r.error or "Database query failed"}), 500
+            return jsonify({"data": perms_r.data or {}})
+
+        data = request.get_json() or {}
+        user_id = (data.get("user_id") or "").strip()
+        permission = (data.get("permission") or "").strip()
+        if not user_id or not permission:
+            return jsonify({"error": "user_id and permission required"}), 400
+        granted = bool(data.get("granted", True))
+        can_manage_r = family_svc.can_manage_family_permissions(g.user_id, g.family_circle_id)
+        if not can_manage_r.success:
+            return jsonify({"error": can_manage_r.error or "Database query failed"}), 500
+        if not can_manage_r.data:
+            return jsonify({"error": "forbidden"}), 403
+        update_r = family_svc.set_permission(user_id, family_circle_id, permission, granted)
+        if not update_r.success:
+            if update_r.error == "target user not in family":
+                return jsonify({"error": "forbidden"}), 403
+            return jsonify({"error": update_r.error or "Database query failed"}), 500
+        return jsonify({"data": update_r.data})
 
     @app.route(
         "/api/family_circles/<family_circle_id>/contacts", methods=["GET", "POST"]
     )
     def api_contacts(family_circle_id):
-        """GET: all contacts. POST: add contact. Kiosk loads once at boot; includes photo_filename, sendbird_user_id."""
+        """GET: all contacts. POST: add contact."""
         _require_family_access(family_circle_id)
         if request.method == "POST":
             data = request.get_json() or {}
@@ -596,7 +537,7 @@ def create_server_app(db_path=None):
                 emergency_priority=data.get("emergency_priority"),
                 photo_filename=data.get("photo_filename"),
                 notes=data.get("notes"),
-                sendbird_user_id=data.get("sendbird_user_id"),
+                linked_user_id=data.get("linked_user_id"),
             )
             if not r.success:
                 return jsonify({"error": "add contact failed"}), 500
@@ -812,7 +753,13 @@ def create_server_app(db_path=None):
         if not os.path.isfile(path):
             abort(404)
         uploads_abs = os.path.abspath(uploads)
-        if not os.path.abspath(path).startswith(uploads_abs + os.sep):
+        try:
+            in_uploads = (
+                os.path.commonpath([uploads_abs, os.path.abspath(path)]) == uploads_abs
+            )
+        except ValueError:
+            in_uploads = False
+        if not in_uploads:
             abort(404)
         mt, _ = mimetypes.guess_type(fn)
         if not mt:
@@ -1028,11 +975,17 @@ def create_server_app(db_path=None):
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
+        denied = _require_family_permission("emergency_alert.manage")
+        if denied is not None:
+            return denied
         return jsonify({"data": {"activated": _get_alert_activated(g.family_circle_id)}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
         """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
+        denied = _require_family_permission("emergency_alert.manage")
+        if denied is not None:
+            return denied
         data = request.get_json() or {}
         activated = _set_alert_activated(
             g.family_circle_id, bool(data.get("activated", False))
@@ -1046,13 +999,11 @@ def create_server_app(db_path=None):
         to_user_id = (data.get("to_user_id") or "").strip()
         if not to_user_id:
             return jsonify({"error": "to_user_id required"}), 400
-        from_sendbird_user_id = sendbird_svc.get_sendbird_user_id_for_app_user(g.user_id)
         from_display_name = user_svc.get_display_name(g.user_id)
         r = call_signal_svc.request_call(
             family_circle_id=g.family_circle_id,
             from_user_id=g.user_id,
             to_user_id=to_user_id,
-            from_sendbird_user_id=from_sendbird_user_id,
             from_display_name=from_display_name,
         )
         if not r.success:
@@ -1090,24 +1041,20 @@ def create_server_app(db_path=None):
 
         client_source = (data.get("client_source") or "").strip() or "unknown"
         client_device_id = (data.get("client_device_id") or "").strip() or "unknown"
-        started_events = {
-            "kiosk_sendbird_websocket_connected",
-            "sendbird_websocket_connected",
-        }
-        issue_events = {
-            "kiosk_calls_sdk_missing",
-            "calls_sdk_missing",
-            "kiosk_sendbird_call_setup_failed",
-            "sendbird_call_setup_failed",
-        }
-        if event in started_events:
-            _logger.info(
-                f"Call socket started event={event} source={client_source} device={client_device_id}"
-            )
-        elif event in issue_events:
-            _logger.info(
-                f"Call socket issue event={event} source={client_source} device={client_device_id}"
-            )
+        err_detail = ((data.get("error") or data.get("reason") or "").strip() or "")[:500]
+        phase = (data.get("phase") or "").strip()[:120]
+        en = (data.get("err_name") or "").strip()[:80]
+        parts = []
+        if phase:
+            parts.append(f"phase={phase!r}")
+        if en:
+            parts.append(f"err_name={en!r}")
+        if err_detail:
+            parts.append(f"detail={err_detail!r}")
+        extra = (" " + " ".join(parts)) if parts else ""
+        _logger.info(
+            f"Call socket event={event} source={client_source} device={client_device_id}{extra}"
+        )
 
         return jsonify({"data": {"ok": True}})
 
@@ -1123,15 +1070,10 @@ def create_server_app(db_path=None):
                 return jsonify({"error": r.error}), 500
             return jsonify({"data": r.data})
 
-        if (
-            request.method != "PUT"
-        ):  # TODO: why are we allowing a PUT method in the route, and then 'defensive'ly failing it?
-            return  # defensive
         data = request.get_json()
         if not data:
             return jsonify({"error": "no data provided"}), 400
         # TODO: why does emergency profile need to ever PUT or update care recipient?
-        care_recipient_svc = container.get_care_recipient_service()
         r = care_recipient_svc.update_care_recipient(family_circle_id, data)
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -1140,6 +1082,8 @@ def create_server_app(db_path=None):
     @app.route("/api/family_circles/<family_circle_id>/emergency-profile/pdf")
     def api_emergency_profile_pdf(family_circle_id):
         _require_family_access(family_circle_id)
+        if build_pdf is None:
+            return jsonify({"error": "PDF generation unavailable: reportlab not installed"}), 503
         r = emergency_svc.get_emergency_profile(family_circle_id)
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -1161,6 +1105,13 @@ def create_server_app(db_path=None):
                 "family_circle_id": g.family_circle_id,
             }
         )
+
+    @app.route("/api/me/permissions")
+    def api_me_permissions():
+        r = family_svc.get_permissions(g.family_circle_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data or []})
 
     @app.route("/kiosk-auth", methods=["GET"])
     def kiosk_auth():
@@ -1212,15 +1163,15 @@ def create_server_app(db_path=None):
         if not data:
             return jsonify({"error": "no data provided"}), 400
 
-        user_id = data.get("user_id")
+        user_id = data.get("user_id") or g.user_id
         latitude = data.get("latitude")
         longitude = data.get("longitude")
         notes = data.get("notes")
         # location_name is always resolved from GPS in create_checkin; never from client
 
-        if not user_id or latitude is None or longitude is None:
+        if latitude is None or longitude is None:
             return (
-                jsonify({"error": "user_id, latitude, and longitude are required"}),
+                jsonify({"error": "latitude and longitude are required"}),
                 400,
             )
         if user_id != g.user_id:
@@ -1277,27 +1228,13 @@ def create_server_app(db_path=None):
         data = r.data or {}
         return jsonify({"ok": True, "requested_count": data.get("requested_count", 0)})
 
-    # Chatapp routes + static (webapp, chatapp, kiosk) for Railway all-in-one deploy
+    # Static routes (webapp + kiosk) for Railway all-in-one deploy
     _src = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _webapp_dist = os.path.join(_src, "apps", "webapp", "web_server", "dist")
-    _chatapp_dist = os.path.join(_src, "apps", "chatapp", "chat_server", "dist")
     _kiosk_web = os.path.join(_src, "apps", "kiosk", "web")
     _webapp_client = os.path.join(_src, "apps", "webapp", "web_client")
-    _repo_root = os.path.dirname(_src)
-    _kiosk_icons = os.path.join(_repo_root, "assets", "icons")
-    if os.path.isfile(os.path.join(_webapp_client, "meridian_api_base.js")):
-
-        @app.route("/meridian_api_base.js")
-        def serve_meridian_api_base_js():
-            """Source copy in web_client — not tied to webapp dist (kiosk loads this before meds inline)."""
-            return send_from_directory(_webapp_client, "meridian_api_base.js")
-
-    if os.path.isdir(_webapp_dist) and os.path.isdir(_chatapp_dist):
-        user_svc = container.get_user_service()
-        register_chatapp_routes(
-            app, sendbird_svc, user_svc, chat_static_prefix="/chatapp"
-        )
-
+    _kiosk_icons = os.path.join(_src, "shared", "assets", "icons")
+    if os.path.isdir(_webapp_dist):
         @app.route("/")
         @app.route("/index.html")
         def serve_index():
@@ -1325,6 +1262,14 @@ def create_server_app(db_path=None):
         def serve_login():
             return send_from_directory(_webapp_dist, "login.html")
 
+        @app.route("/privacy.html")
+        def serve_privacy():
+            return send_from_directory(_webapp_dist, "privacy.html")
+
+        @app.route("/terms.html")
+        def serve_terms():
+            return send_from_directory(_webapp_dist, "terms.html")
+
         @app.route("/ice-editor")
         @app.route("/ice_editor.html")
         def serve_ice_editor():
@@ -1333,10 +1278,6 @@ def create_server_app(db_path=None):
         @app.route("/info.html")
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
-
-        @app.route("/meridian_medications_inline.js")
-        def serve_meridian_medications_inline_js():
-            return send_from_directory(_webapp_dist, "meridian_medications_inline.js")
 
         @app.route("/app.js")
         def serve_app_js():
@@ -1383,23 +1324,128 @@ def create_server_app(db_path=None):
                 abort(404)
             return send_from_directory(os.path.join(_src, "shared"), path)
 
-        @app.route("/chatapp/")
-        @app.route("/chatapp/<path:path>")
-        def serve_chat(path=""):
+    if os.path.isdir(_kiosk_web):
+        def _server_osm_tile_cache_root() -> str:
+            custom = (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_DIR") or "").strip()
+            if custom:
+                return custom
+            return os.path.join(tempfile.gettempdir(), "meridian-osm-tiles")
+
+        def _path_in_cache_root(root_real: str, candidate: str) -> bool:
+            candidate_real = os.path.realpath(candidate)
+            try:
+                return os.path.commonpath([root_real, candidate_real]) == root_real
+            except ValueError:
+                return False
+
+        def _prune_osm_tile_cache(root_real: str) -> None:
+            now = int(time.time())
+            last_run = getattr(_prune_osm_tile_cache, "_last_run", 0)
+            if now - last_run < 300:
+                return
+            _prune_osm_tile_cache._last_run = now
+            try:
+                ttl_sec = int(
+                    (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_TTL_SEC") or "1209600").strip()
+                )
+            except ValueError:
+                ttl_sec = 1209600
+            try:
+                max_files = int(
+                    (os.environ.get("MERIDIAN_SERVER_OSM_TILE_CACHE_MAX_FILES") or "12000").strip()
+                )
+            except ValueError:
+                max_files = 12000
+            keep = []
+            for dirpath, _dirnames, filenames in os.walk(root_real):
+                for name in filenames:
+                    if not name.endswith(".png"):
+                        continue
+                    path = os.path.realpath(os.path.join(dirpath, name))
+                    if not _path_in_cache_root(root_real, path):
+                        continue
+                    try:
+                        st = os.stat(path)
+                    except OSError:
+                        continue
+                    if ttl_sec > 0 and now - int(st.st_mtime) > ttl_sec:
+                        try:
+                            os.remove(path)
+                        except OSError:
+                            pass
+                        continue
+                    keep.append((st.st_mtime, path))
+            overflow = len(keep) - max_files
+            if overflow > 0:
+                keep.sort(key=lambda item: item[0])
+                for _mtime, path in keep[:overflow]:
+                    if not _path_in_cache_root(root_real, path):
+                        continue
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+
+        def _resolve_osm_tile_cache_path(root: str, z: int, x: int, y: int) -> tuple[str, str]:
+            # Accept only valid OSM tile coordinates so we never build out-of-range paths.
+            if z < 0 or z > 19:
+                abort(404)
+            tile_limit = 2**z
+            if x < 0 or y < 0 or x >= tile_limit or y >= tile_limit:
+                abort(404)
+            # Resolve to absolute canonical paths and enforce dest remains under root.
+            root_real = os.path.realpath(root)
+            dest_real = os.path.realpath(
+                os.path.join(root_real, str(z), str(x), f"{y}.png")
+            )
+            try:
+                in_root = os.path.commonpath([root_real, dest_real]) == root_real
+            except ValueError:
+                in_root = False
+            if not in_root:
+                abort(404)
+            return root_real, dest_real
+
+        @app.route("/kiosk/osm-tiles/<int:z>/<int:x>/<int:y>.png")
+        def serve_kiosk_osm_tile(z, x, y):
+            root = _server_osm_tile_cache_root()
+            # Centralize all coordinate and path traversal checks in one place.
+            root_real, dest_real = _resolve_osm_tile_cache_path(root, z, x, y)
+            if os.path.isfile(dest_real):
+                return send_file(dest_real, mimetype="image/png")
+            url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "MeridianServer/1.0 (tile cache; +https://github.com/Bikes4Fun/meridian)"
+                },
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    data = resp.read()
+                if len(data) < 100:
+                    abort(502)
+                if not _path_in_cache_root(root_real, dest_real):
+                    abort(404)
+                parent_real = os.path.realpath(os.path.dirname(dest_real))
+                if not _path_in_cache_root(root_real, parent_real):
+                    abort(404)
+                os.makedirs(parent_real, exist_ok=True)
+                with open(dest_real, "wb") as wf:
+                    wf.write(data)
+                _prune_osm_tile_cache(root_real)
+                return Response(data, mimetype="image/png")
+            except Exception:
+                abort(502)
+
+        @app.route("/kiosk/")
+        @app.route("/kiosk/<path:path>")
+        def serve_kiosk(path=""):
             if not path:
-                path = "chat.html"
-            return send_from_directory(_chatapp_dist, path)
-
-        if os.path.isdir(_kiosk_web):
-
-            @app.route("/kiosk/")
-            @app.route("/kiosk/<path:path>")
-            def serve_kiosk(path=""):
-                if not path:
-                    path = "kiosk.html"
-                if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
-                    return send_from_directory(_kiosk_icons, path[6:])
-                return send_from_directory(_kiosk_web, path)
+                path = "kiosk.html"
+            if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
+                return send_from_directory(_kiosk_icons, path[6:])
+            return send_from_directory(_kiosk_web, path)
 
     return app
 
@@ -1417,4 +1463,12 @@ def run_server(host=None, port=None):
         pass
     host = host if host is not None else get_server_host()
     port = port if port is not None else get_server_port()
-    app.run(host=host, port=port, debug=False)
+    ssl_files = get_meridian_ssl_files()
+    ssl_kw: dict = {}
+    if ssl_files:
+        cert_path, key_path = ssl_files
+        ssl_kw["ssl_context"] = (cert_path, key_path)
+        _logger.info(
+            f"HTTPS enabled (MERIDIAN_SSL_CERT / MERIDIAN_SSL_KEY): {cert_path}"
+        )
+    app.run(host=host, port=port, debug=False, **ssl_kw)

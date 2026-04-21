@@ -1,11 +1,15 @@
-"""Entry point for pywebview kiosk. Run: python -m apps.kiosk"""
+"""Entry point for pywebview kiosk. Run: PYTHONPATH=src python -m apps.kiosk
 
+Kiosk uses a provided API base URL; it does not start the API server.
+"""
+
+import logging
 import os
 import sys
 
 # Ensure src is on path
-_src_dir = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_src_dir = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 )
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
@@ -22,19 +26,7 @@ if "--fullscreen" in sys.argv:
 if "--win-kiosk" in sys.argv:
     os.environ["KIOSK_WIN_KIOSK"] = "1"
 
-import logging
-import threading
-import time
-
-from shared.config import (
-    get_log_level,
-    get_database_path,
-    get_api_base_url,
-    get_server_host,
-    get_server_port,
-    find_available_port,
-    is_railway_reachable,
-)
+from shared.config import get_log_level
 from apps.kiosk.app import create_app
 
 KIOSK_USER_ID = os.environ.get("KIOSK_USER_ID") or "fm_care_001"
@@ -45,54 +37,28 @@ FAMILY_CIRCLE_ID = (
 )
 
 
-def _start_local_api_server(logger):
-    """Start API server in background. Returns api_url."""
-    from apps.server.api import run_server
-
-    host = get_server_host()
-    start_port = get_server_port()
-    port = find_available_port(host, start_port)
-    if port != start_port:
-        logger.warning(f"Port {start_port} in use, using {port}")
-    os.environ["PORT"] = str(port)
-    logger.info("Starting API server...")
-    threading.Thread(target=run_server, kwargs={"port": port}, daemon=True).start()
-    time.sleep(0.5)
-    api_url = f"http://127.0.0.1:{port}"
-    logger.info(f"API: {api_url}")
-    return api_url
-
-
-def main():
-    use_remote_api = "--railway-run" in sys.argv and is_railway_reachable()
-
+def main() -> None:
     logging.basicConfig(
         level=getattr(logging, get_log_level().upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.getLogger("apps.kiosk.app").setLevel(logging.INFO)
+    logging.getLogger("pywebview").setLevel(logging.WARNING)
+    logging.getLogger("apps.kiosk.api_client").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.location").setLevel(logging.WARNING)
+    logging.getLogger("apps.server.database_services.safe_query_manager").setLevel(
+        logging.WARNING
+    )
+    logging.getLogger("dev.demo.seed").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
-    if not use_remote_api:
-        logger.info(f"Database: local - {get_database_path()}")
-        api_url = _start_local_api_server(logger)
-    else:
-        api_url = get_api_base_url()
-        logger.info(f"Remote API: {api_url}")
-        try:
-            import urllib.request
+    api_url = (os.getenv("MERIDIAN_API_URL") or "").rstrip("/")
+    if not api_url:
+        raise RuntimeError("MERIDIAN_API_URL is required for kiosk startup")
 
-            with urllib.request.urlopen(
-                f"{api_url.rstrip('/')}/api/health", timeout=3
-            ) as resp:
-                if resp.status == 200:
-                    logger.info("Server health: ok")
-                else:
-                    logger.warning(f"Server health: {resp.status}")
-        except Exception as e:
-            logger.warning(f"Server health check failed: {e}")
-
+    logger.info(f"Kiosk API URL: {api_url}")
     logger.info("Starting Meridian Kiosk (pywebview)...")
     app = create_app(
         api_url=api_url,

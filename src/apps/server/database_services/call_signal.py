@@ -21,7 +21,7 @@ class CallSignalService:
         r = self.db_manager.execute_query(
             """
             SELECT 1
-            FROM user_family_circle
+            FROM family_memberships
             WHERE user_id = ? AND family_circle_id = ?
             LIMIT 1
             """,
@@ -36,7 +36,6 @@ class CallSignalService:
         family_circle_id: str,
         from_user_id: str,
         to_user_id: str,
-        from_sendbird_user_id: str,
         from_display_name: str,
     ) -> ServiceResult:
         if not family_circle_id or not from_user_id or not to_user_id:
@@ -57,17 +56,15 @@ class CallSignalService:
                 family_circle_id,
                 from_user_id,
                 to_user_id,
-                from_sendbird_user_id,
                 from_display_name,
                 status
             )
-            VALUES (?, ?, ?, ?, ?, 'requested')
+            VALUES (?, ?, ?, ?, 'requested')
             """,
             (
                 family_circle_id,
                 from_user_id,
                 to_user_id,
-                from_sendbird_user_id or "",
                 from_display_name or "",
             ),
         )
@@ -91,7 +88,6 @@ class CallSignalService:
             SELECT
                 id,
                 from_user_id,
-                from_sendbird_user_id,
                 from_display_name,
                 created_at
             FROM call_signals
@@ -113,7 +109,6 @@ class CallSignalService:
             {
                 "call_id": row.get("id"),
                 "from_user_id": row.get("from_user_id"),
-                "from_sendbird_user_id": (row.get("from_sendbird_user_id") or "").strip(),
                 "from_display_name": (row.get("from_display_name") or "").strip(),
                 "created_at": row.get("created_at"),
             }

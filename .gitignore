@@ -1,4 +1,3 @@
-railway.toml
 
 #src/shared/api_config.json
 
@@ -18,10 +17,24 @@ __pycache__/
 
 # Cache
 src/apps/kiosk/cache/
+**/cache/
+**/.cache/
 
 # Environment
 .env
 *.env
+meridian-dev.pem
+meridian-dev-key.pem
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.p8
+*.p7b
+*.p7c
+*.p7m
+*.p7s
 
 .cursor/*
 src/.cursor/*
@@ -43,5 +56,4 @@ meridian-ios/.swiftpm/
 
 # Design source backups
 * copy.ai
-
 info/*

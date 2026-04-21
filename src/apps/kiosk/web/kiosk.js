@@ -1,3 +1,29 @@
+(function () {
+  if (typeof navigator === 'undefined') return;
+  if (!navigator.mediaDevices) navigator.mediaDevices = {};
+  if (!navigator.mediaDevices.getUserMedia) {
+    var legacyGetUserMedia =
+      navigator.getUserMedia ||
+      navigator.webkitGetUserMedia ||
+      navigator.mozGetUserMedia ||
+      navigator.msGetUserMedia;
+    if (legacyGetUserMedia) {
+      navigator.mediaDevices.getUserMedia = function (constraints) {
+        return new Promise(function (resolve, reject) {
+          legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+        });
+      };
+    }
+  }
+  if (!navigator.mediaDevices.enumerateDevices) {
+    navigator.mediaDevices.enumerateDevices = function () {
+      return Promise.resolve([]);
+    };
+  }
+  if (!navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener = function () {};
+  if (!navigator.mediaDevices.removeEventListener) navigator.mediaDevices.removeEventListener = function () {};
+})();
+
 // Top nav (#kiosk-nav) and footer (#kiosk-footer): any click on a [data-screen] button calls Python navigate().
 function bindScreenNav(container) {
   if (!container) return;
@@ -200,14 +226,18 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     (res && res.then) ? res.then(done).catch(function(x){alert(String(x));}) : done(res);
     return;
   }
-  var callBtn = e.target.closest('.contact-call-btn[data-sb-uid]');
-  if (callBtn && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat_with_call) {
-    pywebview.api.open_chat_with_call(callBtn.dataset.sbUid || '', callBtn.dataset.name || '');
-    return;
-  }
-  var tile = e.target.closest('.contact-tile[data-sb-uid]');
-  if (tile && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat) {
-    pywebview.api.open_chat(tile.dataset.sbUid || '', tile.dataset.name || '');
+  // Chat contact call: Twilio Voice JS only for kiosk-embedded calling.
+  // Twilio must reach token/TwiML URLs over the public internet (ngrok in dev).
+  var callBtn = e.target.closest('.contact-call-btn[data-phone]');
+  if (callBtn) {
+    e.preventDefault();
+    var p = callBtn.dataset.phone || '';
+    var n = callBtn.dataset.name || '';
+    if (typeof kioskStartTwilioSpeakerCall !== 'function') {
+      showToast('Kiosk calling is unavailable');
+      return;
+    }
+    kioskStartTwilioSpeakerCall(p, n);
     return;
   }
   // Must not use closest('[data-screen]') alone: body has data-screen from showScreen() and would
@@ -274,6 +304,34 @@ function showScreen(name, html) {
   }
 }
 
+function setBootLoading(active, message) {
+  var overlay = document.getElementById('kiosk-boot-overlay');
+  if (!overlay) return;
+  var msgEl = document.getElementById('kiosk-boot-overlay-msg');
+  if (msgEl && message) msgEl.textContent = message;
+  if (active) {
+    overlay.classList.remove('kiosk-boot-overlay--hidden');
+    return;
+  }
+  overlay.classList.add('kiosk-boot-overlay--hidden');
+}
+
+function setKioskCornerBootLoading(active, message) {
+  var root = document.getElementById('kiosk-boot-corner');
+  if (!root) return;
+  var msgEl = document.getElementById('kiosk-boot-corner-msg');
+  if (msgEl && message !== undefined && message !== null) {
+    msgEl.textContent = message || '';
+  }
+  if (active) {
+    root.classList.remove('kiosk-boot-corner--hidden');
+    root.setAttribute('aria-busy', 'true');
+  } else {
+    root.classList.add('kiosk-boot-corner--hidden');
+    root.removeAttribute('aria-busy');
+  }
+}
+
 function updateEl(id, content) {
   var el = document.getElementById(id);
   if (el) el.innerHTML = content;
@@ -302,151 +360,281 @@ function showToast(msg) {
   }, 3500);
 }
 
-var _kioskCallSocketReady = false;
-var _kioskCallSocketStarted = false;
-var _kioskLastRingingCallId = '';
-var _kioskClientDeviceId = '';
+var _kioskTwilioDevice = null;
+var _kioskTwilioCallerId = '';
+var _kioskTwilioSdkLoadPromise = null;
+var _kioskTwilioSdkSources = [
+  'https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js?ts=',
+  'https://media.twiliocdn.com/sdk/js/voice/latest/twilio.min.js?ts=',
+  'https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.11.0/dist/twilio.min.js?ts=',
+  'https://unpkg.com/@twilio/voice-sdk@2.11.0/dist/twilio.min.js?ts='
+];
 
-function _ensureKioskClientDeviceId() {
-  if (_kioskClientDeviceId) return _kioskClientDeviceId;
-  var key = 'meridian_kiosk_device_id';
-  try {
-    var existing = window.localStorage ? window.localStorage.getItem(key) : '';
-    if (existing) {
-      _kioskClientDeviceId = existing;
-      return _kioskClientDeviceId;
-    }
-    var id = 'kiosk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
-    if (window.localStorage) window.localStorage.setItem(key, id);
-    _kioskClientDeviceId = id;
-    return _kioskClientDeviceId;
-  } catch (_err) {
-    _kioskClientDeviceId = 'kiosk-ephemeral';
-    return _kioskClientDeviceId;
-  }
-}
-
-function logKioskCallSocket(eventName, details) {
-  var payload = {
-    event: eventName,
-    ts: new Date().toISOString(),
-    page: window.location.pathname + window.location.search,
-    visibility: document.visibilityState,
-    online: !!navigator.onLine,
-    client_source: 'kiosk',
-    client_device_id: _ensureKioskClientDeviceId()
-  };
-  if (details && typeof details === 'object') {
-    for (var k in details) {
-      if (Object.prototype.hasOwnProperty.call(details, k)) payload[k] = details[k];
-    }
-  }
-  try { console.info('[MeridianKioskCall]', JSON.stringify(payload)); } catch (_err) {}
-  try {
-    fetch('/api/calls/socket-event', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-  } catch (_err2) {}
-}
-
-function initKioskCallSocket() {
-  if (_kioskCallSocketStarted) return;
-  _kioskCallSocketStarted = true;
-  var SendBirdCall = window.SendBirdCall;
-  if (!SendBirdCall) {
-    logKioskCallSocket('kiosk_calls_sdk_missing', {
-      sdk_script: 'https://cdn.jsdelivr.net/npm/sendbird-calls@1.12.2/SendBirdCall.min.js'
-    });
+function _kioskTryLoadTwilioSdk(index, resolve, reject) {
+  if (typeof Twilio !== 'undefined' && Twilio.Device) {
+    window.__twilioSdkLoadState = 'loaded-before-fallback';
+    resolve(true);
     return;
   }
-  logKioskCallSocket('kiosk_calls_init_start', {});
-  fetch('/api/chat/config', { credentials: 'include' })
-    .then(function (r) { return r.json(); })
-    .then(function (cfg) {
-      if (!cfg || !cfg.app_id) throw new Error('No app_id in config.');
-      return fetch('/api/chat/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: '{}'
-      }).then(function (r) {
-        return r.json().then(function (d) {
-          if (!r.ok) throw new Error((d && (d.detail || d.error)) || 'Token request failed');
-          return { cfg: cfg, token: d };
-        });
-      });
-    })
-    .then(function (bundle) {
-      var cfg = bundle.cfg;
-      var token = bundle.token || {};
-      var userId = token.sendbird_user_id || '';
-      var sessionToken = token.session_token || '';
-      if (!userId) throw new Error('No sendbird_user_id in token response.');
+  if (index >= _kioskTwilioSdkSources.length) {
+    reject(new Error('Twilio SDK fallback sources exhausted'));
+    return;
+  }
+  var src = _kioskTwilioSdkSources[index] + Date.now();
+  var script = document.createElement('script');
+  script.src = src;
+  script.async = true;
+  script.onload = function () {
+    if (typeof Twilio !== 'undefined' && Twilio.Device) {
+      window.__twilioSdkLoadState = 'fallback-loaded-' + index;
+      resolve(true);
+      return;
+    }
+    _kioskTryLoadTwilioSdk(index + 1, resolve, reject);
+  };
+  script.onerror = function () {
+    _kioskTryLoadTwilioSdk(index + 1, resolve, reject);
+  };
+  document.head.appendChild(script);
+}
 
-      logKioskCallSocket('kiosk_sendbird_call_init', { app_id: cfg.app_id, self_sendbird_user_id: userId });
-      SendBirdCall.init(cfg.app_id);
-      return SendBirdCall.useMedia().then(function () {
-        logKioskCallSocket('kiosk_sendbird_call_authenticate_start', { app_id: cfg.app_id, self_sendbird_user_id: userId });
-        return new Promise(function (resolve, reject) {
-          SendBirdCall.authenticate(
-            { userId: userId, accessToken: sessionToken },
-            function (_result, error) {
-              if (error) reject(error);
-              else resolve({ cfg: cfg, userId: userId });
-            }
-          );
-        });
+function kioskEnsureTwilioSdk() {
+  if (typeof Twilio !== 'undefined' && Twilio.Device) return Promise.resolve(true);
+  if (_kioskTwilioSdkLoadPromise) return _kioskTwilioSdkLoadPromise;
+  _kioskTwilioSdkLoadPromise = new Promise(function (resolve, reject) {
+    _kioskTryLoadTwilioSdk(0, resolve, function (err) {
+      window.__twilioSdkLoadState = 'fallback-failed';
+      reject(err);
+    });
+  }).finally(function () {
+    _kioskTwilioSdkLoadPromise = null;
+  });
+  return _kioskTwilioSdkLoadPromise;
+}
+
+function kioskEnsureTwilioDevice() {
+  if (_kioskTwilioDevice) return Promise.resolve(_kioskTwilioDevice);
+  return kioskEnsureTwilioSdk()
+    .catch(function () {
+      return true;
+    })
+    .then(function () {
+      return fetch('/api/voice/token', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'ngrok-skip-browser-warning': 'true' }
       });
     })
-    .then(function (bundle) {
-      var cfg = bundle.cfg;
-      var userId = bundle.userId;
-      logKioskCallSocket('kiosk_sendbird_websocket_connect_start', {
-        app_id: cfg.app_id,
-        self_sendbird_user_id: userId,
-        transport: 'wss',
-        remote_port_hint: 443
+    .then(function (resp) {
+      if (!resp.ok) return resp.text().then(function (t) { throw new Error(t || ('HTTP ' + resp.status)); });
+      return resp.json();
+    })
+    .then(function (data) {
+      var token = (data && data.token) || '';
+      _kioskTwilioCallerId = (data && data.caller_id) || '';
+      if (!token) throw new Error((data && data.error) || 'Missing Twilio token');
+      if (typeof Twilio === 'undefined' || !Twilio.Device) {
+        throw new Error('Twilio Voice SDK unavailable in kiosk (state=' + (window.__twilioSdkLoadState || 'unknown') + ')');
+      }
+      _kioskTwilioDevice = new Twilio.Device(token, {
+        logLevel: 1,
+        closeProtection: false,
+        codecPreferences: ['opus', 'pcmu']
       });
-      return window.SendBirdCall.connectWebSocket().then(function () {
-        _kioskCallSocketReady = true;
-        logKioskCallSocket('kiosk_sendbird_websocket_connected', {
-          app_id: cfg.app_id,
-          self_sendbird_user_id: userId,
-          transport: 'wss',
-          remote_port_hint: 443,
-          local_port_note: 'managed by SDK/OS (ephemeral)'
-        });
-        window.SendBirdCall.addListener('kiosk-call-socket-listener', {
-          onRinging: function (call) {
-            var callId = (call && (call.callId || call.id) || '').toString();
-            if (callId && callId === _kioskLastRingingCallId) return;
-            _kioskLastRingingCallId = callId;
-            var callerId = (call && call.caller && (call.caller.userId || call.caller.user_id) || '').toString();
-            var callerName = (call && call.caller && (call.caller.nickname || call.caller.userId || call.caller.user_id) || 'Family').toString();
-            logKioskCallSocket('kiosk_sendbird_on_ringing', {
-              call_id: callId,
-              from_sendbird_user_id: callerId
-            });
-            if (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.open_chat && callerId) {
-              pywebview.api.open_chat(callerId, callerName);
-            }
-          }
-        });
+      return _kioskTwilioDevice.register().then(function () {
+        return _kioskTwilioDevice;
+      });
+    });
+}
+
+function kioskStartTwilioSpeakerCall(phone, displayName) {
+  var to = (phone || '').trim();
+  var who = (displayName || to || 'contact').trim();
+  if (!to) {
+    showToast('No phone number for this contact');
+    return;
+  }
+  kioskEnsureTwilioDevice()
+    .then(function (device) {
+      return device.connect({ params: { To: to, callerId: _kioskTwilioCallerId } });
+    })
+    .then(function (call) {
+      showToast('Calling ' + who);
+      call.on('accept', function () {
+        showToast('Connected to ' + who);
+      });
+      call.on('disconnect', function () {
+        showToast('Call ended');
       });
     })
     .catch(function (err) {
-      _kioskCallSocketStarted = false;
-      logKioskCallSocket('kiosk_sendbird_call_setup_failed', {
-        error: (err && err.message) || String(err)
-      });
+      showToast('Call failed: ' + ((((err && err.message) || err || '') + '').slice(0, 80) || 'unknown error'));
     });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initKioskCallSocket);
-} else {
-  initKioskCallSocket();
-}
+// Call socket bootstrap removed; voice calls are triggered directly per contact button.
+/**
+ * Kiosk Medications screen: same inline editor as the webapp (bundled in webapp medications.js).
+ * Runs after each showScreen via window.onKioskScreenShown (scripts in injected HTML do not run).
+ */
+(function () {
+  'use strict';
+
+  var _inlineSnapshot = [];
+  var _kioskMedAutosave = null;
+
+  function kioskMedicationNamesUnique(rows) {
+    var seen = {};
+    for (var i = 0; i < rows.length; i++) {
+      var n = (rows[i].name || '').trim();
+      if (!n) continue;
+      var k = n.toLowerCase();
+      if (seen[k]) return 'Each medication name must be unique.';
+      seen[k] = true;
+    }
+    return null;
+  }
+
+  var SAVE_MEDS_DISK_SVG =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><line x1="7" y1="3" x2="17" y2="3"/></svg>';
+
+  function statusMsg(msg) {
+      if (typeof showToast === 'function') {
+          showToast(msg);
+      } else {
+          alert(msg);
+      }
+  }
+
+  function loadInlineMeds(inlineList) {
+      if (!(typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.get_medications_editor_rows)) {
+          statusMsg('Medication editor bridge unavailable');
+          return;
+      }
+      if (_kioskMedAutosave) _kioskMedAutosave.cancel();
+      var result = pywebview.api.get_medications_editor_rows();
+      function done(raw) {
+          var meds = [];
+          if (Array.isArray(raw)) meds = raw;
+          else if (typeof raw === 'string') {
+              try { meds = JSON.parse(raw) || []; } catch (_e) { meds = []; }
+          }
+          if (!Array.isArray(meds)) meds = [];
+          meds = meds.filter(function (m) { return m && typeof m === 'object'; });
+              _inlineSnapshot = MeridianMedicationsInline.cloneSnapshot(meds);
+              MeridianMedicationsInline.renderRows(inlineList, meds);
+      }
+      if (result && result.then) result.then(done).catch(function () {
+          statusMsg('Could not load medications for editing');
+      });
+      else done(result);
+  }
+
+  function mountMedicationsEditor() {
+      var root = document.getElementById('kioskMedsEditorRoot');
+      if (!root) return;
+      if (typeof MeridianMedicationsInline === 'undefined') {
+          root.innerHTML = '<p class="kiosk-caption">Editor failed to load. Reload or use the web dashboard.</p>';
+          return;
+      }
+      var trash = MeridianMedicationsInline.TRASH_SVG;
+      root.innerHTML =
+          '<div class="ice-med-toolbar-top">' +
+          '<button type="button" id="kioskMedsSelectAllBtn" class="btn-inline ice-med-select-all-btn">Select all</button>' +
+          '<label class="ice-med-autosave-label">' +
+          '<input type="checkbox" id="kioskMedsAutoSave" class="ice-med-autosave-cb">' +
+          'Save as you go</label>' +
+          '</div>' +
+          '<div class="ice-medications-editor" id="kioskMedsInlineList"></div>' +
+          '<div class="ice-med-editor-actions kiosk-meds-actions">' +
+          '<button type="button" id="kioskMedsAddBtn" class="btn-add">Add medication</button>' +
+          '<button type="button" id="kioskMedsDeleteSelectedBtn" class="btn-inline btn-delete ice-med-delete-selected-btn">' +
+          '<span class="ice-med-delete-selected-btn__icon" aria-hidden="true">' + trash + '</span>' +
+          '<span>Delete selected</span></button>' +
+          '<button type="button" id="kioskMedsSaveBtn" class="ice-med-save-btn">' +
+          '<span class="ice-med-save-btn__icon" aria-hidden="true">' + SAVE_MEDS_DISK_SVG + '</span>' +
+          'Save medications</button>' +
+          '</div>';
+
+      var inlineList = document.getElementById('kioskMedsInlineList');
+      var addBtn = document.getElementById('kioskMedsAddBtn');
+      var selAllBtn = document.getElementById('kioskMedsSelectAllBtn');
+      var delBtn = document.getElementById('kioskMedsDeleteSelectedBtn');
+      var saveBtn = document.getElementById('kioskMedsSaveBtn');
+
+      function persistMedications(silent) {
+          if (!(typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.save_medications_editor_rows)) {
+              if (!silent) statusMsg('Medication save bridge unavailable');
+              return;
+          }
+          var rows = MeridianMedicationsInline.collectRows(inlineList);
+          var dupErr =
+              typeof MeridianMedicationsInline.validateUniqueMedicationNames === 'function'
+                  ? MeridianMedicationsInline.validateUniqueMedicationNames(rows)
+                  : kioskMedicationNamesUnique(rows);
+          if (dupErr) {
+              if (!silent) statusMsg(dupErr);
+              return;
+          }
+          var result = pywebview.api.save_medications_editor_rows(
+              JSON.stringify(rows),
+              JSON.stringify(_inlineSnapshot)
+          );
+          function afterSave(reply) {
+              if (reply !== 'ok') {
+                  if (!silent) statusMsg(reply || 'Save failed');
+                  return;
+              }
+              if (!silent) statusMsg('Medications saved');
+              loadInlineMeds(inlineList);
+          }
+          if (result && result.then) return result.then(afterSave).catch(function (err) {
+              statusMsg((err && err.message) ? err.message : 'Save failed');
+          });
+          afterSave(result);
+      }
+
+      _kioskMedAutosave = MeridianMedicationsInline.wireAutoSave(inlineList, {
+          isEnabled: function () {
+              var c = document.getElementById('kioskMedsAutoSave');
+              return !!(c && c.checked);
+          },
+          debounceMs: 1000,
+          save: function () {
+              return persistMedications(true);
+          }
+      });
+
+      MeridianMedicationsInline.wireList(inlineList, addBtn, delBtn, selAllBtn, {
+          onListMutate: function () {
+              if (_kioskMedAutosave) _kioskMedAutosave.schedule();
+          },
+          onRowsDeleted: function () {
+              if (_kioskMedAutosave) _kioskMedAutosave.cancel();
+              persistMedications(false);
+          }
+      });
+
+      var kioskAuto = document.getElementById('kioskMedsAutoSave');
+      if (kioskAuto) {
+          kioskAuto.addEventListener('change', function () {
+              if (this.checked && _kioskMedAutosave) _kioskMedAutosave.schedule();
+          });
+      }
+
+      if (saveBtn) {
+          saveBtn.addEventListener('click', function () {
+              persistMedications(false);
+          });
+      }
+
+      loadInlineMeds(inlineList);
+  }
+
+  window.onKioskScreenShown = function (name) {
+      if (name === 'medications') {
+          mountMedicationsEditor();
+      }
+  };
+})();

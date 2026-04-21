@@ -7,7 +7,7 @@ Not here: live temperature polling (app + TemperatureSensor), medication editing
 
 import html as html_module
 from . import html_primitives as hp
-from .temperature_sensor import STOVE_SNOOZE_MINUTES
+from .sensor_widgets import STOVE_SNOOZE_MINUTES
 
 
 def build_monitor_reading_row_html(

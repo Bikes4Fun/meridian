@@ -140,23 +140,3 @@ def kiosk_button(text, onclick_js, no_feedback=False, small=False):
         parts.append("kiosk-button--small")
     cls = " ".join(parts)
     return f'<button class="{cls}" onclick="{onclick_js}">{html.escape(str(text))}</button>'
-
-
-def contact_tile(
-    avatar_src, name, onclick_js=None, relationship="", data_sb_uid="", data_name=""
-):
-    """Person/contact card. avatar_src = data URI from fetch_photo_b64. Uses data-sb-uid/data-name for chat when provided."""
-    initial = (name or "?")[0].upper()
-    name_escaped = html.escape(str(name or "Contact"))
-    img_tag = avatar_img(avatar_src, name)
-    rel_part = (
-        f'<div class="contact-relationship">{html.escape(str(relationship))}</div>'
-        if relationship
-        else ""
-    )
-    avatar_block = f'<div class="avatar-wrapper"><div class="contact-initial">{html.escape(initial)}</div>{img_tag}</div>'
-    if data_sb_uid or data_name:
-        sb = f' data-sb-uid="{html.escape(str(data_sb_uid))}"' if data_sb_uid else ""
-        nm = f' data-name="{html.escape(str(data_name))}"' if data_name else ""
-        return f'<div class="contact-tile" role="button"{sb}{nm}>{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'
-    return f'<div class="contact-tile" onclick="{onclick_js}">{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'

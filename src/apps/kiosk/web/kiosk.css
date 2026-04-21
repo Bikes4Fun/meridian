@@ -73,6 +73,56 @@ body {
   flex-direction: column;
 }
 
+.kiosk-boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244, 243, 241, 0.9);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 220ms ease, visibility 220ms ease;
+}
+
+.kiosk-boot-overlay--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.kiosk-boot-overlay__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.kiosk-boot-overlay__spinner {
+  width: 7vh;
+  height: 7vh;
+  min-width: 64px;
+  min-height: 64px;
+  border-radius: 999px;
+  border: 0.75vh solid var(--surface-muted);
+  border-top-color: var(--accent);
+  animation: kioskBootSpin 900ms linear infinite;
+}
+
+.kiosk-boot-overlay__msg {
+  font-size: var(--font-body-large);
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+@keyframes kioskBootSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* =============================================================================
    LAYOUT COMPONENTS
    ============================================================================= */
@@ -80,11 +130,55 @@ body {
 /* Navigation — min 24px gap between targets (kiosk motor spec) */
 #kiosk-nav {
   display: flex;
+  align-items: center;
   min-height: var(--touch-min);
   padding: 0 var(--safe-margin);
   gap: var(--space-md);
   background: var(--bg);
   border-bottom: none;
+}
+
+/* Phase 2 boot: fixed corner; stays visible across screen navigations until Python clears it */
+.kiosk-boot-corner {
+  position: fixed;
+  top: calc(var(--safe-margin) + env(safe-area-inset-top, 0px));
+  right: calc(var(--safe-margin) + env(safe-area-inset-right, 0px));
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: min(42vw, 420px);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+.kiosk-boot-corner--hidden {
+  display: none;
+}
+
+.kiosk-boot-corner__spinner {
+  width: 4vh;
+  height: 4vh;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 0.5vh solid var(--surface-muted);
+  border-top-color: var(--accent);
+  animation: kioskBootSpin 900ms linear infinite;
+}
+
+.kiosk-boot-corner__msg {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .nav-tab {

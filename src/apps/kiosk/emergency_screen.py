@@ -96,7 +96,6 @@ def build_emergency_html(services, api_url: str) -> str:
     html_parts.append('<div class="emergency-warm-shell">')
     html_parts.append(
         '<div class="emergency-warm-top-bar">'
-        '<div class="emergency-warm-dot"></div>'
         '<div class="emergency-warm-title">In Case of Emergency</div>'
         f'<div class="emergency-warm-updated">{_esc(updated_text)}</div>'
         "</div>"

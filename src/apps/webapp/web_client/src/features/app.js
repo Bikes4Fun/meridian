@@ -302,9 +302,6 @@
     }
 
     function activateAlert() {
-        if (_alertRequestInFlight) return;
-        _alertRequestInFlight = true;
-        setAlertButtonState();
         meridianApiClient.setEmergencyAlert(true)
             .then(function () {
                 return refreshEmergencyAlertStatus({ forceActive: true });
@@ -448,20 +445,34 @@
         var shortcut = document.getElementById('kioskAlertShortcutBtn');
         if (!shortcut) return;
         shortcut.addEventListener('click', function () {
-            var proceed = window.confirm(
-                'This will switch the kiosk to emergency mode. Activate alert now?'
-            );
-            if (!proceed) return;
-            activateAlert();
-            var nav = document.getElementById('appNav');
-            var settingsBtn = nav && nav.querySelector('.nav-btn[data-page="settings"]');
-            if (settingsBtn) settingsBtn.click();
-            setTimeout(function () {
-                var el = document.getElementById('settingsKioskAlert');
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                var cancelBtn = document.getElementById('cancelAlertBtn');
-                if (cancelBtn) cancelBtn.focus();
-            }, 50);
+            meridianApiClient.getEmergencyAlertStatus()
+                .then(function (resp) {
+                    var isActive = !!(resp && resp.data && resp.data.activated);
+                    if (isActive) {
+                        return meridianApiClient.setEmergencyAlert(false).then(function () {
+                            showStatus('Alert cancelled.', 'success');
+                        });
+                    }
+                    var proceed = window.confirm(
+                        'This will switch the kiosk to emergency mode. Activate alert now?'
+                    );
+                    if (!proceed) return null;
+                    return meridianApiClient.setEmergencyAlert(true).then(function () {
+                        showStatus('Alert mode activated. The kiosk should show the emergency screen.', 'success');
+                        var nav = document.getElementById('appNav');
+                        var settingsBtn = nav && nav.querySelector('.nav-btn[data-page="settings"]');
+                        if (settingsBtn) settingsBtn.click();
+                        setTimeout(function () {
+                            var el = document.getElementById('settingsKioskAlert');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            var cancelBtn = document.getElementById('cancelAlertBtn');
+                            if (cancelBtn) cancelBtn.focus();
+                        }, 50);
+                    });
+                })
+                .catch(function (err) {
+                    showStatus('Alert failed: ' + (err.message || String(err)), 'error');
+                });
         });
     }
 

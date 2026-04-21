@@ -7,9 +7,12 @@ import UserNotifications
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     var window: UIWindow?
+    private let warmBackground = UIColor(red: 0.98, green: 0.97, blue: 0.95, alpha: 1)
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         window = UIWindow(frame: UIScreen.main.bounds)
+        window?.backgroundColor = warmBackground
+        window?.overrideUserInterfaceStyle = .light
         window?.rootViewController = RootViewController()
         window?.makeKeyAndVisible()
 

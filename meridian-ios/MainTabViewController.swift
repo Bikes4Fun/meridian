@@ -6,6 +6,8 @@ import WebKit
 import MapKit
 
 final class MainTabViewController: UITabBarController {
+    private let warmBackground = UIColor(red: 0.98, green: 0.97, blue: 0.95, alpha: 1)
+
     private enum TabIndex: Int {
         case home = 0
         case alerts = 1
@@ -22,10 +24,19 @@ final class MainTabViewController: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = MeridianPalette.background
+        view.backgroundColor = warmBackground
+        overrideUserInterfaceStyle = .light
         tabBar.tintColor = MeridianPalette.primaryAction
         tabBar.unselectedItemTintColor = MeridianPalette.mutedText
         tabBar.backgroundColor = .white
+        tabBar.isTranslucent = false
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.backgroundColor = .white
+        tabBar.standardAppearance = tabAppearance
+        if #available(iOS 15.0, *) {
+            tabBar.scrollEdgeAppearance = tabAppearance
+        }
 
         let homeVC = HomeViewController()
 
@@ -59,7 +70,9 @@ final class MainTabViewController: UITabBarController {
 
     private func wrapped(_ vc: UIViewController, title: String, image: UIImage?) -> UIViewController {
         vc.tabBarItem = UITabBarItem(title: title, image: image, tag: 0)
-        return UINavigationController(rootViewController: vc)
+        let nav = UINavigationController(rootViewController: vc)
+        nav.view.backgroundColor = warmBackground
+        return nav
     }
 
     private func startCallWarmupIfNeeded() {
@@ -173,14 +186,14 @@ final class HomeViewController: UIViewController {
         contentStack.addArrangedSubview(mapCard)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentInsetAdjustmentBehavior = .automatic
         scrollView.addSubview(contentStack)
         view.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
             familyMapView.heightAnchor.constraint(equalToConstant: 220),
 
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -334,6 +347,7 @@ final class SettingsViewController: UIViewController {
         }
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.contentInsetAdjustmentBehavior = .automatic
         scrollView.addSubview(contentStack)
         view.addSubview(scrollView)
 
@@ -344,7 +358,7 @@ final class SettingsViewController: UIViewController {
             appearanceButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             developerToolsButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
 
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),

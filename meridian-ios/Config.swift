@@ -9,6 +9,7 @@ import Foundation
 
 enum Config {
     private static let savedApiBaseURLKey = "meridian_api_base_url"
+    private static let fallbackApiBaseURL = "https://denary-unneglected-alease.ngrok-free.dev"
 
     static let apiBaseURLDidChangeNotification = Notification.Name("meridianApiBaseURLDidChange")
 
@@ -37,7 +38,9 @@ enum Config {
         let fromPlist = (Bundle.main.object(forInfoDictionaryKey: "MERIDIAN_API_URL") as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "/$", with: "", options: .regularExpression) ?? ""
-        return normalizedBaseURL(fromPlist)
+        let normalized = normalizedBaseURL(fromPlist)
+        if !normalized.isEmpty { return normalized }
+        return fallbackApiBaseURL
     }
 
     /// Effective API base URL (no trailing slash).

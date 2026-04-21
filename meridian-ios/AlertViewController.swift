@@ -9,8 +9,6 @@ final class AlertViewController: UIViewController {
     private let titleLabel = UILabel()
     private let activateEmergencyAlertButton = UIButton(type: .system)
     private let cancelEmergencyAlertButton = UIButton(type: .system)
-    private let forceAnswerCallButton = UIButton(type: .system)
-    private let sensorCheckButton = UIButton(type: .system)
     private let readinessCard = UIView()
     private let readinessTitleLabel = UILabel()
     private let readinessDetailLabel = UILabel()
@@ -33,12 +31,6 @@ final class AlertViewController: UIViewController {
 
         cancelEmergencyAlertButton.applyMeridianButtonStyle(.bordered, title: "Cancel Emergency Alert")
         cancelEmergencyAlertButton.addTarget(self, action: #selector(cancelAlert), for: .touchUpInside)
-
-        forceAnswerCallButton.applyMeridianButtonStyle(.secondary, title: "Force Call Kiosk")
-        forceAnswerCallButton.addTarget(self, action: #selector(forceAnswerCallTapped), for: .touchUpInside)
-
-        sensorCheckButton.applyMeridianButtonStyle(.bordered, title: "Run Sensor Diagnostics")
-        sensorCheckButton.addTarget(self, action: #selector(sensorCheckTapped), for: .touchUpInside)
 
         readinessCard.backgroundColor = MeridianPalette.surface
         readinessCard.layer.cornerRadius = 12
@@ -77,7 +69,7 @@ final class AlertViewController: UIViewController {
         contentStack.spacing = 12
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        [titleLabel, activateEmergencyAlertButton, cancelEmergencyAlertButton, forceAnswerCallButton, sensorCheckButton, readinessCard, progressIndicator, statusLabel].forEach {
+        [titleLabel, activateEmergencyAlertButton, cancelEmergencyAlertButton, readinessCard, progressIndicator, statusLabel].forEach {
             contentStack.addArrangedSubview($0)
         }
 
@@ -89,10 +81,8 @@ final class AlertViewController: UIViewController {
         NSLayoutConstraint.activate([
             activateEmergencyAlertButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             cancelEmergencyAlertButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            forceAnswerCallButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            sensorCheckButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
 
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -125,30 +115,6 @@ final class AlertViewController: UIViewController {
         performAlertUpdate(activated: false)
     }
 
-    @objc private func forceAnswerCallTapped() {
-        if isRequestInFlight { return }
-        isRequestInFlight = true
-        setStatus("Requesting kiosk force call...")
-        Task {
-            do {
-                try await APIService.shared.requestCallToDefaultRecipient()
-                await MainActor.run {
-                    self.isRequestInFlight = false
-                    self.setStatus("Kiosk force call requested.", color: .systemGreen)
-                }
-            } catch {
-                await MainActor.run {
-                    self.isRequestInFlight = false
-                    self.setStatus("Force call failed. Please try again.", color: .systemRed)
-                }
-            }
-        }
-    }
-
-    @objc private func sensorCheckTapped() {
-        setStatus("Diagnostics complete. All monitored sensors responsive.", color: .systemGreen)
-    }
-
     private func setStatus(_ text: String, color: UIColor = .secondaryLabel) {
         statusLabel.text = text
         statusLabel.textColor = color
@@ -176,8 +142,6 @@ final class AlertViewController: UIViewController {
     private func updateControlsForRequestState() {
         activateEmergencyAlertButton.isEnabled = !isRequestInFlight
         cancelEmergencyAlertButton.isEnabled = !isRequestInFlight
-        forceAnswerCallButton.isEnabled = !isRequestInFlight
-        sensorCheckButton.isEnabled = !isRequestInFlight
         if isRequestInFlight {
             progressIndicator.startAnimating()
         } else {

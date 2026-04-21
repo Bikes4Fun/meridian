@@ -325,7 +325,6 @@ final class SettingsViewController: UIViewController {
     private let notificationButton = UIButton(type: .system)
     private let sensorConfigurationButton = UIButton(type: .system)
     private let appearanceButton = UIButton(type: .system)
-    private let developerToolsButton = UIButton(type: .system)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -339,10 +338,8 @@ final class SettingsViewController: UIViewController {
         configureListButton(notificationButton, title: "Notification Preferences")
         configureListButton(sensorConfigurationButton, title: "Sensor Configuration")
         configureListButton(appearanceButton, title: "Display & Accessibility")
-        configureListButton(developerToolsButton, title: "Developer Tools")
-        developerToolsButton.addTarget(self, action: #selector(openDeveloperTools), for: .touchUpInside)
 
-        [accountButton, notificationButton, sensorConfigurationButton, appearanceButton, developerToolsButton].forEach {
+        [accountButton, notificationButton, sensorConfigurationButton, appearanceButton].forEach {
             contentStack.addArrangedSubview($0)
         }
 
@@ -356,7 +353,6 @@ final class SettingsViewController: UIViewController {
             notificationButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             sensorConfigurationButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             appearanceButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            developerToolsButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
 
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -386,10 +382,6 @@ final class SettingsViewController: UIViewController {
         button.contentHorizontalAlignment = .leading
         button.layer.borderColor = MeridianPalette.border.cgColor
         button.layer.borderWidth = 1
-    }
-
-    @objc private func openDeveloperTools() {
-        onOpenDeveloperTools?()
     }
 }
 

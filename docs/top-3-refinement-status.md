@@ -12,8 +12,8 @@ _Update this file when Top 3 scope changes or items ship._
 
 ### Must-Do
 
-**⬜ Confirm modal on the emergency alert button**  
-The current `kioskAlertShortcutBtn` in the header scrolls to the Health tab — it does not confirm before activating. This is a critical safety gap. Replace with a compact popover/modal directly on the button. The modal needs: a brief warning ("This will switch the kiosk to emergency mode"), an Activate button in red, and a Cancel option. When an alert is already active, the same button should show a different state (red/pulsing icon, "Cancel alert" as the primary action). No new API needed — activate and cancel endpoints are already wired.
+**🔄 Confirm modal on the emergency alert button**  
+`kioskAlertShortcutBtn` now asks for confirmation before activation and shows an active pulsing visual state in the header. Remaining for full ship: replace native browser confirm with an in-app compact popover/modal and expose direct cancel as the primary action from the same control state.
 
 **⬜ Profile completeness indicator**  
 Families won't fill out a form they can't see progress on. Add a simple `4 of 7 fields complete` indicator at the top of both the Health tab POLST fold and the `/ice-editor` page. The seven critical fields are: full name, date of birth, DNR status, at least one emergency contact, medical proxy name + phone, care recipient photo uploaded, and DNR/POLST document uploaded. Derive this client-side from the loaded profile data — no backend change needed. Display it as a fraction with a subtle colored bar or dot indicators. Red if under 4/7, yellow at 4–6, green at 7/7.
@@ -147,6 +147,7 @@ Credit these in standup / presentations; they are not the §1–§3 bullets abov
 - **✅** Webapp layout: Info page / unified page shell grid margins
 - **✅** Demo seed and API responses for medications (idempotency, duplicate handling, logging)
 - **✅** Runtime API URL modes (local / ngrok / railway) and unified API target for webapp + kiosk where applicable
+- **✅** Emergency alert reliability + visibility pass: DB-backed alert state (multi-worker safe), kiosk-safe status reads, header active/pulsing web indicator, and temporary pause of kiosk auto-print on alert activation
 
 ---
 

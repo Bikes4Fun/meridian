@@ -23,6 +23,10 @@
         return d.firstChild;
     }
 
+    function escapeHtml(s) {
+        return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function renderIceMedications(medical) {
         if (_iceMedAutosave) _iceMedAutosave.cancel();
         medical = medical || {};
@@ -185,6 +189,55 @@
         el.classList.toggle('ice-banner--error', !!isError);
     }
 
+    function iceCompletenessModel(data) {
+        var d = data || {};
+        var profile = d.profile || {};
+        var medical = d.medical || {};
+        var contacts = d.emergency_contacts || [];
+        var hasName = !!String(profile.name || '').trim();
+        var hasDob = !!String(profile.dob || '').trim();
+        var hasDnr = Object.prototype.hasOwnProperty.call(medical, 'dnr');
+        var hasEmergencyContact = contacts.some(function (c) {
+            return !!String((c && c.display_name) || '').trim();
+        });
+        var hasProxyName = !!String((d.emergency && d.emergency.proxy && d.emergency.proxy.name) || '').trim();
+        var hasProxyPhone = !!String(d.medical_proxy_phone || '').trim();
+        var hasProxy = hasProxyName && hasProxyPhone;
+        var hasPhoto = !!String(d.photo_path || '').trim();
+        var hasDnrDoc = !!String(d.dnr_document_path || '').trim();
+        var done = [hasName, hasDob, hasDnr, hasEmergencyContact, hasProxy, hasPhoto, hasDnrDoc]
+            .filter(Boolean).length;
+        var primaryExists = contacts.some(function (c) {
+            return (c && c.emergency_priority) === 'primary_emergency';
+        });
+        var warnings = [];
+        if (!hasDnrDoc) warnings.push('Missing DNR/POLST document');
+        if (!primaryExists) warnings.push('No primary emergency contact');
+        if (!hasProxyPhone) warnings.push('Missing proxy phone number');
+        return { done: done, warnings: warnings };
+    }
+
+    function renderIceCompleteness(data) {
+        var host = document.getElementById('iceCompleteness');
+        if (!host) return;
+        var model = iceCompletenessModel(data);
+        var done = model.done || 0;
+        var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
+        var tier = done >= 7 ? 'high' : (done >= 4 ? 'mid' : 'low');
+        var missingHtml = model.warnings.length
+            ? '<ul class="ice-completeness__missing">' + model.warnings.map(function (w) {
+                return '<li>' + escapeHtml(w) + '</li>';
+            }).join('') + '</ul>'
+            : '<ul class="ice-completeness__missing"><li>Critical fields look complete.</li></ul>';
+        host.innerHTML =
+            '<div class="ice-completeness__head">' +
+            '<span class="ice-completeness__title">ICE completeness</span>' +
+            '<span class="ice-completeness__score ice-completeness__score--' + tier + '">' + done + ' / 7 complete</span>' +
+            '</div>' +
+            '<div class="ice-completeness__bar"><div class="ice-completeness__fill ice-completeness__fill--' + tier + '" style="width:' + pct + '%"></div></div>' +
+            missingHtml;
+    }
+
     // TODO: When conditions/allergies become editable on this page, add inputs and merge into save payload;
     // today this only updates display from emergency profile GET.
     function syncConditionsAllergiesFromMedical(medical) {
@@ -226,6 +279,7 @@
             renderIceMedications({ medications: [] });
             _iceEcInitial = [];
             renderEmergencyContacts([]);
+            renderIceCompleteness({});
             return;
         }
 
@@ -280,6 +334,7 @@
         var ecs = data.emergency_contacts || [];
         _iceEcInitial = cloneEcSnapshot(ecs);
         renderEmergencyContacts(ecs);
+        renderIceCompleteness(data);
     }
 
     function updateDnrDocLink(crId) {

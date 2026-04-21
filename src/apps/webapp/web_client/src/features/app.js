@@ -34,6 +34,67 @@
     var _alertRequestInFlight = false;
     var _alertPollTimer = null;
 
+    function iceCompletenessModel(data) {
+        var d = data || {};
+        var profile = d.profile || {};
+        var medical = d.medical || {};
+        var contacts = d.emergency_contacts || [];
+        var hasName = !!String(profile.name || '').trim();
+        var hasDob = !!String(profile.dob || '').trim();
+        var hasDnr = Object.prototype.hasOwnProperty.call(medical, 'dnr');
+        var hasEmergencyContact = contacts.some(function (c) {
+            return !!String((c && c.display_name) || '').trim();
+        });
+        var hasProxyName = !!String((d.emergency && d.emergency.proxy && d.emergency.proxy.name) || '').trim();
+        var hasProxyPhone = !!String(d.medical_proxy_phone || '').trim();
+        var hasProxy = hasProxyName && hasProxyPhone;
+        var hasPhoto = !!String(d.photo_path || '').trim();
+        var hasDnrDoc = !!String(d.dnr_document_path || '').trim();
+        var done = [hasName, hasDob, hasDnr, hasEmergencyContact, hasProxy, hasPhoto, hasDnrDoc]
+            .filter(Boolean).length;
+        var primaryExists = contacts.some(function (c) {
+            return (c && c.emergency_priority) === 'primary_emergency';
+        });
+        var warnings = [];
+        if (!hasDnrDoc) warnings.push('Missing DNR/POLST document');
+        if (!primaryExists) warnings.push('No primary emergency contact');
+        if (!hasProxyPhone) warnings.push('Missing proxy phone number');
+        return { done: done, warnings: warnings };
+    }
+
+    function renderIceCompleteness(el, model) {
+        if (!el) return;
+        var done = model.done || 0;
+        var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
+        var tier = done >= 7 ? 'high' : (done >= 4 ? 'mid' : 'low');
+        var missingHtml = model.warnings.length
+            ? '<ul class="ice-completeness__missing">' + model.warnings.map(function (w) {
+                return '<li>' + meridianEscapeHtml(w) + '</li>';
+            }).join('') + '</ul>'
+            : '<ul class="ice-completeness__missing"><li>Critical fields look complete.</li></ul>';
+        el.innerHTML =
+            '<div class="ice-completeness__head">' +
+            '<span class="ice-completeness__title">ICE completeness</span>' +
+            '<span class="ice-completeness__score ice-completeness__score--' + tier + '">' + done + ' / 7 complete</span>' +
+            '</div>' +
+            '<div class="ice-completeness__bar"><div class="ice-completeness__fill ice-completeness__fill--' + tier + '" style="width:' + pct + '%"></div></div>' +
+            missingHtml;
+    }
+
+    function loadHealthIceCompleteness() {
+        var host = document.getElementById('healthIceCompleteness');
+        if (!host || !_familyCircleId) return;
+        meridianApiClient.getEmergencyProfile(_familyCircleId)
+            .then(function (response) {
+                var body = response && response.body;
+                var model = iceCompletenessModel(body && body.data ? body.data : {});
+                renderIceCompleteness(host, model);
+            })
+            .catch(function () {
+                host.innerHTML = '<div class="ice-completeness__title">ICE completeness unavailable.</div>';
+            });
+    }
+
     function init() {
         if (document.getElementById('loginForm')) {
             initLogin();
@@ -53,6 +114,7 @@
                 initLogoutLink();
                 initIdleLogout();
                 initSettingsAdmin();
+                loadHealthIceCompleteness();
                 startEmergencyAlertStatusPolling();
                 if (window.MeridianMedications) {
                     MeridianMedications.init(_familyCircleId, showStatus);

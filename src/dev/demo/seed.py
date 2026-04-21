@@ -13,7 +13,7 @@ from typing import Dict, Any
 logger = logging.getLogger(__name__)
 
 DEMO_FAMILY_CIRCLE_ID = "F00000"
-DEMO_USER_ID = "fm_001"
+DEMO_USER_ID = "fm_002"
 
 try:
     from ...shared.config import get_database_path, get_uploads_dir
@@ -32,7 +32,7 @@ def ensure_local_seed_prerequisites(db_path: str) -> None:
     conn = sqlite3.connect(db_path)
     try:
         conn.execute("INSERT OR IGNORE INTO family_circles (id) VALUES (?)", (fam,))
-        for uid, name in (("fm_001", "Dean"), (kiosk, "Kiosk")):
+        for uid, name in (("fm_002", "Deanna"), (kiosk, "Kiosk")):
             conn.execute(
                 "INSERT OR IGNORE INTO users (id, display_name, photo_filename, family_circle_id) VALUES (?,?,?,?)",
                 (uid, name, None, fam),
@@ -152,6 +152,12 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     user_id = user_id or DEMO_USER_ID
     resolve_photo_filename = _make_photo_filename_resolver()
     family_data = load_json_file("family.json")
+    active_member_ids = {
+        (m.get("id") or "").strip()
+        for m in (family_data.get("family_members") or [])
+        if (m.get("id") or "").strip()
+    }
+    active_member_ids.update({user_id, "fm_care_001"})
 
     r = requests.get(
         f"{base}/api/family_circles/{fam_id}/medications",
@@ -192,16 +198,17 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
             logger.error("Create user %s failed: %s", user.get("id"), r.status_code)
             return False
     for user in users:
-        if user.get("family_circle_id"):
+        uid = (user.get("id") or "").strip()
+        if user.get("family_circle_id") and uid in active_member_ids:
             r = requests.post(
                 f"{base}/api/family_circles/{fam_id}/family-members",
-                json={"id": user.get("id")},
+                json={"id": uid},
                 headers=_headers(user_id, fam_id),
                 timeout=5,
             )
             if not r.ok:
                 logger.error(
-                    "Add user %s to family failed: %s", user.get("id"), r.status_code
+                    "Add user %s to family failed: %s", uid, r.status_code
                 )
                 return False
 

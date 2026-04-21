@@ -208,3 +208,9 @@ CREATE TABLE IF NOT EXISTS call_signals (
     FOREIGN KEY (to_user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS kiosk_emergency_alerts (
+    family_circle_id TEXT PRIMARY KEY,
+    activated INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+);
+

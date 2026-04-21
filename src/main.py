@@ -6,7 +6,6 @@ API_URL empty string = same-origin (served from same server as API).
 Public HTTPS for Twilio (optional):
 - Pass `--ngrok` to spawn `ngrok http <PORT>` after the API starts and set MERIDIAN_API_URL
   to the tunnel URL (same Flask process; ngrok only proxies).
-- Or set MERIDIAN_PUBLIC_API_URL in repo-root `.env` if you run ngrok yourself.
 
 `--ngrok` uses ngrok’s local API (default http://127.0.0.1:4040). Stop any other ngrok agent
 using that port, or automatic startup will fail.
@@ -67,11 +66,6 @@ def _parse_port_from_api_base(api_url: str) -> int:
     return 80 if (p.scheme or "http") == "http" else 443
 
 
-def _is_ngrok_url(url: str) -> bool:
-    host = (urlparse(url).hostname or "").lower()
-    return host.endswith(".ngrok-free.dev") or host.endswith(".ngrok.io")
-
-
 def _terminate_ngrok(proc: subprocess.Popen | None) -> None:
     if proc is None or proc.poll() is not None:
         return
@@ -87,7 +81,7 @@ def _start_ngrok_tunnel(port: int, logger: logging.Logger) -> tuple[str, subproc
     ngrok_bin = shutil.which("ngrok")
     if not ngrok_bin:
         raise RuntimeError(
-            "ngrok not found in PATH. Install from https://ngrok.com/download or set MERIDIAN_PUBLIC_API_URL in .env."
+            "ngrok not found in PATH. Install from https://ngrok.com/download."
         )
     proc = subprocess.Popen(
         [ngrok_bin, "http", str(port)],
@@ -223,6 +217,7 @@ def main() -> None:
             remote_api_url = get_remote_api_base_url()
             if not remote_api_url:
                 raise RuntimeError("RAILWAY_API_URL is required when using --remote-api")
+            logger.info("Runtime mode: railway (--remote-api)")
             os.environ["MERIDIAN_API_URL"] = remote_api_url
             _run_module(logger, "apps.kiosk", kiosk_args)
             return
@@ -232,37 +227,22 @@ def main() -> None:
 
             api_url = start_local_api_server(logger).rstrip("/")
             if use_ngrok:
-                public_url, ngrok_proc = _start_ngrok_tunnel(_parse_port_from_api_base(api_url), logger)
-                os.environ["MERIDIAN_PUBLIC_API_URL"] = public_url
-                os.environ["MERIDIAN_API_URL"] = public_url
+                ngrok_url, ngrok_proc = _start_ngrok_tunnel(_parse_port_from_api_base(api_url), logger)
+                os.environ["MERIDIAN_PUBLIC_API_URL"] = ngrok_url
+                api_url = ngrok_url
                 os.environ["MERIDIAN_KIOSK_NGROK_BYPASS"] = "1"
                 os.environ["MERIDIAN_KIOSK_USER_AGENT"] = "Meridian-Kiosk/1.0"
-                logger.info(
-                    f"MERIDIAN_API_URL set to ngrok URL (Flask still bound locally — see Local API URL above)"
-                )
+                logger.info("Runtime mode: ngrok (--ngrok)")
             else:
-                public_url = (os.environ.get("MERIDIAN_PUBLIC_API_URL") or "").strip().rstrip("/")
-                if public_url:
-                    os.environ["MERIDIAN_API_URL"] = public_url
-                    if _is_ngrok_url(public_url):
-                        os.environ["MERIDIAN_KIOSK_NGROK_BYPASS"] = "1"
-                        os.environ["MERIDIAN_KIOSK_USER_AGENT"] = "Meridian-Kiosk/1.0"
-                    else:
-                        os.environ.pop("MERIDIAN_KIOSK_NGROK_BYPASS", None)
-                    logger.info(
-                        f"MERIDIAN_PUBLIC_API_URL set: kiosk/webapp use {public_url} "
-                        f"(API process still bound locally — see Local API URL above; tunnel must forward to that port)"
+                logger.info("Runtime mode: local")
+                os.environ.pop("MERIDIAN_KIOSK_NGROK_BYPASS", None)
+                if (os.environ.get("TWILIO_ACCOUNT_SID") or "").strip():
+                    logger.warning(
+                        "Twilio is configured but this run is local-only. "
+                        "Voice/TwiML webhooks need a public HTTPS base: run `python main.py --ngrok` "
+                        "or `python main.py --remote-api`."
                     )
-                else:
-                    os.environ["MERIDIAN_API_URL"] = api_url
-                    os.environ.pop("MERIDIAN_KIOSK_NGROK_BYPASS", None)
-                    if (os.environ.get("TWILIO_ACCOUNT_SID") or "").strip():
-                        logger.warning(
-                            "Twilio is configured but MERIDIAN_PUBLIC_API_URL is unset. "
-                            "Voice/TwiML webhooks need a public HTTPS base: run `python main.py --ngrok`, "
-                            "or add MERIDIAN_PUBLIC_API_URL=https://<ngrok-host> to .env, and set the TwiML App "
-                            "Voice URL to https://<ngrok-host>/twilio/voice/client (same base as MERIDIAN_PUBLIC_API_URL)."
-                        )
+            os.environ["MERIDIAN_API_URL"] = api_url
             _run_module(logger, "apps.webapp", [])
             _run_module(logger, "apps.kiosk", kiosk_args)
 

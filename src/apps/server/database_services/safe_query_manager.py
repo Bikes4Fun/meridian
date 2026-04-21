@@ -37,6 +37,7 @@ _KNOWN_TABLE_NAMES = frozenset(
         "location_checkins",
         "user_push_tokens",
         "call_signals",
+        "kiosk_emergency_alerts",
     }
 )
 

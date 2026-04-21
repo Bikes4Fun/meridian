@@ -69,7 +69,7 @@ final class MainTabViewController: UITabBarController {
             do {
                 let recipient = try await APIService.shared.getDefaultChatRecipient()
                 let url = try await APIService.shared.getChatSessionURL(
-                    // recipientSendbirdUserId: recipient.sendbirdUserId, todo: switch to twi
+                    recipientUserId: recipient.userId,
                     recipientDisplayName: recipient.displayName
                 )
                 await MainActor.run {

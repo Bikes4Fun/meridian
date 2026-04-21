@@ -5,7 +5,6 @@
 (function () {
     'use strict';
 
-    var _apiUrl = '';
     var _familyCircleId = null;
     var _showStatus = function () {};
     var _initialized = false;
@@ -43,18 +42,10 @@
         var list = document.getElementById('eventsList');
         if (!list || !_familyCircleId) return;
         var today = new Date().toISOString().slice(0, 10);
-        var apiBase = meridianApiBaseNormalize(_apiUrl);
         list.innerHTML = 'Loading…';
-        fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events?date=' + today, { credentials: 'include' })
-            .then(function (r) {
-                if (!list) return null;
-                if (!r.ok) {
-                    list.innerHTML = '<p class="muted">Could not load events</p>';
-                    return null;
-                }
-                return r.json();
-            })
-            .then(function (data) {
+        meridianApiClient.listEventsForDate(_familyCircleId, today)
+            .then(function (response) {
+                var data = response && response.body;
                 if (!list || !data) return;
                 if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
                     list.innerHTML = '<p class="muted">No events in the next 30 days. Use <strong>Add event</strong> to create one.</p>';
@@ -146,16 +137,10 @@
                     var eventId = li.getAttribute('data-event-id');
                     if (!eventId) return;
                     if (!confirm('Delete this event?')) return;
-                    var apiBase = meridianApiBaseNormalize(_apiUrl);
-                    fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events/' + encodeURIComponent(eventId), {
-                        method: 'DELETE',
-                        credentials: 'include'
-                    })
-                        .then(function (r) {
-                            if (r.ok) {
-                                _showStatus('\u2713 Event deleted', 'success');
-                                loadEvents();
-                            } else return r.json().then(function (d) { throw new Error(d.error || 'Failed to delete'); });
+                    meridianApiClient.deleteEvent(_familyCircleId, eventId)
+                        .then(function () {
+                            _showStatus('\u2713 Event deleted', 'success');
+                            loadEvents();
                         })
                         .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); });
                 }
@@ -182,27 +167,16 @@
                 var payload = { title: title, start_time: startDateTime, location: location || undefined, description: description || undefined };
                 if (endTime) payload.end_time = date + 'T' + endTime + ':00';
 
-                var apiBase = meridianApiBaseNormalize(_apiUrl);
-                var url = apiBase + '/api/family_circles/' + _familyCircleId + '/calendar/events';
-                var method = 'POST';
-                if (editingEventId) {
-                    url += '/' + encodeURIComponent(editingEventId);
-                    method = 'PUT';
-                }
-                fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify(payload)
-                })
-                    .then(function (r) {
-                        if (r.ok) {
+                var request = editingEventId
+                    ? meridianApiClient.updateEvent(_familyCircleId, editingEventId, payload)
+                    : meridianApiClient.createEvent(_familyCircleId, payload);
+                request
+                    .then(function () {
                             if (modal) modal.classList.remove('visible');
                             var wasEdit = !!editingEventId;
                             editingEventId = null;
                             _showStatus(wasEdit ? '\u2713 Event updated' : '\u2713 Event added', 'success');
                             loadEvents();
-                        } else return r.json().then(function (d) { throw new Error(d.error || (editingEventId ? 'Failed to update event' : 'Failed to add event')); });
                     })
                     .catch(function (err) {
                         _showStatus('\u2717 ' + err.message, 'error');
@@ -214,8 +188,7 @@
     }
 
     window.MeridianEvents = {
-        init: function (apiUrl, familyCircleId, showStatus) {
-            _apiUrl = apiUrl || '';
+        init: function (familyCircleId, showStatus) {
             _familyCircleId = familyCircleId;
             _showStatus = showStatus || function () {};
             initEvents();

@@ -27,9 +27,9 @@ Top-of-file comments only: what each module owns and what it deliberately does n
 
 **`health_screen.py`**
 
-> Kiosk Health screen: medications list HTML, Edit medications entry (nav to full editor), and “mark taken” bridge (HealthHandler → remote API).  
-> Scope: render meds from medication service; kiosk-only presentation.  
-> Not here: inline editor implementation (`kiosk_medications_embed.js`), Home/Schedule timelines, or ICE/emergency PDF flows.
+> Kiosk medication bridge: `HealthHandler` exposes mark taken, mark-all scheduled (non-PRN), and medications editor rows to pywebview; Home header markup for “mark all scheduled”.  
+> Scope: API calls only; no dedicated Health screen (doses on Home/Schedule; list edit on Settings → Medications).  
+> Not here: inline editor DOM (`kiosk_medications_embed.js`), Home/Schedule timelines, or ICE/emergency PDF flows.
 
 **`home_screen.py`**
 

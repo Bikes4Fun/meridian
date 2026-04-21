@@ -63,15 +63,13 @@ final class ChatListViewController: UIViewController {
     }
 
     private func openChat(recipient: Contact, autoStartCall: Bool = false) {
-        // guard session != nil, let sb = recipient.send birdUserId else { return } // TODO: remove all reference to send bird
-        if autoStartCall, let targetUserId = recipient.userId, !targetUserId.isEmpty {
-            Task {
-                try? await APIService.shared.requestCall(toUserId: targetUserId)
-            }
+        if autoStartCall {
+            requestCall(recipient: recipient)
+            return
         }
         let chatVC = ChatWebViewController()
         chatVC.loadChat(
-            // recipientSend birdUserId: sb, TODO: remove all reference to send bird
+            recipientUserId: recipient.userId,
             recipientDisplayName: recipient.displayName,
             autoStartCall: autoStartCall
         )
@@ -80,6 +78,43 @@ final class ChatListViewController: UIViewController {
             nav.modalPresentationStyle = .fullScreen
         }
         present(nav, animated: true)
+    }
+
+    private func requestCall(recipient: Contact) {
+        guard let targetUserId = recipient.userId, !targetUserId.isEmpty else {
+            let alert = UIAlertController(
+                title: "Call Error",
+                message: "This contact is not callable yet.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        Task {
+            do {
+                try await APIService.shared.requestCall(toUserId: targetUserId)
+                await MainActor.run {
+                    let alert = UIAlertController(
+                        title: "Calling",
+                        message: "Call request sent to \(recipient.displayName).",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    present(alert, animated: true)
+                }
+            } catch {
+                await MainActor.run {
+                    let alert = UIAlertController(
+                        title: "Call Error",
+                        message: error.localizedDescription,
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    present(alert, animated: true)
+                }
+            }
+        }
     }
 
 }

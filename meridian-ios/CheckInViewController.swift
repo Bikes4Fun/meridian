@@ -6,6 +6,7 @@ import CoreLocation
 import MapKit
 
 final class CheckInViewController: UIViewController {
+    private let familySummaryLabel = UILabel()
     private let notesField = UITextField()
     private let manualCheckInButton = UIButton(type: .system)
     private let refreshStatusButton = UIButton(type: .system)
@@ -31,6 +32,11 @@ final class CheckInViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = MeridianPalette.background
 
+        familySummaryLabel.text = "Family map live · 0 active members"
+        familySummaryLabel.font = .preferredFont(forTextStyle: .footnote)
+        familySummaryLabel.textColor = MeridianPalette.mutedText
+        familySummaryLabel.textAlignment = .center
+
         notesField.placeholder = "Notes (optional)"
         notesField.borderStyle = .roundedRect
 
@@ -51,6 +57,7 @@ final class CheckInViewController: UIViewController {
         familyStatusTableView.estimatedRowHeight = 64
         familyStatusTableView.backgroundColor = .clear
         familyStatusTableView.alwaysBounceVertical = true
+        familyStatusTableView.translatesAutoresizingMaskIntoConstraints = false
 
         familyMapView.layer.cornerRadius = 10
         familyMapView.layer.masksToBounds = true
@@ -66,6 +73,7 @@ final class CheckInViewController: UIViewController {
         emptyStateLabel.isHidden = true
 
         let controlsStack = UIStackView(arrangedSubviews: [
+            familySummaryLabel,
             manualCheckInButton,
             notesField,
             refreshStatusButton,
@@ -86,6 +94,7 @@ final class CheckInViewController: UIViewController {
             notesField.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             manualCheckInButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             refreshStatusButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+
             controlsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: MeridianLayout.sectionSpacing),
             controlsStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             controlsStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
@@ -171,6 +180,8 @@ final class CheckInViewController: UIViewController {
         } catch {
             await MainActor.run {
                 checkins = []
+                statusLabel.text = "Could not load family check-ins."
+                statusLabel.textColor = .systemRed
                 updateFamilyStatusUI()
             }
         }
@@ -178,6 +189,7 @@ final class CheckInViewController: UIViewController {
 
     private func updateFamilyStatusUI() {
         emptyStateLabel.isHidden = !checkins.isEmpty
+        familySummaryLabel.text = "Family map live · \(checkins.count) active member\(checkins.count == 1 ? "" : "s")"
         familyStatusTableView.reloadData()
         updateFamilyMap()
     }
@@ -338,10 +350,13 @@ extension CheckInViewController: UITableViewDataSource, UITableViewDelegate {
         let locationText = checkIn.locationName ?? "Unknown location"
         let timestampText = Self.dateFormatter.string(from: checkIn.timestamp)
         cell.textLabel?.text = checkIn.contactName
+        cell.textLabel?.font = .preferredFont(forTextStyle: .headline)
         cell.textLabel?.textColor = MeridianPalette.primaryText
         cell.detailTextLabel?.text = "\(locationText) • \(timestampText)"
+        cell.detailTextLabel?.font = .preferredFont(forTextStyle: .footnote)
         cell.detailTextLabel?.textColor = MeridianPalette.mutedText
         cell.selectionStyle = .none
+        cell.accessoryType = .disclosureIndicator
         return cell
     }
 }

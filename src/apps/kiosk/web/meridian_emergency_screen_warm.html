@@ -1,0 +1,306 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+.kiosk{
+  width:560px;min-height:860px;
+  background:#faf8f3;
+  font-family:'Atkinson Hyperlegible',Arial,sans-serif;
+  position:relative;
+  display:flex;flex-direction:column;
+  border:1px solid #e8e2d9;
+  border-radius:12px;
+  overflow:hidden;
+}
+.top-bar{
+  background:#2E7D9B;
+  padding:10px 20px;
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.top-bar__dot{
+  width:10px;height:10px;border-radius:50%;background:#fff;
+  animation:blink 1.6s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.top-bar__title{
+  font-size:13px;font-weight:700;letter-spacing:0.1em;
+  text-transform:uppercase;color:#fff;
+}
+.top-bar__updated{
+  margin-left:auto;font-size:11px;color:rgba(255,255,255,0.75);
+}
+.scroll{flex:1;overflow-y:auto;padding-bottom:80px}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:#dcd5cb;border-radius:2px}
+
+/* PATIENT HERO */
+.patient-hero{
+  background:#fff;
+  padding:18px 20px 16px;
+  display:flex;gap:16px;align-items:flex-start;
+  border-bottom:2px solid #e8e2d9;
+}
+.photo-wrap{
+  width:76px;height:76px;border-radius:10px;
+  background:#f5efe7;border:2px solid #e8e2d9;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:28px;font-weight:700;color:#c8b4a0;overflow:hidden;
+}
+.patient-details{flex:1}
+.patient-name{font-size:22px;font-weight:700;color:#4a4a4a;line-height:1.2}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.chip{
+  font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  padding:3px 8px;border-radius:5px;
+}
+.chip--dob{background:#f5efe7;color:#6e6760;border:1px solid #dcd5cb}
+.chip--code{background:#14532d22;color:#14532d;border:1px solid #7a9b7640}
+.chip--dnr{background:#7f1d1d22;color:#7f1d1d;border:1px solid #c85a3f40}
+.meta-note{margin-top:6px;font-size:11px;color:#8a8075}
+
+/* SECTION */
+.section{padding:14px 20px 4px}
+.section-head{
+  font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+  color:#aaa49c;margin-bottom:9px;padding-bottom:5px;
+  border-bottom:1px solid #ece7df;
+}
+
+/* ALLERGY PILLS */
+.allergy-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.allergy-pill{
+  background:#fff3ec;color:#c85a3f;
+  font-size:12px;font-weight:700;
+  padding:5px 11px;border-radius:6px;
+  border:1.5px solid #f0c4b0;
+}
+
+/* INFO ROWS */
+.info-row{
+  display:flex;gap:10px;
+  padding:6px 0;border-bottom:1px solid #f0ebe3;
+}
+.info-row:last-child{border-bottom:none}
+.info-row__label{
+  font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  color:#aaa49c;width:80px;flex-shrink:0;padding-top:2px;
+}
+.info-row__value{font-size:13px;color:#4a4a4a;line-height:1.5;flex:1}
+
+/* CONTACTS */
+.contact-card{
+  display:flex;align-items:center;gap:12px;
+  padding:9px 0;border-bottom:1px solid #f0ebe3;
+}
+.contact-card:last-child{border-bottom:none}
+.c-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:#f5efe7;border:1.5px solid #dcd5cb;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#6e6760;
+  flex-shrink:0;
+}
+.c-info{flex:1;min-width:0}
+.c-name{font-size:13px;font-weight:700;color:#4a4a4a}
+.c-rel{font-size:11px;color:#8a8075;margin-top:1px}
+.c-phone{
+  font-size:12px;font-weight:600;color:#2E7D9B;
+  background:#edf5f9;padding:4px 9px;border-radius:6px;
+  border:1px solid #b5d4e8;white-space:nowrap;flex-shrink:0;
+}
+.c-phone.empty{color:#c0bab3;background:transparent;border-color:transparent;font-size:11px;font-weight:400}
+.badge-primary{
+  display:inline-block;
+  font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  padding:2px 5px;border-radius:4px;
+  background:#edf5f9;color:#2E7D9B;border:1px solid #b5d4e8;
+  margin-left:5px;vertical-align:middle;
+}
+
+/* PRINT BTN */
+.print-wrap{padding:14px 20px}
+.print-btn{
+  width:100%;padding:13px;
+  background:#f5efe7;
+  border:1.5px solid #dcd5cb;border-radius:9px;
+  color:#6e6760;
+  font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  font-family:'Atkinson Hyperlegible',Arial,sans-serif;
+  cursor:pointer;transition:background 0.15s,border-color 0.15s;
+}
+.print-btn:hover{background:#ede5d8;border-color:#c8b4a0}
+
+/* CALL FLOATER */
+.call-floater{
+  position:absolute;
+  bottom:22px;right:20px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  z-index:50;
+  animation:drift 3.5s ease-in-out infinite;
+}
+@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.call-ring{
+  position:absolute;
+  width:58px;height:58px;
+  border-radius:50%;
+  border:2px solid rgba(122,155,118,0.4);
+  animation:expand 2.2s ease-out infinite;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+}
+.call-ring:nth-child(2){animation-delay:0.75s}
+.call-ring:nth-child(3){animation-delay:1.5s}
+@keyframes expand{
+  0%{transform:translate(-50%,-50%) scale(1);opacity:0.8}
+  100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}
+}
+.call-bubble{
+  width:52px;height:52px;border-radius:50%;
+  background:#7a9b76;border:2px solid #6d8c69;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:1;cursor:pointer;
+  animation:breathe 2s ease-in-out infinite;
+  box-shadow:0 2px 10px rgba(122,155,118,0.35);
+}
+@keyframes breathe{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.08)}
+}
+.call-bubble svg{width:20px;height:20px}
+.call-label{
+  font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  color:#7a9b76;background:#fff;
+  padding:3px 8px;border-radius:4px;
+  border:1px solid #c4d9c1;white-space:nowrap;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.call-name{font-size:10px;color:#8a8075;white-space:nowrap}
+</style>
+
+<div style="display:flex;justify-content:center;padding:16px;background:transparent">
+<div class="kiosk">
+
+  <div class="top-bar">
+    <div class="top-bar__dot"></div>
+    <div class="top-bar__title">In Case of Emergency</div>
+    <div class="top-bar__updated">Updated Apr 14 2026</div>
+  </div>
+
+  <div class="scroll">
+
+    <div class="patient-hero">
+      <div class="photo-wrap">MF</div>
+      <div class="patient-details">
+        <div class="patient-name">Marian Foster</div>
+        <div class="chips">
+          <span class="chip chip--dob">DOB 1952-03-14 · Age 74</span>
+          <span class="chip chip--code">Full Code</span>
+        </div>
+        <div class="meta-note">Family Circle: Foster</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Allergies</div>
+      <div class="allergy-row">
+        <span class="allergy-pill">Penicillin</span>
+        <span class="allergy-pill">Shellfish</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Conditions</div>
+      <div class="info-row">
+        <div class="info-row__label">Active</div>
+        <div class="info-row__value">Hypertension, Type 2 Diabetes</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Medications</div>
+      <div class="info-row">
+        <div class="info-row__label">Anxiety</div>
+        <div class="info-row__value">Anxiety Relief</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row__label">Dementia</div>
+        <div class="info-row__value">Dementia meds 5mg once daily</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row__label">Heart</div>
+        <div class="info-row__value">Lisinopril 10mg once daily</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row__label">Diabetes</div>
+        <div class="info-row__value">Metformin 500mg twice daily</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row__label">Pain</div>
+        <div class="info-row__value">Pain Relief</div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top:6px">
+      <div class="section-head">Emergency Contacts</div>
+      <div class="contact-card">
+        <div class="c-avatar">De</div>
+        <div class="c-info">
+          <div class="c-name">Deanna <span class="badge-primary">Primary</span></div>
+          <div class="c-rel">Child</div>
+        </div>
+        <div class="c-phone">1-855-738-9731</div>
+      </div>
+      <div class="contact-card">
+        <div class="c-avatar">Dy</div>
+        <div class="c-info">
+          <div class="c-name">Dylan</div>
+          <div class="c-rel">Son-in-law</div>
+        </div>
+        <div class="c-phone">434-227-6223</div>
+      </div>
+      <div class="contact-card">
+        <div class="c-avatar">Jm</div>
+        <div class="c-info">
+          <div class="c-name">James Foster</div>
+          <div class="c-rel">Son · Medical Proxy · POA</div>
+        </div>
+        <div class="c-phone empty">No phone on file</div>
+      </div>
+      <div class="contact-card">
+        <div class="c-avatar">Da</div>
+        <div class="c-info">
+          <div class="c-name">Dean Foster</div>
+          <div class="c-rel">Husband</div>
+        </div>
+        <div class="c-phone empty">No phone on file</div>
+      </div>
+      <div class="contact-card">
+        <div class="c-avatar">Dr</div>
+        <div class="c-info">
+          <div class="c-name">Dr. Michael Chen</div>
+          <div class="c-rel">Doctor / PCP</div>
+        </div>
+        <div class="c-phone empty">No phone on file</div>
+      </div>
+    </div>
+
+    <div class="print-wrap">
+      <button class="print-btn">Print POLST / Emergency Document</button>
+    </div>
+
+  </div>
+
+  <div class="call-floater">
+    <div class="call-ring"></div>
+    <div class="call-ring"></div>
+    <div class="call-ring"></div>
+    <div class="call-bubble">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.04 1.22 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
+      </svg>
+    </div>
+    <div class="call-label">On Call</div>
+    <div class="call-name">Deanna · 1:42</div>
+  </div>
+
+</div>
+</div>

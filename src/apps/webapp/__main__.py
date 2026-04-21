@@ -75,15 +75,24 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
                 shutil.copy2(src_path, os.path.join(font_dst, filename))
 
     repo_root = os.path.abspath(os.path.join(src_dir, ".."))
-    brand_src = os.path.join(repo_root, "assets", "icons")
     brand_dst = os.path.join(dist, "brand")
     os.makedirs(brand_dst, exist_ok=True)
-    for src_name, dst_name in (
-        ("original_banner_logo.png", "logo-banner.png"),
-        ("app-icon.png", "logo-mark.png"),
-    ):
-        src_path = os.path.join(brand_src, src_name)
-        if os.path.isfile(src_path):
+    # Prefer dedicated web brand assets; fall back to iOS app icon so web startup logo always renders.
+    logo_candidates = {
+        "logo-banner.png": [
+            os.path.join(repo_root, "assets", "icons", "original_banner_logo.png"),
+            os.path.join(repo_root, "src", "shared", "assets", "icons", "original_banner_logo.png"),
+            os.path.join(repo_root, "meridian-ios", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png"),
+        ],
+        "logo-mark.png": [
+            os.path.join(repo_root, "assets", "icons", "app-icon.png"),
+            os.path.join(repo_root, "src", "shared", "assets", "icons", "app-icon.png"),
+            os.path.join(repo_root, "meridian-ios", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png"),
+        ],
+    }
+    for dst_name, candidates in logo_candidates.items():
+        src_path = next((candidate for candidate in candidates if os.path.isfile(candidate)), None)
+        if src_path:
             shutil.copy2(src_path, os.path.join(brand_dst, dst_name))
 
     logger.info("Webapp build complete")

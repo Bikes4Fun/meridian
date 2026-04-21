@@ -95,6 +95,15 @@ final class APIService {
         return (data, http)
     }
 
+    private func serverErrorMessage(from data: Data, fallback: String) -> String {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let msg = json["error"] as? String,
+              !msg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return fallback
+        }
+        return msg
+    }
+
     // MARK: - Login
 
     func login(userId: String, familyCircleId: String) async throws {
@@ -122,15 +131,23 @@ final class APIService {
     // MARK: - Alert
 
     func setAlert(activated: Bool) async throws {
-        let (_, res) = try await request("/api/emergency/alert", method: "POST", body: ["activated": activated])
+        let (data, res) = try await request("/api/emergency/alert", method: "POST", body: ["activated": activated])
+        if res.statusCode == 401 { throw APIError.unauthorized }
         if res.statusCode != 200 {
-            throw APIError.serverError("Alert request failed")
+            throw APIError.serverError(
+                serverErrorMessage(from: data, fallback: "Alert request failed")
+            )
         }
     }
 
     func getEmergencyAlertStatus() async throws -> Bool {
         let (data, res) = try await request("/api/emergency/alert/status")
-        if res.statusCode != 200 { throw APIError.serverError("Alert status failed") }
+        if res.statusCode == 401 { throw APIError.unauthorized }
+        if res.statusCode != 200 {
+            throw APIError.serverError(
+                serverErrorMessage(from: data, fallback: "Alert status failed")
+            )
+        }
         guard
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let dataObj = json["data"] as? [String: Any],

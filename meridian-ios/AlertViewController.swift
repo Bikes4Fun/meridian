@@ -118,7 +118,7 @@ final class AlertViewController: UIViewController {
             } catch {
                 await MainActor.run {
                     self.isRequestInFlight = false
-                    self.setStatus(activated ? "Alert failed. Please try again." : "Cancel failed. Please try again.", color: .systemRed)
+                    self.setStatus(error.localizedDescription, color: .systemRed)
                 }
             }
         }

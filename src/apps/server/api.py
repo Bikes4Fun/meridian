@@ -83,6 +83,17 @@ _WEBAPP_CLIENT_HEADER_NAME = "X-Meridian-Client"
 _WEBAPP_CLIENT_HEADER_VALUE = "webapp-api-client"
 
 
+def _get_alert_activated(family_circle_id: str) -> bool:
+    with _alert_activation_lock:
+        return bool(_alert_activation_by_family.get(family_circle_id, False))
+
+
+def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
+    with _alert_activation_lock:
+        _alert_activation_by_family[family_circle_id] = bool(activated)
+        return _alert_activation_by_family[family_circle_id]
+
+
 def create_server_app(db_path=None):
     """Create Flask app and register API routes.
     Functionality is provided by container (via create_service_container).

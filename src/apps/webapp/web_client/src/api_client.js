@@ -151,6 +151,9 @@
             );
         },
         // Emergency alert
+        getEmergencyAlertStatus: function () {
+            return get('/api/emergency/alert/status');
+        },
         setEmergencyAlert: function (activated) {
             return postJson('/api/emergency/alert', { activated: !!activated });
         },

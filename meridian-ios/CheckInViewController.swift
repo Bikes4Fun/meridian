@@ -51,6 +51,7 @@ final class CheckInViewController: UIViewController {
         familyStatusTableView.estimatedRowHeight = 64
         familyStatusTableView.backgroundColor = .clear
         familyStatusTableView.alwaysBounceVertical = true
+        familyStatusTableView.translatesAutoresizingMaskIntoConstraints = false
 
         familyMapView.layer.cornerRadius = 10
         familyMapView.layer.masksToBounds = true
@@ -171,6 +172,8 @@ final class CheckInViewController: UIViewController {
         } catch {
             await MainActor.run {
                 checkins = []
+                statusLabel.text = "Could not load family check-ins."
+                statusLabel.textColor = .systemRed
                 updateFamilyStatusUI()
             }
         }

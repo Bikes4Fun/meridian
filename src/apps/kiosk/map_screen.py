@@ -5,6 +5,7 @@ Scope: layout and data hooks consumed by map_widget / kiosk JS.
 Not here: Leaflet init (kiosk.js), creating check-ins from this module, or location API implementation on the server.
 """
 
+import html
 import json
 import logging
 from typing import Any, Optional
@@ -26,6 +27,45 @@ class LocationHandler:
         return loc.where_is_everyone()
 
 
+def _is_care_recipient(contact: dict, kiosk_user_id: str) -> bool:
+    user_id = (contact.get("user_id") or "").strip()
+    contact_id = (contact.get("id") or "").strip()
+    relationship = (contact.get("relationship") or "").strip().lower()
+    if kiosk_user_id and (user_id == kiosk_user_id or contact_id == kiosk_user_id):
+        return True
+    return relationship in ("care recipient", "care_recipient", "patient", "you")
+
+
+def _family_voice_grid_fragment(
+    services,
+    hp,
+    kiosk_user_id: str,
+    family_circle_id: str,
+    contacts_data: Optional[list],
+) -> str:
+    from .communication import contact_widget
+
+    contact_svc = services.get_contact_service()
+    if not contact_svc or not family_circle_id or not contacts_data:
+        return ""
+    chat_contacts = [
+        c
+        for c in contacts_data
+        if not _is_care_recipient(c, kiosk_user_id)
+        and (c.get("phone") or "").strip()
+    ]
+    if not chat_contacts:
+        return ""
+    tiles = [contact_widget(c, contact_svc, hp) for c in chat_contacts]
+    grid = "".join(tiles)
+    return (
+        hp.spacer(20)
+        + hp.kiosk_subheader("Family voices")
+        + hp.spacer(12)
+        + f'<div class="chat-contact-grid">{grid}</div>'
+    )
+
+
 def build_checkin_html(
     services,
     api_url: str,
@@ -38,6 +78,18 @@ def build_checkin_html(
     from . import html_primitives as hp
 
     loc_svc = services.get_location_service()
+    contact_svc = services.get_contact_service()
+    contacts_data: Optional[list] = None
+    contacts_by_uid: dict[str, dict] = {}
+    if contact_svc and family_circle_id:
+        cr = contact_svc.get_contacts()
+        if cr.success and cr.data:
+            contacts_data = cr.data
+            for c in contacts_data:
+                uid = (c.get("user_id") or "").strip()
+                if uid:
+                    contacts_by_uid[uid] = c
+
     checkins_html = hp.loading_state("Loading check-ins...")
     places = []
     places_result = None
@@ -57,20 +109,50 @@ def build_checkin_html(
 
         checkins_result = loc_svc.get_checkins(family_circle_id)
         if checkins_result.success and checkins_result.data:
-            lines = [
-                f"• {c.get('contact_name', 'Unknown')}: {c.get('location_name') or 'Unknown'}"
-                for c in checkins_result.data
-            ]
+            rows_html: list[str] = []
+            for c in checkins_result.data:
+                name_raw = c.get("contact_name") or "Unknown"
+                loc_raw = c.get("location_name") or "Unknown"
+                uid = (c.get("user_id") or "").strip()
+                contact = contacts_by_uid.get(uid, {})
+                phone = (contact.get("phone") or "").strip()
+                display_name = (contact.get("display_name") or name_raw or "").strip()
+                safe_name = html.escape(display_name)
+                safe_phone = html.escape(phone) if phone else ""
+                name_esc = html.escape(str(name_raw))
+                loc_esc = html.escape(str(loc_raw))
+                if phone:
+                    btn = (
+                        '<button type="button" class="timeline-action-btn btn-small contact-call-btn" '
+                        f'data-phone="{safe_phone}" data-name="{safe_name}">📞 Call</button>'
+                    )
+                else:
+                    btn = (
+                        '<button type="button" class="timeline-action-btn btn-small" '
+                        'disabled aria-disabled="true">No phone</button>'
+                    )
+                rows_html.append(
+                    '<div class="family-checkin-row">'
+                    f'<span class="family-checkin-line">{name_esc}: {loc_esc}</span>'
+                    f'<div class="family-checkin-actions">{btn}</div>'
+                    "</div>"
+                )
             checkins_html = (
-                hp.kiosk_body("\n".join(lines))
-                if lines
+                f'<div class="family-checkins-list">{"".join(rows_html)}</div>'
+                if rows_html
                 else hp.empty_state("No check-ins")
             )
         else:
             checkins_html = hp.empty_state("No check-ins yet")
 
+    voice_grid = _family_voice_grid_fragment(
+        services, hp, kiosk_user_id, family_circle_id, contacts_data
+    )
     checkins_panel = hp.panel(
-        hp.kiosk_subheader("Check-ins") + hp.spacer(16) + checkins_html
+        hp.kiosk_subheader("Check-ins")
+        + hp.spacer(16)
+        + checkins_html
+        + voice_grid
     )
     refresh_btn = hp.kiosk_button(
         "Refresh",

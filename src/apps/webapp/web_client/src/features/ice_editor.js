@@ -5,8 +5,6 @@
 (function () {
     'use strict';
 
-    var _u = '__API_URL__';
-    var API_BASE = meridianApiBaseForFetch(_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
     var _loadedPaths = { photo_path: null, dnr_document_path: null };
     var _pendingPhotoFile = null;
@@ -35,17 +33,13 @@
     function saveIceMedicationsSilent() {
         var medContainer = document.getElementById('iceMedications');
         if (!medContainer || !_familyCircleId) return Promise.resolve();
-        var apiBase = API_BASE || '';
         var medRows = MeridianMedicationsInline.collectRows(medContainer);
-        return MeridianMedicationsInline.saveDiff(apiBase, _familyCircleId, _iceMedsInitial, medRows)
+        return MeridianMedicationsInline.saveDiff(_familyCircleId, _iceMedsInitial, medRows)
             .then(function () {
-                return fetch(
-                    apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
-                    { credentials: 'include' }
-                );
+                return meridianApiClient.getEmergencyProfile(_familyCircleId);
             })
-            .then(function (r) { return r && r.ok ? r.json() : null; })
-            .then(function (body) {
+            .then(function (response) {
+                var body = response && response.body;
                 if (!body || !body.data) return;
                 var medical = body.data.medical || {};
                 _iceMedsInitial = MeridianMedicationsInline.cloneSnapshot(medical.medications || []);
@@ -117,25 +111,11 @@
         return out;
     }
 
-    function postContact(apiBase, familyCircleId, body) {
-        return fetch(
-            apiBase + '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contacts',
-            {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            }
-        ).then(function (r) {
-            if (!r.ok) {
-                return r.json().then(function (d) {
-                    throw new Error(d.error || 'Contact save failed');
-                });
-            }
-        });
+    function postContact(familyCircleId, body) {
+        return meridianApiClient.postContact(familyCircleId, body);
     }
 
-    function saveEmergencyContacts(apiBase, familyCircleId, initialList, rows) {
+    function saveEmergencyContacts(familyCircleId, initialList, rows) {
         var chain = Promise.resolve();
         var initialById = {};
         initialList.forEach(function (c) {
@@ -149,7 +129,7 @@
             if (!currentById[kid]) {
                 var prev = initialById[kid];
                 chain = chain.then(function () {
-                    return postContact(apiBase, familyCircleId, {
+                    return postContact(familyCircleId, {
                         id: prev.id,
                         display_name: prev.display_name || '',
                         phone: prev.phone || null,
@@ -170,7 +150,7 @@
                 emergency_priority: c.emergency_priority || null
             };
             chain = chain.then(function () {
-                return postContact(apiBase, familyCircleId, payload);
+                return postContact(familyCircleId, payload);
             });
         });
         return chain;
@@ -290,7 +270,7 @@
         var prev = document.getElementById('icePhotoPreview');
         if (prev && crId) {
             prev.hidden = false;
-            prev.src = (API_BASE || '') + '/api/users/' + encodeURIComponent(crId) + '/photo?v=' + Date.now();
+            prev.src = meridianApiClient.getUserPhotoUrl(crId);
             prev.onerror = function () { prev.hidden = true; };
         }
 
@@ -307,8 +287,7 @@
         if (!link) return;
         if (crId && _loadedPaths.dnr_document_path && _familyCircleId) {
             link.hidden = false;
-            link.href = (API_BASE || '') + '/api/family_circles/' + encodeURIComponent(_familyCircleId) +
-                '/care-recipients/' + encodeURIComponent(crId) + '/dnr-document';
+            link.href = meridianApiClient.getCareRecipientDnrDocumentUrl(_familyCircleId, crId);
         } else {
             link.hidden = true;
             link.href = '#';
@@ -316,27 +295,16 @@
     }
 
     function uploadCareRecipientDnrDocument(file) {
-        var apiBase = API_BASE || '';
         var crId = (document.getElementById('iceCareRecipientId') || {}).value;
         if (!file || !crId) return Promise.resolve(false);
         if (!_familyCircleId) {
             showIceStatus('Still loading; wait a moment and choose the file again.', 'error');
             return Promise.resolve(false);
         }
-        var fd = new FormData();
-        fd.append('document', file);
-        fd.append('care_recipient_user_id', crId);
-        return fetch(
-            apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/care-recipient-dnr-document',
-            { method: 'POST', credentials: 'include', body: fd }
-        )
-            .then(function (r) {
-                return r.json().then(function (j) {
-                    if (!r.ok) throw new Error((j && j.error) ? j.error : 'Upload failed');
-                    return j;
-                });
-            })
-            .then(function (body) {
+        return meridianApiClient
+            .uploadCareRecipientDnrDocument(_familyCircleId, crId, file)
+            .then(function (response) {
+                var body = response && response.body;
                 var d = body && body.data;
                 if (d && d.dnr_document_path) _loadedPaths.dnr_document_path = d.dnr_document_path;
                 updateDnrDocLink(crId);
@@ -350,33 +318,22 @@
     }
 
     function uploadCareRecipientPhoto(file) {
-        var apiBase = API_BASE || '';
         var crId = (document.getElementById('iceCareRecipientId') || {}).value;
         if (!file || !crId) return Promise.resolve(false);
         if (!_familyCircleId) {
             showIceStatus('Still loading; wait a moment and choose the photo again.', 'error');
             return Promise.resolve(false);
         }
-        var fd = new FormData();
-        fd.append('photo', file);
-        fd.append('care_recipient_user_id', crId);
-        return fetch(
-            apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/care-recipient-photo',
-            { method: 'POST', credentials: 'include', body: fd }
-        )
-            .then(function (r) {
-                return r.json().then(function (j) {
-                    if (!r.ok) throw new Error((j && j.error) ? j.error : 'Upload failed');
-                    return j;
-                });
-            })
-            .then(function (body) {
+        return meridianApiClient
+            .uploadCareRecipientPhoto(_familyCircleId, crId, file)
+            .then(function (response) {
+                var body = response && response.body;
                 var d = body && body.data;
                 if (d && d.photo_path) _loadedPaths.photo_path = d.photo_path;
                 var prev = document.getElementById('icePhotoPreview');
                 if (prev) {
                     prev.hidden = false;
-                    prev.src = apiBase + '/api/users/' + encodeURIComponent(crId) + '/photo?v=' + Date.now();
+                    prev.src = meridianApiClient.getUserPhotoUrl(crId);
                     prev.onerror = function () {
                         showIceStatus('Photo saved but preview could not load.', 'error');
                     };
@@ -452,7 +409,6 @@
     }
 
     function init() {
-        var apiBase = API_BASE || '';
         var pdfLink = document.getElementById('icePdfLink');
         wireUploadPreviews();
 
@@ -501,33 +457,21 @@
             });
         }
 
-        fetch(apiBase + '/api/session', { credentials: 'include' })
-            .then(function (r) {
-                if (r.status === 401) {
-                    window.location.href = meridianLoginPageWithReturn();
-                    return null;
-                }
-                return r.ok ? r.json() : null;
-            })
-            .then(function (session) {
+        meridianApiClient.getSession()
+            .then(function (response) {
+                var session = response && response.body;
                 if (!session || !session.family_circle_id) {
                     window.location.href = meridianLoginPageWithReturn();
                     return;
                 }
                 _familyCircleId = session.family_circle_id;
                 if (pdfLink) {
-                    pdfLink.href = apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile/pdf';
+                    pdfLink.href = meridianApiClient.getEmergencyProfilePdfUrl(_familyCircleId);
                 }
-                return fetch(
-                    apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
-                    { credentials: 'include' }
-                );
+                return meridianApiClient.getEmergencyProfile(_familyCircleId);
             })
-            .then(function (r) {
-                if (!r) return null;
-                return r.ok ? r.json() : null;
-            })
-            .then(function (body) {
+            .then(function (response) {
+                var body = response && response.body;
                 var pending = document.getElementById('icePending');
                 var app = document.getElementById('iceApp');
                 if (pending) pending.hidden = true;
@@ -573,37 +517,18 @@
                 var medContainer = document.getElementById('iceMedications');
                 var medRows = MeridianMedicationsInline.collectRows(medContainer);
                 var ecRows = collectEmergencyContactsFromDom();
-                MeridianMedicationsInline.saveDiff(apiBase, _familyCircleId, _iceMedsInitial, medRows)
+                MeridianMedicationsInline.saveDiff(_familyCircleId, _iceMedsInitial, medRows)
                     .then(function () {
-                        return saveEmergencyContacts(apiBase, _familyCircleId, _iceEcInitial, ecRows);
-                    })
-                    .then(function () {
-                        return fetch(
-                            apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
-                            {
-                                method: 'PUT',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            }
-                        );
-                    })
-                    .then(function (r) {
-                        return r.json().then(function (d) {
-                            if (!r.ok) throw new Error(d.error || 'Save failed');
-                            return d;
-                        });
+                        return saveEmergencyContacts(_familyCircleId, _iceEcInitial, ecRows);
                     })
                     .then(function () {
-                        return fetch(
-                            apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
-                            { credentials: 'include' }
-                        );
+                        return meridianApiClient.updateEmergencyProfile(_familyCircleId, payload);
                     })
-                    .then(function (r) {
-                        return r.ok ? r.json() : null;
+                    .then(function () {
+                        return meridianApiClient.getEmergencyProfile(_familyCircleId);
                     })
-                    .then(function (body) {
+                    .then(function (response) {
+                        var body = response && response.body;
                         var data = body && body.data ? body.data : null;
                         if (data) applyProfile(data);
                         showIceStatus('Profile saved.', 'success');

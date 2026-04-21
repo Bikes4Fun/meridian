@@ -10,6 +10,7 @@ import json
 import logging
 
 from . import schedule_screen
+from . import health_screen
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +55,9 @@ def build_home_html(
 
     clock = build_clock_html(services)
     up_next = f'<div class="up-next-card" id="up_next_content"><div class="up-next-card-inner">{hp.loading_state("Loading schedule…")}</div></div>'
-    timeline = f"""<div class="timeline-card">
-        <div class="timeline-header">WHAT'S NEXT TODAY</div>
+    whats_next_header = health_screen.HealthHandler.build_home_whats_next_header_row()
+    timeline = f"""<div class="timeline-card timeline-card--home-whats-next">
+        {whats_next_header}
         <div id="timeline_content" class="timeline-list">{hp.loading_state("Loading schedule…")}</div>
     </div>"""
     inner = (

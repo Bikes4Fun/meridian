@@ -464,6 +464,16 @@ class RemoteVoiceService:
             return ServiceResult.success_result(j.get("data"))
         return ServiceResult.success_result(j or {})
 
+    def get_voice_token(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/voice/token",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "voice token request failed")
+        return ServiceResult.success_result(data or {})
+
     def log_twilio_startup_check(self) -> None:
         """GET /api/voice/twilio-status — log whether Twilio credentials work."""
         ok, j, err = _get(

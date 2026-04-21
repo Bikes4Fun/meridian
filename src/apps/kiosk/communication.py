@@ -45,6 +45,18 @@ class ChatHandler:
         logger.warning(f"Voice call failed for {phone}: {err or 'unknown error'}")
         return self._clean_call_error(err)
 
+    def get_voice_token(self) -> dict:
+        """Get Twilio access token for kiosk browser SDK via bridge (no direct kiosk.js fetch)."""
+        voice_svc = self._app.services.get_voice_service()
+        if not voice_svc:
+            return {"error": "voice service unavailable"}
+        r = voice_svc.get_voice_token()
+        if not r.success:
+            return {"error": self._clean_call_error(r.error or "voice token request failed")}
+        if isinstance(r.data, dict):
+            return r.data
+        return {"error": "invalid voice token response"}
+
 
 def contact_tile(
     avatar_src, name, onclick_js=None, relationship="", data_contact_id="", data_name=""

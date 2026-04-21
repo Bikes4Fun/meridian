@@ -27,20 +27,13 @@ def _inject_webapp_api_url(content: str, api_url: str) -> str:
 
 def build_webapp(logger, api_url: str, src_dir: str) -> None:
     client = os.path.join(src_dir, "apps", "webapp", "web_client")
+    client_public = os.path.join(client, "public")
+    client_src = os.path.join(client, "src")
+    client_features = os.path.join(client_src, "features")
     dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
     os.makedirs(dist, exist_ok=True)
-    for filename in (
-        "login.html",
-        "privacy.html",
-        "terms.html",
-        "index.html",
-        "info.html",
-        "app.js",
-        "events.js",
-        "medications.js",
-        "ice_editor.js",
-    ):
-        src_path = os.path.join(client, filename)
+    for filename in ("login.html", "privacy.html", "terms.html", "index.html", "info.html"):
+        src_path = os.path.join(client_public, filename)
         dst_path = os.path.join(dist, filename)
         if not os.path.isfile(src_path):
             continue
@@ -48,8 +41,24 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
             content = f.read()
         with open(dst_path, "w", encoding="utf-8") as f:
             f.write(_inject_webapp_api_url(content, api_url))
-    if os.path.isfile(os.path.join(client, "style.css")):
-        shutil.copy2(os.path.join(client, "style.css"), os.path.join(dist, "style.css"))
+    for filename in ("app.js", "events.js", "medications.js", "ice_editor.js"):
+        src_path = os.path.join(client_features, filename)
+        dst_path = os.path.join(dist, filename)
+        if not os.path.isfile(src_path):
+            continue
+        with open(src_path, encoding="utf-8") as f:
+            content = f.read()
+        with open(dst_path, "w", encoding="utf-8") as f:
+            f.write(_inject_webapp_api_url(content, api_url))
+    api_client_path = os.path.join(client_src, "api_client.js")
+    if os.path.isfile(api_client_path):
+        with open(api_client_path, encoding="utf-8") as f:
+            content = f.read()
+        with open(os.path.join(dist, "api_client.js"), "w", encoding="utf-8") as f:
+            f.write(_inject_webapp_api_url(content, api_url))
+    style_path = os.path.join(client_public, "style.css")
+    if os.path.isfile(style_path):
+        shutil.copy2(style_path, os.path.join(dist, "style.css"))
 
     font_src = os.path.join(src_dir, "shared", "fonts", "Atkinson_Hyperlegible")
     font_dst = os.path.join(dist, "fonts")

@@ -118,12 +118,12 @@ final class ChatWebViewController: UIViewController {
         }
     }
 
-    func loadChat(recipientSendbirdUserId: String, recipientDisplayName: String, autoStartCall: Bool = false) {
+    func loadChat(recipientUserId: String?, recipientDisplayName: String, autoStartCall: Bool = false) {
         shouldAutoStartCall = autoStartCall
         Task {
             do {
                 let url = try await APIService.shared.getChatSessionURL(
-                    // recipientSendbirdUserId: recipientSendbirdUserId, TODO: remove all reference to send bird
+                    recipientUserId: recipientUserId,
                     recipientDisplayName: recipientDisplayName
                 )
                 await MainActor.run {

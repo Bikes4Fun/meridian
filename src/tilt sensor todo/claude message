@@ -1,0 +1,9 @@
+I have everything I need. Let me write the Arduino sketch and the full integration plan.A few things worth calling out:
+
+**On the hardware:** Since you got the single-direction DFR0028s, placement matters — the sensor needs to be oriented so "upright" (bottle standing on shelf) is the ball-contacts-pins direction, and "tilted" fires when the bottle is lifted or tipped. A quick bench test with the Serial Monitor open will confirm which orientation reads HIGH. Velcro or a small 3D-printed clip around the bottle bottom is the cleanest mounting.
+
+**The "notify if not moved" use case** is probably the killer feature here — setting up a rule like "if Evening medications haven't been touched by 9 PM, send a push notification" is a passive adherence signal that doesn't require the patient to do anything different. That's worth prioritizing in the notifications config.
+
+**Single Arduino for both sensors** is very doable — the stove temp sensor uses pin 2 for OneWire, so shift the tilt sensors to pins 4–7 and you get all of it on one USB serial connection. The kiosk parser already routes by `MERIDIAN,*` prefix so both message types work on the same port.
+
+**The `TILT_SENSOR_N_NAME` env vars** are how you label the bottles in plain language — set `TILT_SENSOR_1_NAME="Morning medications"` in your `.env` and that label flows through to the kiosk display, the webapp, and push notifications without any code changes.

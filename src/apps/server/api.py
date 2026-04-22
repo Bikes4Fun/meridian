@@ -1311,6 +1311,10 @@ def create_server_app(db_path=None):
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
 
+        @app.route("/user-test-form.html")
+        def serve_user_test_form():
+            return send_from_directory(_webapp_dist, "user-test-form.html")
+
         @app.route("/src/features/app.js")
         def serve_src_features_app_js():
             return send_from_directory(_webapp_dist, "app.js")
@@ -1366,6 +1370,15 @@ def create_server_app(db_path=None):
             if not os.path.isfile(fallback_style):
                 abort(404)
             return send_file(fallback_style, mimetype="text/css")
+
+        @app.route("/user-test-form.html")
+        def serve_user_test_form_fallback():
+            fallback_test_form = os.path.join(
+                _webapp_client, "public", "user-test-form.html"
+            )
+            if not os.path.isfile(fallback_test_form):
+                abort(404)
+            return send_file(fallback_test_form, mimetype="text/html")
 
         @app.route("/shared/<path:path>")
         def serve_shared_fallback(path):

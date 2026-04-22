@@ -14,6 +14,13 @@
     <button type="button" class="nav-tab" data-screen="schedule">Schedule</button>
     <button type="button" class="nav-tab" data-screen="family">Family</button>
     <button type="button" class="nav-tab" data-screen="settings">Settings</button>
+    <button type="button" class="footer-emergency-btn kiosk-top-emergency-btn" data-screen="emergency" aria-label="Emergency" title="Emergency">
+      <svg class="footer-emergency-btn__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </button>
   </nav>
   <div id="screen-content" role="main"><!-- Python injects screen HTML here --></div>
   <div id="kiosk-boot-overlay" class="kiosk-boot-overlay" aria-live="polite">
@@ -32,16 +39,7 @@
     <div class="kiosk-boot-corner__spinner" aria-hidden="true"></div>
     <div id="kiosk-boot-corner-msg" class="kiosk-boot-corner__msg"></div>
   </div>
-  <nav id="kiosk-footer" aria-label="Emergency">
-    <button type="button" class="footer-emergency-btn" data-screen="emergency" aria-label="Emergency" title="Emergency">
-      <svg class="footer-emergency-btn__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-    </button>
-  </nav>
-
+  <div id="kiosk-debug-viewport" class="kiosk-debug-viewport" role="status" aria-live="polite"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script
     src="https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js"

@@ -561,6 +561,9 @@ class MeridianKioskApp:
             if activated:
                 self._navigate_to("emergency")
                 self._eval("document.body.classList.add('alert-active')")
+                # if not self._alert_was_activated:
+                #     time.sleep(0.5)
+                #     trigger_emergency_print(self.services)
             else:
                 self._eval("document.body.classList.remove('alert-active')")
             self._alert_was_activated = activated

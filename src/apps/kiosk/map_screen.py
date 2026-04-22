@@ -37,33 +37,59 @@ def _is_care_recipient(contact: dict, kiosk_user_id: str) -> bool:
 
 
 def _family_voice_grid_fragment(
-    services,
+    loc_svc,
     hp,
-    kiosk_user_id: str,
-    family_circle_id: str,
-    contacts_data: Optional[list],
+    contacts_by_uid: dict[str, dict],
+    checkins_data: Optional[list],
 ) -> str:
-    from .communication import contact_widget
+    from .communication import contact_tile
 
-    contact_svc = services.get_contact_service()
-    if not contact_svc or not family_circle_id or not contacts_data:
+    if not checkins_data:
         return ""
-    chat_contacts = [
-        c
-        for c in contacts_data
-        if not _is_care_recipient(c, kiosk_user_id)
-        and (c.get("phone") or "").strip()
-    ]
-    if not chat_contacts:
-        return ""
-    tiles = [contact_widget(c, contact_svc, hp) for c in chat_contacts]
-    grid = "".join(tiles)
-    return (
-        hp.spacer(20)
-        + hp.kiosk_subheader("Family voices")
-        + hp.spacer(12)
-        + f'<div class="chat-contact-grid">{grid}</div>'
-    )
+    seen: set[str] = set()
+    cards: list[str] = []
+
+    def _initials(name: str) -> str:
+        parts = [p for p in (name or "").split() if p]
+        if not parts:
+            return "?"
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return (parts[0][0] + parts[1][0]).upper()
+
+    for c in checkins_data:
+        uid = (c.get("user_id") or "").strip()
+        name_raw = (c.get("contact_name") or "Unknown").strip()
+        loc_raw = (c.get("location_name") or "Unknown location").strip()
+        key = uid or f"{name_raw}|{loc_raw}"
+        if key in seen:
+            continue
+        seen.add(key)
+
+        contact = contacts_by_uid.get(uid, {})
+        display_name = (contact.get("display_name") or name_raw or "").strip() or "Unknown"
+        phone = (contact.get("phone") or "").strip()
+        safe_name = html.escape(display_name)
+        safe_loc = html.escape(loc_raw or "Unknown location")
+        safe_phone = html.escape(phone) if phone else ""
+        photo_src = loc_svc.get_user_photo_b64(uid) if uid else None
+        disabled = ' disabled aria-disabled="true"' if not phone else ""
+        label = "📞 Voice call" if phone else "No phone"
+        tile = contact_tile(photo_src, display_name, data_name=display_name)
+
+        cards.append(
+            '<div class="chat-contact-card family-member-card">'
+            f"{tile}"
+            f'<div class="family-member-location">{safe_loc}</div>'
+            '<div class="chat-contact-actions">'
+            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn" data-phone="{safe_phone}" data-name="{safe_name}"{disabled}>{label}</button>'
+            "</div>"
+            "</div>"
+        )
+
+    if not cards:
+        return hp.empty_state("No family check-ins yet")
+    return f'<div class="chat-contact-grid family-member-grid">{"".join(cards)}</div>'
 
 
 def build_checkin_html(
@@ -90,7 +116,6 @@ def build_checkin_html(
                 if uid:
                     contacts_by_uid[uid] = c
 
-    checkins_html = hp.loading_state("Loading check-ins...")
     places = []
     places_result = None
     checkins_result = None
@@ -108,51 +133,11 @@ def build_checkin_html(
             ]
 
         checkins_result = loc_svc.get_checkins(family_circle_id)
-        if checkins_result.success and checkins_result.data:
-            rows_html: list[str] = []
-            for c in checkins_result.data:
-                name_raw = c.get("contact_name") or "Unknown"
-                loc_raw = c.get("location_name") or "Unknown"
-                uid = (c.get("user_id") or "").strip()
-                contact = contacts_by_uid.get(uid, {})
-                phone = (contact.get("phone") or "").strip()
-                display_name = (contact.get("display_name") or name_raw or "").strip()
-                safe_name = html.escape(display_name)
-                safe_phone = html.escape(phone) if phone else ""
-                name_esc = html.escape(str(name_raw))
-                loc_esc = html.escape(str(loc_raw))
-                if phone:
-                    btn = (
-                        '<button type="button" class="timeline-action-btn btn-small contact-call-btn" '
-                        f'data-phone="{safe_phone}" data-name="{safe_name}">📞 Call</button>'
-                    )
-                else:
-                    btn = (
-                        '<button type="button" class="timeline-action-btn btn-small" '
-                        'disabled aria-disabled="true">No phone</button>'
-                    )
-                rows_html.append(
-                    '<div class="family-checkin-row">'
-                    f'<span class="family-checkin-line">{name_esc}: {loc_esc}</span>'
-                    f'<div class="family-checkin-actions">{btn}</div>'
-                    "</div>"
-                )
-            checkins_html = (
-                f'<div class="family-checkins-list">{"".join(rows_html)}</div>'
-                if rows_html
-                else hp.empty_state("No check-ins")
-            )
-        else:
-            checkins_html = hp.empty_state("No check-ins yet")
-
-    voice_grid = _family_voice_grid_fragment(
-        services, hp, kiosk_user_id, family_circle_id, contacts_data
-    )
-    checkins_panel = hp.panel(
-        hp.kiosk_subheader("Check-ins")
-        + hp.spacer(16)
-        + checkins_html
-        + voice_grid
+    member_cards = _family_voice_grid_fragment(
+        loc_svc,
+        hp,
+        contacts_by_uid,
+        checkins_result.data if checkins_result and checkins_result.success else None,
     )
     refresh_btn = hp.kiosk_button(
         "Refresh",
@@ -170,12 +155,11 @@ def build_checkin_html(
     )
     header_row = (
         '<div class="family-locations-header-row">'
-        + hp.kiosk_header("Family Locations")
         + refresh_btn
         + where_btn
         + "</div>"
     )
-    top_content = header_row + hp.spacer(16) + checkins_panel + hp.spacer(16)
+    top_content = header_row + hp.spacer(8) + member_cards + hp.spacer(8)
     map_html = map_container_html()
     markers = get_map_markers(
         services,

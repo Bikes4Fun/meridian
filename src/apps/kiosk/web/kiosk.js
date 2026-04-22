@@ -37,6 +37,18 @@ function bindScreenNav(container) {
 bindScreenNav(document.getElementById('kiosk-nav'));
 bindScreenNav(document.getElementById('kiosk-footer'));
 
+function updateViewportDebugBadge() {
+  var el = document.getElementById('kiosk-debug-viewport');
+  if (!el) return;
+  var w = window.innerWidth || 0;
+  var h = window.innerHeight || 0;
+  var ratio = h ? (w / h) : 0;
+  el.textContent = 'Debug ' + w + 'x' + h + ' \u2022 AR ' + ratio.toFixed(3);
+}
+updateViewportDebugBadge();
+window.addEventListener('resize', updateViewportDebugBadge);
+window.addEventListener('orientationchange', updateViewportDebugBadge);
+
 // Calendar modal: open/prefill in JS; Python bridge only submits/deletes (see app.py).
 window.meridianKioskEvents = {
   openAddModal: function() {
@@ -298,6 +310,7 @@ function showScreen(name, html) {
     el.innerHTML = html;
     document.body.dataset.screen = name;
     updateNavActiveState(name);
+    updateViewportDebugBadge();
     if (typeof window.onKioskScreenShown === 'function') {
       window.onKioskScreenShown(name);
     }

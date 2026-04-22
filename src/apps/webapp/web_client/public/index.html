@@ -33,7 +33,6 @@
                         <button type="button" class="nav-btn" data-page="health" data-target-id="pageHealth">Patient health data</button>
                         <button type="button" class="nav-btn" data-page="events" data-target-id="pageEvents">Events</button>
                         <button type="button" class="nav-btn active" data-page="settings" data-target-id="pageSettings">Settings</button>
-                        <button type="button" class="nav-btn" data-page="mobile" data-target-id="pageMobile">Mobile</button>
                         <button type="button" class="nav-btn" data-page="info" data-target-id="pageInfo">Info</button>
                     </div>
                 </nav>
@@ -700,15 +699,6 @@
             <li><a class="meridian-inpage-nav__link" href="#web-ice">ICE / POLST editor</a></li>
             <li><a class="meridian-inpage-nav__link" href="#web-events">Events</a></li>
             <li><a class="meridian-inpage-nav__link" href="#web-settings">Settings</a></li>
-            <li><a class="meridian-inpage-nav__link" href="#web-mobile">Mobile tab</a></li>
-          </ul>
-        </div>
-        <div class="meridian-inpage-nav__group">
-          <p class="meridian-inpage-nav__heading">Mobile</p>
-          <ul class="meridian-inpage-nav__list">
-            <li><a class="meridian-inpage-nav__link" href="#mobile-checkin">Check-in</a></li>
-            <li><a class="meridian-inpage-nav__link" href="#where-is-everyone">Where is everyone?</a></li>
-            <li><a class="meridian-inpage-nav__link" href="#voice-calls">Voice calls to kiosk</a></li>
           </ul>
         </div>
         <div class="meridian-inpage-nav__group">
@@ -980,65 +970,6 @@
             <p>Full family export and permanent delete are high-risk. The Settings layout includes options to require <strong>password re-entry</strong> and, optionally, a <strong>second primary caregiver</strong> to approve before an export is generated or data is destroyed.</p>
             <h2>Notification routing &amp; quiet hours</h2>
             <p>Separate from roles for <em>editing</em> data: you can define which roles receive <strong>push</strong> or <strong>email</strong> for emergencies, medication digests, check-in requests, and (later) geofence events. <strong>Quiet hours</strong> delay routine messages; true emergencies may still break through per policy.</p>
-          </div>
-        </div>
-    
-        <div class="doc-section" id="web-mobile">
-          <div class="section-card">
-            <div class="section-label sl-web">Web Dashboard</div>
-            <h1>Mobile tab</h1>
-            <p class="page-lead">Mobile-sized layout in the browser for families without the native app installed.</p>
-            <p>Includes <strong>Check in now</strong>, optional notes, <strong>Mark all non-PRN meds</strong>, and chat with contacts — useful when the native app is not installed.</p>
-          </div>
-        </div>
-    
-        <!-- MOBILE -->
-        <div class="doc-section" id="mobile-checkin">
-          <div class="section-card">
-            <div class="section-label sl-mobile">Mobile App</div>
-            <h1>Check-in &amp; location *</h1>
-            <p class="page-lead">How family members share their location so it appears on the kiosk Family screen.</p>
-            <p>A check-in submits the family member's current location, which is matched against any <a href="#named-locations">named locations</a> set up for the circle. Optional <strong>notes</strong> can accompany a check-in; surfacing those notes on every kiosk row is partial / improving. *</p>
-            <div class="notice n-soon">
-              <span class="ni">🕐</span>
-              <div class="nb"><strong>iOS app in development.</strong> The check-in flow is currently available via the web dashboard's mobile-optimized view.</div>
-            </div>
-          </div>
-        </div>
-    
-        <div class="doc-section" id="where-is-everyone">
-          <div class="section-card">
-            <div class="section-label sl-mobile">Mobile App</div>
-            <h1>Where is everyone? *</h1>
-            <p class="page-lead">Tapping this on the kiosk Family screen sends a push notification to family members asking them to check in.</p>
-            <ol class="steps">
-              <li>The kiosk user taps <strong>Where is everyone?</strong> on the Family screen.</li>
-              <li>A push notification goes out to all participating family members.</li>
-              <li>The next time they open the app, they can accept or decline. <span class="badge b-soon">In progress</span></li>
-              <li>If they accept, their location is submitted. They can also add a short note. <span class="badge b-soon">Video messages planned</span></li>
-              <li>Their location appears on the kiosk Family screen.</li>
-            </ol>
-            <h2>Rules &amp; limits</h2>
-            <ul>
-              <li>Requests expire after 24 hours if unanswered <span class="badge b-soon">Coming</span></li>
-              <li>Only one active request per family member at a time <span class="badge b-soon">Coming</span></li>
-              <li>Max request frequency is configurable <span class="badge b-soon">Coming</span></li>
-              <li>Location sharing is always opt-in — family members can decline any request</li>
-            </ul>
-            <div class="notice n-tip">
-              <span class="ni">💡</span>
-              <div class="nb">Push notifications require APNs configuration on the server. Without it, requests are logged but not delivered. Contact your administrator if notifications aren't arriving.</div>
-            </div>
-            <p><strong>Rules (intended behavior; confirm for your build):</strong> requests may expire after 24h *; only one active request per family member at a time *; max request frequency may be configurable *; sharing remains opt-in.</p>
-          </div>
-        </div>
-    
-        <div class="doc-section" id="voice-calls">
-          <div class="section-card">
-            <div class="section-label sl-mobile">Mobile App</div>
-            <h1>Voice calls to the kiosk</h1>
-            <p class="page-lead">Family on iOS can place a voice call that rings through to the kiosk Family screen.</p>
-            <p>When enabled, a family member can use <strong>Place Call</strong> from iOS toward a chosen kiosk user. The server records a <strong>call signal</strong>; the kiosk polls for <strong>incoming</strong> calls, switches to the Family screen, and acknowledges when answered. Voice media needs a <strong>reachable HTTPS</strong> deployment (for example ngrok in development).</p>
           </div>
         </div>
     

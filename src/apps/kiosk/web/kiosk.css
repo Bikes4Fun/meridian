@@ -329,6 +329,7 @@ body[data-screen="emergency"] #screen-content {
 
 body[data-screen="family"] #screen-content {
   overflow: hidden;
+  padding: 0;
 }
 
 /* Home: fill main area; scroll inside “What’s next today” instead of the whole screen */
@@ -798,8 +799,12 @@ body[data-screen="family"] #screen-content {
 
 .family-locations-layout #map {
   flex: 1 1 0;
-  min-height: 250px;
+  min-height: 0;
   height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .family-checkins-list {
@@ -2052,6 +2057,10 @@ body.alert-active {
 #map {
   height: 20.83vh;
   min-height: 10.42vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .map-marker-div {

@@ -59,7 +59,13 @@ class ChatHandler:
 
 
 def contact_tile(
-    avatar_src, name, onclick_js=None, relationship="", data_contact_id="", data_name=""
+    avatar_src,
+    name,
+    onclick_js=None,
+    relationship="",
+    data_contact_id="",
+    data_name="",
+    show_name=True,
 ):
     """Person/contact card. avatar_src = data URI from fetch_photo_b64."""
     initial = (name or "?")[0].upper()
@@ -71,6 +77,7 @@ def contact_tile(
         else ""
     )
     avatar_block = f'<div class="avatar-wrapper"><div class="contact-initial">{html.escape(initial)}</div>{img_tag}</div>'
+    name_part = f'<div class="contact-name">{name_escaped}</div>' if show_name else ""
     if data_contact_id or data_name:
         cid = (
             f' data-contact-id="{html.escape(str(data_contact_id))}"'
@@ -78,8 +85,8 @@ def contact_tile(
             else ""
         )
         nm = f' data-name="{html.escape(str(data_name))}"' if data_name else ""
-        return f'<div class="contact-tile" role="button"{cid}{nm}>{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'
-    return f'<div class="contact-tile" onclick="{onclick_js}">{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'
+        return f'<div class="contact-tile" role="button"{cid}{nm}>{avatar_block}{name_part}{rel_part}</div>'
+    return f'<div class="contact-tile" onclick="{onclick_js}">{avatar_block}{name_part}{rel_part}</div>'
 
 
 def contact_widget(c, contact_svc, hp) -> str:

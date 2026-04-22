@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meridian Usability Test</title>
+    <link rel="stylesheet" href="/shared/base.css">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .test-shell {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+        .test-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .test-row {
+            margin-top: 12px;
+        }
+        .test-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border: 1px solid var(--warm-border-strong);
+            border-radius: 6px;
+            padding: 2px 8px;
+            color: var(--web-muted);
+        }
+        .test-progress {
+            margin: 8px 0 0;
+            font-size: 13px;
+            color: var(--web-muted);
+        }
+        .test-task {
+            margin: 8px 0 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--web-title);
+            line-height: 1.3;
+        }
+        .test-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .test-nav .btn-health-secondary {
+            width: auto;
+            min-width: 120px;
+        }
+        .test-export {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .test-status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--web-muted);
+            min-height: 1.25em;
+        }
+    </style>
+</head>
+<body class="app-dashboard">
+    <main class="app-main test-shell">
+        <section class="card card--pad">
+            <h1 class="page-title">Meridian Usability Test Runner</h1>
+            <p class="muted page-lead">Walk a tester through kiosk, webapp, and iOS tasks. Capture what worked, what failed, and what they expected.</p>
+
+            <div class="test-meta-grid">
+                <div>
+                    <label class="field-label" for="testerName">Tester name</label>
+                    <input id="testerName" type="text" autocomplete="name">
+                </div>
+                <div>
+                    <label class="field-label" for="testDate">Date</label>
+                    <input id="testDate" type="date">
+                </div>
+                <div>
+                    <label class="field-label" for="testerRole">Role</label>
+                    <select id="testerRole">
+                        <option value="">Select role</option>
+                        <option value="Family member">Family member</option>
+                        <option value="Care recipient">Care recipient</option>
+                        <option value="Caregiver">Caregiver</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="moderator">Moderator</label>
+                    <input id="moderator" type="text">
+                </div>
+            </div>
+        </section>
+
+        <section class="card card--pad test-row">
+            <div id="taskPlatform" class="test-badge"></div>
+            <div id="taskProgress" class="test-progress"></div>
+            <p id="taskText" class="test-task"></p>
+
+            <label class="field-label" for="taskExpected">What tester expected</label>
+            <textarea id="taskExpected" rows="2" class="ice-textarea" placeholder="Expected behavior before they tapped/clicked"></textarea>
+
+            <label class="field-label" for="taskActual">What actually happened</label>
+            <textarea id="taskActual" rows="2" class="ice-textarea" placeholder="Observed behavior"></textarea>
+
+            <div class="test-meta-grid">
+                <div>
+                    <label class="field-label" for="taskResult">Result</label>
+                    <select id="taskResult">
+                        <option value="">Select</option>
+                        <option value="Worked">Worked</option>
+                        <option value="Partly worked">Partly worked</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Not tried">Not tried</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="taskSeverity">Severity (if issue)</label>
+                    <select id="taskSeverity">
+                        <option value="">None</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="taskConfidence">Confidence</label>
+                    <select id="taskConfidence">
+                        <option value="">Select</option>
+                        <option value="1">1 - very low</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 - very high</option>
+                    </select>
+                </div>
+            </div>
+
+            <label class="field-label" for="taskNotes">Notes</label>
+            <textarea id="taskNotes" rows="3" class="ice-textarea" placeholder="Confusion, friction, visual feedback, comments"></textarea>
+
+            <div class="test-nav">
+                <button type="button" id="prevTask" class="btn-health-secondary">Previous task</button>
+                <button type="button" id="nextTask" class="btn-add">Next task</button>
+            </div>
+        </section>
+
+        <section class="card card--pad test-row">
+            <h2 class="page-section-title">Final trust question</h2>
+            <label class="field-label" for="trustLevel">If this were for your own family, would you trust using it today?</label>
+            <select id="trustLevel">
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="Maybe">Maybe</option>
+                <option value="No">No</option>
+            </select>
+            <label class="field-label" for="trustWhy">Why?</label>
+            <textarea id="trustWhy" rows="3" class="ice-textarea"></textarea>
+
+            <label class="field-label" for="topLikes">What looked good?</label>
+            <textarea id="topLikes" rows="2" class="ice-textarea"></textarea>
+            <label class="field-label" for="topIssues">What looked bad / needs work?</label>
+            <textarea id="topIssues" rows="2" class="ice-textarea"></textarea>
+            <label class="field-label" for="missedExpectations">What did they expect to work but did not?</label>
+            <textarea id="missedExpectations" rows="2" class="ice-textarea"></textarea>
+
+            <div class="test-export">
+                <button type="button" id="downloadJson" class="btn-health-secondary">Download JSON</button>
+                <button type="button" id="copyJson" class="btn-health-secondary">Copy JSON</button>
+            </div>
+
+            <div class="test-meta-grid">
+                <div>
+                    <label class="field-label" for="emailTo">Email recipient (optional)</label>
+                    <input id="emailTo" type="email" placeholder="you@example.com">
+                </div>
+                <div>
+                    <label class="field-label" for="emailSubject">Email subject</label>
+                    <input id="emailSubject" type="text" value="Meridian usability test results">
+                </div>
+            </div>
+            <div class="test-export">
+                <button type="button" id="draftEmail" class="btn-add">Draft email summary</button>
+            </div>
+            <p class="test-status" id="formStatus"></p>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            var TASKS = [
+                { platform: "Kiosk", text: "Open each kiosk tab and explain what each one does." },
+                { platform: "Kiosk", text: "On Home, identify the next event and next medication action." },
+                { platform: "Kiosk", text: "Mark one medication as taken." },
+                { platform: "Kiosk", text: "Open Family and identify each family member's location." },
+                { platform: "Kiosk", text: "Tap a family call icon and describe expected call behavior." },
+                { platform: "Kiosk", text: "Tap Where is everyone? and describe the feedback." },
+                { platform: "Kiosk", text: "Open Emergency, find code status, then navigate out." },
+                { platform: "Webapp", text: "Log in and navigate Health, Events, Settings, and Info." },
+                { platform: "Webapp", text: "Open ICE editor from Health and update one field." },
+                { platform: "Webapp", text: "Add or edit one medication and save." },
+                { platform: "Webapp", text: "Go to Settings and identify what controls look unfinished." },
+                { platform: "iOS", text: "Open app and complete one check-in with a short note." },
+                { platform: "iOS", text: "Respond to Where is everyone? flow if available." },
+                { platform: "Cross-platform", text: "Perform one action on iOS/webapp and verify kiosk updates." },
+                { platform: "Cross-platform", text: "Name one mismatch between kiosk/webapp/iOS data or behavior." }
+            ];
+
+            var STORAGE_KEY = "meridian-usability-test-v1";
+            var index = 0;
+            var responses = TASKS.map(function () {
+                return { expected: "", actual: "", result: "", severity: "", confidence: "", notes: "" };
+            });
+
+            var ids = [
+                "testerName", "testDate", "testerRole", "moderator",
+                "taskExpected", "taskActual", "taskResult", "taskSeverity", "taskConfidence", "taskNotes",
+                "trustLevel", "trustWhy", "topLikes", "topIssues", "missedExpectations", "emailTo", "emailSubject"
+            ];
+            var els = {};
+            ids.forEach(function (id) { els[id] = document.getElementById(id); });
+
+            function setStatus(msg) {
+                document.getElementById("formStatus").textContent = msg || "";
+            }
+
+            function loadSaved() {
+                try {
+                    var raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return;
+                    var saved = JSON.parse(raw);
+                    if (saved && Array.isArray(saved.responses) && saved.responses.length === TASKS.length) {
+                        responses = saved.responses;
+                    }
+                    ids.forEach(function (id) {
+                        if (saved && saved.meta && Object.prototype.hasOwnProperty.call(saved.meta, id) && els[id]) {
+                            els[id].value = saved.meta[id] || "";
+                        }
+                    });
+                    if (saved && typeof saved.index === "number") {
+                        index = Math.max(0, Math.min(TASKS.length - 1, saved.index));
+                    }
+                } catch (_e) {}
+            }
+
+            function saveState() {
+                var meta = {};
+                ids.forEach(function (id) {
+                    if (els[id]) meta[id] = els[id].value || "";
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    index: index,
+                    meta: meta,
+                    responses: responses
+                }));
+            }
+
+            function captureTaskFields() {
+                responses[index] = {
+                    expected: els.taskExpected.value || "",
+                    actual: els.taskActual.value || "",
+                    result: els.taskResult.value || "",
+                    severity: els.taskSeverity.value || "",
+                    confidence: els.taskConfidence.value || "",
+                    notes: els.taskNotes.value || ""
+                };
+            }
+
+            function fillTaskFields() {
+                var r = responses[index] || {};
+                els.taskExpected.value = r.expected || "";
+                els.taskActual.value = r.actual || "";
+                els.taskResult.value = r.result || "";
+                els.taskSeverity.value = r.severity || "";
+                els.taskConfidence.value = r.confidence || "";
+                els.taskNotes.value = r.notes || "";
+            }
+
+            function renderTask() {
+                var task = TASKS[index];
+                document.getElementById("taskPlatform").textContent = task.platform;
+                document.getElementById("taskText").textContent = task.text;
+                document.getElementById("taskProgress").textContent = "Task " + (index + 1) + " of " + TASKS.length;
+                fillTaskFields();
+                document.getElementById("prevTask").disabled = index === 0;
+                document.getElementById("nextTask").textContent = index === TASKS.length - 1 ? "Done with tasks" : "Next task";
+            }
+
+            function buildPayload() {
+                captureTaskFields();
+                saveState();
+                var meta = {};
+                ids.forEach(function (id) {
+                    if (els[id]) meta[id] = els[id].value || "";
+                });
+                return {
+                    exported_at: new Date().toISOString(),
+                    tasks: TASKS,
+                    responses: responses,
+                    meta: meta
+                };
+            }
+
+            function downloadJson() {
+                var payload = buildPayload();
+                var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+                var a = document.createElement("a");
+                var date = (els.testDate.value || new Date().toISOString().slice(0, 10)).replace(/[^0-9-]/g, "");
+                var tester = (els.testerName.value || "tester").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                a.href = URL.createObjectURL(blob);
+                a.download = "meridian-usability-" + tester + "-" + date + ".json";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+                setStatus("Downloaded JSON.");
+            }
+
+            function copyJson() {
+                var payload = buildPayload();
+                var text = JSON.stringify(payload, null, 2);
+                navigator.clipboard.writeText(text).then(function () {
+                    setStatus("Copied JSON to clipboard.");
+                }).catch(function () {
+                    setStatus("Copy failed. Use Download JSON.");
+                });
+            }
+
+            function draftEmail() {
+                var payload = buildPayload();
+                var to = (els.emailTo.value || "").trim();
+                var subject = encodeURIComponent(els.emailSubject.value || "Meridian usability test results");
+                var worked = responses.filter(function (r) { return r.result === "Worked"; }).length;
+                var failed = responses.filter(function (r) { return r.result === "Failed"; }).length;
+                var partial = responses.filter(function (r) { return r.result === "Partly worked"; }).length;
+                var body = [
+                    "Meridian usability test summary",
+                    "",
+                    "Tester: " + (els.testerName.value || ""),
+                    "Date: " + (els.testDate.value || ""),
+                    "Role: " + (els.testerRole.value || ""),
+                    "Moderator: " + (els.moderator.value || ""),
+                    "",
+                    "Worked: " + worked,
+                    "Partly worked: " + partial,
+                    "Failed: " + failed,
+                    "",
+                    "Trust: " + (els.trustLevel.value || ""),
+                    "Why: " + (els.trustWhy.value || ""),
+                    "",
+                    "Looked good: " + (els.topLikes.value || ""),
+                    "Looked bad / needs work: " + (els.topIssues.value || ""),
+                    "Expected but did not work: " + (els.missedExpectations.value || ""),
+                    "",
+                    "Attach exported JSON for full detail."
+                ].join("\n");
+                var url = "mailto:" + encodeURIComponent(to) + "?subject=" + subject + "&body=" + encodeURIComponent(body);
+                window.location.href = url;
+                setStatus("Opened email draft.");
+            }
+
+            document.getElementById("prevTask").addEventListener("click", function () {
+                captureTaskFields();
+                if (index > 0) index -= 1;
+                saveState();
+                renderTask();
+            });
+
+            document.getElementById("nextTask").addEventListener("click", function () {
+                captureTaskFields();
+                if (index < TASKS.length - 1) index += 1;
+                saveState();
+                renderTask();
+                if (index === TASKS.length - 1) {
+                    setStatus("Final task reached. Fill final trust section and export.");
+                }
+            });
+
+            document.getElementById("downloadJson").addEventListener("click", downloadJson);
+            document.getElementById("copyJson").addEventListener("click", copyJson);
+            document.getElementById("draftEmail").addEventListener("click", draftEmail);
+
+            ids.forEach(function (id) {
+                if (!els[id]) return;
+                els[id].addEventListener("change", saveState);
+                els[id].addEventListener("blur", saveState);
+            });
+
+            if (!els.testDate.value) {
+                els.testDate.value = new Date().toISOString().slice(0, 10);
+            }
+            loadSaved();
+            renderTask();
+        })();
+    </script>
+</body>
+</html>

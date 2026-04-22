@@ -49,14 +49,6 @@ def _family_voice_grid_fragment(
     seen: set[str] = set()
     cards: list[str] = []
 
-    def _initials(name: str) -> str:
-        parts = [p for p in (name or "").split() if p]
-        if not parts:
-            return "?"
-        if len(parts) == 1:
-            return parts[0][:2].upper()
-        return (parts[0][0] + parts[1][0]).upper()
-
     for c in checkins_data:
         uid = (c.get("user_id") or "").strip()
         name_raw = (c.get("contact_name") or "Unknown").strip()
@@ -74,15 +66,31 @@ def _family_voice_grid_fragment(
         safe_phone = html.escape(phone) if phone else ""
         photo_src = loc_svc.get_user_photo_b64(uid) if uid else None
         disabled = ' disabled aria-disabled="true"' if not phone else ""
-        label = "📞 Voice call" if phone else "No phone"
-        tile = contact_tile(photo_src, display_name, data_name=display_name)
+        tile = contact_tile(
+            photo_src,
+            display_name,
+            data_name=display_name,
+            show_name=False,
+        )
+        icon_svg = (
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+            '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.07 9.81 '
+            '19.79 19.79 0 0 1 .04 1.22 2 2 0 0 1 2 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11'
+            'L6.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 14.92z"/>'
+            "</svg>"
+        )
+        label = icon_svg if phone else "—"
 
         cards.append(
             '<div class="chat-contact-card family-member-card">'
             f"{tile}"
+            '<div class="family-member-bottom-row">'
+            '<div class="family-member-meta">'
+            f'<div class="family-member-name">{safe_name}</div>'
             f'<div class="family-member-location">{safe_loc}</div>'
-            '<div class="chat-contact-actions">'
-            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn" data-phone="{safe_phone}" data-name="{safe_name}"{disabled}>{label}</button>'
+            "</div>"
+            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>{label}</button>'
             "</div>"
             "</div>"
         )
@@ -159,7 +167,7 @@ def build_checkin_html(
         + where_btn
         + "</div>"
     )
-    top_content = header_row + hp.spacer(8) + member_cards + hp.spacer(8)
+    top_content = header_row + hp.spacer(4) + member_cards
     map_html = map_container_html()
     markers = get_map_markers(
         services,

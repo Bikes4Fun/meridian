@@ -33,8 +33,8 @@
 // ── Pin assignments ────────────────────────────────────────────────────────────
 // Assign one digital pin per sensor. Use pins with internal pull-up support.
 // Avoid pins 0/1 (used by Serial TX/RX on Uno/Nano).
-const int SENSOR_PINS[4] = {2, 3, 4, 5};
-const int SENSOR_COUNT = 4;
+const int SENSOR_PINS[4] = {4};
+const int SENSOR_COUNT = 1;
 
 // ── Behavior tuning ───────────────────────────────────────────────────────────
 // Debounce: ignore state flickers shorter than this (ms).

@@ -29,7 +29,6 @@
 
     var _familyCircleId = null;
     var _userId = null;
-    var _mobileChatLoaded = false;
     var _alertActive = false;
     var _alertRequestInFlight = false;
     var _alertPollTimer = null;

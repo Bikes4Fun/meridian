@@ -104,7 +104,7 @@ def test_alert_status_is_scoped_per_family(api_client):
 
 @pytest.mark.e2e
 def test_kiosk_alert_shortcut_wires_to_activate_alert(api_client):
-    """Webapp contract: shortcut exists on dashboard and its click path calls activateAlert()."""
+    """Webapp contract: dashboard shortcut and initKioskAlertShortcut post alert activation (API)."""
     login = api_client.post(
         "/api/login",
         json={"user_id": TEST_USER_ID, "family_circle_id": FAMILY_CIRCLE_ID},
@@ -120,7 +120,7 @@ def test_kiosk_alert_shortcut_wires_to_activate_alert(api_client):
     assert app_js.status_code == 200
     js = app_js.get_data(as_text=True)
     assert "function initKioskAlertShortcut()" in js
-    assert "activateAlert();" in js
+    assert "meridianApiClient.setEmergencyAlert(true)" in js
 
     # API-side assertion for the click action target.
     status_before = api_client.get("/api/emergency/alert/status", headers=API_HEADERS)

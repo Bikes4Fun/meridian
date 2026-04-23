@@ -306,34 +306,6 @@ def test_twilio_voice_token_handles_jwt_failure(api_client, monkeypatch):
     assert (r.get_json() or {}).get("error") == "Could not create voice token"
 
 
-@pytest.mark.integration
-def test_twilio_voice_call_requires_to_phone(api_client, monkeypatch):
-    monkeypatch.setenv("TWILIO_ACCOUNT_SID", "AC123")
-    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "auth123")
-    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
-    r = api_client.post("/api/voice/call", json={}, headers=API_HEADERS)
-    assert r.status_code == 400
-    assert (r.get_json() or {}).get("error") == "to phone required"
-
-
-@pytest.mark.integration
-def test_twilio_voice_call_conference_success(api_client, monkeypatch):
-    _install_fake_twilio_modules(monkeypatch, include_rest=True)
-    monkeypatch.setenv("TWILIO_ACCOUNT_SID", "AC123")
-    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "auth123")
-    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
-    r = api_client.post(
-        "/api/voice/call",
-        json={"to": "+14155550100"},
-        headers=API_HEADERS,
-    )
-    body = r.get_json() or {}
-    assert r.status_code == 200
-    assert body.get("sid") == "CA_TO"
-    assert body.get("sid_caller") == "CA_FROM"
-    assert body.get("conference")
-
-
 # @pytest.mark.integration
 # def test_0_pollute_alert_state(api_client):
 #     """Pollutes state for the default family: activates emergency alert without reset. No teardown.

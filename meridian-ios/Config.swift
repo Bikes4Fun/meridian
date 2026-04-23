@@ -9,7 +9,16 @@ import Foundation
 
 enum Config {
     private static let savedApiBaseURLKey = "meridian_api_base_url"
-    private static let fallbackApiBaseURL = "https://denary-unneglected-alease.ngrok-free.dev"
+
+    /// Demo ngrok API (probed first when no saved base URL).
+    static let demoNgrokApiBaseURL = "https://denary-unneglected-alease.ngrok-free.dev"
+    /// Demo Railway API (second probe). Matches `src/shared/api_config.json` railway_api_url.
+    static let demoRailwayApiBaseURL = "https://meridian-development.up.railway.app"
+
+    private static let fallbackApiBaseURL = demoNgrokApiBaseURL
+
+    /// Per-host timeout for `GET …/api/health` during startup discovery.
+    static let apiHealthCheckTimeoutSeconds: TimeInterval = 4.0
 
     static let apiBaseURLDidChangeNotification = Notification.Name("meridianApiBaseURLDidChange")
 
@@ -65,5 +74,59 @@ enum Config {
 
     static func persistedApiBaseURLFieldText() -> String {
         UserDefaults.standard.string(forKey: savedApiBaseURLKey) ?? ""
+    }
+
+    /// Tries demo ngrok then Railway; returns normalized base URL on first successful `/api/health`, else nil.
+    static func discoverDemoBackendBaseURL() async -> String? {
+        let timeout = apiHealthCheckTimeoutSeconds
+        for base in [demoNgrokApiBaseURL, demoRailwayApiBaseURL].map({ normalizedBaseURL($0) }) {
+            if await checkApiHealth(atBaseURL: base, timeout: timeout) {
+                return base
+            }
+        }
+        return nil
+    }
+
+    static func isDemoPresetApiBaseURL(_ raw: String) -> Bool {
+        let n = normalizedBaseURL(raw)
+        return n == normalizedBaseURL(demoNgrokApiBaseURL) || n == normalizedBaseURL(demoRailwayApiBaseURL)
+    }
+
+    static func isReleasedDemoRailwayURL(_ raw: String) -> Bool {
+        normalizedBaseURL(raw) == normalizedBaseURL(demoRailwayApiBaseURL)
+    }
+
+    /// Always tries ngrok then Railway first. If both fail, clears a saved demo preset and returns nil so the UI prompts. If persisted is not a demo URL, returns it only when `/api/health` succeeds.
+    static func resolveBackendBaseURL() async -> String? {
+        if let discovered = await discoverDemoBackendBaseURL() {
+            return discovered
+        }
+        let persisted = normalizedBaseURL(persistedApiBaseURLFieldText())
+        if isDemoPresetApiBaseURL(persisted) {
+            saveApiBaseURL("")
+            return nil
+        }
+        if !persisted.isEmpty, await checkApiHealth(atBaseURL: persisted, timeout: apiHealthCheckTimeoutSeconds) {
+            return persisted
+        }
+        return nil
+    }
+
+    /// True when `GET {base}/api/health` returns HTTP 200 within `timeout` seconds.
+    static func checkApiHealth(atBaseURL base: String, timeout: TimeInterval) async -> Bool {
+        let baseNorm = normalizedBaseURL(base)
+        guard let url = URL(string: baseNorm + "/api/health") else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.timeoutInterval = timeout
+        if let host = url.host, host.contains("ngrok") {
+            req.setValue("true", forHTTPHeaderField: "ngrok-skip-browser-warning")
+        }
+        do {
+            let (_, response) = try await URLSession.shared.data(for: req)
+            return (response as? HTTPURLResponse)?.statusCode == 200
+        } catch {
+            return false
+        }
     }
 }

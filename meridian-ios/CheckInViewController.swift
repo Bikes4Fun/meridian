@@ -1,5 +1,5 @@
 /**
- * Meridian iOS – Check-in. GPS + optional notes. Shows recent family check-ins.
+ * Meridian iOS – Check-in. GPS check-in. Shows recent family check-ins.
  */
 import UIKit
 import CoreLocation
@@ -7,7 +7,6 @@ import MapKit
 
 final class CheckInViewController: UIViewController {
     private let familySummaryLabel = UILabel()
-    private let notesField = UITextField()
     private let manualCheckInButton = UIButton(type: .system)
     private let refreshStatusButton = UIButton(type: .system)
     private let statusLabel = UILabel()
@@ -37,13 +36,10 @@ final class CheckInViewController: UIViewController {
         familySummaryLabel.textColor = MeridianPalette.mutedText
         familySummaryLabel.textAlignment = .center
 
-        notesField.placeholder = "Notes (optional)"
-        notesField.borderStyle = .roundedRect
-
-        manualCheckInButton.applyMeridianButtonStyle(.primary, title: "Manual Check-In Now")
+        manualCheckInButton.applyMeridianButtonStyle(.primary, title: "Checkin")
         manualCheckInButton.addTarget(self, action: #selector(doCheckIn), for: .touchUpInside)
 
-        refreshStatusButton.applyMeridianButtonStyle(.bordered, title: "Refresh Family Status")
+        refreshStatusButton.applyMeridianButtonStyle(.bordered, title: "Refresh")
         refreshStatusButton.addTarget(self, action: #selector(refreshFamilyStatusTapped), for: .touchUpInside)
 
         statusLabel.numberOfLines = 0
@@ -56,6 +52,9 @@ final class CheckInViewController: UIViewController {
         familyStatusTableView.rowHeight = UITableView.automaticDimension
         familyStatusTableView.estimatedRowHeight = 64
         familyStatusTableView.backgroundColor = .clear
+        if #available(iOS 15.0, *) {
+            familyStatusTableView.sectionHeaderTopPadding = 0
+        }
         familyStatusTableView.alwaysBounceVertical = true
         familyStatusTableView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -71,16 +70,19 @@ final class CheckInViewController: UIViewController {
         emptyStateLabel.font = .preferredFont(forTextStyle: .subheadline)
         emptyStateLabel.isHidden = true
 
+        let buttonsRow = UIStackView(arrangedSubviews: [manualCheckInButton, refreshStatusButton])
+        buttonsRow.axis = .horizontal
+        buttonsRow.spacing = 8
+        buttonsRow.distribution = .fillEqually
+        buttonsRow.alignment = .fill
+
         let controlsStack = UIStackView(arrangedSubviews: [
             familySummaryLabel,
-            manualCheckInButton,
-            notesField,
-            refreshStatusButton,
+            buttonsRow,
             statusLabel
         ])
         controlsStack.axis = .vertical
-        controlsStack.spacing = 8
-        controlsStack.setCustomSpacing(12, after: refreshStatusButton)
+        controlsStack.spacing = 6
         controlsStack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(controlsStack)
@@ -90,20 +92,19 @@ final class CheckInViewController: UIViewController {
         emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
         familyMapView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            notesField.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             manualCheckInButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             refreshStatusButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
 
-            controlsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: MeridianLayout.sectionSpacing),
+            controlsStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 6),
             controlsStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             controlsStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
 
-            familyMapView.topAnchor.constraint(equalTo: controlsStack.bottomAnchor, constant: 8),
+            familyMapView.topAnchor.constraint(equalTo: controlsStack.bottomAnchor, constant: 6),
             familyMapView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             familyMapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            familyMapView.heightAnchor.constraint(equalToConstant: 220),
+            familyMapView.heightAnchor.constraint(equalToConstant: 310),
 
-            familyStatusTableView.topAnchor.constraint(equalTo: familyMapView.bottomAnchor, constant: 8),
+            familyStatusTableView.topAnchor.constraint(equalTo: familyMapView.bottomAnchor, constant: 2),
             familyStatusTableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
             familyStatusTableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
             familyStatusTableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8),
@@ -265,9 +266,6 @@ final class CheckInViewController: UIViewController {
     }
 
     private func performCheckIn(loc: CLLocation, session: SessionInfo) {
-        let notes = notesField.text?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let n: String? = (notes?.isEmpty ?? true) ? nil : notes
-
         Task {
             do {
                 try await APIService.shared.checkIn(
@@ -275,12 +273,11 @@ final class CheckInViewController: UIViewController {
                     userId: session.userId,
                     latitude: loc.coordinate.latitude,
                     longitude: loc.coordinate.longitude,
-                    notes: n
+                    notes: nil
                 )
                 await MainActor.run {
                     statusLabel.text = "✓ Check-in successful"
                     statusLabel.textColor = .systemGreen
-                    notesField.text = ""
                     manualCheckInButton.isEnabled = true
                     Task { await loadCheckins() }
                 }

@@ -1,5 +1,5 @@
 /**
- * Meridian iOS – API client. Login, alert, check-in, contacts, chat URL.
+ * Meridian iOS – API client. Login, alert, check-in.
  * Uses URLSession with cookie storage for session auth.
  */
 import Foundation
@@ -24,13 +24,6 @@ struct SessionInfo {
     let familyCircleId: String
 }
 
-struct Contact {
-    let id: String
-    let displayName: String
-    let relationship: String?
-    let userId: String?
-}
-
 struct CheckIn {
     let contactName: String
     let locationName: String?
@@ -41,14 +34,58 @@ struct CheckIn {
     let photoURL: String?
 }
 
-struct ChatRecipient {
-    let userId: String?
-    let displayName: String
-}
-
 struct TodayEventSummary {
     let title: String
     let startTimeText: String?
+}
+
+struct MedicationHomeSnapshot {
+    struct TimedRow {
+        let slot: String
+        let name: String
+        let taken: Bool
+        let groupTime: String?
+    }
+
+    struct PrnRow {
+        let name: String
+        let dosesToday: Int
+        let maxDaily: Int?
+        let lastTaken: String?
+    }
+
+    let timed: [TimedRow]
+    let prn: [PrnRow]
+}
+
+/// One row in the Home “What’s next today” timeline (kiosk-style merged meds + calendar).
+struct HomeTodayTimelineEntry {
+    enum RowKind: Equatable {
+        case medication
+        case appointment
+        case prn
+    }
+
+    let timeDisplay: String
+    let title: String
+    let done: Bool
+    let kind: RowKind
+    /// Minutes from midnight (sort key); used for “Up next” vs current time.
+    let sortMinutes: Int
+
+    /// First item that still needs attention (future pending med/appt, or PRN), matching kiosk `build_up_next_html`.
+    func blocksUpNext(nowMinutes: Int) -> Bool {
+        switch kind {
+        case .prn:
+            return true
+        case .medication:
+            if sortMinutes < nowMinutes { return false }
+            return !done
+        case .appointment:
+            if sortMinutes < nowMinutes { return false }
+            return true
+        }
+    }
 }
 
 final class APIService {
@@ -266,23 +303,184 @@ final class APIService {
         return TodayEventSummary(title: title, startTimeText: startTimeText)
     }
 
-    // MARK: - Contacts (for chat)
-
-    func getContacts(familyCircleId: String) async throws -> [Contact] {
-        let path = "/api/family_circles/\(familyCircleId)/contacts"
+    func getMedicationHomeSnapshot(familyCircleId: String) async throws -> MedicationHomeSnapshot {
+        let path = "/api/family_circles/\(familyCircleId)/medications"
         let (data, res) = try await request(path)
-        if res.statusCode != 200 { throw APIError.serverError("Contacts failed") }
+        if res.statusCode == 401 { throw APIError.unauthorized }
+        if res.statusCode != 200 {
+            throw APIError.serverError(
+                serverErrorMessage(from: data, fallback: "Medications failed")
+            )
+        }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let arr = json["data"] as? [[String: Any]] else {
+              let dataObj = json["data"] as? [String: Any] else {
             throw APIError.invalidResponse
         }
-        return arr.compactMap { row in
-            guard let id = row["id"] as? String,
-                  let name = row["display_name"] as? String else { return nil }
-            let relationship = row["relationship"] as? String
-            let uid = row["user_id"] as? String
-            return Contact(id: id, displayName: name, relationship: relationship, userId: uid)
+        let timedArr = dataObj["timed_medications"] as? [[String: Any]] ?? []
+        let prnArr = dataObj["prn_medications"] as? [[String: Any]] ?? []
+        let timedParsed: [MedicationHomeSnapshot.TimedRow] = timedArr.compactMap { row in
+            guard let name = row["name"] as? String, let slot = row["time"] as? String else { return nil }
+            let status = (row["status"] as? String) ?? "not_done"
+            let gt = row["group_time"] as? String
+            return MedicationHomeSnapshot.TimedRow(
+                slot: slot,
+                name: name,
+                taken: status == "done",
+                groupTime: (gt?.isEmpty == false) ? gt : nil
+            )
         }
+        let timed = Self.sortTimedMedicationRows(timedParsed)
+        let prn: [MedicationHomeSnapshot.PrnRow] = prnArr.compactMap { row in
+            guard let name = row["name"] as? String else { return nil }
+            let doses: Int
+            if let d = row["doses_today"] as? Int {
+                doses = d
+            } else if let n = row["doses_today"] as? NSNumber {
+                doses = n.intValue
+            } else {
+                doses = 0
+            }
+            let maxDaily: Int?
+            if let m = row["max_daily"] as? Int {
+                maxDaily = m
+            } else if let n = row["max_daily"] as? NSNumber {
+                maxDaily = n.intValue
+            } else {
+                maxDaily = nil
+            }
+            let last = row["last_taken"] as? String
+            return MedicationHomeSnapshot.PrnRow(
+                name: name,
+                dosesToday: doses,
+                maxDaily: maxDaily,
+                lastTaken: last
+            )
+        }
+        return MedicationHomeSnapshot(timed: timed, prn: prn)
+    }
+
+    static func buildHomeTodayTimeline(
+        medicationSnapshot: MedicationHomeSnapshot?,
+        appointment: TodayEventSummary?
+    ) -> [HomeTodayTimelineEntry] {
+        var sortable: [(min: Int, tier: Int, seq: Int, entry: HomeTodayTimelineEntry)] = []
+        var seq = 0
+        if let snap = medicationSnapshot {
+            for t in snap.timed {
+                let minVal = medicationRowSortTuple(t).0
+                let timeDisp: String
+                if let gt = t.groupTime?.trimmingCharacters(in: .whitespacesAndNewlines), !gt.isEmpty {
+                    timeDisp = gt
+                } else {
+                    timeDisp = t.slot
+                }
+                seq += 1
+                let entry = HomeTodayTimelineEntry(
+                    timeDisplay: timeDisp,
+                    title: t.name,
+                    done: t.taken,
+                    kind: .medication,
+                    sortMinutes: minVal
+                )
+                sortable.append((minVal, timelineKindTier(.medication), seq, entry))
+            }
+            for (i, p) in snap.prn.enumerated() {
+                var tail = "\(p.dosesToday)"
+                if let m = p.maxDaily { tail += "/\(m)" }
+                tail += " today"
+                if let lt = p.lastTaken?.trimmingCharacters(in: .whitespacesAndNewlines), !lt.isEmpty {
+                    tail += " · Last \(lt)"
+                }
+                seq += 1
+                let prnMin = 24 * 60 + 10 + i
+                let entry = HomeTodayTimelineEntry(
+                    timeDisplay: "As needed",
+                    title: "\(p.name) · \(tail)",
+                    done: false,
+                    kind: .prn,
+                    sortMinutes: prnMin
+                )
+                sortable.append((prnMin, timelineKindTier(.prn), seq, entry))
+            }
+        }
+        if let ap = appointment {
+            let tit = ap.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !tit.isEmpty {
+                let minVal: Int
+                if let st = ap.startTimeText, let m = minutesSinceMidnight(fromClock: st) {
+                    minVal = m
+                } else {
+                    minVal = 14 * 60
+                }
+                seq += 1
+                let timeDisp: String
+                if let st = ap.startTimeText?.trimmingCharacters(in: .whitespacesAndNewlines), !st.isEmpty {
+                    timeDisp = st
+                } else {
+                    timeDisp = "—"
+                }
+                let entry = HomeTodayTimelineEntry(
+                    timeDisplay: timeDisp,
+                    title: tit,
+                    done: false,
+                    kind: .appointment,
+                    sortMinutes: minVal
+                )
+                sortable.append((minVal, timelineKindTier(.appointment), seq, entry))
+            }
+        }
+        sortable.sort {
+            if $0.min != $1.min { return $0.min < $1.min }
+            if $0.tier != $1.tier { return $0.tier < $1.tier }
+            return $0.seq < $1.seq
+        }
+        return sortable.map { $0.entry }
+    }
+
+    private static func timelineKindTier(_ k: HomeTodayTimelineEntry.RowKind) -> Int {
+        switch k {
+        case .medication: return 0
+        case .appointment: return 1
+        case .prn: return 2
+        }
+    }
+
+    private static func sortTimedMedicationRows(_ rows: [MedicationHomeSnapshot.TimedRow]) -> [MedicationHomeSnapshot.TimedRow] {
+        rows.sorted { medicationRowSortTuple($0) < medicationRowSortTuple($1) }
+    }
+
+    private static func medicationRowSortTuple(_ row: MedicationHomeSnapshot.TimedRow) -> (Int, String) {
+        let slotKey = row.slot.lowercased()
+        if let gt = row.groupTime?.trimmingCharacters(in: .whitespacesAndNewlines), !gt.isEmpty,
+           let mins = minutesSinceMidnight(fromClock: gt) {
+            return (mins, row.slot)
+        }
+        return (slotNameFallbackMinutes(slotKey), row.slot)
+    }
+
+    private static func minutesSinceMidnight(fromClock s: String) -> Int? {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return nil }
+        let loc = Locale(identifier: "en_US_POSIX")
+        for fmt in ["HH:mm", "H:mm", "h:mm a", "hh:mm a"] {
+            let f = DateFormatter()
+            f.locale = loc
+            f.dateFormat = fmt
+            if let d = f.date(from: t) {
+                let c = Calendar.current
+                return c.component(.hour, from: d) * 60 + c.component(.minute, from: d)
+            }
+        }
+        return nil
+    }
+
+    private static func slotNameFallbackMinutes(_ slot: String) -> Int {
+        if slot.contains("morning") || slot.contains("breakfast") { return 8 * 60 }
+        if slot.contains("noon") || slot.contains("lunch") { return 12 * 60 }
+        if slot.contains("afternoon") { return 14 * 60 }
+        if slot.contains("evening") || slot.contains("dinner") { return 18 * 60 }
+        if slot.contains("bed") || slot.contains("night") { return 21 * 60 }
+        return 24 * 60
     }
 
     // MARK: - Device token (push)
@@ -297,80 +495,4 @@ final class APIService {
         }
     }
 
-    // MARK: - Chat URL
-
-    func getDefaultChatRecipient() async throws -> ChatRecipient {
-        let (data, res) = try await request("/api/chat/recipient")
-        if res.statusCode != 200 { throw APIError.serverError("Recipient lookup failed") }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw APIError.invalidResponse
-        }
-        let payload = (json["data"] as? [String: Any]) ?? json
-        let userId = ((payload["user_id"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = (((payload["name"] as? String) ?? (payload["display_name"] as? String) ?? ""))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if name.isEmpty { throw APIError.invalidResponse }
-        return ChatRecipient(userId: userId.isEmpty ? nil : userId, displayName: name)
-    }
-
-    func getChatSessionURL(recipientUserId: String?, recipientDisplayName: String) async throws -> URL {
-        var comp = URLComponents(string: baseURL + "/api/chat/chat-session-url")
-        var queryItems = [URLQueryItem(name: "recipient_display_name", value: recipientDisplayName)]
-        if let recipientUserId, !recipientUserId.isEmpty {
-            queryItems.append(URLQueryItem(name: "recipient_user_id", value: recipientUserId))
-        }
-        comp?.queryItems = queryItems
-        guard let u = comp?.url else { throw APIError.invalidResponse }
-        var req = URLRequest(url: u)
-        req.httpMethod = "GET"
-        req.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, res) = try await session.data(for: req)
-        guard let http = res as? HTTPURLResponse, http.statusCode == 200 else {
-            throw APIError.serverError("Chat URL failed")
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let urlStr = json["url"] as? String,
-              let url = URL(string: urlStr) else {
-            throw APIError.invalidResponse
-        }
-        return url
-    }
-
-    func requestCall(toUserId: String) async throws {
-        let (_, res) = try await request("/api/calls/request", method: "POST", body: [
-            "to_user_id": toUserId
-        ])
-        if res.statusCode != 200 && res.statusCode != 201 {
-            throw APIError.serverError("Call request failed")
-        }
-    }
-
-    func requestCallToDefaultRecipient() async throws {
-        let sessionInfo = try await getSession()
-        let contacts = try await getContacts(familyCircleId: sessionInfo.familyCircleId)
-
-        if let careRecipientContact = contacts.first(where: {
-            ($0.relationship ?? "").lowercased().contains("care recipient") &&
-            ($0.userId?.isEmpty == false)
-        }), let targetUserId = careRecipientContact.userId {
-            try await requestCall(toUserId: targetUserId)
-            return
-        }
-
-        if let kioskContact = contacts.first(where: {
-            ($0.userId?.isEmpty == false)
-        }), let targetUserId = kioskContact.userId {
-            try await requestCall(toUserId: targetUserId)
-            return
-        }
-
-        if let onlyCallableContact = contacts.first(where: { $0.userId?.isEmpty == false }),
-           contacts.filter({ $0.userId?.isEmpty == false }).count == 1,
-           let targetUserId = onlyCallableContact.userId {
-            try await requestCall(toUserId: targetUserId)
-            return
-        }
-
-        throw APIError.serverError("No callable kiosk recipient found")
-    }
 }

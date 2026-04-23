@@ -16,11 +16,15 @@ import json
 import os
 
 # Load .env from repo root if python-dotenv is available.
+_dotenv_path = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+)
+_dotenv_available = False
 try:
     from dotenv import load_dotenv
 
-    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
-    load_dotenv(_env_path)
+    _dotenv_available = True
+    load_dotenv(_dotenv_path)
 except ImportError:
     pass
 
@@ -205,6 +209,23 @@ def _run_module(logger: logging.Logger, module_name: str, args: list[str]) -> No
 def main() -> None:
     """Run local stack or remote kiosk mode; pass through kiosk flags."""
     logger = set_logging()
+    if not _dotenv_available:
+        logger.warning(
+            "python-dotenv is not installed; .env was not loaded. Install with: pip install python-dotenv"
+        )
+    elif not os.path.isfile(_dotenv_path):
+        logger.warning(
+            "No .env file at %s — secrets (e.g. TWILIO_*) will not load. "
+            "Add .env at repo root (the folder that contains src/).",
+            _dotenv_path,
+        )
+    elif not (os.environ.get("TWILIO_ACCOUNT_SID") or "").strip() or not (
+        os.environ.get("TWILIO_AUTH_TOKEN") or ""
+    ).strip():
+        logger.warning(
+            ".env at %s exists but TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN is missing or empty.",
+            _dotenv_path,
+        )
     kiosk_args = [arg for arg in sys.argv[1:] if arg != "--ngrok"]
     use_ngrok = "--ngrok" in sys.argv[1:]
     remote_run = "--remote-api" in kiosk_args
@@ -232,7 +253,6 @@ def main() -> None:
                 api_url = ngrok_url
                 os.environ["MERIDIAN_KIOSK_NGROK_BYPASS"] = "1"
                 os.environ["MERIDIAN_KIOSK_USER_AGENT"] = "Meridian-Kiosk/1.0"
-                logger.info("Runtime mode: ngrok (--ngrok)")
             else:
                 logger.info("Runtime mode: local")
                 os.environ.pop("MERIDIAN_KIOSK_NGROK_BYPASS", None)

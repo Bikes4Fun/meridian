@@ -12,6 +12,9 @@ final class AlertViewController: UIViewController {
     private let readinessCard = UIView()
     private let readinessTitleLabel = UILabel()
     private let readinessDetailLabel = UILabel()
+    private let stoveCard = UIView()
+    private let stoveTitleLabel = UILabel()
+    private let stoveDetailLabel = UILabel()
     private let statusLabel = UILabel()
     private let progressIndicator = UIActivityIndicatorView(style: .medium)
     private var isRequestInFlight = false {
@@ -42,7 +45,7 @@ final class AlertViewController: UIViewController {
         readinessTitleLabel.font = .preferredFont(forTextStyle: .headline)
         readinessTitleLabel.textColor = MeridianPalette.primaryText
 
-        readinessDetailLabel.text = "ICE profile: Complete • Stove sensor: Online • Primary responder: Ready"
+        readinessDetailLabel.text = "ICE profile complete · Primary responder ready."
         readinessDetailLabel.font = .preferredFont(forTextStyle: .footnote)
         readinessDetailLabel.textColor = MeridianPalette.mutedText
         readinessDetailLabel.numberOfLines = 0
@@ -59,6 +62,38 @@ final class AlertViewController: UIViewController {
             readinessStack.bottomAnchor.constraint(equalTo: readinessCard.bottomAnchor, constant: -12)
         ])
 
+        stoveCard.backgroundColor = MeridianPalette.surface
+        stoveCard.layer.cornerRadius = 12
+        stoveCard.layer.borderWidth = 1
+        stoveCard.layer.borderColor = MeridianPalette.border.cgColor
+        stoveCard.translatesAutoresizingMaskIntoConstraints = false
+
+        stoveTitleLabel.text = "Stove"
+        stoveTitleLabel.font = .preferredFont(forTextStyle: .headline)
+        stoveTitleLabel.textColor = MeridianPalette.primaryText
+
+        stoveDetailLabel.text = [
+            "Surface temperature",
+            "142°F",
+            "Status · Normal",
+            "Updated · 10:42 AM"
+        ].joined(separator: "\n")
+        stoveDetailLabel.font = .preferredFont(forTextStyle: .footnote)
+        stoveDetailLabel.textColor = MeridianPalette.primaryText
+        stoveDetailLabel.numberOfLines = 0
+
+        let stoveStack = UIStackView(arrangedSubviews: [stoveTitleLabel, stoveDetailLabel])
+        stoveStack.axis = .vertical
+        stoveStack.spacing = 8
+        stoveStack.translatesAutoresizingMaskIntoConstraints = false
+        stoveCard.addSubview(stoveStack)
+        NSLayoutConstraint.activate([
+            stoveStack.topAnchor.constraint(equalTo: stoveCard.topAnchor, constant: 12),
+            stoveStack.leadingAnchor.constraint(equalTo: stoveCard.leadingAnchor, constant: 12),
+            stoveStack.trailingAnchor.constraint(equalTo: stoveCard.trailingAnchor, constant: -12),
+            stoveStack.bottomAnchor.constraint(equalTo: stoveCard.bottomAnchor, constant: -12)
+        ])
+
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
         statusLabel.textColor = MeridianPalette.mutedText
@@ -69,7 +104,7 @@ final class AlertViewController: UIViewController {
         contentStack.spacing = 12
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        [titleLabel, activateEmergencyAlertButton, cancelEmergencyAlertButton, readinessCard, progressIndicator, statusLabel].forEach {
+        [titleLabel, activateEmergencyAlertButton, cancelEmergencyAlertButton, readinessCard, stoveCard, progressIndicator, statusLabel].forEach {
             contentStack.addArrangedSubview($0)
         }
 

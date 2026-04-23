@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		05A769A3D9789D3800BD5ED5 /* ChatWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */; };
-		218F14669C843A6D0BCC1368 /* ChatListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */; };
 		31E41F9A5077F75E4A63F823 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516554ACFC2387E32EE80CF6 /* Config.swift */; };
 		3E8A86CB961A7EDE167B6773 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F6D2321F89EFB06A10B925 /* APIService.swift */; };
 		41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640206CF5CBA2A4150B96A6E /* AlertViewController.swift */; };
@@ -33,7 +31,6 @@
 		00D843BEA5D3D3871F086B2E /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
 		13C91B6ED00D7322EFF6E640 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabViewController.swift; sourceTree = "<group>"; };
-		32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewController.swift; sourceTree = "<group>"; };
 		37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		516554ACFC2387E32EE80CF6 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDevTLS.swift; sourceTree = "<group>"; };
@@ -50,7 +47,6 @@
 		B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingLocationRequestPrompt.swift; sourceTree = "<group>"; };
 		B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInViewController.swift; sourceTree = "<group>"; };
 		C41A18C072EB83280908C1C6 /* MeridianFamily.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MeridianFamily.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWebViewController.swift; sourceTree = "<group>"; };
 		D7E6F5D4C3B2A190817161514E /* DeveloperViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperViewController.swift; sourceTree = "<group>"; };
 		F0A1B2C3D4E5F60718293A4B5C /* MeridianFamily-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = MeridianFamily-Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -67,8 +63,6 @@
 				5A1B2C3D4E5F60718293A4B8 /* AtkinsonHyperlegible-Bold.ttf */,
 				5A1B2C3D4E5F60718293A4BA /* AtkinsonHyperlegible-Italic.ttf */,
 				5A1B2C3D4E5F60718293A4BC /* AtkinsonHyperlegible-BoldItalic.ttf */,
-				32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */,
-				D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */,
 				B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */,
 				516554ACFC2387E32EE80CF6 /* Config.swift */,
 				D7E6F5D4C3B2A190817161514E /* DeveloperViewController.swift */,
@@ -187,8 +181,6 @@
 				3E8A86CB961A7EDE167B6773 /* APIService.swift in Sources */,
 				41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */,
 				EF281502C91FD4197E29E2D9 /* AppDelegate.swift in Sources */,
-				218F14669C843A6D0BCC1368 /* ChatListViewController.swift in Sources */,
-				05A769A3D9789D3800BD5ED5 /* ChatWebViewController.swift in Sources */,
 				B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */,
 				31E41F9A5077F75E4A63F823 /* Config.swift in Sources */,
 				E7F6D5C4B3A291817161514F /* DeveloperViewController.swift in Sources */,

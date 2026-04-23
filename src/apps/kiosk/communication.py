@@ -32,19 +32,6 @@ class ChatHandler:
             return "Voice calling unavailable (server 503)."
         return cleaned or "call failed"
 
-    def call_phone(self, phone: str, display_name: str = "") -> str:
-        """Trigger a voice call for this contact via server Twilio route."""
-        voice_svc = self._app.services.get_voice_service()
-        if not voice_svc:
-            return "voice service unavailable"
-        r = voice_svc.place_call(phone)
-        if r.success:
-            who = (display_name or phone or "contact").strip()
-            return f"Calling {who}"
-        err = (r.error or "").strip()
-        logger.warning(f"Voice call failed for {phone}: {err or 'unknown error'}")
-        return self._clean_call_error(err)
-
     def get_voice_token(self) -> dict:
         """Get Twilio access token for kiosk browser SDK via bridge (no direct kiosk.js fetch)."""
         voice_svc = self._app.services.get_voice_service()

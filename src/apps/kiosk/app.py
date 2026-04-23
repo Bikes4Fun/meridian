@@ -139,10 +139,6 @@ class KioskBridge:
         logger.debug(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def call_phone(self, phone: str, display_name: str = "") -> str:
-        """Place a phone call via server Twilio endpoint."""
-        return self._chat.call_phone(phone, display_name)
-
     def get_voice_token(self):
         """Get Twilio voice token for kiosk browser SDK via Python bridge."""
         return self._chat.get_voice_token()
@@ -283,13 +279,8 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
-        devtools_enabled = (os.environ.get("MERIDIAN_KIOSK_DEVTOOLS") or "0").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-        )
         try:
-            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = devtools_enabled
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
         except Exception:
             pass
         kiosk_user_agent = (
@@ -298,11 +289,10 @@ class MeridianKioskApp:
         gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
         if gui_pref:
             try:
-                logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
-                if devtools_enabled:
-                    logger.info("Kiosk webview devtools enabled")
+                if gui_pref != "qt":
+                    logger.info(f"Kiosk pywebview GUI (non-default): {gui_pref}")
                 webview.start(
-                    debug=devtools_enabled,
+                    debug=False,
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )

@@ -12,10 +12,15 @@
 		31E41F9A5077F75E4A63F823 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516554ACFC2387E32EE80CF6 /* Config.swift */; };
 		3E8A86CB961A7EDE167B6773 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F6D2321F89EFB06A10B925 /* APIService.swift */; };
 		41CD4356F45272A60D2D968E /* AlertViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 640206CF5CBA2A4150B96A6E /* AlertViewController.swift */; };
+		5A1B2C3D4E5F60718293A4B5 /* AtkinsonHyperlegible-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F60718293A4B6 /* AtkinsonHyperlegible-Regular.ttf */; };
+		5A1B2C3D4E5F60718293A4B7 /* AtkinsonHyperlegible-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F60718293A4B8 /* AtkinsonHyperlegible-Bold.ttf */; };
+		5A1B2C3D4E5F60718293A4B9 /* AtkinsonHyperlegible-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F60718293A4BA /* AtkinsonHyperlegible-Italic.ttf */; };
+		5A1B2C3D4E5F60718293A4BB /* AtkinsonHyperlegible-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F60718293A4BC /* AtkinsonHyperlegible-BoldItalic.ttf */; };
 		801D06B2994A2C2B3668DC29 /* MainTabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303FA187AB1D71C58A9C40CE /* MainTabViewController.swift */; };
 		E1C0A1B2C3D4E5F60718293A4 /* LocalDevTLS.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */; };
 		8BCB12B1E4FACBB31534CA0F /* RootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6F681986AB20651305D17B /* RootViewController.swift */; };
 		9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13C91B6ED00D7322EFF6E640 /* Assets.xcassets */; };
+		A1B2C3D4E5F60718293A4B5C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* LaunchScreen.storyboard */; };
 		B89C9318EE4388A2A2D06F1C /* CheckInViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */; };
 		BBBDE559D982994A39983A47 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D843BEA5D3D3871F086B2E /* LoginViewController.swift */; };
 		C3F0A5E4D3F6927180C5D6E7F /* LocationRefreshHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */; };
@@ -33,8 +38,13 @@
 		516554ACFC2387E32EE80CF6 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDevTLS.swift; sourceTree = "<group>"; };
 		5D7DD1A44A58B2397915FFCD /* Meridian.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Meridian.xcodeproj; sourceTree = "<group>"; };
+		5A1B2C3D4E5F60718293A4B6 /* AtkinsonHyperlegible-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "AtkinsonHyperlegible-Regular.ttf"; path = "../src/shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Regular.ttf"; sourceTree = "<group>"; };
+		5A1B2C3D4E5F60718293A4B8 /* AtkinsonHyperlegible-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "AtkinsonHyperlegible-Bold.ttf"; path = "../src/shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Bold.ttf"; sourceTree = "<group>"; };
+		5A1B2C3D4E5F60718293A4BA /* AtkinsonHyperlegible-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "AtkinsonHyperlegible-Italic.ttf"; path = "../src/shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-Italic.ttf"; sourceTree = "<group>"; };
+		5A1B2C3D4E5F60718293A4BC /* AtkinsonHyperlegible-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "AtkinsonHyperlegible-BoldItalic.ttf"; path = "../src/shared/fonts/Atkinson_Hyperlegible/AtkinsonHyperlegible-BoldItalic.ttf"; sourceTree = "<group>"; };
 		640206CF5CBA2A4150B96A6E /* AlertViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlertViewController.swift; sourceTree = "<group>"; };
 		9E6F681986AB20651305D17B /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationRefreshHandler.swift; sourceTree = "<group>"; };
 		B1F6D2321F89EFB06A10B925 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		B2E9F4D3C2E5816079B4C5D6E /* PendingLocationRequestPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingLocationRequestPrompt.swift; sourceTree = "<group>"; };
@@ -53,12 +63,17 @@
 				B1F6D2321F89EFB06A10B925 /* APIService.swift */,
 				37789B7F3A74C9BD1EBB34FE /* AppDelegate.swift */,
 				13C91B6ED00D7322EFF6E640 /* Assets.xcassets */,
+				5A1B2C3D4E5F60718293A4B6 /* AtkinsonHyperlegible-Regular.ttf */,
+				5A1B2C3D4E5F60718293A4B8 /* AtkinsonHyperlegible-Bold.ttf */,
+				5A1B2C3D4E5F60718293A4BA /* AtkinsonHyperlegible-Italic.ttf */,
+				5A1B2C3D4E5F60718293A4BC /* AtkinsonHyperlegible-BoldItalic.ttf */,
 				32A569857BFE84A8ADAF1A9B /* ChatListViewController.swift */,
 				D70B8E00B319FD55ED226C47 /* ChatWebViewController.swift */,
 				B6C82ACDDE6C4F47B8C6D466 /* CheckInViewController.swift */,
 				516554ACFC2387E32EE80CF6 /* Config.swift */,
 				D7E6F5D4C3B2A190817161514E /* DeveloperViewController.swift */,
 				E1C0A1B2C3D4E5F60718293A5 /* LocalDevTLS.swift */,
+				A1B2C3D4E5F60718293A4B5D /* LaunchScreen.storyboard */,
 				F0A1B2C3D4E5F60718293A4B5C /* MeridianFamily-Info.plist */,
 				00D843BEA5D3D3871F086B2E /* LoginViewController.swift */,
 				A1F8E3C2B1D4705968A3B4C5D /* LocationRefreshHandler.swift */,
@@ -154,6 +169,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				9B8863312E390F61E07D5EAB /* Assets.xcassets in Resources */,
+				5A1B2C3D4E5F60718293A4B5 /* AtkinsonHyperlegible-Regular.ttf in Resources */,
+				5A1B2C3D4E5F60718293A4B7 /* AtkinsonHyperlegible-Bold.ttf in Resources */,
+				5A1B2C3D4E5F60718293A4B9 /* AtkinsonHyperlegible-Italic.ttf in Resources */,
+				5A1B2C3D4E5F60718293A4BB /* AtkinsonHyperlegible-BoldItalic.ttf in Resources */,
+				A1B2C3D4E5F60718293A4B5C /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,7 +215,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MeridianFamily-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
-				INFOPLIST_KEY_MERIDIAN_API_URL = "http://192.168.1.171:8000";
+				INFOPLIST_KEY_MERIDIAN_API_URL = "https://denary-unneglected-alease.ngrok-free.dev";
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Meridian connects to your family server on the same Wi-Fi network.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";
@@ -348,7 +369,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MeridianFamily-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = MeridianFamily;
-				INFOPLIST_KEY_MERIDIAN_API_URL = "http://192.168.1.171:8000";
+				INFOPLIST_KEY_MERIDIAN_API_URL = "https://denary-unneglected-alease.ngrok-free.dev";
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Meridian connects to your family server on the same Wi-Fi network.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "When you tap Check In, Meridian records your current location and shares it with your family circle so they can see where you are. Location is only used at check-in time, not continuously.";

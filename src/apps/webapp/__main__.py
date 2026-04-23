@@ -32,7 +32,7 @@ def build_webapp(logger, api_url: str, src_dir: str) -> None:
     client_features = os.path.join(client_src, "features")
     dist = os.path.join(src_dir, "apps", "webapp", "web_server", "dist")
     os.makedirs(dist, exist_ok=True)
-    for filename in ("login.html", "privacy.html", "terms.html", "index.html", "info.html"):
+    for filename in ("login.html", "privacy.html", "terms.html", "index.html", "info.html", "user-test-form.html"):
         src_path = os.path.join(client_public, filename)
         dst_path = os.path.join(dist, filename)
         if not os.path.isfile(src_path):

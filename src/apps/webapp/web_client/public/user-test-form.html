@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meridian User Test Form</title>
+  <link rel="stylesheet" href="/shared/base.css">
+  <style>
+    body { margin: 0; padding: 20px; background: #f6f3ee; color: #3a3937; font-family: Arial, sans-serif; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #ddd3c6; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    h1, h2 { margin: 0 0 10px; }
+    p { margin: 0 0 10px; }
+    .row { display: grid; grid-template-columns: 180px 1fr; gap: 10px; margin-bottom: 10px; align-items: center; }
+    input[type="text"], input[type="date"], textarea, select { width: 100%; padding: 8px; border: 1px solid #cfc6ba; border-radius: 6px; box-sizing: border-box; }
+    textarea { min-height: 70px; resize: vertical; }
+    .task { border-top: 1px solid #ece6dc; padding-top: 10px; margin-top: 10px; }
+    .task:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+    .task-title { font-weight: 700; margin-bottom: 8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button { border: 1px solid #0a84a2; background: #0a84a2; color: #fff; padding: 9px 12px; border-radius: 7px; cursor: pointer; }
+    button.secondary { background: #fff; color: #0a84a2; }
+    .hint { font-size: 13px; color: #6a645d; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Meridian User Test Form</h1>
+      <p>Goal: capture what physically/functionally worked, what did not, what users expected, and what looked good/bad.</p>
+      <p class="hint">Use this during live testing. Save local, download JSON, or draft an email with the results.</p>
+    </div>
+
+    <form id="testForm">
+      <div class="card">
+        <h2>Tester Info</h2>
+        <div class="row"><label for="tester_name">Tester name</label><input id="tester_name" name="tester_name" type="text"></div>
+        <div class="row"><label for="test_date">Date</label><input id="test_date" name="test_date" type="date"></div>
+        <div class="row"><label for="devices">Devices used</label><input id="devices" name="devices" type="text" placeholder="Kiosk + Browser + iPhone model"></div>
+      </div>
+
+      <div class="card">
+        <h2>Kiosk Tasks</h2>
+        <div class="task">
+          <div class="task-title">Task 1: Navigate Home, Family, Settings, Emergency</div>
+          <div class="row"><label>Expected</label><textarea name="kiosk_t1_expected"></textarea></div>
+          <div class="row"><label>Actual</label><textarea name="kiosk_t1_actual"></textarea></div>
+          <div class="row"><label>Result</label><select name="kiosk_t1_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+        </div>
+        <div class="task">
+          <div class="task-title">Task 2: Family map cards + call buttons + "Where is everyone?"</div>
+          <div class="row"><label>Expected</label><textarea name="kiosk_t2_expected"></textarea></div>
+          <div class="row"><label>Actual</label><textarea name="kiosk_t2_actual"></textarea></div>
+          <div class="row"><label>Result</label><select name="kiosk_t2_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Webapp Tasks</h2>
+        <div class="task">
+          <div class="task-title">Task 3: Open Health/Events/Settings/Info and complete one edit/save flow</div>
+          <div class="row"><label>Expected</label><textarea name="web_t1_expected"></textarea></div>
+          <div class="row"><label>Actual</label><textarea name="web_t1_actual"></textarea></div>
+          <div class="row"><label>Result</label><select name="web_t1_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>iOS Tasks</h2>
+        <div class="task">
+          <div class="task-title">Task 4: Check-in flow and any available response/call flow</div>
+          <div class="row"><label>Expected</label><textarea name="ios_t1_expected"></textarea></div>
+          <div class="row"><label>Actual</label><textarea name="ios_t1_actual"></textarea></div>
+          <div class="row"><label>Result</label><select name="ios_t1_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Overall Feedback</h2>
+        <div class="row"><label>What looked good?</label><textarea name="good"></textarea></div>
+        <div class="row"><label>What looked bad?</label><textarea name="bad"></textarea></div>
+        <div class="row"><label>Expected feature but did not work</label><textarea name="missing"></textarea></div>
+        <div class="row"><label>Top blockers</label><textarea name="blockers"></textarea></div>
+        <div class="row"><label>Trust for own family</label><select name="trust"><option>Yes</option><option>Maybe</option><option>No</option></select></div>
+        <div class="row"><label>Why?</label><textarea name="trust_why"></textarea></div>
+      </div>
+    </form>
+
+    <div class="card">
+      <div class="actions">
+        <button type="button" id="saveLocalBtn">Save local</button>
+        <button type="button" id="downloadJsonBtn" class="secondary">Download JSON</button>
+        <button type="button" id="emailBtn" class="secondary">Draft email</button>
+      </div>
+      <p id="status" class="hint"></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var FORM_ID = "meridian_user_test_form_v1";
+      var form = document.getElementById("testForm");
+      var statusEl = document.getElementById("status");
+
+      function toObject() {
+        var fd = new FormData(form);
+        var out = { submitted_at: new Date().toISOString() };
+        fd.forEach(function (value, key) { out[key] = value; });
+        return out;
+      }
+
+      function setStatus(msg) {
+        statusEl.textContent = msg || "";
+      }
+
+      function loadSaved() {
+        try {
+          var raw = localStorage.getItem(FORM_ID);
+          if (!raw) return;
+          var data = JSON.parse(raw);
+          Object.keys(data).forEach(function (k) {
+            var el = form.elements.namedItem(k);
+            if (el && typeof data[k] === "string") el.value = data[k];
+          });
+          setStatus("Loaded previous local draft.");
+        } catch (_e) {}
+      }
+
+      document.getElementById("saveLocalBtn").addEventListener("click", function () {
+        try {
+          localStorage.setItem(FORM_ID, JSON.stringify(toObject()));
+          setStatus("Saved locally on this browser.");
+        } catch (e) {
+          setStatus("Could not save locally: " + String(e));
+        }
+      });
+
+      document.getElementById("downloadJsonBtn").addEventListener("click", function () {
+        var payload = JSON.stringify(toObject(), null, 2);
+        var blob = new Blob([payload], { type: "application/json" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "meridian-user-test-result.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        setStatus("Downloaded JSON.");
+      });
+
+      document.getElementById("emailBtn").addEventListener("click", function () {
+        var payload = JSON.stringify(toObject(), null, 2);
+        var subject = encodeURIComponent("Meridian user test feedback");
+        var body = encodeURIComponent(payload);
+        window.location.href = "mailto:?subject=" + subject + "&body=" + body;
+      });
+
+      loadSaved();
+    })();
+  </script>
+</body>
+</html>

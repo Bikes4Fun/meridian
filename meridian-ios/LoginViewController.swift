@@ -18,7 +18,34 @@ final class LoginViewController: UIViewController {
         super.viewDidLoad()
         applyMeridianScreenDefaults(title: "Meridian")
 
-        serverUrlField.placeholder = "Server URL (e.g. http://192.168.1.171:8000)"
+        let titleLabel = UILabel()
+        titleLabel.text = "Meridian"
+        titleLabel.font = .systemFont(ofSize: 30, weight: .bold)
+        titleLabel.textColor = MeridianPalette.primaryText
+        titleLabel.textAlignment = .center
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "Family care, connected"
+        subtitleLabel.font = .preferredFont(forTextStyle: .subheadline)
+        subtitleLabel.textColor = MeridianPalette.mutedText
+        subtitleLabel.textAlignment = .center
+
+        let serverFieldLabel = UILabel()
+        serverFieldLabel.text = "Server URL"
+        serverFieldLabel.font = .preferredFont(forTextStyle: .caption1)
+        serverFieldLabel.textColor = MeridianPalette.mutedText
+
+        let userFieldLabel = UILabel()
+        userFieldLabel.text = "User ID"
+        userFieldLabel.font = .preferredFont(forTextStyle: .caption1)
+        userFieldLabel.textColor = MeridianPalette.mutedText
+
+        let familyFieldLabel = UILabel()
+        familyFieldLabel.text = "Family Circle ID"
+        familyFieldLabel.font = .preferredFont(forTextStyle: .caption1)
+        familyFieldLabel.textColor = MeridianPalette.mutedText
+
+        serverUrlField.placeholder = "https://your-api-url"
         serverUrlField.borderStyle = .roundedRect
         serverUrlField.autocapitalizationType = .none
         serverUrlField.autocorrectionType = .no
@@ -57,12 +84,28 @@ final class LoginViewController: UIViewController {
         spinner.hidesWhenStopped = true
 
         let stack = UIStackView(arrangedSubviews: [
-            serverUrlField, serverDefaultHintLabel, userIdField, familyCircleField, loginButton, spinner, statusLabel
+            titleLabel,
+            subtitleLabel,
+            serverFieldLabel,
+            serverUrlField,
+            serverDefaultHintLabel,
+            userFieldLabel,
+            userIdField,
+            familyFieldLabel,
+            familyCircleField,
+            loginButton,
+            spinner,
+            statusLabel
         ])
         stack.axis = .vertical
         stack.spacing = 12
         stack.alignment = .fill
         stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.setCustomSpacing(6, after: titleLabel)
+        stack.setCustomSpacing(16, after: subtitleLabel)
+        stack.setCustomSpacing(6, after: serverFieldLabel)
+        stack.setCustomSpacing(6, after: userFieldLabel)
+        stack.setCustomSpacing(6, after: familyFieldLabel)
 
         view.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -71,9 +114,10 @@ final class LoginViewController: UIViewController {
             familyCircleField.heightAnchor.constraint(equalToConstant: 44),
             loginButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: MeridianLayout.sectionSpacing),
             stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.screenPadding),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -MeridianLayout.screenPadding)
+            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -MeridianLayout.screenPadding),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -MeridianLayout.sectionSpacing)
         ])
     }
 

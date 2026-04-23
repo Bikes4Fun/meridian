@@ -59,10 +59,9 @@ final class CheckInViewController: UIViewController {
         familyStatusTableView.alwaysBounceVertical = true
         familyStatusTableView.translatesAutoresizingMaskIntoConstraints = false
 
-        familyMapView.layer.cornerRadius = 10
-        familyMapView.layer.masksToBounds = true
-        familyMapView.layer.borderWidth = 1
-        familyMapView.layer.borderColor = MeridianPalette.border.cgColor
+        familyMapView.layer.cornerRadius = 0
+        familyMapView.layer.masksToBounds = false
+        familyMapView.layer.borderWidth = 0
         familyMapView.showsCompass = false
         familyMapView.delegate = self
 
@@ -100,8 +99,8 @@ final class CheckInViewController: UIViewController {
             controlsStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
 
             familyMapView.topAnchor.constraint(equalTo: controlsStack.bottomAnchor, constant: 8),
-            familyMapView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: MeridianLayout.cardPadding + 4),
-            familyMapView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -(MeridianLayout.cardPadding + 4)),
+            familyMapView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            familyMapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             familyMapView.heightAnchor.constraint(equalToConstant: 220),
 
             familyStatusTableView.topAnchor.constraint(equalTo: familyMapView.bottomAnchor, constant: 8),

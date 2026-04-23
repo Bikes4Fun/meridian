@@ -59,8 +59,8 @@ def get_update_interval() -> float:
 #   KIOSK_TV_FULLSCREEN=0 to skip fullscreen (borderless window only).
 KIOSK_REFERENCE_WIDTH = 1080
 KIOSK_REFERENCE_HEIGHT = 1920
-KIOSK_WIN_WIDTH = 1824//2
-KIOSK_WIN_HEIGHT = 2736//2
+KIOSK_WIN_WIDTH = (1824//2.631)
+KIOSK_WIN_HEIGHT = (2736//2.631)
 
 
 def get_kiosk_win_kiosk() -> bool:

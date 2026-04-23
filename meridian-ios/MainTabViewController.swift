@@ -6,6 +6,8 @@ import WebKit
 import MapKit
 
 final class MainTabViewController: UITabBarController {
+    private let warmBackground = UIColor(red: 0.98, green: 0.97, blue: 0.95, alpha: 1)
+
     private enum TabIndex: Int {
         case home = 0
         case alerts = 1
@@ -22,10 +24,19 @@ final class MainTabViewController: UITabBarController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = MeridianPalette.background
+        view.backgroundColor = warmBackground
+        overrideUserInterfaceStyle = .light
         tabBar.tintColor = MeridianPalette.primaryAction
         tabBar.unselectedItemTintColor = MeridianPalette.mutedText
         tabBar.backgroundColor = .white
+        tabBar.isTranslucent = false
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.backgroundColor = .white
+        tabBar.standardAppearance = tabAppearance
+        if #available(iOS 15.0, *) {
+            tabBar.scrollEdgeAppearance = tabAppearance
+        }
 
         let homeVC = HomeViewController()
 
@@ -59,7 +70,9 @@ final class MainTabViewController: UITabBarController {
 
     private func wrapped(_ vc: UIViewController, title: String, image: UIImage?) -> UIViewController {
         vc.tabBarItem = UITabBarItem(title: title, image: image, tag: 0)
-        return UINavigationController(rootViewController: vc)
+        let nav = UINavigationController(rootViewController: vc)
+        nav.view.backgroundColor = warmBackground
+        return nav
     }
 
     private func startCallWarmupIfNeeded() {
@@ -101,9 +114,6 @@ final class HomeViewController: UIViewController {
     private let emergencyStatusLabel = UILabel()
     private let checkInCard = UIView()
     private let todaySummaryLabel = UILabel()
-    private let mapCard = UIView()
-    private let familyMapView = MKMapView()
-    private let mapStatusLabel = UILabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -111,7 +121,6 @@ final class HomeViewController: UIViewController {
 
         configureCard(emergencyCard)
         configureCard(checkInCard)
-        configureCard(mapCard)
 
         emergencyStatusLabel.numberOfLines = 0
         emergencyStatusLabel.font = .preferredFont(forTextStyle: .body)
@@ -122,19 +131,6 @@ final class HomeViewController: UIViewController {
         todaySummaryLabel.font = .preferredFont(forTextStyle: .body)
         todaySummaryLabel.textColor = MeridianPalette.primaryText
         todaySummaryLabel.text = "No upcoming items today."
-
-        familyMapView.layer.cornerRadius = 10
-        familyMapView.layer.masksToBounds = true
-        familyMapView.layer.borderWidth = 1
-        familyMapView.layer.borderColor = MeridianPalette.border.cgColor
-        familyMapView.showsCompass = false
-        familyMapView.delegate = self
-        familyMapView.translatesAutoresizingMaskIntoConstraints = false
-
-        mapStatusLabel.numberOfLines = 1
-        mapStatusLabel.font = .preferredFont(forTextStyle: .footnote)
-        mapStatusLabel.textColor = MeridianPalette.mutedText
-        mapStatusLabel.text = "No location updates yet."
 
         contentStack.axis = .vertical
         contentStack.spacing = MeridianLayout.sectionSpacing
@@ -152,14 +148,7 @@ final class HomeViewController: UIViewController {
         checkInCard.addSubview(todayStack)
         todayStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let mapHeader = sectionTitle("Family Map")
-        let mapStack = UIStackView(arrangedSubviews: [mapHeader, familyMapView, mapStatusLabel])
-        mapStack.axis = .vertical
-        mapStack.spacing = 8
-        mapCard.addSubview(mapStack)
-        mapStack.translatesAutoresizingMaskIntoConstraints = false
-
-        [emergencyStack, todayStack, mapStack].forEach { stack in
+        [emergencyStack, todayStack].forEach { stack in
             NSLayoutConstraint.activate([
                 stack.topAnchor.constraint(equalTo: stack.superview!.topAnchor, constant: MeridianLayout.cardPadding),
                 stack.leadingAnchor.constraint(equalTo: stack.superview!.leadingAnchor, constant: MeridianLayout.cardPadding),
@@ -170,17 +159,14 @@ final class HomeViewController: UIViewController {
 
         contentStack.addArrangedSubview(emergencyCard)
         contentStack.addArrangedSubview(checkInCard)
-        contentStack.addArrangedSubview(mapCard)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentInsetAdjustmentBehavior = .automatic
         scrollView.addSubview(contentStack)
         view.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
-            familyMapView.heightAnchor.constraint(equalToConstant: 220),
-
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -211,12 +197,10 @@ final class HomeViewController: UIViewController {
 
             async let alertActive = APIService.shared.getEmergencyAlertStatus()
             async let today = APIService.shared.getTodayEventSummary(familyCircleId: s.familyCircleId)
-            async let checkins = APIService.shared.getCheckins(familyCircleId: s.familyCircleId)
 
             let isActive = (try? await alertActive) ?? false
             let todaySummaryResult = try? await today
             let todaySummary = todaySummaryResult ?? nil
-            let familyCheckins = (try? await checkins) ?? []
 
             await MainActor.run {
                 emergencyStatusLabel.text = isActive ? "Active emergency alert in progress." : "No active emergency alerts."
@@ -231,46 +215,14 @@ final class HomeViewController: UIViewController {
                 } else {
                     todaySummaryLabel.text = "No upcoming items today."
                 }
-                updateHomeMap(with: familyCheckins)
             }
         } catch {
             await MainActor.run {
                 emergencyStatusLabel.text = "Could not load emergency alerts."
                 emergencyStatusLabel.textColor = MeridianPalette.primaryText
                 todaySummaryLabel.text = "Could not load today items."
-                mapStatusLabel.text = "Could not load family locations."
             }
         }
-    }
-
-    private func updateHomeMap(with checkins: [CheckIn]) {
-        familyMapView.removeAnnotations(familyMapView.annotations)
-        let validCheckins = checkins.filter { $0.latitude != nil && $0.longitude != nil }
-        for checkIn in validCheckins {
-            guard let lat = checkIn.latitude, let lon = checkIn.longitude else { continue }
-            let annotation = FamilyLocationAnnotation(
-                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                title: checkIn.contactName,
-                subtitle: checkIn.locationName ?? "Unknown location",
-                photoURLString: checkIn.photoURL
-            )
-            familyMapView.addAnnotation(annotation)
-        }
-
-        if validCheckins.isEmpty {
-            mapStatusLabel.text = "No location updates yet."
-            return
-        }
-
-        mapStatusLabel.text = "Latest update: \(validCheckins.first?.contactName ?? "Family member")"
-        if validCheckins.count == 1, let first = validCheckins.first,
-           let lat = first.latitude, let lon = first.longitude {
-            let center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-            let region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.04, longitudeDelta: 0.04))
-            familyMapView.setRegion(region, animated: false)
-            return
-        }
-        familyMapView.showAnnotations(familyMapView.annotations, animated: false)
     }
 
     private func configureCard(_ card: UIView) {
@@ -290,19 +242,6 @@ final class HomeViewController: UIViewController {
 
 }
 
-extension HomeViewController: MKMapViewDelegate {
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        if annotation is MKUserLocation { return nil }
-        guard let familyAnnotation = annotation as? FamilyLocationAnnotation else { return nil }
-        let identifier = "FamilyLocationAvatar"
-        let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? FamilyLocationAnnotationView
-            ?? FamilyLocationAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-        view.annotation = annotation
-        view.configure(with: familyAnnotation)
-        return view
-    }
-}
-
 final class SettingsViewController: UIViewController {
     var onOpenDeveloperTools: (() -> Void)?
 
@@ -312,7 +251,6 @@ final class SettingsViewController: UIViewController {
     private let notificationButton = UIButton(type: .system)
     private let sensorConfigurationButton = UIButton(type: .system)
     private let appearanceButton = UIButton(type: .system)
-    private let developerToolsButton = UIButton(type: .system)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -326,14 +264,13 @@ final class SettingsViewController: UIViewController {
         configureListButton(notificationButton, title: "Notification Preferences")
         configureListButton(sensorConfigurationButton, title: "Sensor Configuration")
         configureListButton(appearanceButton, title: "Display & Accessibility")
-        configureListButton(developerToolsButton, title: "Developer Tools")
-        developerToolsButton.addTarget(self, action: #selector(openDeveloperTools), for: .touchUpInside)
 
-        [accountButton, notificationButton, sensorConfigurationButton, appearanceButton, developerToolsButton].forEach {
+        [accountButton, notificationButton, sensorConfigurationButton, appearanceButton].forEach {
             contentStack.addArrangedSubview($0)
         }
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.contentInsetAdjustmentBehavior = .automatic
         scrollView.addSubview(contentStack)
         view.addSubview(scrollView)
 
@@ -342,9 +279,8 @@ final class SettingsViewController: UIViewController {
             notificationButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             sensorConfigurationButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
             appearanceButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
-            developerToolsButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
 
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -372,10 +308,6 @@ final class SettingsViewController: UIViewController {
         button.contentHorizontalAlignment = .leading
         button.layer.borderColor = MeridianPalette.border.cgColor
         button.layer.borderWidth = 1
-    }
-
-    @objc private func openDeveloperTools() {
-        onOpenDeveloperTools?()
     }
 }
 

@@ -283,8 +283,13 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
+        devtools_enabled = (os.environ.get("MERIDIAN_KIOSK_DEVTOOLS") or "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         try:
-            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = devtools_enabled
         except Exception:
             pass
         kiosk_user_agent = (
@@ -294,8 +299,10 @@ class MeridianKioskApp:
         if gui_pref:
             try:
                 logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
+                if devtools_enabled:
+                    logger.info("Kiosk webview devtools enabled")
                 webview.start(
-                    debug=False,
+                    debug=devtools_enabled,
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )
@@ -561,6 +568,9 @@ class MeridianKioskApp:
             if activated:
                 self._navigate_to("emergency")
                 self._eval("document.body.classList.add('alert-active')")
+                # if not self._alert_was_activated:
+                #     time.sleep(0.5)
+                #     trigger_emergency_print(self.services)
             else:
                 self._eval("document.body.classList.remove('alert-active')")
             self._alert_was_activated = activated

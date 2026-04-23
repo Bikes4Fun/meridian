@@ -181,6 +181,24 @@ body {
   word-break: break-word;
 }
 
+.kiosk-debug-viewport {
+  position: fixed;
+  right: calc(var(--safe-margin) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--safe-margin) + env(safe-area-inset-bottom, 0px));
+  z-index: 10001;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .nav-tab {
   flex: 1;
   min-width: 0;
@@ -278,6 +296,12 @@ body {
   outline-offset: 2px;
 }
 
+.kiosk-top-emergency-btn {
+  margin-left: auto;
+  width: max(5.2vh, 56px);
+  height: max(5.2vh, 56px);
+}
+
 /* Screen content area — vertical padding matches section rhythm */
 #screen-content {
   flex: 1;
@@ -301,6 +325,12 @@ body.alert-active #screen-content {
 
 body[data-screen="emergency"] #screen-content {
   overflow: hidden;
+}
+
+body[data-screen="family"] #screen-content {
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
 }
 
 /* Home: fill main area; scroll inside “What’s next today” instead of the whole screen */
@@ -760,18 +790,27 @@ body[data-screen="emergency"] #screen-content {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 .family-locations-top {
   flex: 0 0 auto;
-  max-height: 30vh;
-  overflow: auto;
+  max-height: 26vh;
+  overflow: hidden;
+  padding: 0 var(--content-pad-x);
 }
 
 .family-locations-layout #map {
   flex: 1 1 0;
-  min-height: 250px;
+  min-height: 0;
   height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .family-checkins-list {
@@ -895,7 +934,7 @@ body[data-screen="emergency"] #screen-content {
 
 .family-locations-header-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 1em;
 }
@@ -1158,6 +1197,64 @@ body[data-screen="emergency"] #screen-content {
   font-size: var(--font-subheader);
 }
 
+.family-member-grid {
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.family-member-card {
+  max-width: none;
+  align-items: stretch;
+}
+
+.family-member-card .contact-tile {
+  padding-bottom: 0;
+}
+
+.family-member-card .contact-name {
+  display: none;
+}
+
+.family-member-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 8.6vh;
+  min-width: 8.6vh;
+  max-width: 8.6vh;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 2px;
+}
+
+.family-member-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.family-member-name {
+  font-size: var(--font-body-large);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.family-member-location {
+  margin-top: 1px;
+  font-size: var(--font-caption);
+  color: var(--text-muted);
+  text-align: left;
+  min-height: 1.35em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chat-contact-actions {
   display: flex;
   justify-content: center;
@@ -1174,6 +1271,27 @@ body[data-screen="emergency"] #screen-content {
   min-width: 0;
   width: 100%;
   font-size: var(--font-body);
+}
+
+.family-member-call-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+}
+
+.family-member-call-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.family-member-call-btn:disabled svg {
+  opacity: 0.45;
 }
 
 /* Large avatar for emergency screen */
@@ -1227,9 +1345,32 @@ body[data-screen="emergency"] #screen-content {
 }
 
 .emergency-warm-updated {
-  margin-left: auto;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.8);
+}
+
+.emergency-warm-top-bar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emergency-warm-exit-btn {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.emergency-warm-exit-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .emergency-warm-scroll {
@@ -1974,6 +2115,18 @@ body.alert-active {
 #map {
   height: 20.83vh;
   min-height: 10.42vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+body[data-screen="family"] #map,
+body[data-screen="family"] .leaflet-container {
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
 }
 
 .map-marker-div {

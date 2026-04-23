@@ -17,13 +17,13 @@
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Meridian" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="L0G-0H-FHD">
                                 <rect key="frame" x="124.5" y="406.5" width="144" height="39"/>
-                                <fontDescription key="fontDescription" name="AtkinsonHyperlegible-Bold" family="Atkinson Hyperlegible" pointSize="32"/>
-                                <color key="textColor" red="0.18039215690000001" green="0.49019607840000002" blue="0.60784313729999999" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="30"/>
+                                <color key="textColor" red="0.17254901960784313" green="0.24313725490196078" blue="0.31372549019607843" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                        <color key="backgroundColor" red="0.9803921569" green="0.968627451" blue="0.9490196078" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" red="0.96862745098039216" green="0.97647058823529409" blue="0.98039215686274506" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="L0G-0H-FHD" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="AO6-YA-z8Y"/>
                             <constraint firstItem="L0G-0H-FHD" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="eVV-rY-rXX"/>

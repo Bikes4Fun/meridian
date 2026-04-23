@@ -1,11 +1,15 @@
 """Main entry point for Meridian local development.
 
+<<<<<<< HEAD
+API_URL empty string = same-origin (served from same server as API).
+=======
 Public HTTPS for Twilio (optional):
 - Pass `--ngrok` to spawn `ngrok http <PORT>` after the API starts and set MERIDIAN_API_URL
   to the tunnel URL (same Flask process; ngrok only proxies).
 
 `--ngrok` uses ngrok’s local API (default http://127.0.0.1:4040). Stop any other ngrok agent
 using that port, or automatic startup will fail.
+>>>>>>> main
 """
 
 import json
@@ -48,7 +52,15 @@ if "--win-kiosk" in sys.argv:
 
 from shared.config import get_log_level, get_remote_api_base_url
 
+<<<<<<< HEAD
+# from apps.chatapp.build_chatapp import build_chatapp
+# from apps.webapp.build_webapp import build_webapp
+# perhaps kiosk/app is 'run_kiosk' ...
+from apps.kiosk.app import create_app
+from apps.webapp.__main__ import build_webapp
+=======
 _NGROK_API = "http://127.0.0.1:4040/api/tunnels"
+>>>>>>> main
 
 
 def _parse_port_from_api_base(api_url: str) -> int:
@@ -117,7 +129,56 @@ def _start_ngrok_tunnel(port: int, logger: logging.Logger) -> tuple[str, subproc
     return public_base, proc
 
 
+<<<<<<< HEAD
+def run_local_server_and_db(logger):
+    logger.debug("Database: local - %s", get_database_path())
+    local_api_url = _start_local_api_server(logger)
+
+    seed_status = "skipped"
+    try:
+        from dev.demo.seed import run_seed
+
+        if run_seed(local_api_url):
+            seed_status = "seeded"
+        else:
+            seed_status = "skipped"
+    except Exception as e:
+        seed_status = "failed"
+        logger.warning(f"Demo seed failed: {e}")
+
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        build_webapp(logger, local_api_url, src_dir)
+        build_chatapp(logger, local_api_url, src_dir)
+    except Exception as e:
+        logger.error("Build failed (%s).", e)
+        sys.exit(1)
+
+    logger.debug("Database loaded")
+
+    os.environ["WEBAPP_URL"] = local_api_url
+    os.environ["CORS_ORIGIN"] = local_api_url
+
+    logger.info(f"Ready: {local_api_url}")
+    logger.debug(f"Seed status: {seed_status}")
+
+    return local_api_url
+
+
+def use_railway_api_and_db(logger):
+    api_url = get_api_base_url()
+    logger.info(f"Database: Railway (remote) - {api_url}")
+    webapp_url = os.environ.get("WEBAPP_URL", "").strip()
+    chatapp_url = os.environ.get("CHATAPP_URL", "").strip()
+    logger.info(f"Webapp: {webapp_url or '(set WEBAPP_URL)'}")
+    logger.debug(f"Chatapp: {chatapp_url or '(set CHATAPP_URL for chat redirect)'}")
+    return api_url
+
+
+def set_logging():
+=======
 def set_logging() -> logging.Logger:
+>>>>>>> main
     logging.basicConfig(
         level=getattr(logging, get_log_level().upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

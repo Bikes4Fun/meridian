@@ -248,7 +248,10 @@ function initMap(markersJson, placesJson) {
       var places = placesJson ? JSON.parse(placesJson) : [];
       var center, zoom = 11;
       if (markers.length > 0) {
-        center = [markers[0].lat, markers[0].lon];
+        var latlngs = markers.map(function(m) {
+          return [m.lat, m.lon];
+        });
+        center = L.latLngBounds(latlngs).getCenter();
       } else if (places.length > 0 && places[0].gps_latitude != null && places[0].gps_longitude != null) {
         center = [places[0].gps_latitude, places[0].gps_longitude];
       } else {

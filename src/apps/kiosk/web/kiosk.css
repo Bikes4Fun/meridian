@@ -980,7 +980,7 @@ body[data-screen="family"] #screen-content {
   bottom: var(--safe-margin);
   z-index: 10;
   width: clamp(300px, 50vw, 480px);
-  height: clamp(34vh, 50vh, 46vh);
+  height: clamp(34vh, 40vh, 46vh);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);

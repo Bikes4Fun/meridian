@@ -961,18 +961,6 @@ body[data-screen="family"] #screen-content {
   overflow: hidden;
 }
 
-/* Where / Refresh: fixed to main viewport (below top nav), not inside the panel. */
-.family-page-actions {
-  position: fixed;
-  z-index: 10020;
-  display: flex;
-  align-items: center;
-  gap: max(12px, var(--space-sm));
-  top: calc(env(safe-area-inset-top, 0px) + var(--touch-min) + var(--space-xs));
-  right: calc(env(safe-area-inset-right, 0px) + var(--safe-margin));
-  pointer-events: auto;
-}
-
 .family-locations-layout:has(> .family-panel) #map {
   position: absolute;
   inset: 0;
@@ -994,45 +982,120 @@ body[data-screen="family"] #screen-content {
   width: clamp(280px, 46vw, 440px);
   height: auto;
   max-height: clamp(36vh, 48vh, 54vh);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding: var(--space-md);
+  padding: 0 var(--space-md) var(--space-md) var(--space-md);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warm-cream) 94%, #fff 6%);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-  overflow: hidden;
 }
 
 .family-panel-head {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  padding-bottom: var(--space-xs);
 }
 
-.family-panel-handle {
+button.family-panel-head {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  height: max(40px, 3.8vh);
+  min-height: max(40px, 3.8vh);
+  max-height: max(40px, 3.8vh);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+button.family-panel-head:hover {
+  background: color-mix(in srgb, var(--warm-border) 40%, transparent);
+}
+
+button.family-panel-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.family-panel-head:active {
+  transform: scale(0.99);
+}
+
+.family-panel-head .family-panel-handle {
   width: clamp(56px, 7vw, 92px);
   height: 6px;
   border-radius: 999px;
   background: var(--warm-border-strong);
 }
 
+.family-panel--minimized {
+  max-height: none;
+  padding: 0 var(--space-md) var(--space-sm) var(--space-md);
+  gap: 0;
+}
+
+.family-panel--minimized .family-panel-body {
+  display: none;
+}
+
+.family-panel--minimized .family-panel-head {
+  padding: 0;
+  height: max(40px, 3.8vh);
+  min-height: max(40px, 3.8vh);
+  max-height: max(40px, 3.8vh);
+}
+
+.family-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: transparent;
+}
+
+.family-page-actions {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-lg));
+  right: calc(env(safe-area-inset-right, 0px) + var(--safe-margin));
+  top: unset;
+  left: unset;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: max(24px, var(--space-sm));
+  z-index: 10020;
+}
+
 .family-panel-icon-btn {
-  flex-shrink: 0;
+  box-sizing: border-box;
+  width: max(40px, 3.8vh);
+  height: max(40px, 3.8vh);
+  min-width: max(40px, 3.8vh);
+  min-height: max(40px, 3.8vh);
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: max(40px, 3.8vh);
-  height: max(40px, 3.8vh);
-  padding: 0;
-  border: 2px solid var(--accent-dark);
-  border-radius: var(--radius-sm);
   background: var(--accent);
   color: #fff;
+  font-size: var(--font-caption);
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition: var(--transition-press);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 
 .family-panel-icon-btn:hover {
@@ -1040,32 +1103,18 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-panel-icon-btn:active {
-  transform: scale(var(--active-scale));
+  transform: scale(0.97);
   background: var(--accent-dark);
 }
 
 .family-panel-icon-btn svg {
-  width: 44%;
-  height: 44%;
-  max-width: 22px;
-  max-height: 22px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
-.family-panel-header {
-  margin: 0;
-  font-size: var(--font-subheader);
-  font-weight: 700;
-  color: var(--warm-text);
-  line-height: 1.25;
-}
-
-.family-panel-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  background: transparent;
+body[data-screen="family"] .leaflet-top.leaflet-left .leaflet-control-zoom {
+  display: none;
 }
 
 .family-empty-state {
@@ -1103,8 +1152,8 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-avatar {
-  width: 44px;
-  height: 44px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -1118,18 +1167,14 @@ body[data-screen="family"] #screen-content {
   gap: 2px;
 }
 
-.family-member-topline {
-  min-width: 0;
-}
-
 .family-member-name-rel-wrap {
   display: flex;
+  flex-direction: row;
   align-items: baseline;
-  justify-content: flex-start;
-  flex-wrap: nowrap;
   gap: 0.35em;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
 .family-member-name {
@@ -1145,7 +1190,7 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-relationship {
-  flex: 0 1 auto;
+  flex-shrink: 1;
   min-width: 0;
   max-width: min(55%, 11rem);
   font-size: var(--font-caption);
@@ -1155,7 +1200,6 @@ body[data-screen="family"] #screen-content {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 1;
 }
 
 .family-member-subline {
@@ -1184,12 +1228,17 @@ body[data-screen="family"] #screen-content {
   min-height: 36px;
   padding: 0;
   border-radius: 999px;
-  border: none;
-  background: var(--accent);
-  color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+}
+
+.family-member-row .contact-call-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 .family-member-row .contact-call-btn:hover {
@@ -1197,12 +1246,13 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-row .contact-call-btn:active {
+  transform: scale(0.97);
   background: var(--accent-dark);
 }
 
-.family-member-row .contact-call-btn svg {
-  width: 13px;
-  height: 13px;
+.family-member-row .contact-call-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* =============================================================================
@@ -1559,7 +1609,6 @@ body[data-screen="family"] #screen-content {
   object-fit: cover;
 }
 
-/* Family panel: compact avatars — wins over global .avatar-wrapper / .contact-initial (same file, later + higher specificity). */
 .family-member-avatar.avatar-wrapper {
   width: 44px;
   height: 44px;
@@ -1570,7 +1619,6 @@ body[data-screen="family"] #screen-content {
   width: 44px;
   height: 44px;
   font-size: var(--font-caption);
-  font-weight: 700;
 }
 
 .family-member-avatar.avatar-wrapper .avatar {

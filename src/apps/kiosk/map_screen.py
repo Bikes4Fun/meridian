@@ -13,6 +13,50 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+_PHONE_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.07 9.81 19.79 19.79 0 0 1 .04 1.22 2 2 0 0 1 2 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L6.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 14.92z"/>'
+    "</svg>"
+)
+
+_MAP_PIN_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'
+    "</svg>"
+)
+
+_RELOAD_ICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'
+    "</svg>"
+)
+
+
+def _family_page_actions_html() -> str:
+    where_onclick = (
+        "var m=pywebview.api.where_is_everyone();"
+        "if(m&&typeof m.then==='function')m.then(function(msg){if(msg)showToast(msg);});"
+        "else if(m)showToast(m);"
+    )
+    return (
+        '<div class="family-page-actions" role="toolbar" aria-label="Map actions">'
+        '<button type="button" class="family-panel-icon-btn" '
+        'onclick="try{if(window._familyMap)window._familyMap.zoomIn()}catch(e){}" '
+        'aria-label="Zoom in">+</button>'
+        '<button type="button" class="family-panel-icon-btn" '
+        'onclick="try{if(window._familyMap)window._familyMap.zoomOut()}catch(e){}" '
+        'aria-label="Zoom out">\u2212</button>'
+        f'<button type="button" class="family-panel-icon-btn" onclick="{where_onclick}" '
+        f'aria-label="Where is everyone?">{_MAP_PIN_SVG}</button>'
+        '<button type="button" class="family-panel-icon-btn" '
+        'onclick="pywebview.api.reload_screen(\'family\')" aria-label="Refresh">'
+        f"{_RELOAD_ICON_SVG}</button>"
+        "</div>"
+    )
+
 
 class LocationHandler:
     """Handler for Family/Location screen bridge methods."""
@@ -113,10 +157,8 @@ def _family_panel_body_fragment(
         '<div class="family-member-row family-member-row--you">'
         f"{_family_avatar_fragment('You', you_photo_src)}"
         '<div class="family-member-main">'
-        '<div class="family-member-topline">'
         '<div class="family-member-name-rel-wrap">'
         '<span class="family-member-name">You</span>'
-        "</div>"
         "</div>"
         '<div class="family-member-subline">'
         f'<span class="family-member-location">{html.escape(home_place_name or "Home")}</span>'
@@ -151,14 +193,6 @@ def _family_panel_body_fragment(
         safe_phone = html.escape(phone) if phone else ""
         photo_src = loc_svc.get_user_photo_b64(uid) if uid else None
         disabled = ' disabled aria-disabled="true"' if not phone else ""
-        call_icon_svg = (
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
-            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-            '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.07 9.81 '
-            '19.79 19.79 0 0 1 .04 1.22 2 2 0 0 1 2 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11'
-            'L6.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 14.92z"/>'
-            "</svg>"
-        )
         safe_last_checked = html.escape(last_checked)
         relationship_html = (
             f'<span class="family-member-relationship">{safe_relationship}</span>'
@@ -174,18 +208,18 @@ def _family_panel_body_fragment(
             '<div class="family-member-row">'
             f"{_family_avatar_fragment(display_name, photo_src)}"
             '<div class="family-member-main">'
-            '<div class="family-member-topline">'
             '<div class="family-member-name-rel-wrap">'
             f'<span class="family-member-name">{safe_name}</span>'
             f"{relationship_html}"
-            "</div>"
             "</div>"
             '<div class="family-member-subline">'
             f'<span class="family-member-location">{safe_loc}</span>'
             f"{last_seen_html}"
             "</div>"
             "</div>"
-            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>{call_icon_svg}</button>'
+            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" '
+            f'data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>'
+            f"{_PHONE_ICON_SVG}</button>"
             "</div>"
         )
     return f'<div class="family-member-list">{"".join(rows)}</div>'
@@ -261,38 +295,8 @@ def build_checkin_html(
         kiosk_user_id,
         home_place_name,
     )
-    _refresh_svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
-        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
-        'aria-hidden="true" focusable="false">'
-        '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>'
-        '<path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>'
-        "</svg>"
-    )
-    _where_svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
-        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
-        'aria-hidden="true" focusable="false">'
-        '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>'
-        '<circle cx="12" cy="10" r="3"/>'
-        "</svg>"
-    )
-    _where_js = (
-        "var m=pywebview.api.where_is_everyone();"
-        "if(m&&typeof m.then==='function')m.then(function(msg){if(msg)showToast(msg);});"
-        "else if(m)showToast(m);"
-    )
-    refresh_icon_btn = (
-        '<button type="button" class="family-panel-icon-btn kiosk-button--no-feedback" '
-        'onclick="pywebview.api.reload_screen(\'family\')" '
-        f'aria-label="Refresh">{_refresh_svg}</button>'
-    )
-    where_icon_btn = (
-        '<button type="button" class="family-panel-icon-btn kiosk-button--no-feedback" '
-        f'onclick="{_where_js}" '
-        f'aria-label="Where is everyone?">{_where_svg}</button>'
-    )
     map_html = map_container_html()
+    page_actions_html = _family_page_actions_html()
     markers = get_map_markers(
         services,
         api_url,
@@ -326,15 +330,13 @@ def build_checkin_html(
     layout = (
         '<div class="family-locations-layout">'
         + map_html
-        + '<div class="family-page-actions">'
-        + where_icon_btn
-        + refresh_icon_btn
-        + "</div>"
+        + page_actions_html
         + '<div class="family-panel">'
-        + '<div class="family-panel-head">'
+        + '<button type="button" class="family-panel-head" aria-expanded="true" '
+        + 'aria-controls="family-panel-body" aria-label="Hide or show family list">'
         + '<div class="family-panel-handle" aria-hidden="true"></div>'
-        + "</div>"
-        + '<div class="family-panel-body">'
+        + "</button>"
+        + '<div class="family-panel-body" id="family-panel-body">'
         + panel_body
         + "</div>"
         + "</div>"

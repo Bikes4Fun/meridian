@@ -114,7 +114,9 @@ def _family_panel_body_fragment(
         f"{_family_avatar_fragment('You', you_photo_src)}"
         '<div class="family-member-main">'
         '<div class="family-member-topline">'
+        '<div class="family-member-name-rel-wrap">'
         '<span class="family-member-name">You</span>'
+        "</div>"
         "</div>"
         '<div class="family-member-subline">'
         f'<span class="family-member-location">{html.escape(home_place_name or "Home")}</span>'
@@ -173,8 +175,10 @@ def _family_panel_body_fragment(
             f"{_family_avatar_fragment(display_name, photo_src)}"
             '<div class="family-member-main">'
             '<div class="family-member-topline">'
+            '<div class="family-member-name-rel-wrap">'
             f'<span class="family-member-name">{safe_name}</span>'
             f"{relationship_html}"
+            "</div>"
             "</div>"
             '<div class="family-member-subline">'
             f'<span class="family-member-location">{safe_loc}</span>'
@@ -257,19 +261,36 @@ def build_checkin_html(
         kiosk_user_id,
         home_place_name,
     )
-    refresh_btn = hp.kiosk_button(
-        "Refresh",
-        "pywebview.api.reload_screen('family')",
-        no_feedback=True,
-        small=True,
+    _refresh_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true" focusable="false">'
+        '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>'
+        '<path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>'
+        "</svg>"
     )
-    where_btn = hp.kiosk_button(
-        "Where is everyone?",
+    _where_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        'aria-hidden="true" focusable="false">'
+        '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>'
+        '<circle cx="12" cy="10" r="3"/>'
+        "</svg>"
+    )
+    _where_js = (
         "var m=pywebview.api.where_is_everyone();"
         "if(m&&typeof m.then==='function')m.then(function(msg){if(msg)showToast(msg);});"
-        "else if(m)showToast(m);",
-        no_feedback=False,
-        small=True,
+        "else if(m)showToast(m);"
+    )
+    refresh_icon_btn = (
+        '<button type="button" class="family-panel-icon-btn kiosk-button--no-feedback" '
+        'onclick="pywebview.api.reload_screen(\'family\')" '
+        f'aria-label="Refresh">{_refresh_svg}</button>'
+    )
+    where_icon_btn = (
+        '<button type="button" class="family-panel-icon-btn kiosk-button--no-feedback" '
+        f'onclick="{_where_js}" '
+        f'aria-label="Where is everyone?">{_where_svg}</button>'
     )
     map_html = map_container_html()
     markers = get_map_markers(
@@ -305,15 +326,16 @@ def build_checkin_html(
     layout = (
         '<div class="family-locations-layout">'
         + map_html
+        + '<div class="family-page-actions">'
+        + where_icon_btn
+        + refresh_icon_btn
+        + "</div>"
         + '<div class="family-panel">'
+        + '<div class="family-panel-head">'
         + '<div class="family-panel-handle" aria-hidden="true"></div>'
-        + '<h2 class="family-panel-header">Family</h2>'
+        + "</div>"
         + '<div class="family-panel-body">'
         + panel_body
-        + "</div>"
-        + '<div class="family-panel-footer">'
-        + where_btn
-        + refresh_btn
         + "</div>"
         + "</div>"
         + "</div>"

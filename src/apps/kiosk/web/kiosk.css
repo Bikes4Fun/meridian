@@ -961,6 +961,18 @@ body[data-screen="family"] #screen-content {
   overflow: hidden;
 }
 
+/* Where / Refresh: fixed to main viewport (below top nav), not inside the panel. */
+.family-page-actions {
+  position: fixed;
+  z-index: 10020;
+  display: flex;
+  align-items: center;
+  gap: max(12px, var(--space-sm));
+  top: calc(env(safe-area-inset-top, 0px) + var(--touch-min) + var(--space-xs));
+  right: calc(env(safe-area-inset-right, 0px) + var(--safe-margin));
+  pointer-events: auto;
+}
+
 .family-locations-layout:has(> .family-panel) #map {
   position: absolute;
   inset: 0;
@@ -979,23 +991,64 @@ body[data-screen="family"] #screen-content {
   left: var(--safe-margin);
   bottom: var(--safe-margin);
   z-index: 10;
-  width: clamp(300px, 50vw, 480px);
-  height: clamp(34vh, 40vh, 46vh);
+  width: clamp(280px, 46vw, 440px);
+  height: auto;
+  max-height: clamp(36vh, 48vh, 54vh);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   padding: var(--space-md);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warm-cream) 94%, #fff 6%);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+}
+
+.family-panel-head {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  padding-bottom: var(--space-xs);
 }
 
 .family-panel-handle {
   width: clamp(56px, 7vw, 92px);
   height: 6px;
   border-radius: 999px;
-  align-self: center;
   background: var(--warm-border-strong);
+}
+
+.family-panel-icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(40px, 3.8vh);
+  height: max(40px, 3.8vh);
+  padding: 0;
+  border: 2px solid var(--accent-dark);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: var(--transition-press);
+}
+
+.family-panel-icon-btn:hover {
+  background: var(--accent-hover);
+}
+
+.family-panel-icon-btn:active {
+  transform: scale(var(--active-scale));
+  background: var(--accent-dark);
+}
+
+.family-panel-icon-btn svg {
+  width: 44%;
+  height: 44%;
+  max-width: 22px;
+  max-height: 22px;
 }
 
 .family-panel-header {
@@ -1007,26 +1060,12 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-panel-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   background: transparent;
-}
-
-.family-panel-footer {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: max(24px, var(--space-lg));
-  flex-shrink: 0;
-}
-
-.family-panel-footer .kiosk-button {
-  flex: 1;
-  min-width: 0;
-  min-height: max(40px, 3.8vh);
 }
 
 .family-empty-state {
@@ -1080,14 +1119,21 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-topline {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
   min-width: 0;
 }
 
-.family-member-name {
+.family-member-name-rel-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0.35em;
+  min-width: 0;
   flex: 1 1 auto;
+}
+
+.family-member-name {
+  flex: 0 1 auto;
   min-width: 0;
   font-size: var(--font-body-large);
   font-weight: 700;
@@ -1101,7 +1147,7 @@ body[data-screen="family"] #screen-content {
 .family-member-relationship {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 38%;
+  max-width: min(55%, 11rem);
   font-size: var(--font-caption);
   font-weight: 500;
   color: var(--warm-muted);
@@ -1109,6 +1155,7 @@ body[data-screen="family"] #screen-content {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 1;
 }
 
 .family-member-subline {
@@ -1510,6 +1557,25 @@ body[data-screen="family"] #screen-content {
   height: var(--avatar-size);
   border-radius: var(--radius-full);
   object-fit: cover;
+}
+
+/* Family panel: compact avatars — wins over global .avatar-wrapper / .contact-initial (same file, later + higher specificity). */
+.family-member-avatar.avatar-wrapper {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+}
+
+.family-member-avatar .contact-initial {
+  width: 44px;
+  height: 44px;
+  font-size: var(--font-caption);
+  font-weight: 700;
+}
+
+.family-member-avatar.avatar-wrapper .avatar {
+  width: 44px;
+  height: 44px;
 }
 
 .contact-name {

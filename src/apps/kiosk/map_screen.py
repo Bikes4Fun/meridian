@@ -149,6 +149,14 @@ def _family_panel_body_fragment(
         safe_phone = html.escape(phone) if phone else ""
         photo_src = loc_svc.get_user_photo_b64(uid) if uid else None
         disabled = ' disabled aria-disabled="true"' if not phone else ""
+        call_icon_svg = (
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+            '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.07 9.81 '
+            '19.79 19.79 0 0 1 .04 1.22 2 2 0 0 1 2 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11'
+            'L6.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 14.92z"/>'
+            "</svg>"
+        )
         safe_last_checked = html.escape(last_checked)
         relationship_html = (
             f'<span class="family-member-relationship">{safe_relationship}</span>'
@@ -173,7 +181,7 @@ def _family_panel_body_fragment(
             f"{last_seen_html}"
             "</div>"
             "</div>"
-            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>Call</button>'
+            f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>{call_icon_svg}</button>'
             "</div>"
         )
     return f'<div class="family-member-list">{"".join(rows)}</div>'

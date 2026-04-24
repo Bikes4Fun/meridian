@@ -979,8 +979,8 @@ body[data-screen="family"] #screen-content {
   left: var(--safe-margin);
   bottom: var(--safe-margin);
   z-index: 10;
-  width: clamp(34vw, 40vw, 46vw);
-  height: clamp(34vh, 40vh, 46vh);
+  width: clamp(300px, 50vw, 480px);
+  height: clamp(34vh, 50vh, 46vh);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -1050,7 +1050,7 @@ body[data-screen="family"] #screen-content {
   align-items: center;
   column-gap: var(--space-md);
   min-height: var(--touch-min);
-  padding: var(--space-md) 0;
+  padding: var(--space-sm) var(--space-md);
 }
 
 .family-member-row + .family-member-row {
@@ -1060,12 +1060,12 @@ body[data-screen="family"] #screen-content {
 .family-member-row--you {
   background: color-mix(in srgb, var(--warm-chat-tint) 76%, transparent);
   border-radius: var(--radius-sm);
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
 }
 
 .family-member-avatar {
-  width: var(--avatar-size);
-  height: var(--avatar-size);
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -1087,6 +1087,7 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-name {
+  flex: 1 1 auto;
   min-width: 0;
   font-size: var(--font-body-large);
   font-weight: 700;
@@ -1098,7 +1099,9 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-relationship {
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 38%;
   font-size: var(--font-caption);
   font-weight: 500;
   color: var(--warm-muted);
@@ -1128,18 +1131,18 @@ body[data-screen="family"] #screen-content {
 }
 
 .family-member-row .contact-call-btn {
-  width: var(--avatar-size);
-  min-width: var(--avatar-size);
-  height: var(--avatar-size);
-  min-height: var(--avatar-size);
-  padding: 0 var(--space-xs);
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--accent-dark);
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
   background: var(--accent);
   color: #fff;
-  font-size: var(--font-caption);
-  font-weight: 700;
-  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .family-member-row .contact-call-btn:hover {
@@ -1148,6 +1151,11 @@ body[data-screen="family"] #screen-content {
 
 .family-member-row .contact-call-btn:active {
   background: var(--accent-dark);
+}
+
+.family-member-row .contact-call-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 /* =============================================================================

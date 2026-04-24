@@ -216,7 +216,6 @@ def build_schedule_html(services, api_url: str) -> str:
                         "event_data": e,
                     }
                 )
-    items.sort(key=lambda x: x["dt"])
 
     _today_nav = datetime.date.today()
     nav_week_sun = _today_nav - datetime.timedelta(days=(_today_nav.weekday() + 1) % 7)
@@ -229,16 +228,32 @@ def build_schedule_html(services, api_url: str) -> str:
     if not items:
         parts.append(hp.empty_state("Nothing scheduled today"))
     else:
-        for it in items:
+        event_items = sorted(
+            [it for it in items if it["type"] == "event"], key=lambda x: x["dt"]
+        )
+        med_items = sorted(
+            [it for it in items if it["type"] == "med"], key=lambda x: x["dt"]
+        )
+        prn_items = sorted(
+            [it for it in items if it["type"] == "prn"], key=lambda x: x["dt"]
+        )
+
+        def _sched_row(it: dict) -> str:
             done = it.get("done")
             bar_class = (
-                "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+                "timeline-bar-med"
+                if it["type"] in ("med", "prn")
+                else "timeline-bar-event"
             )
-            time_str = it["dt"].strftime("%I:%M %p")
+            time_str = (
+                "As needed"
+                if it.get("type") == "prn"
+                else it["dt"].strftime("%I:%M %p")
+            )
             check = " ✓" if done else ""
             cls = "timeline-item timeline-item-done" if done else "timeline-item"
             title_esc = html_module.escape(str(it.get("title", "?")))
-            extra = ""
+            actions = ""
             if it.get("type") == "event" and it.get("event_id"):
                 eid = html_module.escape(str(it["event_id"]))
                 edata = html_module.escape(
@@ -246,11 +261,42 @@ def build_schedule_html(services, api_url: str) -> str:
                 )
                 del_btn = ""
                 if KIOSK_CALENDAR_ALLOW_DELETE_EVENTS:
-                    del_btn = f' <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
-                extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button>{del_btn}'
-            parts.append(
-                f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
+                    del_btn = (
+                        f'<button type="button" class="event-delete-btn timeline-action-btn btn-small" '
+                        f'data-event-id="{eid}">Delete</button>'
+                    )
+                actions = (
+                    f'<button type="button" class="event-edit-btn timeline-action-btn btn-small" '
+                    f'data-event-id="{eid}" data-event="{edata}">Edit</button>{del_btn}'
+                )
+            extra = (
+                f'<span class="timeline-item-actions">{actions}</span>'
+                if actions
+                else '<span class="timeline-item-actions timeline-item-actions--empty" aria-hidden="true"></span>'
             )
+            return (
+                f'<div class="{cls}"><span class="{bar_class}"></span>'
+                f'<span class="timeline-item-main">{time_str} • {title_esc}{check}</span>{extra}</div>'
+            )
+
+        if event_items:
+            parts.append(
+                '<div class="timeline-section-label timeline-section-label--event">Events</div>'
+            )
+            for it in event_items:
+                parts.append(_sched_row(it))
+        if med_items:
+            parts.append(
+                '<div class="timeline-section-label timeline-section-label--med">Medications</div>'
+            )
+            for it in med_items:
+                parts.append(_sched_row(it))
+        if prn_items:
+            parts.append(
+                '<div class="timeline-section-label timeline-section-label--prn">As needed</div>'
+            )
+            for it in prn_items:
+                parts.append(_sched_row(it))
     parts.append("</div>")
     parts.append(get_event_modal_html())
     inner = "".join(parts)

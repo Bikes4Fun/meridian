@@ -48,6 +48,7 @@
   --btn-small-font-size: var(--font-caption);
   --btn-small-min-height: 36px;
   --btn-small-radius: var(--radius-sm);
+  --home-timeline-actions-width: 7.5rem;
 }
 
 /* =============================================================================
@@ -343,6 +344,8 @@ body[data-screen="family"] #screen-content {
 #screen-content:has(> .home-screen) > .home-screen {
   flex: 1;
   min-height: 0;
+  padding-top: 0.5vh;
+  padding-bottom: 0.5vh;
 }
 
 #screen-content:has(> .home-screen) > .home-screen > .clock-container {
@@ -484,7 +487,7 @@ body[data-screen="family"] #screen-content {
 .home-screen {
   display: flex;
   flex-direction: column;
-  gap: var(--section-gap);
+  gap: max(var(--section-gap), 2.2vh);
   min-height: 100%;
 }
 
@@ -1117,22 +1120,32 @@ body[data-screen="family"] #screen-content {
   align-items: flex-start;
   text-align: center;
   gap: var(--space-lg);
+  padding: 3.1vh var(--safe-margin) 3.2vh;
+  margin-bottom: 0;
+  border: 1px solid #ece7df;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .clock-container #clock-day {
+  font-size: calc(var(--font-subheader) * 0.9);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
+  color: var(--text);
 }
 
 .clock-container #clock-time {
-  margin: var(--space-md) 0 var(--space-sm);
-  line-height: 1.05;
+  margin: calc(var(--space-sm) * 0.75) 0 calc(var(--space-sm) * 0.55);
+  font-size: clamp(3.7rem, 8.2vh, 5.6rem);
+  font-weight: 800;
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .clock-container #clock-date {
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: calc(var(--font-body-large) * 0.96);
+  font-weight: 500;
+  color: var(--text);
 }
 
 .temp-widget-row {
@@ -1924,6 +1937,16 @@ body[data-screen="family"] #screen-content {
   font-size: var(--font-body-large);
 }
 
+.home-screen .up-next-kicker {
+  display: block;
+  font-size: calc(var(--font-caption) * 0.82);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.92;
+  margin-bottom: 0.08em;
+}
+
 .home-screen .up-next-sub {
   margin-top: 0.12em;
 }
@@ -1947,6 +1970,16 @@ body[data-screen="family"] #screen-content {
   font-weight: 700;
   line-height: 1.35;
   display: block;
+}
+
+.up-next-kicker {
+  display: block;
+  font-size: calc(var(--font-caption) * 0.86);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.92;
+  margin-bottom: 0.2em;
 }
 
 .up-next-sub {
@@ -2224,6 +2257,215 @@ body[data-screen="family"] #screen-content {
   height: 1.5em;
   background: var(--secondary);
   border-radius: var(--radius-pill);
+}
+
+/* Home “What’s next today”: grid so header “Mark all” lines up with row Edit/Take column */
+.timeline-header--home-whats-next-grid {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) var(--home-timeline-actions-width);
+  column-gap: 0.75em;
+  align-items: center;
+  justify-content: unset;
+  flex-wrap: unset;
+}
+
+.timeline-header--home-whats-next-grid .timeline-header__grid-spacer {
+  width: 4px;
+  min-width: 4px;
+  height: 1px;
+}
+
+.timeline-header--home-whats-next-grid .timeline-action-btn--header-inline {
+  justify-self: end;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body[data-screen="home"] #timeline_content.timeline-list .timeline-item {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) var(--home-timeline-actions-width);
+  column-gap: 0.75em;
+  align-items: center;
+}
+
+body[data-screen="home"] #timeline_content.timeline-list .timeline-item-actions,
+body[data-screen="home"] #timeline_content.timeline-list .timeline-item-actions--empty {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  min-width: 0;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item-done {
+  text-decoration: none;
+  opacity: 0.38;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item-done .timeline-item-main {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+body[data-screen="home"] #timeline_content .timeline-item {
+  border-radius: var(--radius-sm);
+  padding: 0.45em 0.35em;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item:hover {
+  background: rgba(90, 140, 130, 0.07);
+}
+
+/* Home screenshot polish: stronger hierarchy and clearer focus */
+body[data-screen="home"] .timeline-card--home-whats-next {
+  background: #fff;
+  border: 1px solid #e8e2d9;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+body[data-screen="home"] .timeline-card--home-whats-next .timeline-header,
+body[data-screen="home"] .timeline-card--home-whats-next .timeline-header__title {
+  font-size: calc(var(--font-caption) * 1.05);
+  letter-spacing: 0.06em;
+  color: #625d56;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item {
+  padding: 0.55em 0.45em;
+  border-bottom: 1px solid #ece7df;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item:last-child {
+  border-bottom: none;
+}
+
+/* Home timeline type blocks: obvious at-glance category coding */
+body[data-screen="home"] #timeline_content .timeline-item--event {
+  background: #eef8f1;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item--med {
+  background: #edf5ff;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item--prn {
+  background: #fff6e8;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item--event .timeline-item-main {
+  color: #0f3d27;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item--med .timeline-item-main {
+  color: #0f3c5a;
+}
+
+body[data-screen="home"] #timeline_content .timeline-item--prn .timeline-item-main {
+  color: #4a2f09;
+}
+
+body[data-screen="home"] #timeline_content .timeline-action-btn.btn-small {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  border-radius: var(--radius-md);
+  min-height: 40px;
+  padding: 0.3em 1em;
+  font-weight: 600;
+}
+
+body[data-screen="home"] .up-next-card {
+  padding: var(--space-md) var(--safe-margin);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+body[data-screen="home"] .up-next-title {
+  font-size: calc(var(--font-body-large) * 1.08);
+  line-height: 1.22;
+}
+
+body[data-screen="home"] .up-next-sub {
+  font-size: calc(var(--font-caption) * 1.02);
+}
+
+body[data-screen="home"] .timeline-header--home-whats-next-grid .timeline-action-btn--header-inline {
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+}
+
+body[data-screen="home"] .timeline-header--home-whats-next-grid .timeline-action-btn--header-inline:hover {
+  background: rgba(0, 158, 183, 0.08);
+}
+
+/* Schedule list: same column template as home timeline */
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) var(--home-timeline-actions-width);
+  column-gap: 0.75em;
+  align-items: center;
+}
+
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item-actions,
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item-actions--empty {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  min-width: 0;
+}
+
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item-done {
+  text-decoration: none;
+}
+
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item-done .timeline-item-main {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item {
+  border-radius: var(--radius-sm);
+  padding: 0.45em 0.35em;
+}
+
+body[data-screen="schedule"] .kiosk-schedule-list-scroll .timeline-item:hover {
+  background: rgba(90, 140, 130, 0.07);
+}
+
+.timeline-section-label {
+  font-size: calc(var(--font-caption) * 0.82);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.8em 0 0.3em;
+  margin-top: 0.3em;
+  border-top: 1.5px solid var(--border-light);
+}
+
+.timeline-section-label:first-child {
+  padding-top: 0.15em;
+  margin-top: 0;
+  border-top: none;
+}
+
+.timeline-section-label--event {
+  color: var(--secondary);
+}
+
+.timeline-section-label--med {
+  color: var(--accent);
+}
+
+.timeline-section-label--prn {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* =============================================================================

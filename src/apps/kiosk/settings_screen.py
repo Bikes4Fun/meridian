@@ -58,35 +58,40 @@ def build_tilt_sensor_row_html(slot: int) -> str:
     row_map = {
         1: {
             "name": "Lisinopril",
+            "med": "10mg",
             "dot_class": "dot-online",
             "badge_class": "ts-up",
-            "state": "Picked up today",
+            "state": "Detected today",
             "time": "2x \u00b7 8:10 AM, 8:04 PM",
         },
         2: {
             "name": "Metformin",
+            "med": "500mg",
             "dot_class": "dot-online",
             "badge_class": "ts-up",
-            "state": "Picked up today",
+            "state": "Detected today",
             "time": "1x \u00b7 7:45 AM",
         },
         3: {
             "name": "Donepezil",
+            "med": "5mg",
             "dot_class": "dot-offline",
-            "badge_class": "ts-off",
-            "state": "Not picked up",
-            "time": "0x \u00b7 --",
+            "badge_class": "ts-down",
+            "state": "No activity",
+            "time": "\u2014",
         },
         4: {
             "name": "Melatonin",
+            "med": "3mg",
             "dot_class": "dot-offline",
-            "badge_class": "ts-off",
-            "state": "Not picked up",
-            "time": "0x \u00b7 --",
+            "badge_class": "ts-down",
+            "state": "No activity",
+            "time": "\u2014",
         },
     }
     row = row_map.get(slot, row_map[1])
     name = html_module.escape(row["name"])
+    med = html_module.escape(row["med"])
     dot_class = row["dot_class"]
     badge_class = row["badge_class"]
     state = html_module.escape(row["state"])
@@ -94,8 +99,10 @@ def build_tilt_sensor_row_html(slot: int) -> str:
     return f"""
 <div class="tilt-row">
   <div class="tilt-dot {dot_class}"></div>
-  <div class="tilt-name">{name}</div>
-  <div class="tilt-state-badge {badge_class}"><span>{state}</span></div>
+  <div class="tilt-left">
+    <span class="tilt-name">{name} <span class="tilt-med-name">{med}</span></span>
+    <span class="tilt-state-badge {badge_class}">{state}</span>
+  </div>
   <div class="tilt-time">{time_text}</div>
 </div>
 """

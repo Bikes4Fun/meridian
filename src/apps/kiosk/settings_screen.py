@@ -31,21 +31,21 @@ def build_stove_sensor_card_html() -> str:
       <div class="sensor-card__reading">
         <span id="stove-temp">—</span>
         <span class="sensor-reading-sep">·</span>
-        <span id="stove-last-read">Live monitor view</span>
+        <span id="stove-last-read">Normal</span>
       </div>
     </div>
     <div class="sensor-status-badge">
       <div class="sensor-status-dot dot-online"></div>
-      <span>Online</span>
+      <span>Running now</span>
     </div>
   </div>
 
   <div class="sensor-temp-bar">
-    <div class="sensor-temp-bar__fill" style="width:42%"></div>
+    <div class="sensor-temp-bar__fill" style="width:58%"></div>
   </div>
 
   <div class="sensor-card__footer">
-    <span class="sensor-card__alert-time">Alert lifecycle timeline preview</span>
+    <span class="sensor-card__alert-time">Actively monitored</span>
     <button class="sensor-snooze-btn" id="stove-snooze-btn" type="button" onclick="pywebview.api.snooze_stove_temp()">
       <span id="stove-snooze-label">{snooze_label}</span>
     </button>
@@ -55,13 +55,48 @@ def build_stove_sensor_card_html() -> str:
 
 
 def build_tilt_sensor_row_html(slot: int) -> str:
-    name = html_module.escape(_tilt_name(slot))
+    row_map = {
+        1: {
+            "name": "Lisinopril",
+            "dot_class": "dot-online",
+            "badge_class": "ts-up",
+            "state": "Picked up today",
+            "time": "2x \u00b7 8:10 AM, 8:04 PM",
+        },
+        2: {
+            "name": "Metformin",
+            "dot_class": "dot-online",
+            "badge_class": "ts-up",
+            "state": "Picked up today",
+            "time": "1x \u00b7 7:45 AM",
+        },
+        3: {
+            "name": "Donepezil",
+            "dot_class": "dot-offline",
+            "badge_class": "ts-off",
+            "state": "Not picked up",
+            "time": "0x \u00b7 --",
+        },
+        4: {
+            "name": "Melatonin",
+            "dot_class": "dot-offline",
+            "badge_class": "ts-off",
+            "state": "Not picked up",
+            "time": "0x \u00b7 --",
+        },
+    }
+    row = row_map.get(slot, row_map[1])
+    name = html_module.escape(row["name"])
+    dot_class = row["dot_class"]
+    badge_class = row["badge_class"]
+    state = html_module.escape(row["state"])
+    time_text = html_module.escape(row["time"])
     return f"""
 <div class="tilt-row">
-  <div class="tilt-dot dot-online"></div>
+  <div class="tilt-dot {dot_class}"></div>
   <div class="tilt-name">{name}</div>
-  <div class="tilt-state-badge ts-up"><span>Ready</span></div>
-  <div class="tilt-time">Live</div>
+  <div class="tilt-state-badge {badge_class}"><span>{state}</span></div>
+  <div class="tilt-time">{time_text}</div>
 </div>
 """
 
@@ -79,7 +114,7 @@ def build_tilt_sensors_card_html() -> str:
     </div>
     <div class="sensor-card__meta">
       <div class="sensor-card__name">Medication Bottles</div>
-      <div class="sensor-card__reading">4 sensor slots configured</div>
+      <div class="sensor-card__reading">Telemetry running now</div>
     </div>
   </div>
   <div class="tilt-rows">
@@ -128,9 +163,9 @@ def build_settings_html(services, api_url: str) -> str:
 <div class="kiosk-settings-card">
   <div class="kiosk-settings-card__title">Monitors</div>
   <div class="kiosk-settings-card__body kiosk-settings-card__body--monitor">
-    <div class="sensor-section-label">Stove Sensor</div>
+    <div class="sensor-section-label">Stove</div>
     {build_stove_sensor_card_html()}
-    <div class="sensor-section-label" style="margin-top:20px">Medication Bottle Sensors</div>
+    <div class="sensor-section-label" style="margin-top:20px">Medication Bottles</div>
     {build_tilt_sensors_card_html()}
   </div>
 </div>

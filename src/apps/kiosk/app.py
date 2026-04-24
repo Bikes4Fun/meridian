@@ -355,7 +355,7 @@ class MeridianKioskApp:
         (#kiosk-boot-corner) with status text until _boot_cache_warmup (photos, places, tiles) finishes.
         The corner floater persists across navigations until caching completes.
         """
-        logger.info("Kiosk loaded, initializing...")
+        logger.debug("Kiosk loaded, initializing...")
         self._set_corner_boot_loading(False, "")
         self._set_boot_loading(True, "Starting Meridian...")
         time.sleep(0.3)
@@ -431,11 +431,11 @@ class MeridianKioskApp:
         try:
             contact_svc = self.services.get_contact_service()
             if not contact_svc:
-                logger.info("Photo warmup skipped: contact service unavailable")
+                logger.debug("Photo warmup skipped: contact service unavailable")
                 return
             result = contact_svc.get_contacts()
             if not result.success or not result.data:
-                logger.info("Photo warmup skipped: no contacts")
+                logger.debug("Photo warmup skipped: no contacts")
                 return
             total = len(result.data)
             for c in result.data:

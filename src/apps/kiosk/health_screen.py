@@ -26,11 +26,12 @@ class HealthHandler:
 
     @staticmethod
     def build_home_whats_next_header_row() -> str:
-        """Home only: compact 'Mark all scheduled' beside WHAT'S NEXT TODAY (reloads home)."""
+        """Home only: compact 'Mark all scheduled' beside TODAY'S SCHEDULE (reloads home)."""
         action_js = HealthHandler.mark_all_non_prn_button_js("home")
         return (
-            '<div class="timeline-header timeline-header--with-action">'
-            '<span class="timeline-header__title">WHAT\'S NEXT TODAY</span>'
+            '<div class="timeline-header timeline-header--with-action timeline-header--home-whats-next-grid">'
+            '<span class="timeline-header__grid-spacer" aria-hidden="true"></span>'
+            '<span class="timeline-header__title">TODAY\'S SCHEDULE</span>'
             f'<button type="button" class="timeline-action-btn timeline-action-btn--header-inline" '
             f'onclick="{action_js}" '
             'title="Mark every scheduled (non-PRN) dose still due today as taken" '

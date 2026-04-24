@@ -55,7 +55,7 @@ INSERT OR IGNORE INTO medication_time_templates (name, time) VALUES
     ('Noon', '12:00:00'),
     ('Afternoon', '14:00:00'),
     ('Evening', '18:00:00'),
-    ('Bedtime', '21:00:00'),
+    ('Bedtime', '21:30:00'),
     ('prn', NULL);
 
 CREATE TABLE IF NOT EXISTS medication_times (

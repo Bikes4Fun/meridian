@@ -1,3 +1,4 @@
+
 {
   "care_recipient": {
     "user_id": "fm_care_001",
@@ -9,26 +10,13 @@
     "proxy_contact_id": "contact_james_foster",
     "poa_contact_id": "contact_james_foster"
   },
-
   "medication_times": {
-    "Morning": {
-      "time": "08:00:00",
-      "display_name": "Morning"
-    },
-    "Noon": {
-      "time": "12:00:00",
-      "display_name": "Noon"
-    },
-    "Evening": {
-      "time": "18:00:00",
-      "display_name": "Evening"
-    },
-    "prn": {
-      "time": null,
-      "display_name": "As Needed"
-    }
+    "Morning": { "time": "08:00:00", "display_name": "Morning" },
+    "Noon":    { "time": "12:00:00", "display_name": "Noon" },
+    "Evening": { "time": "18:00:00", "display_name": "Evening" },
+    "Bedtime": { "time": "21:30:00", "display_name": "Bedtime" },
+    "prn":     { "time": null,       "display_name": "As Needed" }
   },
-
   "medications": [
     {
       "name": "Lisinopril",
@@ -46,56 +34,67 @@
     {
       "name": "Metformin",
       "dosage": "500mg",
-      "frequency": "Twice daily",
-      "medication_times": ["Morning", "Evening"],
-      "temporary": false,
-      "taken": false,
-      "notes": "Diabetes medication",
-      "doctor": "Dr. Johnson",
-      "side_effects": "Nausea, stomach upset",
-      "max_daily": 2,
-      "last_taken": null
-    },
-    {
-      "name": "Dementia meds",
-      "dosage": "5mg",
-      "frequency": "Once daily",
+      "frequency": "Three times daily",
       "medication_times": ["Noon"],
       "temporary": false,
       "taken": false,
-      "notes": "Memory support medication",
+      "notes": "Diabetes medication — take with meals",
+      "doctor": "Dr. Johnson",
+      "side_effects": "Nausea, stomach upset",
+      "max_daily": 3,
+      "last_taken": null
+    },
+    {
+      "name": "Donepezil",
+      "dosage": "5mg",
+      "frequency": "Once daily",
+      "medication_times": ["Bedtime"],
+      "temporary": false,
+      "taken": false,
+      "notes": "Dementia medication — take at bedtime",
       "doctor": "Dr. Wilson",
-      "side_effects": "Mild nausea, headache",
+      "side_effects": "Vivid dreams, mild nausea",
       "max_daily": 1,
       "last_taken": null
     },
     {
-      "name": "Pain Relief",
+      "name": "Melatonin",
+      "dosage": "3mg",
+      "frequency": "Once daily",
+      "medication_times": ["Bedtime"],
+      "temporary": false,
+      "taken": false,
+      "notes": "Sleep support",
+      "doctor": "Dr. Wilson",
+      "side_effects": "Drowsiness",
+      "max_daily": 1,
+      "last_taken": null
+    },
+    {
+      "name": "Acetaminophen",
+      "dosage": "500mg",
+      "frequency": "As needed",
+      "medication_times": ["prn"],
+      "notes": "For arthritis pain. Do not exceed 4 doses in 24 hours.",
       "max_daily": 3,
-      "medication_times": ["prn"],
-      "notes": "For arthritis pain",
       "current_quantity": null,
       "last_taken": null
     },
     {
-      "name": "Anxiety Relief",
+      "name": "Lorazepam",
+      "dosage": "0.5mg",
+      "frequency": "As needed",
+      "medication_times": ["prn"],
+      "notes": "For anxiety. May cause drowsiness.",
       "max_daily": 2,
-      "medication_times": ["prn"],
-      "notes": "As needed for anxiety",
       "current_quantity": null,
       "last_taken": null
     }
   ],
-
   "allergies": [
-    {
-      "allergen": "Penicillin"
-    },
-    {
-      "allergen": "Shellfish"
-    }
+    { "allergen": "Penicillin" },
+    { "allergen": "Shellfish" }
   ],
-
   "conditions": [
     {
       "condition": "Type 2 Diabetes",

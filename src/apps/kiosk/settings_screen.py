@@ -29,7 +29,7 @@ def build_stove_sensor_card_html() -> str:
     <div class="sensor-card__meta">
       <div class="sensor-card__name">Stove Temperature</div>
       <div class="sensor-card__reading">
-        <span id="stove-temp">—</span>
+        <span id="stove-temp">72°F</span>
         <span class="sensor-reading-sep">·</span>
         <span id="stove-last-read">Normal</span>
       </div>

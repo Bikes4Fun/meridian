@@ -1,8 +1,7 @@
-"""Twilio Programmable Voice: REST outbound, browser Voice (WebRTC) for kiosk, TwiML hooks."""
+"""Twilio Programmable Voice: browser Voice (WebRTC) for kiosk, TwiML hooks, token/status."""
 
 import logging
 import os
-import uuid
 
 from flask import Response, abort, g, jsonify, request
 
@@ -50,7 +49,7 @@ def _twilio_public_request_url() -> str:
 
 
 def register_twilio_voice_routes(app, user_svc):
-    """Register voice routes: TwiML, REST call, token (kiosk WebRTC), client TwiML App URL."""
+    """Register voice routes: TwiML, token (kiosk WebRTC), client TwiML App URL, status."""
 
     @app.route("/twilio/voice", methods=["GET", "POST"])
     def twilio_voice_webhook():
@@ -78,6 +77,11 @@ def register_twilio_voice_routes(app, user_svc):
         to = normalize_phone_e164(params.get("To") or "")
         caller_id = normalize_phone_e164(params.get("callerId") or params.get("CallerId") or "")
         if not to or not caller_id:
+            logger.warning(
+                "TwiML /twilio/voice/client missing To or callerId (to=%s caller_id=%s)",
+                _redact_phone(params.get("To") or ""),
+                _redact_phone(params.get("callerId") or params.get("CallerId") or ""),
+            )
             err = VoiceResponse()
             err.say("Meridian could not place this call.")
             return Response(str(err), mimetype="text/xml")
@@ -147,86 +151,6 @@ def register_twilio_voice_routes(app, user_svc):
             logger.exception(f"Voice token failed: {e}")
             return jsonify({"error": "Could not create voice token"}), 500
 
-    @app.route("/api/voice/call", methods=["POST"])
-    def api_voice_outbound_call():
-        body = request.get_json() or {}
-        to = normalize_phone_e164(body.get("to") or "")
-        pr = user_svc.get_user_phone_for_family(g.user_id, g.family_circle_id)
-        if not pr.success:
-            return jsonify({"error": pr.error or "failed"}), 500
-        caller_raw = (pr.data or "").strip()
-        from_num = normalize_phone_e164(caller_raw) if caller_raw else ""
-        if not from_num:
-            from_num = (
-                os.environ.get("TWILIO_PHONE_NUMBER")
-                or os.environ.get("TWILIO_FROM_NUMBER")
-                or ""
-            ).strip()
-            if from_num:
-                logger.warning(
-                    "Twilio outbound: user has no phone on file; using TWILIO_PHONE_NUMBER as From"
-                )
-        logger.info(
-            f"/api/voice/call requested: from={_redact_phone(from_num)} to={_redact_phone(to)}"
-        )
-        account_sid = (os.environ.get("TWILIO_ACCOUNT_SID") or "").strip()
-        auth_token = (os.environ.get("TWILIO_AUTH_TOKEN") or "").strip()
-        missing = []
-        if not account_sid:
-            missing.append("TWILIO_ACCOUNT_SID")
-        if not auth_token:
-            missing.append("TWILIO_AUTH_TOKEN")
-        if not from_num:
-            missing.append("user phone (POST /api/users with phone) or TWILIO_PHONE_NUMBER")
-        if missing:
-            logger.warning(f"Twilio config missing: {', '.join(missing)}")
-            return (
-                jsonify({"error": f"Twilio not configured: missing {', '.join(missing)}"}),
-                503,
-            )
-        if not to:
-            return jsonify({"error": "to phone required"}), 400
-        try:
-            from twilio.rest import Client
-            from twilio.twiml.voice_response import VoiceResponse
-
-            client = Client(account_sid, auth_token)
-            # One call to `to` with TwiML Dial→Number(`from_num`) chained a second PSTN leg after
-            # Eleanor answered; if that leg failed (no answer, trial, etc.), Twilio played
-            # "an application error has occurred." Bridge both parties with the same Conference instead.
-            room = f"meridian_{uuid.uuid4().hex[:16]}"
-            join_conf = VoiceResponse()
-            join_conf.dial().conference(room, beep="false")
-            twiml_str = str(join_conf)
-            call_to = client.calls.create(to=to, from_=from_num, twiml=twiml_str)
-            if from_num == to:
-                logger.info(
-                    f"Twilio call queued sid={_sid_suffix(call_to.sid)} "
-                    f"from={_redact_phone(from_num)} to={_redact_phone(to)} (single party)"
-                )
-                return jsonify({"sid": call_to.sid})
-            call_from = None
-            try:
-                call_from = client.calls.create(to=from_num, from_=from_num, twiml=twiml_str)
-            except Exception as e2:
-                logger.warning(
-                    f"Twilio conference second leg failed (callee may be alone in room until hangup): {e2}"
-                )
-        except Exception as e:
-            logger.exception(f"Twilio call create failed: {e}")
-            return jsonify({"error": "Unable to place call right now."}), 502
-        if call_from is not None:
-            logger.info(
-                f"Twilio conference {room}: leg_to sid={_sid_suffix(call_to.sid)} to={_redact_phone(to)}, "
-                f"leg_from sid={_sid_suffix(call_from.sid)} to={_redact_phone(from_num)}"
-            )
-            return jsonify({"sid": call_to.sid, "sid_caller": call_from.sid, "conference": room})
-        logger.info(
-            f"Twilio conference {room}: leg_to sid={_sid_suffix(call_to.sid)} "
-            f"to={_redact_phone(to)} (second leg failed)"
-        )
-        return jsonify({"sid": call_to.sid, "conference": room, "second_leg_failed": True})
-
     @app.route("/api/voice/twilio-status", methods=["GET"])
     def api_voice_twilio_status():
         """Lightweight check that Twilio accepts these credentials (kiosk startup)."""
@@ -240,5 +164,9 @@ def register_twilio_voice_routes(app, user_svc):
             Client(account_sid, auth_token).api.accounts(account_sid).fetch()
             return jsonify({"ok": True})
         except Exception as e:
-            logger.warning(f"Twilio account check failed: {e}")
+            logger.warning(
+                "Twilio account check failed (account %s): %s",
+                _sid_suffix(account_sid),
+                e,
+            )
             return jsonify({"ok": False, "detail": "twilio rejected credentials or unreachable"})

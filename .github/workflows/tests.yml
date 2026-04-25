@@ -23,5 +23,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Build webapp dist (no Node; python -m apps.webapp)
+        run: |
+          set -euo pipefail
+          rm -rf src/apps/webapp/web_server/dist
+          PYTHONPATH=src python -m apps.webapp
+
       - name: Run tests
         run: PYTHONPATH=src pytest src/dev/tests

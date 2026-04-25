@@ -4,5 +4,12 @@
 <dict>
 	<key>MERIDIAN_API_URL</key>
 	<string></string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>AtkinsonHyperlegible-Regular.ttf</string>
+		<string>AtkinsonHyperlegible-Bold.ttf</string>
+		<string>AtkinsonHyperlegible-Italic.ttf</string>
+		<string>AtkinsonHyperlegible-BoldItalic.ttf</string>
+	</array>
 </dict>
 </plist>

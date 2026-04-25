@@ -29,7 +29,6 @@ import urllib.parse
 import urllib.request
 import urllib.request
 import logging
-import threading
 from dataclasses import asdict
 from pathlib import Path
 
@@ -75,25 +74,14 @@ from .database_services.db_service_registry import create_service_container
 from .twilio_voice import register_twilio_voice_routes
 
 
-_alert_activation_by_family = {}
-_alert_activation_lock = threading.Lock()
 _logger = logging.getLogger(__name__)
 
 _MAX_CARE_RECIPIENT_DNR_BYTES = 20 * 1024 * 1024
 _DNR_UPLOAD_EXTS = frozenset(
     {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
 )
-
-
-def _get_alert_activated(family_circle_id: str) -> bool:
-    with _alert_activation_lock:
-        return bool(_alert_activation_by_family.get(family_circle_id, False))
-
-
-def _set_alert_activated(family_circle_id: str, activated: bool) -> bool:
-    with _alert_activation_lock:
-        _alert_activation_by_family[family_circle_id] = bool(activated)
-        return _alert_activation_by_family[family_circle_id]
+_WEBAPP_CLIENT_HEADER_NAME = "X-Meridian-Client"
+_WEBAPP_CLIENT_HEADER_VALUE = "webapp-api-client"
 
 
 def create_server_app(db_path=None):
@@ -187,7 +175,7 @@ def create_server_app(db_path=None):
             resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         resp.headers["Access-Control-Allow-Headers"] = (
-            "Content-Type, X-User-Id, X-Family-Circle-Id"
+            "Content-Type, X-User-Id, X-Family-Circle-Id, X-Meridian-Client"
         )
         return resp
 
@@ -201,15 +189,47 @@ def create_server_app(db_path=None):
         if request.method == "OPTIONS":
             return Response(status=204)
 
-    def _webapp_public_path(path: str) -> bool:
-        """Paths that need no session (static assets, login page, kiosk shell)."""
+    @app.before_request
+    def enforce_webapp_client_header():
+        path = request.path or ""
+        if not path.startswith("/api"):
+            return
+        if path in ("/api/health",):
+            return
+        if path.startswith("/api/voice/"):
+            return
+        if path.startswith("/api/users/") and path.endswith("/photo"):
+            return
+        if path.endswith("/emergency-profile/pdf"):
+            return
+        if path.endswith("/dnr-document"):
+            return
+
+        # Header-auth clients (kiosk/internal) are exempt from this browser/webapp structure check.
+        if request.headers.get("X-User-Id") and request.headers.get("X-Family-Circle-Id"):
+            return
+
+        req_origin = (request.headers.get("Origin") or "").strip()
+        sec_fetch_site = (request.headers.get("Sec-Fetch-Site") or "").strip()
+        sec_fetch_mode = (request.headers.get("Sec-Fetch-Mode") or "").strip()
+        is_browser_like = bool(req_origin or sec_fetch_site or sec_fetch_mode)
+        if not is_browser_like:
+            return
+
+        client_marker = (request.headers.get(_WEBAPP_CLIENT_HEADER_NAME) or "").strip()
+        if client_marker != _WEBAPP_CLIENT_HEADER_VALUE:
+            return jsonify({"error": "invalid webapp client marker"}), 403
+
+    def _public_unauthed_path(path: str) -> bool:
+        """Public routes that skip session auth (static assets, login page, kiosk shell)."""
         if path in (
             "/login.html",
             "/privacy.html",
             "/terms.html",
-            "/app.js",
             "/style.css",
         ):
+            return True
+        if path.startswith("/src/"):
             return True
         if path == "/kiosk":
             return True
@@ -238,7 +258,7 @@ def create_server_app(db_path=None):
             g.user_id = None
             g.family_circle_id = None
             return
-        if _webapp_public_path(request.path):
+        if _public_unauthed_path(request.path):
             g.user_id = None
             g.family_circle_id = None
             return
@@ -898,7 +918,17 @@ def create_server_app(db_path=None):
             fda_rxcui=body.get("fda_rxcui"),
         )
         if not r.success:
-            return jsonify({"error": r.error}), 500
+            err = (r.error or "").strip()
+            err_l = err.lower()
+            if "already exists" in err_l:
+                return jsonify({"error": err or "medication already exists"}), 409
+            if (
+                "name and medication_times required" in err_l
+                or "not found for family" in err_l
+                or "no care recipient for family circle" in err_l
+            ):
+                return jsonify({"error": err or "invalid medication payload"}), 400
+            return jsonify({"error": err or "add medication failed"}), 500
         return jsonify({"data": r.data}), 201
 
     @app.route(
@@ -974,11 +1004,11 @@ def create_server_app(db_path=None):
 
     @app.route("/api/emergency/alert/status")
     def api_alert_status():
-        """TODO: Requires user + family (via before_request). Eventually: authorization/role check."""
-        denied = _require_family_permission("emergency_alert.manage")
-        if denied is not None:
-            return denied
-        return jsonify({"data": {"activated": _get_alert_activated(g.family_circle_id)}})
+        """Any authenticated family member may read status (kiosk polls as care recipient). POST requires emergency_alert.manage."""
+        r = family_svc.get_kiosk_emergency_alert_activated(g.family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error or "database error"}), 500
+        return jsonify({"data": {"activated": bool(r.data)}})
 
     @app.route("/api/emergency/alert", methods=["POST"])
     def api_alert():
@@ -987,10 +1017,11 @@ def create_server_app(db_path=None):
         if denied is not None:
             return denied
         data = request.get_json() or {}
-        activated = _set_alert_activated(
-            g.family_circle_id, bool(data.get("activated", False))
-        )
-        return jsonify({"data": {"activated": activated}})
+        want = bool(data.get("activated", False))
+        r = family_svc.set_kiosk_emergency_alert_activated(g.family_circle_id, want)
+        if not r.success:
+            return jsonify({"error": r.error or "database error"}), 500
+        return jsonify({"data": {"activated": bool(r.data)}})
 
     @app.route("/api/calls/request", methods=["POST"])
     def api_call_request():
@@ -1024,7 +1055,9 @@ def create_server_app(db_path=None):
 
     @app.route("/api/calls/<int:call_id>/ack", methods=["POST"])
     def api_call_ack(call_id):
-        """Acknowledge incoming call so kiosk does not repeatedly open chat."""
+        """Acknowledge incoming call so kiosk does not repeatedly open Family.
+        TODO: how do this play into a visual notification of a phone call, eg. a floating 'phone' popup over any page that is active?
+        """
         r = call_signal_svc.acknowledge_call(call_id, g.user_id)
         if not r.success:
             return jsonify({"error": r.error}), 400
@@ -1279,21 +1312,29 @@ def create_server_app(db_path=None):
         def serve_info_guide():
             return send_from_directory(_webapp_dist, "info.html")
 
-        @app.route("/app.js")
-        def serve_app_js():
+        @app.route("/user-test-form.html")
+        def serve_user_test_form():
+            return send_from_directory(_webapp_dist, "user-test-form.html")
+
+        @app.route("/src/features/app.js")
+        def serve_src_features_app_js():
             return send_from_directory(_webapp_dist, "app.js")
 
-        @app.route("/events.js")
-        def serve_events_js():
+        @app.route("/src/features/events.js")
+        def serve_src_features_events_js():
             return send_from_directory(_webapp_dist, "events.js")
 
-        @app.route("/medications.js")
-        def serve_medications_js():
+        @app.route("/src/features/medications.js")
+        def serve_src_features_medications_js():
             return send_from_directory(_webapp_dist, "medications.js")
 
-        @app.route("/ice_editor.js")
-        def serve_ice_editor_js():
+        @app.route("/src/features/ice_editor.js")
+        def serve_src_features_ice_editor_js():
             return send_from_directory(_webapp_dist, "ice_editor.js")
+
+        @app.route("/src/api_client.js")
+        def serve_src_api_client_js():
+            return send_from_directory(_webapp_dist, "api_client.js")
 
         @app.route("/style.css")
         def serve_style_css():
@@ -1318,6 +1359,30 @@ def create_server_app(db_path=None):
 
         @app.route("/shared/<path:path>")
         def serve_shared(path):
+            allowed_extensions = {".css", ".woff", ".woff2", ".ttf", ".otf", ".eot"}
+            _, ext = os.path.splitext(path)
+            if ext.lower() not in allowed_extensions:
+                abort(404)
+            return send_from_directory(os.path.join(_src, "shared"), path)
+    else:
+        @app.route("/style.css")
+        def serve_style_css_fallback():
+            fallback_style = os.path.join(_webapp_client, "public", "style.css")
+            if not os.path.isfile(fallback_style):
+                abort(404)
+            return send_file(fallback_style, mimetype="text/css")
+
+        @app.route("/user-test-form.html")
+        def serve_user_test_form_fallback():
+            fallback_test_form = os.path.join(
+                _webapp_client, "public", "user-test-form.html"
+            )
+            if not os.path.isfile(fallback_test_form):
+                abort(404)
+            return send_file(fallback_test_form, mimetype="text/html")
+
+        @app.route("/shared/<path:path>")
+        def serve_shared_fallback(path):
             allowed_extensions = {".css", ".woff", ".woff2", ".ttf", ".otf", ".eot"}
             _, ext = os.path.splitext(path)
             if ext.lower() not in allowed_extensions:
@@ -1444,8 +1509,15 @@ def create_server_app(db_path=None):
             if not path:
                 path = "kiosk.html"
             if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
-                return send_from_directory(_kiosk_icons, path[6:])
-            return send_from_directory(_kiosk_web, path)
+                resp = send_from_directory(_kiosk_icons, path[6:])
+            else:
+                resp = send_from_directory(_kiosk_web, path)
+            if (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1":
+                ext = os.path.splitext(path)[1].lower()
+                if ext in (".css", ".js", ".html"):
+                    resp.headers["Cache-Control"] = "no-store, max-age=0"
+                    resp.headers["Pragma"] = "no-cache"
+            return resp
 
     return app
 

@@ -21,6 +21,8 @@ except ImportError:
     from shared.interfaces import ServiceResult
 
 logger = logging.getLogger(__name__)
+# Not silenced in main.set_logging (unlike apps.kiosk.api_client) so startup OK is visible at INFO.
+_twilio_startup_logger = logging.getLogger("apps.kiosk.twilio_startup")
 
 class RemoteServiceError(Exception):
     """Raised when a remote API request fails in an unrecoverable way."""
@@ -430,7 +432,7 @@ class RemoteIncomingCallService:
 
 
 class RemoteVoiceService:
-    """Trigger outbound voice calls through server Twilio routes."""
+    """Voice token and Twilio status for kiosk browser SDK (WebRTC outbound)."""
 
     def __init__(
         self,
@@ -443,26 +445,15 @@ class RemoteVoiceService:
         self._headers = _headers(kiosk_user_id, family_circle_id)
         self._session = session
 
-    def place_call(self, phone: str) -> Any:
-        phone = (phone or "").strip()
-        if not phone:
-            return ServiceResult.error_result("phone required")
-        ok, j, err = _request(
-            "POST",
-            f"{self._base}/api/voice/call",
+    def get_voice_token(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/voice/token",
             headers=self._headers,
             session=self._session,
-            json_body={"to": phone},
         )
         if not ok:
-            logger.warning(f"Voice call request failed for {phone}: {err or 'voice call failed'}")
-            return ServiceResult.error_result(err or "voice call failed")
-        logger.info(f"Voice call request succeeded for {phone}")
-        if isinstance(j, dict) and "sid" in j:
-            return ServiceResult.success_result({"sid": j.get("sid")})
-        if isinstance(j, dict) and "data" in j:
-            return ServiceResult.success_result(j.get("data"))
-        return ServiceResult.success_result(j or {})
+            return ServiceResult.error_result(err or "voice token request failed")
+        return ServiceResult.success_result(data or {})
 
     def log_twilio_startup_check(self) -> None:
         """GET /api/voice/twilio-status — log whether Twilio credentials work."""
@@ -475,7 +466,7 @@ class RemoteVoiceService:
             logger.warning(f"Twilio startup check failed: {err}")
             return
         if isinstance(j, dict) and j.get("ok"):
-            logger.info("Twilio API credentials OK")
+            _twilio_startup_logger.info("Twilio API credentials OK")
         else:
             logger.warning(f"Twilio not ready: {j}")
 

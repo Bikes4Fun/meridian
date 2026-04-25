@@ -11,6 +11,12 @@ import json
 
 from . import html_primitives as hp
 
+# When False, kiosk users cannot create new calendar events (edits still allowed).
+# Shown in UI as a family manager admin-permissions choice.
+KIOSK_CALENDAR_ALLOW_CREATE_EVENTS = False
+# When False, kiosk users cannot delete calendar events from the schedule screen.
+KIOSK_CALENDAR_ALLOW_DELETE_EVENTS = False
+
 
 class ScheduleHandler:
     """Handler for Schedule screen bridge methods."""
@@ -30,6 +36,11 @@ class ScheduleHandler:
         if not cal:
             return "calendar service unavailable"
         event_id = data.pop("id", None)
+        if not event_id and not KIOSK_CALENDAR_ALLOW_CREATE_EVENTS:
+            return (
+                "Adding events from this kiosk is disabled by your family manager "
+                "(admin permissions)."
+            )
         if event_id:
             r = cal.update_event(str(event_id), data)
         else:
@@ -41,6 +52,11 @@ class ScheduleHandler:
         return r.error or "failed"
 
     def delete_event(self, event_id: str) -> str:
+        if not KIOSK_CALENDAR_ALLOW_DELETE_EVENTS:
+            return (
+                "Deleting events from this kiosk is disabled by your family manager "
+                "(admin permissions)."
+            )
         cal = self._app.services.get_calendar_service()
         if not cal:
             return "calendar service unavailable"
@@ -73,9 +89,74 @@ def get_event_form_overlay_html() -> str:
 
 def get_event_modal_html() -> str:
     """Add Event button + overlay (included in Schedule nav HTML from build_schedule_html)."""
-    return """<div class="home-action-row" style="margin-top:16px;">
+    if KIOSK_CALENDAR_ALLOW_CREATE_EVENTS:
+        row = """<div class="home-action-row" style="margin-top:16px;">
 <button type="button" class="add-event-btn btn-large" id="addEventBtn">+ Add Event</button>
-</div>""" + get_event_form_overlay_html()
+</div>"""
+    else:
+        cap = html_module.escape(
+            "Adding events is turned off for this kiosk. "
+            "Your family manager disabled this feature in admin permissions."
+        )
+        row = f"""<div class="home-action-row kiosk-event-create-row kiosk-event-create-row--disabled" style="margin-top:16px;">
+<button type="button" class="add-event-btn btn-large add-event-btn--disabled" id="addEventBtn" disabled aria-disabled="true">+ Add Event</button>
+<p class="kiosk-event-create-disabled-caption">{cap}</p>
+</div>"""
+    return row + get_event_form_overlay_html()
+
+
+_SVG_WK_PREV = (
+    '<svg class="kiosk-schedule-week-nav-btn__icon" xmlns="http://www.w3.org/2000/svg" '
+    'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    "<polyline points=\"15 18 9 12 15 6\"/></svg>"
+)
+_SVG_WK_NEXT = (
+    '<svg class="kiosk-schedule-week-nav-btn__icon" xmlns="http://www.w3.org/2000/svg" '
+    'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    "<polyline points=\"9 18 15 12 9 6\"/></svg>"
+)
+
+
+def get_schedule_week_day_cells_html(week_start: datetime.date) -> str:
+    """Sun–Sat day letters + date circles for the week beginning Sunday ``week_start``."""
+    today = datetime.date.today()
+    letters = ("S", "M", "T", "W", "T", "F", "S")
+    parts = []
+    for i in range(7):
+        d = week_start + datetime.timedelta(days=i)
+        letter = letters[i]
+        day_num = str(d.day)
+        cls = "kiosk-schedule-day-stub"
+        if d == today:
+            cls += " kiosk-schedule-day-stub--today"
+        iso = d.isoformat()
+        parts.append(
+            f'<div class="{cls}" title="Coming soon" data-stub-date="{html_module.escape(iso)}">'
+            f'<span class="kiosk-schedule-day-stub__letter">{html_module.escape(letter)}</span>'
+            f'<span class="kiosk-schedule-day-stub__circle">{html_module.escape(day_num)}</span>'
+            f"</div>"
+        )
+    return "".join(parts)
+
+
+def get_schedule_week_nav_html(week_start: datetime.date) -> str:
+    """Week strip with prev/next controls (strip updates in JS; list still loads today only)."""
+    ws_esc = html_module.escape(week_start.isoformat())
+    cells = get_schedule_week_day_cells_html(week_start)
+    return (
+        '<div class="kiosk-schedule-week-nav" role="toolbar" aria-label="Change week">'
+        f'<button type="button" class="kiosk-schedule-week-nav-btn" id="kioskScheduleWeekPrev" '
+        f'aria-label="Previous week">{_SVG_WK_PREV}</button>'
+        '<div class="kiosk-schedule-week-nav__strip-host">'
+        f'<div id="kioskScheduleWeekStrip" class="kiosk-schedule-week-strip" '
+        f'data-week-start="{ws_esc}" role="group" aria-label="Week preview">'
+        f"{cells}</div></div>"
+        f'<button type="button" class="kiosk-schedule-week-nav-btn" id="kioskScheduleWeekNext" '
+        f'aria-label="Next week">{_SVG_WK_NEXT}</button>'
+        "</div>"
+    )
 
 
 def build_schedule_html(services, api_url: str) -> str:
@@ -135,30 +216,88 @@ def build_schedule_html(services, api_url: str) -> str:
                         "event_data": e,
                     }
                 )
-    items.sort(key=lambda x: x["dt"])
 
-    parts = [hp.kiosk_header("Full Schedule"), hp.spacer(16)]
+    _today_nav = datetime.date.today()
+    nav_week_sun = _today_nav - datetime.timedelta(days=(_today_nav.weekday() + 1) % 7)
+    parts = [
+        hp.kiosk_header("Full Schedule"),
+        get_schedule_week_nav_html(nav_week_sun),
+        hp.spacer(12),
+        '<div class="kiosk-schedule-list-scroll">',
+    ]
     if not items:
         parts.append(hp.empty_state("Nothing scheduled today"))
     else:
-        for it in items:
+        event_items = sorted(
+            [it for it in items if it["type"] == "event"], key=lambda x: x["dt"]
+        )
+        med_items = sorted(
+            [it for it in items if it["type"] == "med"], key=lambda x: x["dt"]
+        )
+        prn_items = sorted(
+            [it for it in items if it["type"] == "prn"], key=lambda x: x["dt"]
+        )
+
+        def _sched_row(it: dict) -> str:
             done = it.get("done")
             bar_class = (
-                "timeline-bar-med" if it["type"] == "med" else "timeline-bar-event"
+                "timeline-bar-med"
+                if it["type"] in ("med", "prn")
+                else "timeline-bar-event"
             )
-            time_str = it["dt"].strftime("%I:%M %p")
+            time_str = (
+                "As needed"
+                if it.get("type") == "prn"
+                else it["dt"].strftime("%I:%M %p")
+            )
             check = " ✓" if done else ""
             cls = "timeline-item timeline-item-done" if done else "timeline-item"
             title_esc = html_module.escape(str(it.get("title", "?")))
-            extra = ""
+            actions = ""
             if it.get("type") == "event" and it.get("event_id"):
                 eid = html_module.escape(str(it["event_id"]))
                 edata = html_module.escape(
                     json.dumps(it.get("event_data", {})), quote=True
                 )
-                extra = f' <button type="button" class="event-edit-btn" data-event-id="{eid}" data-event="{edata}" style="font-size:11px;padding:2px 6px;">Edit</button> <button type="button" class="event-delete-btn" data-event-id="{eid}" style="font-size:11px;padding:2px 6px;">Delete</button>'
-            parts.append(
-                f'<div class="{cls}"><span class="{bar_class}"></span><span>{time_str} • {title_esc}{check}</span>{extra}</div>'
+                del_btn = ""
+                if KIOSK_CALENDAR_ALLOW_DELETE_EVENTS:
+                    del_btn = (
+                        f'<button type="button" class="event-delete-btn timeline-action-btn btn-small" '
+                        f'data-event-id="{eid}">Delete</button>'
+                    )
+                actions = (
+                    f'<button type="button" class="event-edit-btn timeline-action-btn btn-small" '
+                    f'data-event-id="{eid}" data-event="{edata}">Edit</button>{del_btn}'
+                )
+            extra = (
+                f'<span class="timeline-item-actions">{actions}</span>'
+                if actions
+                else '<span class="timeline-item-actions timeline-item-actions--empty" aria-hidden="true"></span>'
             )
+            return (
+                f'<div class="{cls}"><span class="{bar_class}"></span>'
+                f'<span class="timeline-item-main">{time_str} • {title_esc}{check}</span>{extra}</div>'
+            )
+
+        if event_items:
+            parts.append(
+                '<div class="timeline-section-label timeline-section-label--event">Events</div>'
+            )
+            for it in event_items:
+                parts.append(_sched_row(it))
+        if med_items:
+            parts.append(
+                '<div class="timeline-section-label timeline-section-label--med">Medications</div>'
+            )
+            for it in med_items:
+                parts.append(_sched_row(it))
+        if prn_items:
+            parts.append(
+                '<div class="timeline-section-label timeline-section-label--prn">As needed</div>'
+            )
+            for it in prn_items:
+                parts.append(_sched_row(it))
+    parts.append("</div>")
     parts.append(get_event_modal_html())
-    return "".join(parts)
+    inner = "".join(parts)
+    return f'<div class="schedule-screen">{inner}</div>'

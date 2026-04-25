@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -46,62 +47,176 @@ def build_emergency_html(services, api_url: str) -> str:
         "medical_proxy_phone": e_data.get("medical_proxy_phone"),
     }
 
-    html_parts = []
-    html_parts.append(hp.section_bar_html("IN CASE OF EMERGENCY", "#4080d9"))
-    html_parts.append(hp.section_bar_html("PERSONAL INFORMATION", "#c03333"))
-    if patient_photo_src:
-        patient_name = patient_data.get("name") or "Patient"
-        initial = (patient_name or "?")[0].upper()
+    def _esc(value: str) -> str:
+        return html_mod.escape(str(value or ""))
 
-        html_parts.append(
-            f'<div class="emergency-patient-photo">'
-            f'<div class="avatar-wrapper"><div class="contact-initial">{html_mod.escape(initial)}</div>'
-            f"{hp.avatar_img(patient_photo_src, patient_name)}</div></div>"
-        )
-    html_parts.append(hp.form_row_html("FULL NAME", patient_data.get("name")))
-    html_parts.append(hp.form_row_html("DOB", patient_data.get("dob")))
-    dnr = medical_data.get("dnr", False)
-    html_parts.append(hp.form_row_html("CODE STATUS", "DNR" if dnr else "FULL CODE"))
-    fc_id = (e_data.get("family_circle_id") or "").strip()
-    dnr_doc = (e_data.get("dnr_document_path") or "").strip()
-    if dnr_doc and care_recipient_user_id and fc_id:
-        doc_url = emergency_svc.get_dnr_document_url(fc_id, care_recipient_user_id)
-        url_esc = html_mod.escape(doc_url, quote=True)
-        html_parts.append(
-            f'<div class="form-row"><div class="label">POLST / DNR DOCUMENT:</div>'
-            f'<div class="value kiosk-body-large"><a href="{url_esc}" target="_blank" rel="noopener">Open document</a></div></div>'
-        )
+    def _initials(name: str) -> str:
+        parts = [p for p in (name or "").split() if p]
+        if not parts:
+            return "?"
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return (parts[0][0] + parts[1][0]).upper()
+
+    patient_name = (patient_data.get("name") or "Patient").strip()
+    dob_text = (patient_data.get("dob") or "").strip()
+    age_text = ""
+    if dob_text:
+        try:
+            born = datetime.strptime(dob_text, "%Y-%m-%d").date()
+            today = datetime.now().date()
+            age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+            age_text = str(max(age, 0))
+        except ValueError:
+            age_text = ""
+    code_status = "DNR" if bool(medical_data.get("dnr", False)) else "FULL CODE"
+    family_circle_name = (patient_data.get("family_circle_name") or e_data.get("family_circle_name") or e_data.get("family_circle_id") or "").strip()
+    updated_text = datetime.now().strftime("Updated %b %d %Y")
+
     allergies = medical_data.get("allergies") or []
-    html_parts.append(
-        hp.form_row_html("ALLERGIES", ", ".join(allergies) if allergies else None)
-    )
-    meds = medical_data.get("medications") or []
-    med_strs = []
-    for m in meds:
-        n = m.get("name") or ""
-        dosage = (m.get("dosage") or "").strip()
-        freq = (m.get("frequency") or "").strip()
-        if dosage or freq:
-            n += " " + " ".join([dosage, freq]).strip()
-        med_strs.append(n)
-    html_parts.append(
-        hp.form_row_html("MEDICATIONS", ", ".join(med_strs) if med_strs else None)
-    )
-    html_parts.append(hp.form_row_html("HEALTH", medical_data.get("conditions")))
+    conditions = medical_data.get("conditions") or []
+    if isinstance(conditions, str):
+        conditions_text = conditions.strip()
+    else:
+        conditions_text = ", ".join([str(c).strip() for c in conditions if str(c).strip()])
+    medications = medical_data.get("medications") or []
+    contacts = e_contacts.get("contacts") or []
 
-    html_parts.append(hp.section_bar_html("EMERGENCY CONTACTS", "#c03333"))
-    for i, c in enumerate(e_contacts.get("contacts", [])):
-        line = f"{c.get('display_name', '')} ({c.get('relationship', '')}): {c.get('phone', '')}".strip()
-        html_parts.append(hp.form_row_html(f"CONTACT {i + 1}", line))
-    proxy = f"{e_contacts.get('medical_proxy_name', '')} {e_contacts.get('medical_proxy_phone', '')}".strip()
-    html_parts.append(hp.form_row_html("MEDICAL PROXY", proxy))
-    poa = f"{e_contacts.get('poa_name', '')} {e_contacts.get('poa_phone', '')}".strip()
-    html_parts.append(hp.form_row_html("POA", poa))
+    sorted_contacts = sorted(
+        contacts,
+        key=lambda c: 0 if str(c.get("emergency_priority") or "").lower() == "primary_emergency" else 1,
+    )
+    call_contact = next(
+        (c for c in sorted_contacts if (c.get("phone") or "").strip()),
+        None,
+    )
+    call_contact_name = (call_contact.get("display_name") if call_contact else "No active call") or "No active call"
+
+    html_parts = []
+    html_parts.append('<div class="emergency-warm-shell">')
+    html_parts.append(
+        '<div class="emergency-warm-top-bar">'
+        '<div class="emergency-warm-title">In Case of Emergency</div>'
+        '<div class="emergency-warm-top-bar-actions">'
+        f'<div class="emergency-warm-updated">{_esc(updated_text)}</div>'
+        '<button type="button" class="emergency-warm-exit-btn" data-screen="home" aria-label="Exit emergency screen">Done</button>'
+        "</div>"
+        "</div>"
+    )
+    html_parts.append('<div class="emergency-warm-scroll">')
+
+    photo_html = (
+        hp.avatar_img(patient_photo_src, patient_name)
+        if patient_photo_src
+        else f'<div class="emergency-warm-photo-initials">{_esc(_initials(patient_name))}</div>'
+    )
+    hero_meta = f"DOB {dob_text}" if dob_text else "DOB unknown"
+    if age_text:
+        hero_meta += f" \u00b7 AGE {age_text}"
+    html_parts.append(
+        '<div class="emergency-warm-hero">'
+        f'<div class="emergency-warm-photo">{photo_html}</div>'
+        '<div class="emergency-warm-hero-details">'
+        f'<div class="emergency-warm-name">{_esc(patient_name)}</div>'
+        '<div class="emergency-warm-chips">'
+        f'<span class="emergency-warm-chip emergency-warm-chip-dob">{_esc(hero_meta)}</span>'
+        f'<span class="emergency-warm-chip emergency-warm-chip-code">{_esc(code_status)}</span>'
+        "</div>"
+        f'<div class="emergency-warm-note">Family Circle: {_esc(family_circle_name or "Unknown")}</div>'
+        "</div>"
+        "</div>"
+    )
+
+    html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Allergies</div>')
+    if allergies:
+        html_parts.append('<div class="emergency-warm-allergies">')
+        for allergy in allergies:
+            html_parts.append(f'<span class="emergency-warm-allergy-pill">{_esc(allergy)}</span>')
+        html_parts.append("</div>")
+    else:
+        html_parts.append('<div class="emergency-warm-empty">No known allergies</div>')
+    html_parts.append("</div>")
+
+    html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Conditions</div>')
+    html_parts.append(
+        '<div class="emergency-warm-info-row">'
+        '<div class="emergency-warm-info-label">Active</div>'
+        f'<div class="emergency-warm-info-value">{_esc(conditions_text or "No active conditions")}</div>'
+        "</div>"
+    )
+    html_parts.append("</div>")
+
+    html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Medications</div>')
+    if medications:
+        for med in medications:
+            med_name = (med.get("name") or "Medication").strip()
+            med_dose = (med.get("dosage") or "").strip()
+            med_freq = (med.get("frequency") or "").strip()
+            med_detail = " ".join([part for part in [med_dose, med_freq] if part]).strip() or med_name
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                f'<div class="emergency-warm-info-label">{_esc(med_name)}</div>'
+                f'<div class="emergency-warm-info-value">{_esc(med_detail)}</div>'
+                "</div>"
+            )
+    else:
+        html_parts.append('<div class="emergency-warm-empty">No medications listed</div>')
+    html_parts.append("</div>")
+
+    html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Emergency Contacts</div>')
+    if sorted_contacts:
+        for c in sorted_contacts:
+            name = (c.get("display_name") or "").strip() or "Unknown"
+            relation = (c.get("relationship") or "").strip() or "No relationship"
+            phone = (c.get("phone") or "").strip()
+            is_primary = str(c.get("emergency_priority") or "").lower() == "primary_emergency"
+            phone_html = (
+                f'<div class="emergency-warm-contact-phone">{_esc(phone)}</div>'
+                if phone
+                else '<div class="emergency-warm-contact-phone emergency-warm-contact-phone-empty">No phone on file</div>'
+            )
+            primary_badge = (
+                '<span class="emergency-warm-primary-badge">Primary</span>' if is_primary else ""
+            )
+            html_parts.append(
+                '<div class="emergency-warm-contact-row">'
+                f'<div class="emergency-warm-contact-avatar">{_esc(_initials(name))}</div>'
+                '<div class="emergency-warm-contact-info">'
+                f'<div class="emergency-warm-contact-name">{_esc(name)} {primary_badge}</div>'
+                f'<div class="emergency-warm-contact-relation">{_esc(relation)}</div>'
+                "</div>"
+                f"{phone_html}"
+                "</div>"
+            )
+    else:
+        html_parts.append('<div class="emergency-warm-empty">No emergency contacts configured</div>')
+    html_parts.append("</div>")
 
     print_js = "pywebview.api.print_emergency()"
-    html_parts.append(hp.kiosk_button("Print Emergency Document", print_js))
+    html_parts.append(
+        '<div class="emergency-warm-print-wrap">'
+        f'{hp.kiosk_button("Print POLST / Emergency Document", print_js, small=True)}'
+        "</div>"
+    )
 
-    return hp.panel("".join(html_parts))
+    html_parts.append("</div>")
+    html_parts.append(
+        '<div class="emergency-warm-call-floater">'
+        '<div class="emergency-warm-call-ring"></div>'
+        '<div class="emergency-warm-call-ring"></div>'
+        '<div class="emergency-warm-call-ring"></div>'
+        '<div class="emergency-warm-call-bubble">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.04 1.22 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>'
+        "</svg>"
+        "</div>"
+        '<div class="emergency-warm-call-label">On Call</div>'
+        f'<div class="emergency-warm-call-name">{_esc(call_contact_name)}</div>'
+        "</div>"
+    )
+    html_parts.append("</div>")
+
+    return hp.panel("".join(html_parts), class_name="emergency-warm-panel")
 
 
 def _parse_lp_job_id(stdout: str) -> str | None:

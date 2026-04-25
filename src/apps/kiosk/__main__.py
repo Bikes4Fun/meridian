@@ -58,7 +58,7 @@ def main() -> None:
     if not api_url:
         raise RuntimeError("MERIDIAN_API_URL is required for kiosk startup")
 
-    logger.info(f"Kiosk API URL: {api_url}")
+    logger.debug("Kiosk API URL: %s", api_url)
     logger.info("Starting Meridian Kiosk (pywebview)...")
     app = create_app(
         api_url=api_url,

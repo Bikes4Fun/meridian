@@ -232,6 +232,38 @@ class FamilyService:
             return r
         return ServiceResult.success_result(bool(r.data))
 
+    def get_kiosk_emergency_alert_activated(
+        self, family_circle_id: str
+    ) -> ServiceResult:
+        """Whether the kiosk emergency screen is activated for this family (DB-backed)."""
+        r = self.db_manager.execute_query(
+            "SELECT activated FROM kiosk_emergency_alerts WHERE family_circle_id = ?",
+            (family_circle_id,),
+        )
+        if not r.success:
+            return r
+        rows = r.data or []
+        if not rows:
+            return ServiceResult.success_result(False)
+        return ServiceResult.success_result(bool(rows[0].get("activated")))
+
+    def set_kiosk_emergency_alert_activated(
+        self, family_circle_id: str, activated: bool
+    ) -> ServiceResult:
+        """Persist kiosk emergency alert; survives multi-worker API processes."""
+        val = 1 if activated else 0
+        r = self.db_manager.execute_update(
+            """
+            INSERT INTO kiosk_emergency_alerts (family_circle_id, activated)
+            VALUES (?, ?)
+            ON CONFLICT(family_circle_id) DO UPDATE SET activated = excluded.activated
+            """,
+            (family_circle_id, val),
+        )
+        if not r.success:
+            return r
+        return ServiceResult.success_result(bool(activated))
+
     def user_has_permission(
         self, user_id: str, family_circle_id: str, permission: str
     ) -> ServiceResult:

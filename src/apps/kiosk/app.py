@@ -279,8 +279,11 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
+        webview_debug = (
+            (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
+        )
         try:
-            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = webview_debug
         except Exception:
             pass
         kiosk_user_agent = (
@@ -292,7 +295,7 @@ class MeridianKioskApp:
                 if gui_pref != "qt":
                     logger.info(f"Kiosk pywebview GUI (non-default): {gui_pref}")
                 webview.start(
-                    debug=False,
+                    debug=webview_debug,
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )

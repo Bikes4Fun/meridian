@@ -20,6 +20,7 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
+      padding-bottom: 76px;
       background: var(--bg);
       color: var(--text);
       font-family: Arial, sans-serif;
@@ -110,15 +111,51 @@
     }
     .fold[open] > summary { border-bottom-color: var(--line); }
     .fold-body { padding: 14px; }
-    .ice-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 252px;
-      gap: 20px;
-      align-items: start;
+    .ice-main { min-width: 0; }
+    .ice-strip-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #faf8f5;
+      padding: 10px 12px;
+      margin-bottom: 12px;
     }
-    @media (max-width: 900px) {
-      .ice-layout { grid-template-columns: 1fr; }
+    .ice-strip-top .completion-brief h3 {
+      margin: 0 0 4px;
+      font-size: 13px;
+      color: var(--title);
     }
+    .ice-strip-top .bar { margin-bottom: 6px; }
+    .ice-strip-top .warn-list { font-size: 12px; margin: 0; }
+    .ice-bar-bottom {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      background: #fff;
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+    }
+    .ice-bar-bottom-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .ice-bar-bottom .quick-complete {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .ice-bar-bottom .ice-bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .identity-bar {
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -166,6 +203,47 @@
       color: var(--text);
       padding: 0;
       max-width: 100%;
+    }
+    .code-readout {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.3;
+      max-width: 42ch;
+    }
+    .code-glance {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+      padding: 8px 10px;
+      background: #f0ebe3;
+      border-radius: 7px;
+      border: 1px solid #e5dcd0;
+      margin: 0 0 10px;
+    }
+    .code-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    @media (min-width: 800px) {
+      .code-grid-3 { grid-template-columns: repeat(3, 1fr); gap: 0 12px; }
+    }
+    .code-cell {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px 10px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    @media (min-width: 800px) {
+      .code-cell { margin-bottom: 0; min-height: 100%; }
+    }
+    .code-cell .value-line {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--title);
+      margin: 0 0 4px;
     }
     .btn {
       display: inline-block;
@@ -348,8 +426,7 @@
     @media (max-width: 640px) {
       .allergy-line { grid-template-columns: 1fr; }
     }
-    .code-row { margin-bottom: 12px; }
-    .code-row:last-child { margin-bottom: 0; }
+    .code-row { margin-bottom: 0; }
     .check-pair {
       display: flex;
       align-items: center;
@@ -357,23 +434,6 @@
       font-size: 12px;
       color: var(--muted);
       margin-top: 6px;
-    }
-    .side {
-      position: sticky;
-      top: 12px;
-    }
-    .side-card {
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--card);
-      padding: 12px 14px;
-      margin-bottom: 10px;
-    }
-    .side-card h3 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--title);
     }
     .completion-line {
       display: flex;
@@ -450,8 +510,7 @@
         <details class="fold" open>
           <summary>POLST &amp; emergency (ICE)</summary>
           <div class="fold-body">
-            <div class="ice-layout">
-              <div>
+            <div class="ice-main">
                 <div class="identity-bar">
                   <div class="avatar" aria-hidden="true">MF</div>
                   <div class="identity-fields">
@@ -465,14 +524,27 @@
                         <input type="text" value="March 14, 1952" readonly>
                       </div>
                       <div>
-                        <label>Code status</label>
-                        <input type="text" value="See Health &amp; medical" readonly>
+                        <label>Code status (current)</label>
+                        <span class="code-readout">DNR: no CPR &middot; DNI: not intubate &middot; Nutrition: as documented</span>
                       </div>
                     </div>
                   </div>
                   <div>
                     <button type="button" class="btn">Edit</button>
                     <div style="margin-top:8px;"><button type="button" class="btn btn-outline" style="width:100%;">Add photo</button></div>
+                  </div>
+                </div>
+
+                <div class="ice-strip-top">
+                  <div class="completion-brief" style="flex:1;min-width:200px;">
+                    <h3>Profile completion</h3>
+                    <div class="completion-line"><span>4 of 7</span><span style="color:var(--muted);font-weight:600;">fields</span></div>
+                    <div class="bar"><div></div></div>
+                    <ul class="warn-list">
+                      <li>Physician POLST file not uploaded</li>
+                      <li>No &ldquo;1st call&rdquo; family contact (non-proxy)</li>
+                      <li>Confirm DNR / DNI vs signed orders</li>
+                    </ul>
                   </div>
                 </div>
 
@@ -540,44 +612,53 @@
                 <details class="section">
                   <summary>
                     <span>Health &amp; medical</span>
-                    <span class="summary-meta">6 meds &middot; code &middot; history</span>
+                    <span class="summary-meta">DNR no CPR &middot; DNI not intubate &middot; 6 meds</span>
                   </summary>
                   <div class="section-body">
 
                     <div class="hm-block">
                       <h3 class="subhead">Code status &amp; life-sustaining goals</h3>
-                      <p class="row-h" style="margin:0 0 8px;font-size:12px;">
-                        <button type="button" class="linkish" style="font-size:12px;">View physician orders in Documents</button>
-                        <button type="button" class="ico-hint" title="If this matches your uploaded POLST/orders, check the box.">i</button>
+                      <p class="code-glance"><strong>Current:</strong> DNR = no CPR &middot; DNI = not desired &middot; Artificial nutrition = as documented.</p>
+                      <p class="row-h" style="margin:0 0 10px;font-size:12px;">
+                        <button type="button" class="linkish" style="font-size:12px;">Open physician orders in Documents</button>
+                        <button type="button" class="ico-hint" title="Link to the uploaded POLST or similar in Documents.">i</button>
                       </p>
-                      <div class="code-row">
-                        <label class="block">DNR (no CPR)</label>
-                        <select class="full">
-                          <option>DNR / no CPR</option>
-                          <option>Full resuscitation</option>
-                          <option>See document</option>
-                        </select>
-                        <label class="check-pair"><input type="checkbox" checked> Matches order on file</label>
+                      <div class="code-grid-3">
+                        <div class="code-cell">
+                          <p class="value-line">Selected: DNR / no CPR</p>
+                          <label class="block">DNR (no CPR)</label>
+                          <select class="full" style="margin-bottom:6px;">
+                            <option>DNR / no CPR</option>
+                            <option>Full resuscitation</option>
+                            <option>See document</option>
+                          </select>
+                        </div>
+                        <div class="code-cell">
+                          <p class="value-line">Selected: Intubation not desired</p>
+                          <label class="block">DNI</label>
+                          <select class="full" style="margin-bottom:6px;">
+                            <option>Intubation not desired</option>
+                            <option>Intubation if indicated</option>
+                            <option>See document</option>
+                          </select>
+                        </div>
+                        <div class="code-cell">
+                          <p class="value-line">Selected: As documented</p>
+                          <label class="block">Artificial nutrition</label>
+                          <select class="full" style="margin-bottom:6px;">
+                            <option>As documented</option>
+                            <option>Comfort / trial as ordered</option>
+                            <option>Not desired</option>
+                            <option>See document</option>
+                          </select>
+                        </div>
                       </div>
-                      <div class="code-row">
-                        <label class="block">DNI</label>
-                        <select class="full">
-                          <option>Intubation not desired</option>
-                          <option>Intubation if indicated</option>
-                          <option>See document</option>
-                        </select>
-                        <label class="check-pair"><input type="checkbox" checked> Matches order on file</label>
-                      </div>
-                      <div class="code-row">
-                        <label class="block">Artificial nutrition</label>
-                        <select class="full">
-                          <option>As documented</option>
-                          <option>Comfort / trial as ordered</option>
-                          <option>Not desired</option>
-                          <option>See document</option>
-                        </select>
-                        <label class="check-pair"><input type="checkbox"> Matches order on file</label>
-                      </div>
+                      <p class="row-h check-pair" style="margin:6px 0 0;padding-top:8px;border-top:1px solid var(--line);">
+                        <span style="font-size:12px;margin-right:6px;">Matches signed order in Documents:</span>
+                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNR</label>
+                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNI</label>
+                        <label class="check-pair" style="margin:0;"><input type="checkbox"> Nutrition</label>
+                      </p>
                     </div>
 
                     <div class="hm-block">
@@ -588,7 +669,7 @@
 
                     <div class="hm-block">
                       <h3 class="subhead">Drug allergies &amp; reactions</h3>
-                      <p class="tiny" style="margin-top:0;">List each substance separately when you can. <button type="button" class="ico-hint" title="Include reaction, how severe, and about when it started.">i</button></p>
+                      <p class="tiny" style="margin-top:0;">One row per substance. <button type="button" class="ico-hint" title="Reaction, severity, when it started.">i</button></p>
                       <div class="allergy-line">
                         <div>
                           <label class="block">Substance / drug</label>
@@ -686,29 +767,21 @@
                     <textarea class="full" placeholder="Short notes for EMS or family"></textarea>
                   </div>
                 </details>
-              </div>
-
-              <aside class="side">
-                <div class="side-card">
-                  <h3>Profile completion</h3>
-                  <div class="completion-line"><span>4 of 7</span><span style="color:var(--muted);font-weight:600;">fields</span></div>
-                  <div class="bar"><div></div></div>
-                  <ul class="warn-list">
-                    <li>Physician POLST file not uploaded</li>
-                    <li>No &ldquo;1st call&rdquo; family contact (non-proxy)</li>
-                    <li>Code status: confirm DNR / DNI vs orders</li>
-                  </ul>
-                </div>
-                <div class="side-card">
-                  <button type="button" class="btn btn-primary" style="width:100%;margin-bottom:8px;">Save profile</button>
-                  <button type="button" class="btn btn-outline" style="width:100%;">Download emergency PDF</button>
-                </div>
-              </aside>
             </div>
 
             <p class="mock-note">Dev-only note (not product copy): v1 on v2 shell, compact rows, i = extra help on hover.</p>
           </div>
         </details>
+      </div>
+    </div>
+
+    <div class="ice-bar-bottom" role="region" aria-label="Save ICE profile">
+      <div class="ice-bar-bottom-inner">
+        <span class="quick-complete">4 of 7 complete</span>
+        <div class="ice-bar-actions">
+          <button type="button" class="btn btn-primary">Save profile</button>
+          <button type="button" class="btn btn-outline">Download emergency PDF</button>
+        </div>
       </div>
     </div>
   </div>

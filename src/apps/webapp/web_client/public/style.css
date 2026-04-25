@@ -6,7 +6,8 @@
     --web-surface: var(--warm-cream);
     --web-body: var(--warm-text);
     --web-title: var(--warm-text);
-    --web-muted: var(--warm-muted);
+    /* Slightly darker than --warm-muted for secondary text contrast on warm surfaces */
+    --web-muted: #524a44;
     --web-border-strong: var(--warm-border-strong);
 }
 
@@ -2225,6 +2226,15 @@ html.info-embed body.info-doc-body .doc-section {
 }
 
 /* ICE / emergency profile editor (standalone page) */
+body.ice-editor-page {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--web-page-bg);
+    color: var(--web-body);
+    font-family: var(--font-family);
+    font-size: 16px;
+    line-height: var(--line-height);
+}
 .ice-editor-page {
     padding: var(--space-md);
     max-width: 40rem;

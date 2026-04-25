@@ -218,7 +218,7 @@
     }
 
     function renderIceCompleteness(data) {
-        var host = document.getElementById('iceCompleteness');
+        var host = document.getElementById('healthIceCompleteness') || document.getElementById('iceCompleteness');
         if (!host) return;
         var model = iceCompletenessModel(data);
         var done = model.done || 0;
@@ -587,6 +587,9 @@
                         var data = body && body.data ? body.data : null;
                         if (data) applyProfile(data);
                         showIceStatus('Profile saved.', 'success');
+                        if (typeof window.meridianRefreshHealthIceCompleteness === 'function') {
+                            window.meridianRefreshHealthIceCompleteness();
+                        }
                     })
                     .catch(function (err) {
                         showIceStatus(err.message || 'Save failed', 'error');

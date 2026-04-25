@@ -94,6 +94,10 @@
             });
     }
 
+    if (typeof window !== 'undefined') {
+        window.meridianRefreshHealthIceCompleteness = loadHealthIceCompleteness;
+    }
+
     function init() {
         if (document.getElementById('loginForm')) {
             initLogin();

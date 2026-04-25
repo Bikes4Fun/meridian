@@ -223,8 +223,8 @@
       transform: rotate(180deg);
     }
     .completion-pop-body {
-      margin-top: 8px;
-      padding: 10px 12px;
+      margin-top: 6px;
+      padding: 8px 10px 9px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fff;
@@ -235,25 +235,31 @@
     }
     .completion-pop-body .bar--slim {
       height: 4px;
-      margin: 0 0 8px;
-    }
-    .completion-pop-body .completion-ok {
       margin: 0 0 6px;
-      color: var(--text);
-      line-height: 1.45;
     }
-    .completion-pop-body .completion-miss-h {
-      margin: 0 0 4px;
+    .completion-pop-body .completion-sec {
+      margin: 0 0 6px;
+    }
+    .completion-pop-body .completion-sec:last-of-type { margin-bottom: 0; }
+    .completion-pop-body .completion-sec-h {
+      margin: 0 0 3px;
+      font-size: 11px;
       font-weight: 700;
-      font-size: 12px;
-      color: var(--title);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
     }
-    .completion-pop-body .warn-list {
+    .completion-pop-body .list-tight {
       margin: 0;
-      padding-left: 18px;
+      padding-left: 1.1em;
       font-size: 12px;
+      line-height: 1.35;
+      color: var(--text);
+    }
+    .completion-pop-body .list-tight li { margin: 0 0 2px; }
+    .completion-pop-body .list-tight li:last-child { margin-bottom: 0; }
+    .completion-pop-body .list-tight--miss {
       color: #6b5340;
-      line-height: 1.45;
     }
     .identity-bar {
       border: 1px solid var(--line);
@@ -873,13 +879,22 @@
                   </summary>
                   <div class="completion-pop-body">
                     <div class="bar bar--slim"><div></div></div>
-                    <p class="completion-ok"><strong>Complete (mock):</strong> Name and date of birth on file, optional photo placeholder set, a health care POA document uploaded, and the three code-status fields in Health &amp; medical filled in (DNR, DNI, artificial nutrition) so the identity strip and PDF can show a consistent story.</p>
-                    <p class="completion-miss-h">Still needed</p>
-                    <ul class="warn-list">
-                      <li>Upload a signed physician POLST (or hospital orders) that covers CPR, intubation, and artificial nutrition&mdash;so the &ldquo;Matches signed order&rdquo; checkboxes can be verified.</li>
-                      <li>Add at least one non-proxy emergency contact with &ldquo;1st call&rdquo; level so a family member&mdash;not just the assigned POA&mdash;is on the sheet.</li>
-                      <li>Reconcile the DNR, DNI, and nutrition checkboxes with the most recent on-file order; the nutrition line is still unchecked in this example.</li>
-                    </ul>
+                    <div class="completion-sec">
+                      <p class="completion-sec-h">In place (mock)</p>
+                      <ul class="list-tight">
+                        <li>Name, DOB, code status (identity strip)</li>
+                        <li>Code goals in Health &amp; medical: DNR, DNI, nutrition</li>
+                        <li>POA file under Documents</li>
+                      </ul>
+                    </div>
+                    <div class="completion-sec">
+                      <p class="completion-sec-h">Still to do</p>
+                      <ul class="list-tight list-tight--miss">
+                        <li>Upload POLST/orders (for &ldquo;matches order&rdquo; checkboxes)</li>
+                        <li>Add 1st-call family contact (not only the POA)</li>
+                        <li>Check nutrition line vs. latest order (unchecked here)</li>
+                      </ul>
+                    </div>
                   </div>
                 </details>
                 <div class="ice-bar-actions">

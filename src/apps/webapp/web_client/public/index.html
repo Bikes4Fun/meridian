@@ -74,65 +74,86 @@
                             <p class="muted page-lead page-lead--tight">Edit the care recipient emergency profile here; it syncs to the kiosk Emergency screen.</p>
                             <div id="iceBanner" class="ice-banner" hidden></div>
                             <div id="iceStatus" class="ice-status"></div>
-                            <form id="iceForm">
+                            <form id="iceForm" class="ice-form-vnext">
                                 <input type="hidden" id="iceCareRecipientId" name="iceCareRecipientId" value="">
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">Identity</h3>
-                                    <p class="ice-hint">Legal name and date of birth appear on the emergency document.</p>
-                                    <p><label for="iceName">Legal name</label><br><input type="text" id="iceName" class="event-input" autocomplete="name"></p>
-                                    <p><label for="iceDob">Date of birth</label><br><input type="date" id="iceDob" class="event-input"></p>
-                                    <div class="ice-toggle"><input type="checkbox" id="iceDnr"><label for="iceDnr">DNR / no CPR (POLST reflects this choice)</label></div>
-                                </div>
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">Photo</h3>
-                                    <p><input type="file" id="icePhoto" accept="image/*"></p>
-                                    <p id="icePhotoName" class="ice-file-name muted"></p>
-                                    <div class="ice-preview-wrap"><img id="icePhotoPreview" class="ice-photo-preview" alt="Care recipient photo preview" hidden></div>
-                                    <p><button type="button" id="icePhotoUploadBtn" class="btn-health-secondary" disabled>Upload photo</button></p>
-                                </div>
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">DNR / POLST file</h3>
-                                    <p><input type="file" id="iceDnrDoc" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*"></p>
-                                    <p id="iceDnrDocName" class="ice-file-name muted"></p>
-                                    <p><button type="button" id="iceDnrUploadBtn" class="btn-health-secondary" disabled>Upload document</button></p>
-                                    <p><a id="iceDnrDocLink" class="app-link" href="#" hidden>View uploaded document</a></p>
-                                </div>
-                                <div class="ice-section ice-section--readonly">
-                                    <h3 class="page-section-title page-section-title--minor">Conditions &amp; allergies</h3>
-                                    <p class="ice-hint">From the medical record; edit medications below.</p>
-                                    <div class="ice-readonly-block"><div class="ice-readonly-title">Conditions</div><p id="iceConditions" class="ice-readonly-text">—</p></div>
-                                    <div class="ice-readonly-block"><div class="ice-readonly-title">Allergies</div><ul id="iceAllergies" class="ice-readonly-list"></ul></div>
-                                </div>
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">Medications (ICE list)</h3>
-                                    <div class="ice-med-toolbar-top">
-                                        <label class="ice-med-autosave-label"><input type="checkbox" id="iceMedsAutoSave" class="ice-med-autosave-cb"> Autosave medication edits</label>
-                                        <button type="button" id="iceMedsSelectAllBtn" class="btn-health-secondary ice-med-select-all-btn">Select all</button>
-                                        <button type="button" id="iceMedsDeleteSelectedBtn" class="btn-health-secondary ice-med-delete-selected-btn">Delete selected</button>
-                                        <button type="button" id="iceAddMedBtn" class="btn-health-secondary ice-add-med-btn">Add medication</button>
+                                <div class="ice-vnext-identity">
+                                    <div>
+                                        <h3 class="page-section-title page-section-title--minor">Identity</h3>
+                                        <p><label for="iceName">Legal name</label><br><input type="text" id="iceName" class="event-input" autocomplete="name"></p>
+                                        <p><label for="iceDob">Date of birth</label><br><input type="date" id="iceDob" class="event-input"></p>
+                                        <div class="ice-toggle"><input type="checkbox" id="iceDnr"><label for="iceDnr">DNR / no CPR</label></div>
                                     </div>
-                                    <div id="iceMedications" class="ice-medications-editor"></div>
+                                    <div class="ice-vnext-photo">
+                                        <h3 class="page-section-title page-section-title--minor">Photo</h3>
+                                        <p><input type="file" id="icePhoto" accept="image/*"></p>
+                                        <p id="icePhotoName" class="ice-file-name muted"></p>
+                                        <div class="ice-preview-wrap"><img id="icePhotoPreview" class="ice-photo-preview" alt="Care recipient photo preview" hidden></div>
+                                        <p><button type="button" id="icePhotoUploadBtn" class="btn-health-secondary" disabled>Upload photo</button></p>
+                                    </div>
                                 </div>
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">Medical decision-makers</h3>
-                                    <p><label for="iceProxyName">Medical proxy name</label><br><input type="text" id="iceProxyName" class="event-input"></p>
-                                    <p><label for="iceProxyPhone">Medical proxy phone</label><br><input type="tel" id="iceProxyPhone" class="event-input" autocomplete="tel"></p>
-                                    <p><label for="icePoaName">Power of attorney name</label><br><input type="text" id="icePoaName" class="event-input"></p>
-                                    <p><label for="icePoaPhone">Power of attorney phone</label><br><input type="tel" id="icePoaPhone" class="event-input" autocomplete="tel"></p>
-                                </div>
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">Emergency contacts</h3>
-                                    <p class="ice-hint">Primary appears first on the kiosk. Use <strong>Save profile</strong> to persist.</p>
-                                    <div id="iceEmergencyContacts" class="ice-emergency-contacts"></div>
-                                    <p><button type="button" id="iceAddEmergencyContactBtn" class="btn-health-secondary ice-add-ec-btn">Add emergency contact</button></p>
-                                </div>
-                                <div class="ice-section">
-                                    <h3 class="page-section-title page-section-title--minor">Notes for responders</h3>
-                                    <textarea id="iceNotes" class="ice-textarea" rows="3" placeholder="Other critical context"></textarea>
-                                </div>
-                                <div class="ice-section ice-form-actions">
-                                    <p><a id="icePdfLink" class="btn-add" href="#" target="_blank" rel="noopener">Download emergency PDF</a></p>
-                                    <p><button type="submit" id="iceSaveBtn" class="ice-med-save-btn">Save profile</button></p>
+
+                                <details class="ice-vnext-section" open>
+                                    <summary>Documents</summary>
+                                    <div class="ice-vnext-body">
+                                        <p class="ice-hint">One row per file. Use Other for custom names.</p>
+                                        <h3 class="page-section-title page-section-title--minor">POLST / orders</h3>
+                                        <p><input type="file" id="iceDnrDoc" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*"></p>
+                                        <p id="iceDnrDocName" class="ice-file-name muted"></p>
+                                        <p><button type="button" id="iceDnrUploadBtn" class="btn-health-secondary" disabled>Upload document</button></p>
+                                        <p><a id="iceDnrDocLink" class="app-link" href="#" hidden>View uploaded document</a></p>
+                                    </div>
+                                </details>
+
+                                <details class="ice-vnext-section" open>
+                                    <summary>Health &amp; medical</summary>
+                                    <div class="ice-vnext-body">
+                                        <div class="ice-section">
+                                            <h3 class="page-section-title page-section-title--minor">Conditions &amp; allergies</h3>
+                                            <p class="ice-hint">Conditions/allergies are read-only from the medical record in the current build.</p>
+                                            <div class="ice-readonly-block"><div class="ice-readonly-title">Conditions</div><p id="iceConditions" class="ice-readonly-text">—</p></div>
+                                            <div class="ice-readonly-block"><div class="ice-readonly-title">Allergies</div><ul id="iceAllergies" class="ice-readonly-list"></ul></div>
+                                        </div>
+                                        <div class="ice-section">
+                                            <h3 class="page-section-title page-section-title--minor">Medications</h3>
+                                            <div class="ice-med-toolbar-top">
+                                                <label class="ice-med-autosave-label"><input type="checkbox" id="iceMedsAutoSave" class="ice-med-autosave-cb"> Autosave medication edits</label>
+                                                <button type="button" id="iceMedsSelectAllBtn" class="btn-health-secondary ice-med-select-all-btn">Select all</button>
+                                                <button type="button" id="iceMedsDeleteSelectedBtn" class="btn-health-secondary ice-med-delete-selected-btn">Delete selected</button>
+                                                <button type="button" id="iceAddMedBtn" class="btn-health-secondary ice-add-med-btn">Add medication</button>
+                                            </div>
+                                            <div id="iceMedications" class="ice-medications-editor"></div>
+                                        </div>
+                                    </div>
+                                </details>
+
+                                <details class="ice-vnext-section" open>
+                                    <summary>Emergency contacts</summary>
+                                    <div class="ice-vnext-body">
+                                        <div class="ice-section">
+                                            <h3 class="page-section-title page-section-title--minor">Decision-makers</h3>
+                                            <p><label for="iceProxyName">Medical proxy name</label><br><input type="text" id="iceProxyName" class="event-input"></p>
+                                            <p><label for="iceProxyPhone">Medical proxy phone</label><br><input type="tel" id="iceProxyPhone" class="event-input" autocomplete="tel"></p>
+                                            <p><label for="icePoaName">Power of attorney name</label><br><input type="text" id="icePoaName" class="event-input"></p>
+                                            <p><label for="icePoaPhone">Power of attorney phone</label><br><input type="tel" id="icePoaPhone" class="event-input" autocomplete="tel"></p>
+                                        </div>
+                                        <div class="ice-section">
+                                            <h3 class="page-section-title page-section-title--minor">Contacts</h3>
+                                            <div id="iceEmergencyContacts" class="ice-emergency-contacts"></div>
+                                            <p><button type="button" id="iceAddEmergencyContactBtn" class="btn-health-secondary ice-add-ec-btn">Add emergency contact</button></p>
+                                        </div>
+                                    </div>
+                                </details>
+
+                                <details class="ice-vnext-section">
+                                    <summary>Notes for responders</summary>
+                                    <div class="ice-vnext-body">
+                                        <textarea id="iceNotes" class="ice-textarea" rows="3" placeholder="Other critical context"></textarea>
+                                    </div>
+                                </details>
+
+                                <div class="ice-vnext-actions">
+                                    <a id="icePdfLink" class="btn-add" href="#" target="_blank" rel="noopener">Download emergency PDF</a>
+                                    <button type="submit" id="iceSaveBtn" class="ice-med-save-btn">Save profile</button>
                                 </div>
                             </form>
                         </div>

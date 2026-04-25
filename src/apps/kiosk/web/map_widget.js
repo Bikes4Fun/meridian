@@ -29,6 +29,55 @@ function getInitials(name) {
   return (name[0] || '?').toUpperCase();
 }
 
+/**
+ * @param {boolean} [forPopup] if true, add .map-cluster-popup-avatar (Leaflet popup list only).
+ */
+function mapClusterAvatarCellHtml(m, forPopup) {
+  var pCls = forPopup ? ' map-cluster-popup-avatar' : '';
+  if (m && m.photo_src) {
+    return (
+      '<div class="map-cluster-avatar' +
+      pCls +
+      '"><img src="' +
+      m.photo_src.replace(/"/g, '&quot;') +
+      '" alt=""/></div>'
+    );
+  }
+  var n = m ? m.name : '';
+  if (m && m.is_patient) n = 'You';
+  return (
+    '<div class="map-cluster-avatar map-cluster-avatar-initials' +
+    pCls +
+    '">' +
+    escapeHtml(getInitials(n || '?')) +
+    '</div>'
+  );
+}
+
+/** List row: avatar + name (+ optional subline for patient home); opens family detail when detail_key set. */
+function mapClusterPopupItemHtml(m) {
+  var name = m && m.is_patient ? 'You' : (m && m.name) || '';
+  var nameHtml = '<div class="map-cluster-popup-name-text">' + escapeHtml(name) + '</div>';
+  var dk = m && m.detail_key != null && String(m.detail_key).length ? m.detail_key : '';
+  var rowInner =
+    mapClusterAvatarCellHtml(m, true) +
+    '<div class="map-cluster-popup-text-wrap">' +
+    nameHtml +
+    '</div>';
+  if (dk) {
+    return (
+      '<div class="map-cluster-popup-item map-cluster-popup-item--action" data-detail-key-enc="' +
+      encodeURIComponent(dk) +
+      '" role="button" tabindex="0"><div class="map-cluster-popup-item-inner">' +
+      rowInner +
+      '</div></div>'
+    );
+  }
+  return (
+    '<div class="map-cluster-popup-item"><div class="map-cluster-popup-item-inner">' + rowInner + '</div></div>'
+  );
+}
+
 // -----------------------------------------------------------------------------
 // MARKERS: MarkerCreator and ClusterCreator classes (used repeatedly)
 // -----------------------------------------------------------------------------
@@ -97,24 +146,26 @@ class MarkerCreator {
 
   buildPopup(m) {
     if (m.is_patient) {
-      return '<strong>You are home at ' + escapeHtml(m.home_place_name || 'Home') + '</strong>';
+      var ph = '<div class="map-popup-patient-below">';
+      if (m.home_place_name) {
+        ph += '<div class="map-popup-place">' + escapeHtml(m.home_place_name) + '</div>';
+      }
+      ph += '<div class="map-cluster-popup-list">' + mapClusterPopupItemHtml(m) + '</div></div>';
+      return ph;
     }
-    var html = '';
+    var h = '';
     if (m.location_name) {
-      html += '<div class="map-popup-place">' + escapeHtml(m.location_name) + '</div>';
+      h += '<div class="map-popup-place">' + escapeHtml(m.location_name) + '</div>';
     }
-    html += '<div class="map-popup-name">' + escapeHtml(m.name || '') + '</div>';
-    return html;
+    h += '<div class="map-cluster-popup-list map-popup-single-below">' + mapClusterPopupItemHtml(m) + '</div>';
+    return h;
   }
 }
 
 /** Creates cluster markers for multiple people at same location. Used repeatedly per cluster. */
 class ClusterCreator {
   _avatarHtml(m) {
-    if (m.photo_src) {
-      return '<div class="map-cluster-avatar"><img src="' + m.photo_src.replace(/"/g, '&quot;') + '" alt=""/></div>';
-    }
-    return '<div class="map-cluster-avatar map-cluster-avatar-initials">' + escapeHtml(getInitials(m.name || (m.is_patient ? 'You' : '?'))) + '</div>';
+    return mapClusterAvatarCellHtml(m, false);
   }
 
   _calloutHtml(group) {
@@ -153,8 +204,7 @@ class ClusterCreator {
     var html = loc ? '<div class="map-popup-place">' + escapeHtml(loc) + '</div>' : '';
     html += '<div class="map-cluster-popup-list">';
     group.forEach(function(m) {
-      var name = m.is_patient ? 'You' : (m.name || '');
-      html += '<div class="map-cluster-popup-item">' + escapeHtml(name) + '</div>';
+      html += mapClusterPopupItemHtml(m);
     });
     html += '</div>';
     return html;
@@ -176,6 +226,11 @@ function buildMarkerLayer(markers, useClusters) {
       toAdd.forEach(function(m) {
         var marker = markerCreator.create(m);
         marker.bindPopup(markerCreator.buildPopup(m)).addTo(layer);
+        if (m.detail_key && typeof window.meridianOpenFamilyMemberDetail === 'function') {
+          marker.on('click', function() {
+            window.meridianOpenFamilyMemberDetail(m.detail_key);
+          });
+        }
       });
     }
   });
@@ -185,6 +240,35 @@ function buildMarkerLayer(markers, useClusters) {
 // -----------------------------------------------------------------------------
 // MAP: container setup, tiles, places, and marker placement
 // -----------------------------------------------------------------------------
+
+/** Family screen: pan map so geographic center sits at viewport center of the band above the open panel (no zoom change). */
+function applyKioskFamilyMapViewOffset(map) {
+  try {
+    if (typeof document === 'undefined' || !document.body) return;
+    if (document.body.dataset.screen !== 'family') return;
+    var panel = document.querySelector('.family-locations-layout .family-panel');
+    var container = map.getContainer();
+    if (!panel || !container) return;
+    var mapSize = map.getSize();
+    if (!mapSize || mapSize.x < 80 || mapSize.y < 80) return;
+    var mapRect = container.getBoundingClientRect();
+    var wasMin = panel.classList.contains('family-panel--minimized');
+    if (wasMin) panel.classList.remove('family-panel--minimized');
+    void panel.offsetHeight;
+    var panelRect = panel.getBoundingClientRect();
+    if (wasMin) panel.classList.add('family-panel--minimized');
+    var panelTopRel = panelRect.top - mapRect.top;
+    if (panelTopRel < 24 || panelTopRel > mapSize.y - 8) return;
+    var cx = mapSize.x / 2;
+    var cy = panelTopRel / 2;
+    var ll = map.getCenter();
+    var cur = map.latLngToContainerPoint(ll);
+    var dx = cx - cur.x;
+    var dy = cy - cur.y;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+    map.panBy(L.point(dx, dy), { animate: false });
+  } catch (e) {}
+}
 
 function drawPlaceCircles(map, places) {
   places.forEach(function(p) {
@@ -207,6 +291,7 @@ function initMap(markersJson, placesJson) {
       if (window._meridianMap) {
         try { window._meridianMap.remove(); } catch (e) {}
         window._meridianMap = null;
+        window._familyMap = null;
       }
       var mapEl = document.getElementById('map');
       if (!mapEl) return;
@@ -218,7 +303,10 @@ function initMap(markersJson, placesJson) {
       var places = placesJson ? JSON.parse(placesJson) : [];
       var center, zoom = 11;
       if (markers.length > 0) {
-        center = [markers[0].lat, markers[0].lon];
+        var latlngs = markers.map(function(m) {
+          return [m.lat, m.lon];
+        });
+        center = L.latLngBounds(latlngs).getCenter();
       } else if (places.length > 0 && places[0].gps_latitude != null && places[0].gps_longitude != null) {
         center = [places[0].gps_latitude, places[0].gps_longitude];
       } else {
@@ -228,6 +316,7 @@ function initMap(markersJson, placesJson) {
 
       var map = L.map('map').setView(center, zoom);
       window._meridianMap = map;
+      window._familyMap = map;
       var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
       var isHttpOrigin = origin && /^https?:\/\//i.test(origin);
       var osmRemote = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -251,6 +340,9 @@ function initMap(markersJson, placesJson) {
       placeMarkers();
       if (markers.length > 0) map.on('zoomend', placeMarkers);
       map.invalidateSize();
+      requestAnimationFrame(function() {
+        map.invalidateSize();
+      });
     } catch (e) {
       var mapEl = document.getElementById('map');
       if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';

@@ -32,22 +32,27 @@ class ChatHandler:
             return "Voice calling unavailable (server 503)."
         return cleaned or "call failed"
 
-    def call_phone(self, phone: str, display_name: str = "") -> str:
-        """Trigger a voice call for this contact via server Twilio route."""
+    def get_voice_token(self) -> dict:
+        """Get Twilio access token for kiosk browser SDK via bridge (no direct kiosk.js fetch)."""
         voice_svc = self._app.services.get_voice_service()
         if not voice_svc:
-            return "voice service unavailable"
-        r = voice_svc.place_call(phone)
-        if r.success:
-            who = (display_name or phone or "contact").strip()
-            return f"Calling {who}"
-        err = (r.error or "").strip()
-        logger.warning(f"Voice call failed for {phone}: {err or 'unknown error'}")
-        return self._clean_call_error(err)
+            return {"error": "voice service unavailable"}
+        r = voice_svc.get_voice_token()
+        if not r.success:
+            return {"error": self._clean_call_error(r.error or "voice token request failed")}
+        if isinstance(r.data, dict):
+            return r.data
+        return {"error": "invalid voice token response"}
 
 
 def contact_tile(
-    avatar_src, name, onclick_js=None, relationship="", data_contact_id="", data_name=""
+    avatar_src,
+    name,
+    onclick_js=None,
+    relationship="",
+    data_contact_id="",
+    data_name="",
+    show_name=True,
 ):
     """Person/contact card. avatar_src = data URI from fetch_photo_b64."""
     initial = (name or "?")[0].upper()
@@ -59,6 +64,7 @@ def contact_tile(
         else ""
     )
     avatar_block = f'<div class="avatar-wrapper"><div class="contact-initial">{html.escape(initial)}</div>{img_tag}</div>'
+    name_part = f'<div class="contact-name">{name_escaped}</div>' if show_name else ""
     if data_contact_id or data_name:
         cid = (
             f' data-contact-id="{html.escape(str(data_contact_id))}"'
@@ -66,8 +72,8 @@ def contact_tile(
             else ""
         )
         nm = f' data-name="{html.escape(str(data_name))}"' if data_name else ""
-        return f'<div class="contact-tile" role="button"{cid}{nm}>{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'
-    return f'<div class="contact-tile" onclick="{onclick_js}">{avatar_block}<div class="contact-name">{name_escaped}</div>{rel_part}</div>'
+        return f'<div class="contact-tile" role="button"{cid}{nm}>{avatar_block}{name_part}{rel_part}</div>'
+    return f'<div class="contact-tile" onclick="{onclick_js}">{avatar_block}{name_part}{rel_part}</div>'
 
 
 def contact_widget(c, contact_svc, hp) -> str:

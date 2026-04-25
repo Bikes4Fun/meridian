@@ -37,9 +37,142 @@ function bindScreenNav(container) {
 bindScreenNav(document.getElementById('kiosk-nav'));
 bindScreenNav(document.getElementById('kiosk-footer'));
 
+function updateViewportDebugBadge() {
+  var el = document.getElementById('kiosk-debug-viewport');
+  if (!el) return;
+  var w = window.innerWidth || 0;
+  var h = window.innerHeight || 0;
+  var ratio = h ? (w / h) : 0;
+  el.textContent = 'Debug ' + w + 'x' + h + ' \u2022 AR ' + ratio.toFixed(3);
+}
+updateViewportDebugBadge();
+window.addEventListener('resize', updateViewportDebugBadge);
+window.addEventListener('orientationchange', updateViewportDebugBadge);
+
+window._familyListHtmlBackup = '';
+
+function meridianEscapeAttr(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+function meridianEscapeHtmlText(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function meridianFamilyInitials(name) {
+  var n = (name || '').trim();
+  if (!n) return '?';
+  var parts = n.split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return (n[0] || '?').toUpperCase();
+}
+
+window.meridianOpenFamilyMemberDetail = function(detailKey) {
+  if (!detailKey) return;
+  var body = document.getElementById('family-panel-body');
+  if (!body) return;
+  if (!window._familyListHtmlBackup) window._familyListHtmlBackup = body.innerHTML;
+  var script = document.getElementById('family-member-details');
+  if (!script || !script.textContent) return;
+  var map;
+  try {
+    map = JSON.parse(script.textContent);
+  } catch (err) {
+    return;
+  }
+  var d = map[detailKey];
+  if (!d) return;
+  var tpl = document.getElementById('family-call-btn-svg');
+  var svgInner = tpl ? tpl.innerHTML : '';
+  var name = d.display_name || '';
+  var phone = d.phone || '';
+  var rel = d.relationship || '';
+  var loc = d.location || '';
+  var last = d.last_seen || '';
+  var disabled = phone ? '' : ' disabled aria-disabled="true"';
+  var photo = d.photo_src || '';
+  var avHtml;
+  if (photo) {
+    avHtml =
+      '<div class="family-member-detail-avatar">' +
+      '<img src="' +
+      meridianEscapeAttr(photo) +
+      '" alt="' +
+      meridianEscapeAttr(name) +
+      '"/>' +
+      '</div>';
+  } else {
+    avHtml =
+      '<div class="family-member-detail-avatar family-member-detail-avatar--initial" aria-hidden="true">' +
+      meridianEscapeHtmlText(meridianFamilyInitials(name)) +
+      '</div>';
+  }
+  var relHtml = rel
+    ? '<div class="family-member-detail-rel">' + meridianEscapeHtmlText(rel) + '</div>'
+    : '';
+  var lastHtml = last
+    ? '<div class="family-member-detail-last">' + meridianEscapeHtmlText(last) + '</div>'
+    : '';
+  var callBtn =
+    '<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="' +
+    meridianEscapeAttr(phone) +
+    '" data-name="' +
+    meridianEscapeAttr(name) +
+    '" aria-label="Call ' +
+    meridianEscapeAttr(name) +
+    '"' +
+    disabled +
+    '>' +
+    svgInner +
+    '</button>';
+  body.innerHTML =
+    '<div class="family-member-detail">' +
+    '<div class="family-member-detail-header">' +
+    '<button type="button" class="family-member-detail-close" aria-label="Back to family list">' +
+    '\u00d7' +
+    '</button>' +
+    '</div>' +
+    '<div class="family-member-detail-scroll">' +
+    '<div class="family-member-detail-top">' +
+    avHtml +
+    '<div class="family-member-detail-text">' +
+    '<div class="family-member-detail-name">' +
+    meridianEscapeHtmlText(name) +
+    '</div>' +
+    relHtml +
+    '<div class="family-member-detail-loc">' +
+    meridianEscapeHtmlText(loc) +
+    '</div>' +
+    lastHtml +
+    '</div>' +
+    '</div>' +
+    '<div class="family-member-detail-actions">' +
+    callBtn +
+    '</div>' +
+    '</div>' +
+    '</div>';
+};
+
+window.meridianCloseFamilyMemberDetail = function() {
+  var body = document.getElementById('family-panel-body');
+  if (!body || !window._familyListHtmlBackup) return;
+  body.innerHTML = window._familyListHtmlBackup;
+};
+
 // Calendar modal: open/prefill in JS; Python bridge only submits/deletes (see app.py).
 window.meridianKioskEvents = {
   openAddModal: function() {
+    var addTrigger = document.getElementById('addEventBtn');
+    if (addTrigger && (addTrigger.disabled || addTrigger.classList.contains('add-event-btn--disabled'))) {
+      return;
+    }
     var idEl = document.getElementById('eventEditingId');
     if (idEl) idEl.value = '';
     var tt = document.getElementById('eventFormTitle');
@@ -109,6 +242,55 @@ window.meridianKioskEvents = {
   }
 };
 
+window.meridianKioskScheduleWeek = {
+  step: function (deltaWeeks) {
+    var strip = document.getElementById('kioskScheduleWeekStrip');
+    if (!strip || typeof deltaWeeks !== 'number' || deltaWeeks === 0) return;
+    var ws = strip.getAttribute('data-week-start');
+    if (!ws) return;
+    var p = ws.split('-');
+    var y = parseInt(p[0], 10);
+    var mo = parseInt(p[1], 10) - 1;
+    var da = parseInt(p[2], 10);
+    if (isNaN(y) || isNaN(mo) || isNaN(da)) return;
+    var base = new Date(y, mo, da);
+    base.setDate(base.getDate() + deltaWeeks * 7);
+    var ny = base.getFullYear();
+    var nmo = String(base.getMonth() + 1).padStart(2, '0');
+    var nda = String(base.getDate()).padStart(2, '0');
+    var newStart = ny + '-' + nmo + '-' + nda;
+    strip.setAttribute('data-week-start', newStart);
+    strip.innerHTML = window.meridianKioskScheduleWeek._buildCells(newStart);
+  },
+  _buildCells: function (weekStartYmd) {
+    var letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    var p = weekStartYmd.split('-');
+    var y = parseInt(p[0], 10);
+    var mo = parseInt(p[1], 10) - 1;
+    var da = parseInt(p[2], 10);
+    var base = new Date(y, mo, da);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var parts = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      var letter = letters[i];
+      var dayNum = String(d.getDate());
+      var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var isToday = d.getTime() === today.getTime();
+      var cls = 'kiosk-schedule-day-stub' + (isToday ? ' kiosk-schedule-day-stub--today' : '');
+      parts.push(
+        '<div class="' + cls + '" title="Coming soon" data-stub-date="' + iso + '">' +
+          '<span class="kiosk-schedule-day-stub__letter">' + letter + '</span>' +
+          '<span class="kiosk-schedule-day-stub__circle">' + dayNum + '</span>' +
+        '</div>'
+      );
+    }
+    return parts.join('');
+  }
+};
+
 // Cancel button: event-modal div has stopPropagation() so clicks inside the modal
 // never bubble up to screen-content. Capture phase runs first.
 function handleModalCancel(e) {
@@ -150,8 +332,19 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     }
   }
   var addBtn = e.target.closest('#addEventBtn');
-  if (addBtn && window.meridianKioskEvents && typeof window.meridianKioskEvents.openAddModal === 'function') {
+  if (addBtn && !addBtn.disabled && window.meridianKioskEvents && typeof window.meridianKioskEvents.openAddModal === 'function') {
     window.meridianKioskEvents.openAddModal();
+    return;
+  }
+  var familyHead = e.target.closest('.family-panel-head');
+  if (familyHead) {
+    var famPanel = familyHead.closest('.family-panel');
+    if (famPanel) {
+      e.preventDefault();
+      famPanel.classList.toggle('family-panel--minimized');
+      var collapsed = famPanel.classList.contains('family-panel--minimized');
+      familyHead.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
     return;
   }
   var medTakenBtn = e.target.closest('.med-taken-btn');
@@ -213,13 +406,19 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     }, 10000);
     return;
   }
+  var wkNav = e.target.closest('#kioskScheduleWeekPrev, #kioskScheduleWeekNext');
+  if (wkNav && window.meridianKioskScheduleWeek && typeof window.meridianKioskScheduleWeek.step === 'function') {
+    e.preventDefault();
+    window.meridianKioskScheduleWeek.step(wkNav.id === 'kioskScheduleWeekNext' ? 1 : -1);
+    return;
+  }
   var editBtn = e.target.closest('.event-edit-btn');
   if (editBtn && editBtn.getAttribute('data-event') && window.meridianKioskEvents && typeof window.meridianKioskEvents.openEditModal === 'function') {
     window.meridianKioskEvents.openEditModal(editBtn.getAttribute('data-event'));
     return;
   }
   var deleteBtn = e.target.closest('.event-delete-btn');
-  if (deleteBtn && deleteBtn.dataset.eventId) {
+  if (deleteBtn && deleteBtn.dataset.eventId && !deleteBtn.disabled) {
     if (!confirm('Delete this event?')) return;
     var res = (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.delete_event) ? pywebview.api.delete_event(deleteBtn.dataset.eventId) : 'Delete unavailable';
     function done(r) { if (r !== 'ok') alert(r || 'Failed to delete'); }
@@ -238,6 +437,39 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
       return;
     }
     kioskStartTwilioSpeakerCall(p, n);
+    return;
+  }
+  var mapPopRow = e.target.closest('.map-cluster-popup-item[data-detail-key-enc]');
+  if (mapPopRow) {
+    e.preventDefault();
+    var enc = mapPopRow.getAttribute('data-detail-key-enc') || '';
+    if (enc && typeof window.meridianOpenFamilyMemberDetail === 'function') {
+      try {
+        var dkm = decodeURIComponent(enc);
+        if (dkm) {
+          if (window._familyMap && typeof window._familyMap.closePopup === 'function') {
+            window._familyMap.closePopup();
+          }
+          window.meridianOpenFamilyMemberDetail(dkm);
+        }
+      } catch (err) {}
+    }
+    return;
+  }
+  var famDetailClose = e.target.closest('.family-member-detail-close');
+  if (famDetailClose) {
+    e.preventDefault();
+    if (typeof window.meridianCloseFamilyMemberDetail === 'function') {
+      window.meridianCloseFamilyMemberDetail();
+    }
+    return;
+  }
+  var famRow = e.target.closest('.family-member-row[data-detail-key]');
+  if (famRow && !e.target.closest('.contact-call-btn')) {
+    var dk = famRow.getAttribute('data-detail-key');
+    if (dk && typeof window.meridianOpenFamilyMemberDetail === 'function') {
+      window.meridianOpenFamilyMemberDetail(dk);
+    }
     return;
   }
   // Must not use closest('[data-screen]') alone: body has data-screen from showScreen() and would
@@ -295,9 +527,11 @@ function updateNavActiveState(screenName) {
 function showScreen(name, html) {
   var el = document.getElementById('screen-content');
   if (el) {
+    window._familyListHtmlBackup = '';
     el.innerHTML = html;
     document.body.dataset.screen = name;
     updateNavActiveState(name);
+    updateViewportDebugBadge();
     if (typeof window.onKioskScreenShown === 'function') {
       window.onKioskScreenShown(name);
     }
@@ -360,6 +594,148 @@ function showToast(msg) {
   }, 3500);
 }
 
+var _kioskActiveTwilioCall = null;
+
+function kioskEnsureInCallBar() {
+  var inner =
+    '<div class="kiosk-in-call-bar__chrome-full">' +
+    '<button type="button" class="kiosk-in-call-bar__minimize" id="kiosk-in-call-minimize" aria-label="Minimize call view">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M6 9l6 6 6-6"/>' +
+    '</svg></button>' +
+    '<div class="kiosk-in-call-bar__center">' +
+    '<span class="kiosk-in-call-bar__head" id="kiosk-in-call-bar-head"></span>' +
+    '<span class="kiosk-in-call-bar__sub" id="kiosk-in-call-bar-sub"></span></div>' +
+    '<div class="kiosk-in-call-bar__footer">' +
+    '<button type="button" class="kiosk-in-call-bar__hangup" id="kiosk-in-call-hangup" aria-label="End call">' +
+    '<svg class="kiosk-in-call-bar__hangup-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.04 1.22 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>' +
+    '</svg></button></div></div>' +
+    '<div class="kiosk-in-call-bar__chrome-mini" role="button" tabindex="0" aria-label="Expand call view">' +
+    '<div class="kiosk-in-call-bubble-floater">' +
+    '<div class="kiosk-in-call-bubble-ring"></div>' +
+    '<div class="kiosk-in-call-bubble-ring"></div>' +
+    '<div class="kiosk-in-call-bubble-ring"></div>' +
+    '<div class="kiosk-in-call-bubble-disk">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.04 1.22 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>' +
+    '</svg></div>' +
+    '<div class="kiosk-in-call-bubble-label" id="kiosk-in-call-bubble-head"></div>' +
+    '<div class="kiosk-in-call-bubble-name" id="kiosk-in-call-bubble-sub"></div>' +
+    '</div></div>';
+  function wireHangup(b) {
+    var btn = b.querySelector('#kiosk-in-call-hangup');
+    if (btn && !btn._kioskHangupWired) {
+      btn._kioskHangupWired = true;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        kioskHangupTwilioCall();
+      });
+    }
+  }
+  function wireMinimizeExpand(b) {
+    var minBtn = b.querySelector('#kiosk-in-call-minimize');
+    if (minBtn && !minBtn._kioskMinWired) {
+      minBtn._kioskMinWired = true;
+      minBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        kioskSetInCallMinimized(true);
+      });
+    }
+    var mini = b.querySelector('.kiosk-in-call-bar__chrome-mini');
+    if (mini && !mini._kioskMiniExpandWired) {
+      mini._kioskMiniExpandWired = true;
+      function expand(e) {
+        e.preventDefault();
+        kioskSetInCallMinimized(false);
+      }
+      mini.addEventListener('click', expand);
+      mini.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          kioskSetInCallMinimized(false);
+        }
+      });
+    }
+  }
+  var bar = document.getElementById('kiosk-in-call-bar');
+  if (bar) {
+    if (!bar.querySelector('.kiosk-in-call-bar__chrome-full')) {
+      bar.innerHTML = inner;
+      bar.setAttribute('role', 'status');
+      bar.setAttribute('aria-live', 'assertive');
+      wireHangup(bar);
+      wireMinimizeExpand(bar);
+    }
+    return bar;
+  }
+  bar = document.createElement('div');
+  bar.id = 'kiosk-in-call-bar';
+  bar.className = 'kiosk-in-call-bar kiosk-in-call-bar--hidden';
+  bar.setAttribute('role', 'status');
+  bar.setAttribute('aria-live', 'assertive');
+  bar.setAttribute('aria-label', 'Active phone call');
+  bar.innerHTML = inner;
+  document.body.appendChild(bar);
+  wireHangup(bar);
+  wireMinimizeExpand(bar);
+  return bar;
+}
+
+function kioskSyncInCallBubbleLabels() {
+  var head = document.getElementById('kiosk-in-call-bar-head');
+  var sub = document.getElementById('kiosk-in-call-bar-sub');
+  var bh = document.getElementById('kiosk-in-call-bubble-head');
+  var bs = document.getElementById('kiosk-in-call-bubble-sub');
+  if (bh && head) bh.textContent = head.textContent || '';
+  if (bs && sub) bs.textContent = sub.textContent || '';
+}
+
+function kioskSetInCallMinimized(minimized) {
+  var bar = document.getElementById('kiosk-in-call-bar');
+  if (!bar || bar.classList.contains('kiosk-in-call-bar--hidden')) return;
+  if (minimized) {
+    bar.classList.add('kiosk-in-call-bar--minimized');
+  } else {
+    bar.classList.remove('kiosk-in-call-bar--minimized');
+  }
+}
+
+function kioskShowInCallBar(headText, subText, keepMinimized) {
+  var bar = kioskEnsureInCallBar();
+  var head = document.getElementById('kiosk-in-call-bar-head');
+  var sub = document.getElementById('kiosk-in-call-bar-sub');
+  if (head) head.textContent = headText || '';
+  if (sub) sub.textContent = subText || '';
+  kioskSyncInCallBubbleLabels();
+  if (!keepMinimized) {
+    bar.classList.remove('kiosk-in-call-bar--minimized');
+  }
+  bar.classList.remove('kiosk-in-call-bar--hidden');
+}
+
+function kioskHideInCallBar() {
+  var bar = document.getElementById('kiosk-in-call-bar');
+  if (bar) {
+    bar.classList.add('kiosk-in-call-bar--hidden');
+    bar.classList.remove('kiosk-in-call-bar--minimized');
+  }
+}
+
+function kioskHangupTwilioCall() {
+  if (_kioskActiveTwilioCall) {
+    try {
+      _kioskActiveTwilioCall.disconnect();
+    } catch (_e) {}
+  }
+}
+
+function _kioskTwilioCallUiEnded() {
+  _kioskActiveTwilioCall = null;
+  kioskHideInCallBar();
+}
+
 var _kioskTwilioDevice = null;
 var _kioskTwilioCallerId = '';
 var _kioskTwilioSdkLoadPromise = null;
@@ -419,17 +795,15 @@ function kioskEnsureTwilioDevice() {
       return true;
     })
     .then(function () {
-      return fetch('/api/voice/token', {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      });
-    })
-    .then(function (resp) {
-      if (!resp.ok) return resp.text().then(function (t) { throw new Error(t || ('HTTP ' + resp.status)); });
-      return resp.json();
+      if (!(typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.get_voice_token)) {
+        throw new Error('Voice token bridge unavailable');
+      }
+      return pywebview.api.get_voice_token();
     })
     .then(function (data) {
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data || '{}'); } catch (_e) { data = { error: data }; }
+      }
       var token = (data && data.token) || '';
       _kioskTwilioCallerId = (data && data.caller_id) || '';
       if (!token) throw new Error((data && data.error) || 'Missing Twilio token');
@@ -454,20 +828,37 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
     showToast('No phone number for this contact');
     return;
   }
+  if (_kioskActiveTwilioCall) {
+    showToast('End the current call first');
+    return;
+  }
   kioskEnsureTwilioDevice()
     .then(function (device) {
       return device.connect({ params: { To: to, callerId: _kioskTwilioCallerId } });
     })
     .then(function (call) {
+      _kioskActiveTwilioCall = call;
+      kioskShowInCallBar('Calling', who);
       showToast('Calling ' + who);
       call.on('accept', function () {
+        var b = document.getElementById('kiosk-in-call-bar');
+        var keepMini = !!(b && b.classList.contains('kiosk-in-call-bar--minimized'));
+        kioskShowInCallBar('ON A CALL', who, keepMini);
         showToast('Connected to ' + who);
       });
       call.on('disconnect', function () {
         showToast('Call ended');
+        _kioskTwilioCallUiEnded();
+      });
+      call.on('error', function (err) {
+        var msg = err && err.message ? String(err.message) : err ? String(err) : '';
+        msg = msg.slice(0, 72);
+        _kioskTwilioCallUiEnded();
+        showToast(msg ? 'Call error: ' + msg : 'Call error');
       });
     })
     .catch(function (err) {
+      _kioskTwilioCallUiEnded();
       showToast('Call failed: ' + ((((err && err.message) || err || '') + '').slice(0, 80) || 'unknown error'));
     });
 }
@@ -496,7 +887,7 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
   }
 
   var SAVE_MEDS_DISK_SVG =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><line x1="7" y1="3" x2="17" y2="3"/></svg>';
 
   function statusMsg(msg) {
@@ -635,6 +1026,13 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
   window.onKioskScreenShown = function (name) {
       if (name === 'medications') {
           mountMedicationsEditor();
+      }
+      if (name === 'family' && typeof applyKioskFamilyMapViewOffset === 'function' && window._familyMap) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            applyKioskFamilyMapViewOffset(window._familyMap);
+          });
+        });
       }
   };
 })();

@@ -4,8 +4,12 @@
 import UIKit
 
 final class RootViewController: UIViewController {
+    private let warmBackground = UIColor(red: 0.98, green: 0.97, blue: 0.95, alpha: 1)
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.backgroundColor = warmBackground
+        overrideUserInterfaceStyle = .light
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(apiBaseURLDidChange),
@@ -52,9 +56,14 @@ final class RootViewController: UIViewController {
             PendingLocationRequestPrompt.presentIfNeeded(window: (UIApplication.shared.delegate as? AppDelegate)?.window)
         }
         addChild(login)
+        login.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(login.view)
-        login.view.frame = view.bounds
-        login.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        NSLayoutConstraint.activate([
+            login.view.topAnchor.constraint(equalTo: view.topAnchor),
+            login.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            login.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            login.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
         login.didMove(toParent: self)
     }
 
@@ -63,9 +72,14 @@ final class RootViewController: UIViewController {
         children.forEach { $0.removeFromParent(); $0.view.removeFromSuperview() }
         let main = MainTabViewController()
         addChild(main)
+        main.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(main.view)
-        main.view.frame = view.bounds
-        main.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        NSLayoutConstraint.activate([
+            main.view.topAnchor.constraint(equalTo: view.topAnchor),
+            main.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            main.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            main.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
         main.didMove(toParent: self)
     }
 }

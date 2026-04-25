@@ -60,7 +60,7 @@ NAV_BUTTONS = [
     {"text": "Home", "screen": "home"},
     {"text": "Schedule", "screen": "schedule"},
     {"text": "Family", "screen": "family"},
-    {"text": "Chat", "screen": "chat"},
+    {"text": "Settings", "screen": "settings"},
 ]
 
 _SCREEN_REGISTRY: dict[str, object] | None = None
@@ -72,9 +72,7 @@ def _get_screen_registry():
     if _SCREEN_REGISTRY is not None:
         return _SCREEN_REGISTRY
     from .map_screen import build_checkin_html
-    from .communication import build_chat_html
     from .emergency_screen import build_emergency_html
-    from .health_screen import build_health_html
     from .home_screen import build_home_html
     from .settings_screen import build_medications_html, build_settings_html
 
@@ -105,20 +103,6 @@ def _get_screen_registry():
             f"initMap({json.dumps(markers_json)}, {json.dumps(places_json)})",
         )
 
-    def chat(app: "MeridianKioskApp"):
-        return (
-            build_chat_html(
-                app.services,
-                app.api_url,
-                app.kiosk_user_id,
-                app.family_circle_id,
-            ),
-            None,
-        )
-
-    def health(app: "MeridianKioskApp"):
-        return build_health_html(app.services, app.api_url), None
-
     def schedule(app: "MeridianKioskApp"):
         return build_schedule_html(app.services, app.api_url), None
 
@@ -132,8 +116,6 @@ def _get_screen_registry():
         "home": home,
         "emergency": emergency,
         "family": family,
-        "chat": chat,
-        "health": health,
         "schedule": schedule,
         "settings": settings,
         "medications": medications,
@@ -157,9 +139,9 @@ class KioskBridge:
         logger.debug(f"Nav: {screen_name}")
         self._app._navigate_to(screen_name)
 
-    def call_phone(self, phone: str, display_name: str = "") -> str:
-        """Place a phone call via server Twilio endpoint."""
-        return self._chat.call_phone(phone, display_name)
+    def get_voice_token(self):
+        """Get Twilio voice token for kiosk browser SDK via Python bridge."""
+        return self._chat.get_voice_token()
 
     def print_emergency(self):
         """Print emergency document. Called from JS Print button."""
@@ -177,10 +159,8 @@ class KioskBridge:
             self._app._load_home_schedule()
             return
         if sid in (
-            "health",
             "schedule",
             "family",
-            "chat",
             "settings",
             "medications",
             "emergency",
@@ -208,6 +188,9 @@ class KioskBridge:
         self, medication_id: int, time_slot: str, taken: bool
     ) -> str:
         return self._health.mark_medication_taken(medication_id, time_slot, taken)
+
+    def mark_all_non_prn_taken(self) -> str:
+        return self._health.mark_all_non_prn_taken()
 
     def get_medications_editor_rows(self) -> str:
         return self._health.get_medications_editor_rows()
@@ -296,19 +279,24 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
+        webview_debug = (
+            (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
+        )
         try:
-            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = webview_debug
         except Exception:
             pass
         kiosk_user_agent = (
             os.environ.get("MERIDIAN_KIOSK_USER_AGENT") or "Meridian-Kiosk/1.0"
         ).strip()
         gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
+        kiosk_debug = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
         if gui_pref:
             try:
-                logger.info(f"Kiosk pywebview GUI preference: {gui_pref}")
+                if gui_pref != "qt":
+                    logger.info(f"Kiosk pywebview GUI (non-default): {gui_pref}")
                 webview.start(
-                    debug=False,
+                    debug=webview_debug,
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )
@@ -371,7 +359,7 @@ class MeridianKioskApp:
         (#kiosk-boot-corner) with status text until _boot_cache_warmup (photos, places, tiles) finishes.
         The corner floater persists across navigations until caching completes.
         """
-        logger.info("Kiosk loaded, initializing...")
+        logger.debug("Kiosk loaded, initializing...")
         self._set_corner_boot_loading(False, "")
         self._set_boot_loading(True, "Starting Meridian...")
         time.sleep(0.3)
@@ -447,11 +435,11 @@ class MeridianKioskApp:
         try:
             contact_svc = self.services.get_contact_service()
             if not contact_svc:
-                logger.info("Photo warmup skipped: contact service unavailable")
+                logger.debug("Photo warmup skipped: contact service unavailable")
                 return
             result = contact_svc.get_contacts()
             if not result.success or not result.data:
-                logger.info("Photo warmup skipped: no contacts")
+                logger.debug("Photo warmup skipped: no contacts")
                 return
             total = len(result.data)
             for c in result.data:
@@ -559,8 +547,7 @@ class MeridianKioskApp:
         self._eval("meridianKioskEvents.refreshScheduleIfShown()")
 
     def _start_alert_poll(self):
-        """Poll alert; when activated, switch to emergency, add flash, trigger print."""
-        from .emergency_screen import trigger_emergency_print
+        """Poll alert; when activated, switch to emergency and add flash."""
 
         while True:
             time.sleep(10)
@@ -575,15 +562,15 @@ class MeridianKioskApp:
             if activated:
                 self._navigate_to("emergency")
                 self._eval("document.body.classList.add('alert-active')")
-                if not self._alert_was_activated:
-                    time.sleep(0.5)
-                    trigger_emergency_print(self.services)
+                # if not self._alert_was_activated:
+                #     time.sleep(0.5)
+                #     trigger_emergency_print(self.services)
             else:
                 self._eval("document.body.classList.remove('alert-active')")
             self._alert_was_activated = activated
 
     def _start_incoming_call_poll(self):
-        """Poll incoming call signal and open chat window for auto-answer flow."""
+        """Poll incoming call signal and open Family screen for auto-answer flow."""
         while True:
             time.sleep(1)
             call_svc = self.services.get_incoming_call_service()
@@ -600,7 +587,7 @@ class MeridianKioskApp:
             if not caller_user_id:
                 continue
             self._last_incoming_call_id = call_id
-            self._navigate_to("chat")
+            self._navigate_to("family")
             call_svc.acknowledge_incoming_call(call_id)
 
 def create_app(

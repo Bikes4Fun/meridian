@@ -436,6 +436,45 @@ html:has(body.info-doc-body) {
     outline-offset: 2px;
 }
 
+.kiosk-alert-shortcut.is-active {
+    border-color: var(--warm-delete);
+    background: color-mix(in srgb, var(--warm-delete) 14%, var(--web-page-bg));
+    animation: kiosk-alert-breathe 1.1s ease-in-out infinite;
+}
+
+.kiosk-alert-shortcut.is-active::after {
+    background: var(--warm-delete);
+    box-shadow: 0 0 0 2px var(--web-page-bg), 0 0 0 4px var(--warm-delete);
+}
+
+.kiosk-alert-header-status {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.35;
+    min-height: 1.2em;
+}
+
+.kiosk-alert-header-status--active {
+    color: var(--success-text);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kiosk-alert-header-status--active::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success-text);
+    animation: alert-active-pulse 1.1s ease-in-out infinite;
+}
+
+.kiosk-alert-header-status--error {
+    color: var(--warm-delete);
+}
+
 .masthead-logo-link {
     display: inline-flex;
     align-items: center;
@@ -795,6 +834,64 @@ button:focus-visible {
     background: var(--warm-golden-hover);
 }
 
+.btn-alert.is-active {
+    position: relative;
+    padding-left: 42px;
+    background: var(--warm-sage);
+    color: #fff;
+}
+
+.btn-alert.is-active:hover {
+    background: var(--warm-sage-hover);
+}
+
+.btn-alert.is-active::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: alert-spin 0.85s linear infinite;
+}
+
+@keyframes alert-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes alert-active-pulse {
+    0% {
+        transform: scale(0.9);
+        opacity: 0.55;
+    }
+    50% {
+        transform: scale(1.25);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.9);
+        opacity: 0.55;
+    }
+}
+
+@keyframes kiosk-alert-breathe {
+    0% {
+        box-shadow: 0 0 0 0 rgba(139, 77, 66, 0.45);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(139, 77, 66, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(139, 77, 66, 0);
+    }
+}
+
 .btn-alert--sm,
 .btn-secondary-lg--sm {
     width: auto;
@@ -898,6 +995,47 @@ button:focus-visible {
 
 .health-meds-board__body {
     margin-top: 0;
+}
+
+.health-meds-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 var(--space-sm);
+}
+
+.health-meds-list-host {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    max-height: min(62vh, 34rem);
+}
+
+.health-meds-timed-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.health-meds-prn-sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--web-surface);
+    border-top: 1px solid var(--warm-border);
+    padding-top: var(--space-xs);
+}
+
+.health-meds-prn-sticky__title {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--web-muted);
+}
+
+.list-panel--prn-sticky {
+    margin-bottom: 0;
 }
 
 .med-corrections {
@@ -1194,6 +1332,65 @@ button:focus-visible {
     flex-direction: column;
     gap: var(--space-sm);
     margin-top: var(--space-md);
+}
+
+.ice-completeness {
+    margin: 0 0 var(--space-md) 0;
+    padding: 10px 12px;
+    border: 1px solid var(--warm-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--web-page-bg);
+}
+
+.ice-completeness__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 8px 0;
+}
+
+.ice-completeness__title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--web-title);
+}
+
+.ice-completeness__score {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ice-completeness__score--low { color: var(--warm-delete); }
+.ice-completeness__score--mid { color: #9a6e38; }
+.ice-completeness__score--high { color: var(--success-text); }
+
+.ice-completeness__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--warm-border);
+    overflow: hidden;
+}
+
+.ice-completeness__fill {
+    height: 100%;
+    width: 0;
+    transition: width 160ms ease;
+}
+
+.ice-completeness__fill--low { background: var(--warm-delete); }
+.ice-completeness__fill--mid { background: var(--warm-golden); }
+.ice-completeness__fill--high { background: var(--success-text); }
+
+.ice-completeness__missing {
+    margin: 8px 0 0 0;
+    padding-left: 16px;
+    font-size: 12.5px;
+    color: var(--web-muted);
+}
+
+.ice-completeness__missing li {
+    margin: 2px 0;
 }
 
 #chatSection #messages {
@@ -2009,20 +2206,6 @@ html.info-embed body.info-doc-body .doc-section {
     body.info-doc-body {
         scroll-behavior: smooth;
     }
-}
-
-/* Info tab: user guide uses full viewport width below masthead (info.html layout) */
-body.dashboard-view--info .masthead-inner {
-    max-width: none;
-    padding-left: var(--app-shell-pad-x);
-    padding-right: var(--app-shell-pad-x);
-}
-
-body.dashboard-view--info .app-main {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    width: 100%;
 }
 
 .page--info {
@@ -2971,5 +3154,17 @@ body.dashboard-view--info .app-main {
 @media (prefers-reduced-motion: reduce) {
     #chatSection #contactsGrid .contact-tile {
         transition: none;
+    }
+
+    .btn-alert.is-active::before {
+        animation: none;
+    }
+
+    .kiosk-alert-header-status--active::before {
+        animation: none;
+    }
+
+    .kiosk-alert-shortcut.is-active {
+        animation: none;
     }
 }

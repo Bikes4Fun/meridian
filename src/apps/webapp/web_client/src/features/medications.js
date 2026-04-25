@@ -5,7 +5,6 @@
 (function () {
     'use strict';
 
-    var _apiUrl = '';
     var _familyCircleId = null;
     var _showStatus = function () {};
     var _takeMounted = false;
@@ -13,14 +12,19 @@
     var _takeClickBound = false;
     var _inlineSnapshot = [];
     var _healthMedAutosave = null;
+    var _latestTakeRows = { timedRows: [], prnRows: [] };
+    var _markAllBusy = false;
 
     var SAVE_MEDS_DISK_SVG =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
         '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><line x1="7" y1="3" x2="17" y2="3"/></svg>';
 
     function buildTakeListHTML() {
         return (
             '<div id="healthMedsStatusBar" class="health-meds-status" hidden></div>' +
+            '<div class="health-meds-actions-row">' +
+            '<button id="healthMedsMarkAllBtn" type="button" class="btn-health-secondary" disabled>Mark all non-PRN (not as-needed) as taken</button>' +
+            '</div>' +
             '<div id="healthMedsList" class="health-meds-list-host">' +
             '<div class="health-meds-skeleton" aria-busy="true" aria-label="Loading medications">' +
             '<div class="health-meds-skeleton__card"></div>' +
@@ -101,6 +105,18 @@
         }
         bar.innerHTML =
             '<div class="health-meds-chips" role="status">' + chips.join('') + '</div>';
+    }
+
+    function updateMarkAllButton() {
+        var btn = document.getElementById('healthMedsMarkAllBtn');
+        if (!btn) return;
+        var dueCount = (_latestTakeRows.timedRows || []).filter(function (m) {
+            return m && m.status !== 'done' && (m.time || '').toLowerCase() !== 'prn';
+        }).length;
+        btn.disabled = _markAllBusy || dueCount < 1;
+        btn.textContent = _markAllBusy
+            ? 'Marking non-as-needed doses...'
+            : 'Mark all non-PRN (not as-needed) as taken';
     }
 
     function buildSettingsEditorHTML() {
@@ -318,9 +334,8 @@
 
     function paintListFromData(data) {
         var rows = collectDisplayedMedRows(data);
-        var mainItems = rows.timedRows
-            .map(itemHtmlTimedMain)
-            .concat(rows.prnRows.map(itemHtmlPrnMain));
+        var timedItems = rows.timedRows.map(itemHtmlTimedMain);
+        var prnItems = rows.prnRows.map(itemHtmlPrnMain);
         var corrParts = [];
         rows.timedRows.forEach(function (m) {
             if (m.status === 'done') corrParts.push(itemHtmlTimedCorrection(m));
@@ -330,6 +345,8 @@
             if (row) corrParts.push(row);
         });
         paintCaregiverStatus(rows);
+        _latestTakeRows = rows;
+        updateMarkAllButton();
         var listEl = document.getElementById('healthMedsList');
         var corrEl = document.getElementById('healthMedsCorrectionsList');
         var emptyMsg =
@@ -340,9 +357,22 @@
             '</div>';
         if (listEl) {
             listEl.innerHTML =
-                mainItems.length === 0
+                timedItems.length === 0 && prnItems.length === 0
                     ? emptyMsg
-                    : '<ul class="list-panel list-panel--meds">' + mainItems.join('') + '</ul>';
+                    : (
+                        '<div class="health-meds-timed-scroll">' +
+                        '<ul class="list-panel list-panel--meds">' + timedItems.join('') + '</ul>' +
+                        '</div>' +
+                        (
+                            prnItems.length
+                                ? '<section class="health-meds-prn-sticky" aria-label="As needed medications">' +
+                                  '<h4 class="health-meds-prn-sticky__title">As needed</h4>' +
+                                  '<ul class="list-panel list-panel--meds list-panel--prn-sticky">' +
+                                  prnItems.join('') +
+                                  '</ul></section>'
+                                : ''
+                        )
+                    );
         }
         if (corrEl) {
             corrEl.innerHTML =
@@ -357,10 +387,9 @@
     function loadMeds() {
         var listEl = document.getElementById('healthMedsList');
         if (!listEl || !_familyCircleId) return;
-        var apiBase = meridianApiBaseNormalize(_apiUrl);
-        fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications', { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (data) {
+        meridianApiClient.getMedications(_familyCircleId)
+            .then(function (response) {
+                var data = response && response.body;
                 var bar = document.getElementById('healthMedsStatusBar');
                 if (!data || !data.data) {
                     listEl.innerHTML =
@@ -400,13 +429,9 @@
         var listEl = document.getElementById('healthMedsInlineList');
         if (!listEl || !_familyCircleId) return;
         if (_healthMedAutosave) _healthMedAutosave.cancel();
-        var apiBase = meridianApiBaseNormalize(_apiUrl);
-        fetch(
-            apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
-            { credentials: 'include' }
-        )
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (body) {
+        meridianApiClient.getEmergencyProfile(_familyCircleId)
+            .then(function (response) {
+                var body = response && response.body;
                 var data = body && body.data;
                 var meds = (data && data.medical && data.medical.medications) || [];
                 _inlineSnapshot = MeridianMedicationsInline.cloneSnapshot(meds);
@@ -415,6 +440,15 @@
             .catch(function () {
                 _showStatus('Could not load medication list for editing', 'error');
             });
+    }
+
+    function postMarkTaken(medId, timeSlot, wantTaken) {
+        return meridianApiClient.markMedicationTaken(
+            _familyCircleId,
+            medId,
+            timeSlot,
+            wantTaken
+        );
     }
 
     function markMedTaken(li, wantTaken) {
@@ -433,23 +467,51 @@
             });
         }
         setBusy(true);
-        var apiBase = meridianApiBaseNormalize(_apiUrl);
-        fetch(apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/medications/' + medId + '/mark-taken', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ time: timeSlot, taken: wantTaken })
-        })
+        postMarkTaken(medId, timeSlot, wantTaken)
             .then(function (r) {
-                if (r.ok) {
-                    loadMeds();
-                } else return r.json().then(function (d) { throw new Error(d.error || 'Failed'); });
+                loadMeds();
             })
             .catch(function (err) { _showStatus('\u2717 ' + err.message, 'error'); })
             .then(function () { setBusy(false); });
     }
 
+    function markAllScheduledTaken() {
+        if (_markAllBusy || !_familyCircleId) return;
+        var dueRows = (_latestTakeRows.timedRows || []).filter(function (m) {
+            return m && m.status !== 'done' && (m.time || '').toLowerCase() !== 'prn';
+        });
+        if (!dueRows.length) return;
+        _markAllBusy = true;
+        updateMarkAllButton();
+        var chain = Promise.resolve();
+        dueRows.forEach(function (m) {
+            chain = chain.then(function () {
+                var medId = parseInt(m.id, 10);
+                var slot = m.time || '';
+                if (!medId || !slot) return null;
+                return postMarkTaken(medId, slot, true);
+            });
+        });
+        chain
+            .then(function () {
+                _showStatus('\u2713 Marked all non-as-needed doses as taken', 'success');
+                loadMeds();
+            })
+            .catch(function (err) {
+                _showStatus('\u2717 ' + (err.message || 'Could not mark all doses'), 'error');
+            })
+            .then(function () {
+                _markAllBusy = false;
+                updateMarkAllButton();
+            });
+    }
+
     function onTakeListClick(e) {
+        var markAllBtn = e.target.closest('#healthMedsMarkAllBtn');
+        if (markAllBtn) {
+            markAllScheduledTaken();
+            return;
+        }
         var btn = e.target.closest('.med-mark-taken-btn');
         if (!btn) return;
         var li = e.target.closest('li[data-med-id]');
@@ -498,19 +560,15 @@
             var saveBtn = document.getElementById('healthMedsSaveBtn');
             function runMedsSave(silent) {
                 if (!_familyCircleId) return Promise.resolve();
-                var apiBase = meridianApiBaseNormalize(_apiUrl);
                 var rows = MeridianMedicationsInline.collectRows(inlineList);
-                return MeridianMedicationsInline.saveDiff(apiBase, _familyCircleId, _inlineSnapshot, rows)
+                return MeridianMedicationsInline.saveDiff(_familyCircleId, _inlineSnapshot, rows)
                     .then(function () {
                         if (!silent) _showStatus('\u2713 Medications saved', 'success');
                         loadMeds();
-                        return fetch(
-                            apiBase + '/api/family_circles/' + encodeURIComponent(_familyCircleId) + '/emergency-profile',
-                            { credentials: 'include' }
-                        );
+                        return meridianApiClient.getEmergencyProfile(_familyCircleId);
                     })
-                    .then(function (r) { return r && r.ok ? r.json() : null; })
-                    .then(function (body) {
+                    .then(function (response) {
+                        var body = response && response.body;
                         if (!body || !body.data) return;
                         var meds = (body.data.medical && body.data.medical.medications) || [];
                         _inlineSnapshot = MeridianMedicationsInline.cloneSnapshot(meds);
@@ -564,8 +622,7 @@
     }
 
     window.MeridianMedications = {
-        init: function (apiUrl, familyCircleId, showStatus) {
-            _apiUrl = apiUrl || '';
+        init: function (familyCircleId, showStatus) {
             _familyCircleId = familyCircleId;
             _showStatus = showStatus || function () {};
             initMedications();
@@ -588,7 +645,7 @@
     }
 
     var TRASH_SVG =
-        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
         '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>' +
         '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 
@@ -792,7 +849,7 @@
         return JSON.parse(JSON.stringify(meds || []));
     }
 
-    function saveDiff(apiBase, familyCircleId, initial, rows) {
+    function saveDiff(familyCircleId, initial, rows) {
         var dupErr = validateUniqueMedicationNames(rows);
         if (dupErr) return Promise.reject(new Error(dupErr));
         var chain = Promise.resolve();
@@ -805,16 +862,7 @@
             if (!currentById[m.id]) {
                 var delId = m.id;
                 chain = chain.then(function () {
-                    return fetch(
-                        apiBase + '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/medications/' + delId,
-                        { method: 'DELETE', credentials: 'include' }
-                    ).then(function (r) {
-                        if (!r.ok) {
-                            return r.json().then(function (d) {
-                                throw new Error(d.error || 'Delete medication failed');
-                            });
-                        }
-                    });
+                    return meridianApiClient.deleteMedication(familyCircleId, delId);
                 });
             }
         });
@@ -824,16 +872,7 @@
                 if (m.id != null) {
                     var rmId = m.id;
                     chain = chain.then(function () {
-                        return fetch(
-                            apiBase + '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/medications/' + rmId,
-                            { method: 'DELETE', credentials: 'include' }
-                        ).then(function (r) {
-                            if (!r.ok) {
-                                return r.json().then(function (d) {
-                                    throw new Error(d.error || 'Delete medication failed');
-                                });
-                            }
-                        });
+                        return meridianApiClient.deleteMedication(familyCircleId, rmId);
                     });
                 }
                 return;
@@ -850,40 +889,12 @@
                 var putId = m.id;
                 var putBody = body;
                 chain = chain.then(function () {
-                    return fetch(
-                        apiBase + '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/medications/' + putId,
-                        {
-                            method: 'PUT',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(putBody)
-                        }
-                    ).then(function (r) {
-                        if (!r.ok) {
-                            return r.json().then(function (d) {
-                                throw new Error(d.error || 'Update medication failed');
-                            });
-                        }
-                    });
+                    return meridianApiClient.updateMedication(familyCircleId, putId, putBody);
                 });
             } else {
                 var postBody = body;
                 chain = chain.then(function () {
-                    return fetch(
-                        apiBase + '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/medications',
-                        {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(postBody)
-                        }
-                    ).then(function (r) {
-                        if (!r.ok) {
-                            return r.json().then(function (d) {
-                                throw new Error(d.error || 'Add medication failed');
-                            });
-                        }
-                    });
+                    return meridianApiClient.addMedication(familyCircleId, postBody);
                 });
             }
         });

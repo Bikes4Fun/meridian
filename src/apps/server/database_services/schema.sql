@@ -55,7 +55,7 @@ INSERT OR IGNORE INTO medication_time_templates (name, time) VALUES
     ('Noon', '12:00:00'),
     ('Afternoon', '14:00:00'),
     ('Evening', '18:00:00'),
-    ('Bedtime', '21:00:00'),
+    ('Bedtime', '21:30:00'),
     ('prn', NULL);
 
 CREATE TABLE IF NOT EXISTS medication_times (
@@ -206,5 +206,11 @@ CREATE TABLE IF NOT EXISTS call_signals (
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
     FOREIGN KEY (from_user_id) REFERENCES users(id),
     FOREIGN KEY (to_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS kiosk_emergency_alerts (
+    family_circle_id TEXT PRIMARY KEY,
+    activated INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 

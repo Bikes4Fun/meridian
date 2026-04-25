@@ -16,46 +16,83 @@
         }
         return next;
     };
-    global.meridianApiBaseNormalize = function (url) {
-        return String(url || '').replace(/\/$/, '');
-    };
     global.meridianEscapeHtml = function (s) {
         return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
     global.meridianEscapeAttr = function (s) {
         return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     };
-    global.meridianApiBaseForFetch = function (configUrl) {
-        var u = (configUrl || '').trim();
-        if (!u.startsWith('http')) return '';
-        try {
-            var api = new URL(u);
-            var win = global.location;
-            if (api.origin === win.origin) return '';
-            var loopbacks = { localhost: 1, '127.0.0.1': 1, '[::1]': 1 };
-            if (
-                loopbacks[api.hostname] &&
-                loopbacks[win.hostname] &&
-                api.protocol === win.protocol &&
-                String(api.port) === String(win.port)
-            ) {
-                return '';
-            }
-            return u.replace(/\/$/, '');
-        } catch (e) {
-            return '';
-        }
-    };
 })(typeof window !== 'undefined' ? window : this);
 
 (function () {
     'use strict';
 
-    var _u = '__API_URL__';
-    var API_BASE = meridianApiBaseForFetch(_u.startsWith('http') ? _u : '');
     var _familyCircleId = null;
     var _userId = null;
-    var _mobileChatLoaded = false;
+    var _alertActive = false;
+    var _alertRequestInFlight = false;
+    var _alertPollTimer = null;
+
+    function iceCompletenessModel(data) {
+        var d = data || {};
+        var profile = d.profile || {};
+        var medical = d.medical || {};
+        var contacts = d.emergency_contacts || [];
+        var hasName = !!String(profile.name || '').trim();
+        var hasDob = !!String(profile.dob || '').trim();
+        var hasDnr = Object.prototype.hasOwnProperty.call(medical, 'dnr');
+        var hasEmergencyContact = contacts.some(function (c) {
+            return !!String((c && c.display_name) || '').trim();
+        });
+        var hasProxyName = !!String((d.emergency && d.emergency.proxy && d.emergency.proxy.name) || '').trim();
+        var hasProxyPhone = !!String(d.medical_proxy_phone || '').trim();
+        var hasProxy = hasProxyName && hasProxyPhone;
+        var hasPhoto = !!String(d.photo_path || '').trim();
+        var hasDnrDoc = !!String(d.dnr_document_path || '').trim();
+        var done = [hasName, hasDob, hasDnr, hasEmergencyContact, hasProxy, hasPhoto, hasDnrDoc]
+            .filter(Boolean).length;
+        var primaryExists = contacts.some(function (c) {
+            return (c && c.emergency_priority) === 'primary_emergency';
+        });
+        var warnings = [];
+        if (!hasDnrDoc) warnings.push('Missing DNR/POLST document');
+        if (!primaryExists) warnings.push('No primary emergency contact');
+        if (!hasProxyPhone) warnings.push('Missing proxy phone number');
+        return { done: done, warnings: warnings };
+    }
+
+    function renderIceCompleteness(el, model) {
+        if (!el) return;
+        var done = model.done || 0;
+        var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
+        var tier = done >= 7 ? 'high' : (done >= 4 ? 'mid' : 'low');
+        var missingHtml = model.warnings.length
+            ? '<ul class="ice-completeness__missing">' + model.warnings.map(function (w) {
+                return '<li>' + meridianEscapeHtml(w) + '</li>';
+            }).join('') + '</ul>'
+            : '<ul class="ice-completeness__missing"><li>Critical fields look complete.</li></ul>';
+        el.innerHTML =
+            '<div class="ice-completeness__head">' +
+            '<span class="ice-completeness__title">ICE completeness</span>' +
+            '<span class="ice-completeness__score ice-completeness__score--' + tier + '">' + done + ' / 7 complete</span>' +
+            '</div>' +
+            '<div class="ice-completeness__bar"><div class="ice-completeness__fill ice-completeness__fill--' + tier + '" style="width:' + pct + '%"></div></div>' +
+            missingHtml;
+    }
+
+    function loadHealthIceCompleteness() {
+        var host = document.getElementById('healthIceCompleteness');
+        if (!host || !_familyCircleId) return;
+        meridianApiClient.getEmergencyProfile(_familyCircleId)
+            .then(function (response) {
+                var body = response && response.body;
+                var model = iceCompletenessModel(body && body.data ? body.data : {});
+                renderIceCompleteness(host, model);
+            })
+            .catch(function () {
+                host.innerHTML = '<div class="ice-completeness__title">ICE completeness unavailable.</div>';
+            });
+    }
 
     function init() {
         if (document.getElementById('loginForm')) {
@@ -76,9 +113,10 @@
                 initLogoutLink();
                 initIdleLogout();
                 initSettingsAdmin();
-                var apiRoot = API_BASE || '';
+                loadHealthIceCompleteness();
+                startEmergencyAlertStatusPolling();
                 if (window.MeridianMedications) {
-                    MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
+                    MeridianMedications.init(_familyCircleId, showStatus);
                 }
             }
             function applySessionPayload(session) {
@@ -98,17 +136,9 @@
                 }
                 return;
             }
-            var apiBase = API_BASE || '';
-            fetch(apiBase + '/api/session', { credentials: 'include' })
-                .then(function (r) {
-                    if (r.status === 401) {
-                        window.location.href = meridianLoginPageWithReturn();
-                        return null;
-                    }
-                    if (!r.ok) return null;
-                    return r.json().catch(function () { return null; });
-                })
-                .then(function (session) {
+            meridianApiClient.getSession()
+                .then(function (response) {
+                    var session = response && response.body;
                     if (!applySessionPayload(session)) {
                         window.location.href = meridianLoginPageWithReturn();
                         return;
@@ -127,17 +157,7 @@
             var familyCircleId = document.getElementById('familyCircleId').value.trim();
             var userId = document.getElementById('userId').value.trim();
             if (!familyCircleId || !userId) return;
-            var apiBase = API_BASE || '';
-            fetch(apiBase + '/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ user_id: userId, family_circle_id: familyCircleId })
-            })
-            .then(function (r) {
-                if (r.ok) return r.json();
-                return r.json().then(function (d) { throw new Error(d.error || 'Login failed'); });
-            })
+            meridianApiClient.login(userId, familyCircleId)
             .then(function () {
                 window.location.href = meridianPostLoginRedirectTarget();
             })
@@ -195,29 +215,18 @@
                     btn.disabled = false;
                     return;
                 }
-                fetch((API_BASE || '') + '/api/family_circles/' + fcId + '/create_checkin', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        user_id: userId,
-                        latitude: latitude,
-                        longitude: longitude,
-                        notes: notes || null
-                    })
+                meridianApiClient.createCheckin(fcId, {
+                    user_id: userId,
+                    latitude: latitude,
+                    longitude: longitude,
+                    notes: notes || null
                 })
-                    .then(function (response) {
-                        if (response.ok) {
+                    .then(function () {
                             showStatus('\u2713 Check-in successful!', 'success');
                             document.getElementById('notes').value = '';
-                        } else {
-                            return response.json().then(function (data) {
-                                showStatus('\u2717 Error: ' + (data.error || 'Check-in failed'), 'error');
-                            });
-                        }
                     })
                     .catch(function (err) {
-                        showStatus('\u2717 Network error: ' + err.message, 'error');
+                        showStatus('\u2717 Error: ' + (err.message || 'Check-in failed'), 'error');
                     })
                     .then(function () {
                         btn.disabled = false;
@@ -235,48 +244,161 @@
         );
     }
 
-    function activateAlert() {
-        var url = (API_BASE || '') + '/api/emergency/alert';
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ activated: true })
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    if (!r.ok) throw new Error(data.error || 'Request failed');
-                    return data;
+    function markAllMobileNonPrnTaken() {
+        var btn = document.getElementById('mobileMarkAllMedsBtn');
+        if (!btn) return;
+        if (!_familyCircleId) {
+            showStatus('Session expired. Please log in again.', 'error');
+            return;
+        }
+        var originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Marking non-as-needed doses...';
+        meridianApiClient.getMedications(_familyCircleId)
+            .then(function (response) {
+                var body = response && response.body;
+                var meds = (body && body.data && body.data.timed_medications) || [];
+                var due = meds.filter(function (m) {
+                    return (
+                        m &&
+                        m.status !== 'done' &&
+                        (String(m.time || '').trim().toLowerCase() !== 'prn')
+                    );
+                });
+                if (!due.length) {
+                    showStatus('No non-as-needed doses pending for today.', 'success');
+                    return null;
+                }
+                var chain = Promise.resolve();
+                due.forEach(function (m) {
+                    var medId = parseInt(m.id, 10);
+                    var slot = String(m.time || '').trim();
+                    if (!medId || !slot) return;
+                    chain = chain.then(function () {
+                        return meridianApiClient.markMedicationTaken(
+                            _familyCircleId,
+                            medId,
+                            slot,
+                            true
+                        );
+                    });
+                });
+                return chain.then(function () {
+                    if (due.length === 1) {
+                        showStatus('Marked 1 non-as-needed dose as taken.', 'success');
+                    } else {
+                        showStatus('Marked ' + due.length + ' non-as-needed doses as taken.', 'success');
+                    }
                 });
             })
+            .catch(function (err) {
+                showStatus('Mark all failed: ' + (err.message || String(err)), 'error');
+            })
             .then(function () {
-                showStatus('Alert mode activated. The kiosk should show the emergency screen.', 'success');
+                btn.disabled = false;
+                btn.textContent = originalLabel;
+            });
+    }
+
+    function activateAlert() {
+        meridianApiClient.setEmergencyAlert(true)
+            .then(function () {
+                return refreshEmergencyAlertStatus({ forceActive: true });
+            })
+            .then(function () {
+                setHeaderAlertStatus('Alert mode activated. The kiosk should show the emergency screen.', 'active');
             })
             .catch(function (err) {
-                showStatus('Alert failed: ' + (err.message || String(err)), 'error');
+                setHeaderAlertStatus('Alert failed: ' + (err.message || String(err)), 'error');
+            })
+            .then(function () {
+                _alertRequestInFlight = false;
+                setAlertButtonState();
             });
     }
 
     function cancelAlert() {
-        var url = (API_BASE || '') + '/api/emergency/alert';
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ activated: false })
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    if (!r.ok) throw new Error(data.error || 'Request failed');
-                    return data;
-                });
+        if (_alertRequestInFlight) return;
+        _alertRequestInFlight = true;
+        setAlertButtonState();
+        meridianApiClient.setEmergencyAlert(false)
+            .then(function () {
+                return refreshEmergencyAlertStatus({ forceActive: false });
             })
             .then(function () {
-                showStatus('Alert cancelled.', 'success');
+                setHeaderAlertStatus('Alert cancelled.');
             })
             .catch(function (err) {
-                showStatus('Cancel failed: ' + (err.message || String(err)), 'error');
+                setHeaderAlertStatus('Cancel failed: ' + (err.message || String(err)), 'error');
+            })
+            .then(function () {
+                _alertRequestInFlight = false;
+                setAlertButtonState();
             });
+    }
+
+    function setHeaderAlertStatus(message, tone) {
+        var statusEl = document.getElementById('kioskAlertHeaderStatus');
+        if (!statusEl) return;
+        statusEl.textContent = message || '';
+        statusEl.classList.remove('kiosk-alert-header-status--active');
+        statusEl.classList.remove('kiosk-alert-header-status--error');
+        if (tone === 'active') statusEl.classList.add('kiosk-alert-header-status--active');
+        if (tone === 'error') statusEl.classList.add('kiosk-alert-header-status--error');
+    }
+
+    function setAlertButtonState() {
+        var shortcutBtn = document.getElementById('kioskAlertShortcutBtn');
+        if (shortcutBtn) {
+            shortcutBtn.classList.toggle('is-active', _alertActive);
+            if (_alertActive) {
+                shortcutBtn.setAttribute('aria-label', 'Emergency alert is active. Open kiosk emergency alert controls');
+                shortcutBtn.title = 'Emergency alert is active';
+            } else {
+                shortcutBtn.setAttribute('aria-label', 'Open kiosk emergency alert controls');
+                shortcutBtn.title = 'Open kiosk emergency alert controls';
+            }
+        }
+        var alertBtn = document.getElementById('alertBtn');
+        if (alertBtn) {
+            alertBtn.disabled = _alertRequestInFlight;
+            if (_alertActive) {
+                alertBtn.classList.add('is-active');
+                alertBtn.textContent = 'Alert active';
+            } else {
+                alertBtn.classList.remove('is-active');
+                alertBtn.textContent = 'Activate alert';
+            }
+        }
+    }
+
+    function refreshEmergencyAlertStatus(opts) {
+        var options = opts || {};
+        return meridianApiClient.getEmergencyAlertStatus()
+            .then(function (response) {
+                var body = response && response.body;
+                var data = (body && body.data) || {};
+                _alertActive = !!data.activated;
+                if (options.forceActive === true) _alertActive = true;
+                if (options.forceActive === false) _alertActive = false;
+                if (_alertActive) {
+                    setHeaderAlertStatus('Alert mode is active.', 'active');
+                } else {
+                    setHeaderAlertStatus('Alert mode is off.');
+                }
+                setAlertButtonState();
+            })
+            .catch(function (err) {
+                setHeaderAlertStatus('Alert status unavailable: ' + (err.message || String(err)), 'error');
+            });
+    }
+
+    function startEmergencyAlertStatusPolling() {
+        refreshEmergencyAlertStatus();
+        if (_alertPollTimer) clearInterval(_alertPollTimer);
+        _alertPollTimer = setInterval(function () {
+            refreshEmergencyAlertStatus();
+        }, 5000);
     }
 
     function initNav() {
@@ -296,16 +418,14 @@
             btn.classList.add('active');
             var target = document.getElementById(targetId);
             if (target) target.classList.add('active');
-            document.body.classList.toggle('dashboard-view--info', pageId === 'info');
-            var apiRoot = API_BASE || '';
             if (pageId === 'events' && window.MeridianEvents) {
-                MeridianEvents.init(apiRoot, _familyCircleId, showStatus);
+                MeridianEvents.init(_familyCircleId, showStatus);
             }
             if (
                 (pageId === 'health' || pageId === 'settings') &&
                 window.MeridianMedications
             ) {
-                MeridianMedications.init(apiRoot, _familyCircleId, showStatus);
+                MeridianMedications.init(_familyCircleId, showStatus);
             }
             if (pageId === 'settings') {
                 loadAdminPermissions();
@@ -324,13 +444,34 @@
         var shortcut = document.getElementById('kioskAlertShortcutBtn');
         if (!shortcut) return;
         shortcut.addEventListener('click', function () {
-            var nav = document.getElementById('appNav');
-            var settingsBtn = nav && nav.querySelector('.nav-btn[data-page="settings"]');
-            if (settingsBtn) settingsBtn.click();
-            setTimeout(function () {
-                var el = document.getElementById('settingsKioskAlert');
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 50);
+            meridianApiClient.getEmergencyAlertStatus()
+                .then(function (resp) {
+                    var isActive = !!(resp && resp.data && resp.data.activated);
+                    if (isActive) {
+                        return meridianApiClient.setEmergencyAlert(false).then(function () {
+                            showStatus('Alert cancelled.', 'success');
+                        });
+                    }
+                    var proceed = window.confirm(
+                        'This will switch the kiosk to emergency mode. Activate alert now?'
+                    );
+                    if (!proceed) return null;
+                    return meridianApiClient.setEmergencyAlert(true).then(function () {
+                        showStatus('Alert mode activated. The kiosk should show the emergency screen.', 'success');
+                        var nav = document.getElementById('appNav');
+                        var settingsBtn = nav && nav.querySelector('.nav-btn[data-page="settings"]');
+                        if (settingsBtn) settingsBtn.click();
+                        setTimeout(function () {
+                            var el = document.getElementById('settingsKioskAlert');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            var cancelBtn = document.getElementById('cancelAlertBtn');
+                            if (cancelBtn) cancelBtn.focus();
+                        }, 50);
+                    });
+                })
+                .catch(function (err) {
+                    showStatus('Alert failed: ' + (err.message || String(err)), 'error');
+                });
         });
     }
 
@@ -393,13 +534,16 @@
         }
     }
 
-    function adminApiFetch(url, options) {
-        return fetch(url, options).then(function (r) {
-            return r.json().then(function (data) {
-                if (!r.ok) throw new Error((data && data.error) || 'Request failed');
-                return data || {};
+    function adminApiFetchGrantRevoke(familyCircleId, userId, permission, granted) {
+        return meridianApiClient
+            .setPermission(familyCircleId, {
+                user_id: userId,
+                permission: permission,
+                granted: granted
+            })
+            .then(function (response) {
+                return (response && response.body) || {};
             });
-        });
     }
 
     var ADMIN_PERMISSION_LABELS = {
@@ -566,16 +710,13 @@
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="5" class="muted">Loading...</td></tr>';
         setAdminPermissionsStatus('Loading members and permissions...');
-        var apiBase = API_BASE || '';
         Promise.all([
-            adminApiFetch(
-                apiBase + '/api/family_circles/' + _familyCircleId + '/family-members',
-                { credentials: 'include' }
-            ),
-            adminApiFetch(
-                apiBase + '/api/family_circles/' + _familyCircleId + '/permissions',
-                { credentials: 'include' }
-            )
+            meridianApiClient.getFamilyMembers(_familyCircleId).then(function (r) {
+                return (r && r.body) || {};
+            }),
+            meridianApiClient.getPermissions(_familyCircleId).then(function (r) {
+                return (r && r.body) || {};
+            })
         ])
             .then(function (results) {
                 var membersData = (results[0] && results[0].data) || [];
@@ -652,34 +793,15 @@
                 return;
             }
             btn.disabled = true;
-            var apiBase = API_BASE || '';
             var requests = [];
             toGrant.forEach(function (permission) {
                 requests.push(
-                    adminApiFetch(apiBase + '/api/family_circles/' + _familyCircleId + '/permissions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            user_id: uid,
-                            permission: permission,
-                            granted: true
-                        })
-                    })
+                    adminApiFetchGrantRevoke(_familyCircleId, uid, permission, true)
                 );
             });
             toRevoke.forEach(function (permission) {
                 requests.push(
-                    adminApiFetch(apiBase + '/api/family_circles/' + _familyCircleId + '/permissions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            user_id: uid,
-                            permission: permission,
-                            granted: false
-                        })
-                    })
+                    adminApiFetchGrantRevoke(_familyCircleId, uid, permission, false)
                 );
             });
             Promise.all(requests)
@@ -705,19 +827,21 @@
     function initCheckin() {
         var btn = document.getElementById('checkinBtn');
         if (btn) btn.addEventListener('click', checkIn);
+        var markAllBtn = document.getElementById('mobileMarkAllMedsBtn');
+        if (markAllBtn) markAllBtn.addEventListener('click', markAllMobileNonPrnTaken);
         var alertBtn = document.getElementById('alertBtn');
         if (alertBtn) alertBtn.addEventListener('click', activateAlert);
         var cancelBtn = document.getElementById('cancelAlertBtn');
         if (cancelBtn) cancelBtn.addEventListener('click', cancelAlert);
+        setAlertButtonState();
     }
 
     function initChatContacts() {
         var grid = document.getElementById('contactsGrid');
         if (!grid || !_familyCircleId) return;
-        var apiBase = API_BASE || '';
-        fetch(apiBase + '/api/family_circles/' + _familyCircleId + '/contacts', { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (data) {
+        meridianApiClient.getContacts(_familyCircleId)
+            .then(function (response) {
+                var data = response && response.body;
                 if (!data || !data.data) return;
                 var chatContacts = data.data.filter(function (c) {
                     var relationship = (c.relationship || '').toLowerCase();
@@ -739,7 +863,7 @@
                     avatar.textContent = (name || '?').charAt(0).toUpperCase();
                     if (c.user_id) {
                         var img = document.createElement('img');
-                        img.src = apiBase + '/api/users/' + c.user_id + '/photo';
+                        img.src = meridianApiClient.getUserPhotoUrl(c.user_id);
                         img.alt = name;
                         img.onerror = function () { img.style.display = 'none'; };
                         avatar.appendChild(img);
@@ -761,8 +885,7 @@
         if (!link) return;
         link.addEventListener('click', function (e) {
             e.preventDefault();
-            var apiBase = API_BASE || '';
-            fetch(apiBase + '/api/logout', { method: 'POST', credentials: 'include' })
+            meridianApiClient.logout()
                 .then(function () { window.location.href = '/login.html'; })
                 .catch(function () { window.location.href = '/login.html'; });
         });
@@ -774,8 +897,7 @@
         if (idleMs <= 0) return;
         var timer = null;
         function doLogout() {
-            var apiBase = API_BASE || '';
-            fetch(apiBase + '/api/logout', { method: 'POST', credentials: 'include' })
+            meridianApiClient.logout()
                 .then(function () { window.location.href = '/login.html'; })
                 .catch(function () { window.location.href = '/login.html'; });
         }

@@ -6,10 +6,10 @@ Not here: event modal markup (schedule_screen), nav/screen switching (app), per-
 """
 
 import html as html_module
-import json
 import logging
 
 from . import schedule_screen
+from . import health_screen
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +54,9 @@ def build_home_html(
 
     clock = build_clock_html(services)
     up_next = f'<div class="up-next-card" id="up_next_content"><div class="up-next-card-inner">{hp.loading_state("Loading schedule…")}</div></div>'
-    timeline = f"""<div class="timeline-card">
-        <div class="timeline-header">WHAT'S NEXT TODAY</div>
+    whats_next_header = health_screen.HealthHandler.build_home_whats_next_header_row()
+    timeline = f"""<div class="timeline-card timeline-card--home-whats-next">
+        {whats_next_header}
         <div id="timeline_content" class="timeline-list">{hp.loading_state("Loading schedule…")}</div>
     </div>"""
     inner = (
@@ -154,9 +155,9 @@ def load_schedule_items(services) -> tuple[list, object]:
 
 
 def _item_blocks_up_next(it: dict, now) -> bool:
-    """True if this row still needs attention (scheduled pending in the future, or PRN with room for more doses)."""
+    """True when a scheduled timed row still needs attention for Up Next."""
     if it.get("type") == "prn":
-        return bool(it.get("prn_can_take_more", True))
+        return False
     if it["dt"] < now:
         return False
     return not it.get("done")
@@ -186,7 +187,7 @@ def build_up_next_html(items: list, now) -> str:
     )
     icon = "💊" if next_item["type"] in ("med", "prn") else "📅"
     title_esc = html_module.escape(next_item["title"])
-    return f'<div class="up-next-card-inner"><span class="up-next-icon">{icon}</span><div><span class="up-next-title">{title_esc}</span><span class="up-next-sub">{time_str} • {subtext}</span></div></div>'
+    return f'<div class="up-next-card-inner"><span class="up-next-icon">{icon}</span><div><span class="up-next-kicker">WHAT\'S NEXT</span><span class="up-next-title">{title_esc}</span><span class="up-next-sub">{time_str} • {subtext}</span></div></div>'
 
 
 def build_timeline_html(items: list) -> str:
@@ -195,8 +196,11 @@ def build_timeline_html(items: list) -> str:
         return (
             '<div class="state-placeholder state-empty">Nothing scheduled today</div>'
         )
+    timed_items = [it for it in items if it.get("type") != "prn"]
+    prn_items = [it for it in items if it.get("type") == "prn"]
+    ordered = timed_items + prn_items
     result = []
-    for it in items:
+    for it in ordered:
         done = it.get("done")
         bar_class = (
             "timeline-bar-med" if it["type"] in ("med", "prn") else "timeline-bar-event"
@@ -205,7 +209,10 @@ def build_timeline_html(items: list) -> str:
             "As needed" if it.get("type") == "prn" else it["dt"].strftime("%I:%M %p")
         )
         check = " ✓" if done else ""
-        cls = "timeline-item timeline-item-done" if done else "timeline-item"
+        row_type = str(it.get("type") or "other")
+        cls = f"timeline-item timeline-item--{row_type}"
+        if done:
+            cls += " timeline-item-done"
         title = it.get("display", it.get("title", "?"))
         title_esc = html_module.escape(str(title))
         extra = ""
@@ -220,9 +227,8 @@ def build_timeline_html(items: list) -> str:
             can_more = it.get("prn_can_take_more", True)
             if (not done) or can_more:
                 extra = f'<span class="timeline-item-actions"><button type="button" class="med-taken-btn timeline-action-btn btn-small" data-med-id="{mid}" data-med-time="{slot}" data-prn-action="take" data-med-done="false">Take</button></span>'
-        elif it.get("type") == "event" and it.get("event_id"):
-            edata = html_module.escape(json.dumps(it.get("event_data", {})), quote=True)
-            extra = f'<span class="timeline-item-actions"><button type="button" class="event-edit-btn timeline-action-btn btn-small" data-event="{edata}">Edit</button></span>'
+        if not extra:
+            extra = '<span class="timeline-item-actions timeline-item-actions--empty" aria-hidden="true"></span>'
         result.append(
             f'<div class="{cls}"><span class="{bar_class}"></span><span class="timeline-item-main">{time_str} • {title_esc}{check}</span>{extra}</div>'
         )

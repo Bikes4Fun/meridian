@@ -20,7 +20,6 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding-bottom: 76px;
       background: var(--bg);
       color: var(--text);
       font-family: Arial, sans-serif;
@@ -111,51 +110,151 @@
     }
     .fold[open] > summary { border-bottom-color: var(--line); }
     .fold-body { padding: 14px; }
+    details.fold[open] > .fold-body {
+      max-height: min(82vh, 1000px);
+      overflow-y: auto;
+      position: relative;
+    }
     .ice-main { min-width: 0; }
-    .ice-strip-top {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px 20px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #faf8f5;
-      padding: 10px 12px;
-      margin-bottom: 12px;
-    }
-    .ice-strip-top .completion-brief h3 {
-      margin: 0 0 4px;
-      font-size: 13px;
-      color: var(--title);
-    }
-    .ice-strip-top .bar { margin-bottom: 6px; }
-    .ice-strip-top .warn-list { font-size: 12px; margin: 0; }
     .ice-bar-bottom {
-      position: fixed;
+      position: sticky;
       bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 40;
+      z-index: 3;
+      margin-top: 16px;
+      margin-left: 0;
+      margin-right: 0;
+      padding: 8px 0 6px;
       background: #fff;
+      background: linear-gradient(to top, #fff 85%, rgba(255, 255, 255, 0.92));
       border-top: 1px solid var(--line);
-      box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
     }
     .ice-bar-bottom-inner {
-      max-width: 1360px;
-      margin: 0 auto;
-      padding: 10px 16px;
+      padding: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 12px 24px;
+    }
+    @media (max-width: 560px) {
+      .ice-bar-bottom-inner {
+        grid-template-columns: 1fr;
+      }
+    }
+    .ice-bar-bottom .ice-bar-actions {
       display: flex;
+      gap: 8px;
       flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    @media (max-width: 560px) {
+      .ice-bar-bottom .ice-bar-actions { justify-content: stretch; }
+      .ice-bar-bottom .ice-bar-actions .btn { flex: 1 1 auto; text-align: center; }
+    }
+    details.completion-pop {
+      border: 0;
+      margin: 0;
+      min-width: 0;
+      width: 100%;
+    }
+    details.completion-pop > summary.completion-summary {
+      list-style: none;
+      display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px 12px;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 5px 8px 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #faf8f5;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset;
     }
-    .ice-bar-bottom .quick-complete {
-      font-size: 13px;
+    details.completion-pop > summary.completion-summary::-webkit-details-marker { display: none; }
+    .completion-summary-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 6px;
+      min-width: 0;
+      line-height: 1.25;
+    }
+    .completion-summary-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
       color: var(--muted);
     }
-    .ice-bar-bottom .ice-bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .completion-summary-sep {
+      color: #b5ada3;
+      font-weight: 400;
+      font-size: 12px;
+    }
+    .completion-summary-main {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--title);
+    }
+    .completion-summary .chev-wrap {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--terracotta);
+    }
+    .completion-chevron {
+      display: block;
+      transition: transform 0.15s ease;
+    }
+    details.completion-pop[open] > summary.completion-summary {
+      border-color: #c9b8a4;
+    }
+    details.completion-pop[open] > summary .completion-chevron {
+      transform: rotate(180deg);
+    }
+    .completion-pop-body {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    .completion-pop-body .bar--slim {
+      height: 4px;
+      margin: 0 0 8px;
+    }
+    .completion-pop-body .completion-ok {
+      margin: 0 0 6px;
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .completion-pop-body .completion-miss-h {
+      margin: 0 0 4px;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--title);
+    }
+    .completion-pop-body .warn-list {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #6b5340;
+      line-height: 1.45;
+    }
     .identity-bar {
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -211,16 +310,6 @@
       line-height: 1.3;
       max-width: 42ch;
     }
-    .code-glance {
-      font-size: 13px;
-      color: var(--text);
-      line-height: 1.4;
-      padding: 8px 10px;
-      background: #f0ebe3;
-      border-radius: 7px;
-      border: 1px solid #e5dcd0;
-      margin: 0 0 10px;
-    }
     .code-grid-3 {
       display: grid;
       grid-template-columns: 1fr;
@@ -239,11 +328,18 @@
     @media (min-width: 800px) {
       .code-cell { margin-bottom: 0; min-height: 100%; }
     }
-    .code-cell .value-line {
+    .code-sub {
+      display: block;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--title);
-      margin: 0 0 4px;
+      margin: 0 0 2px;
+    }
+    p.code-selected {
+      font-size: 11px;
+      color: var(--muted);
+      margin: 0 0 6px;
+      line-height: 1.35;
     }
     .btn {
       display: inline-block;
@@ -535,19 +631,6 @@
                   </div>
                 </div>
 
-                <div class="ice-strip-top">
-                  <div class="completion-brief" style="flex:1;min-width:200px;">
-                    <h3>Profile completion</h3>
-                    <div class="completion-line"><span>4 of 7</span><span style="color:var(--muted);font-weight:600;">fields</span></div>
-                    <div class="bar"><div></div></div>
-                    <ul class="warn-list">
-                      <li>Physician POLST file not uploaded</li>
-                      <li>No &ldquo;1st call&rdquo; family contact (non-proxy)</li>
-                      <li>Confirm DNR / DNI vs signed orders</li>
-                    </ul>
-                  </div>
-                </div>
-
                 <details class="section">
                   <summary>
                     <span>Documents</span>
@@ -618,34 +701,33 @@
 
                     <div class="hm-block">
                       <h3 class="subhead">Code status &amp; life-sustaining goals</h3>
-                      <p class="code-glance"><strong>Current:</strong> DNR = no CPR &middot; DNI = not desired &middot; Artificial nutrition = as documented.</p>
                       <p class="row-h" style="margin:0 0 10px;font-size:12px;">
                         <button type="button" class="linkish" style="font-size:12px;">Open physician orders in Documents</button>
-                        <button type="button" class="ico-hint" title="Link to the uploaded POLST or similar in Documents.">i</button>
+                        <button type="button" class="ico-hint" title="Opens the Documents section or linked POLST/orders.">i</button>
                       </p>
                       <div class="code-grid-3">
                         <div class="code-cell">
-                          <p class="value-line">Selected: DNR / no CPR</p>
-                          <label class="block">DNR (no CPR)</label>
-                          <select class="full" style="margin-bottom:6px;">
+                          <span class="code-sub">DNR (no CPR)</span>
+                          <p class="code-selected">Now: DNR / no CPR</p>
+                          <select class="full" style="margin-bottom:0;" aria-label="DNR (no CPR)">
                             <option>DNR / no CPR</option>
                             <option>Full resuscitation</option>
                             <option>See document</option>
                           </select>
                         </div>
                         <div class="code-cell">
-                          <p class="value-line">Selected: Intubation not desired</p>
-                          <label class="block">DNI</label>
-                          <select class="full" style="margin-bottom:6px;">
+                          <span class="code-sub">DNI</span>
+                          <p class="code-selected">Now: Intubation not desired</p>
+                          <select class="full" style="margin-bottom:0;" aria-label="DNI">
                             <option>Intubation not desired</option>
                             <option>Intubation if indicated</option>
                             <option>See document</option>
                           </select>
                         </div>
                         <div class="code-cell">
-                          <p class="value-line">Selected: As documented</p>
-                          <label class="block">Artificial nutrition</label>
-                          <select class="full" style="margin-bottom:6px;">
+                          <span class="code-sub">Artificial nutrition</span>
+                          <p class="code-selected">Now: As documented in orders or goals of care</p>
+                          <select class="full" style="margin-bottom:0;" aria-label="Artificial nutrition">
                             <option>As documented</option>
                             <option>Comfort / trial as ordered</option>
                             <option>Not desired</option>
@@ -653,11 +735,16 @@
                           </select>
                         </div>
                       </div>
-                      <p class="row-h check-pair" style="margin:6px 0 0;padding-top:8px;border-top:1px solid var(--line);">
-                        <span style="font-size:12px;margin-right:6px;">Matches signed order in Documents:</span>
-                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNR</label>
-                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNI</label>
-                        <label class="check-pair" style="margin:0;"><input type="checkbox"> Nutrition</label>
+                      <p class="row-h check-pair" style="margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);flex-wrap:wrap;">
+                        <span class="row-h" style="font-size:12px;gap:4px;align-items:center;">
+                          <span>Matches signed order in Documents: DNR &middot; DNI &middot; Nutrition</span>
+                          <button type="button" class="ico-hint" title="Check each box if that goal is spelled out the same way in the physician order or POLST you uploaded under Documents.">i</button>
+                        </span>
+                        <span class="row-h" style="flex-wrap:wrap;gap:8px 12px;margin-top:4px;">
+                          <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNR</label>
+                          <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNI</label>
+                          <label class="check-pair" style="margin:0;"><input type="checkbox"> Nutrition</label>
+                        </span>
                       </p>
                     </div>
 
@@ -769,19 +856,42 @@
                 </details>
             </div>
 
+            <div class="ice-bar-bottom" role="region" aria-label="Save ICE profile">
+              <div class="ice-bar-bottom-inner">
+                <details class="completion-pop">
+                  <summary class="completion-summary" title="View what&rsquo;s filled in and what&rsquo;s still missing" aria-label="ICE POLST form, 4 of 7 fields complete. Show or hide checklist.">
+                    <span class="completion-summary-line">
+                      <span class="completion-summary-eyebrow">ICE / POLST form</span>
+                      <span class="completion-summary-sep" aria-hidden="true">·</span>
+                      <span class="completion-summary-main">4 of 7 fields complete</span>
+                    </span>
+                    <span class="chev-wrap" aria-hidden="true">
+                      <svg class="completion-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                  </summary>
+                  <div class="completion-pop-body">
+                    <div class="bar bar--slim"><div></div></div>
+                    <p class="completion-ok"><strong>Complete (mock):</strong> Name and date of birth on file, optional photo placeholder set, a health care POA document uploaded, and the three code-status fields in Health &amp; medical filled in (DNR, DNI, artificial nutrition) so the identity strip and PDF can show a consistent story.</p>
+                    <p class="completion-miss-h">Still needed</p>
+                    <ul class="warn-list">
+                      <li>Upload a signed physician POLST (or hospital orders) that covers CPR, intubation, and artificial nutrition&mdash;so the &ldquo;Matches signed order&rdquo; checkboxes can be verified.</li>
+                      <li>Add at least one non-proxy emergency contact with &ldquo;1st call&rdquo; level so a family member&mdash;not just the assigned POA&mdash;is on the sheet.</li>
+                      <li>Reconcile the DNR, DNI, and nutrition checkboxes with the most recent on-file order; the nutrition line is still unchecked in this example.</li>
+                    </ul>
+                  </div>
+                </details>
+                <div class="ice-bar-actions">
+                  <button type="button" class="btn btn-primary">Save profile</button>
+                  <button type="button" class="btn btn-outline">Download emergency PDF</button>
+                </div>
+              </div>
+            </div>
+
             <p class="mock-note">Dev-only note (not product copy): v1 on v2 shell, compact rows, i = extra help on hover.</p>
           </div>
         </details>
-      </div>
-    </div>
-
-    <div class="ice-bar-bottom" role="region" aria-label="Save ICE profile">
-      <div class="ice-bar-bottom-inner">
-        <span class="quick-complete">4 of 7 complete</span>
-        <div class="ice-bar-actions">
-          <button type="button" class="btn btn-primary">Save profile</button>
-          <button type="button" class="btn btn-outline">Download emergency PDF</button>
-        </div>
       </div>
     </div>
   </div>

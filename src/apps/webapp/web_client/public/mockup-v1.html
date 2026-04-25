@@ -182,6 +182,77 @@
     .btn-primary { background: var(--sage); color: #fff; border-color: var(--sage); }
     .btn-outline { background: #fff; color: var(--terracotta); border-color: var(--terracotta); }
     .btn-ghost { background: #fff; color: var(--muted); border-color: var(--line); }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+    }
+    input.input-tight, select.input-tight {
+      padding: 4px 7px;
+      font-size: 13px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    .input-tight[type="date"] { min-width: 0; }
+    .row-h {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button.ico-hint {
+      display: inline-flex;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: #faf8f5;
+      cursor: help;
+      line-height: 1;
+      font-family: inherit;
+    }
+    .doc-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .doc-row-1l {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.15fr) minmax(0, 140px) 128px 1fr auto;
+      gap: 8px 10px;
+      align-items: center;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      border: 1px solid #ece6dc;
+      border-radius: 8px;
+      background: #fdfcfa;
+    }
+    @media (max-width: 960px) {
+      .doc-row-1l { grid-template-columns: 1fr; }
+    }
+    .doc-cols {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.15fr) minmax(0, 140px) 128px 1fr auto;
+      gap: 8px 10px;
+      padding: 0 8px 2px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    @media (max-width: 960px) {
+      .doc-cols { display: none; }
+    }
     details.section {
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -217,18 +288,6 @@
       font-weight: 700;
       color: var(--title);
     }
-    .rec-list {
-      margin: 0 0 10px;
-      padding-left: 20px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .med-preview {
-      font-size: 13px;
-      color: var(--muted);
-      margin: 0 0 10px;
-      line-height: 1.5;
-    }
     .med-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -258,44 +317,37 @@
       cursor: pointer;
       padding: 0;
     }
-    .doc-line {
+    .med-line--tight {
+      padding: 5px 10px;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .ec-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
       border: 1px solid #ece6dc;
       border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
       background: #fdfcfa;
     }
-    .med-row-grid {
+    .ec-line span { min-width: 0; }
+    .allergy-line {
       display: grid;
-      grid-template-columns: 1.1fr 0.7fr 1.1fr auto;
-      gap: 8px 10px;
+      grid-template-columns: 1fr 1fr 0.8fr;
+      gap: 8px;
       align-items: end;
       margin-bottom: 6px;
-      padding: 8px 10px;
-      border: 1px solid #ece6dc;
-      border-radius: 8px;
-      background: #fdfcfa;
+      padding: 6px 0;
+      border-bottom: 1px dashed #ece6dc;
     }
-    .med-row-grid .cell-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    @media (max-width: 720px) {
-      .med-row-grid { grid-template-columns: 1fr; }
+    .allergy-line:last-of-type { border-bottom: 0; }
+    @media (max-width: 640px) {
+      .allergy-line { grid-template-columns: 1fr; }
     }
-    .ec-card {
-      border: 1px solid #ece6dc;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 8px;
-      background: #fdfcfa;
-    }
-    .ec-head {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: flex-end;
-      margin-bottom: 8px;
-    }
-    .ec-head > div { flex: 1 1 120px; min-width: 0; }
-    .ec-actions { flex: 0 0 auto; }
     .code-row { margin-bottom: 12px; }
     .code-row:last-child { margin-bottom: 0; }
     .check-pair {
@@ -430,270 +482,177 @@
                     <span class="summary-meta">Photo on file &middot; 2 files</span>
                   </summary>
                   <div class="section-body">
-                    <p class="tiny" style="margin-top:0;">Each row is a <strong>document</strong>: choose a type, then attach a file. Use <strong>Other (custom name)</strong> for anything that is not in the list.</p>
-                    <p class="tiny" style="margin-top:0;">Recommended types (pick from the menu or add your own under Other):</p>
-                    <ul class="rec-list">
-                      <li>Signed POLST / physician orders (DNR / DNI / goals as written)</li>
-                      <li>Health care power of attorney</li>
-                      <li>Living will or advanced directive</li>
-                      <li>Insurance card, ID, or recent clinic summary (optional)</li>
-                    </ul>
-
-                    <div class="doc-line">
-                      <div class="grid2" style="margin-bottom:8px;">
-                        <div>
-                          <label class="block">Document type</label>
-                          <select class="full">
-                            <option>Physician orders / signed POLST</option>
-                            <option>Health care POA</option>
-                            <option>Advanced directive (living will)</option>
-                            <option>Insurance or ID (copy)</option>
-                            <option>Other (custom name below)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="block">Custom name (if Other)</label>
-                          <input class="full" type="text" value="" placeholder="Only when type is Other" disabled>
-                        </div>
-                      </div>
-                      <div class="grid2">
-                        <div><label class="block">File</label><input class="full" type="text" value="" placeholder="No file chosen"></div>
-                        <div><label class="block"><span aria-hidden="true">&nbsp;</span></label><button type="button" class="btn" style="width:100%;">Choose file</button></div>
-                      </div>
+                    <div class="doc-toolbar">
+                      <span class="row-h" style="gap:6px;">One row per file. Menu lists common types; pick Other to name your own. <button type="button" class="ico-hint" title="Examples: signed POLST or orders, health care POA, living will, ID/insurance.">i</button></span>
                     </div>
 
-                    <div class="doc-line">
-                      <div class="grid2" style="margin-bottom:8px;">
-                        <div>
-                          <label class="block">Document type</label>
-                          <select class="full">
-                            <option>Physician orders / signed POLST</option>
-                            <option selected>Health care POA</option>
-                            <option>Advanced directive (living will)</option>
-                            <option>Insurance or ID (copy)</option>
-                            <option>Other (custom name below)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="block">Custom name (if Other)</label>
-                          <input class="full" type="text" value="" placeholder="Only when type is Other" disabled>
-                        </div>
-                      </div>
-                      <div class="grid2">
-                        <div><label class="block">File</label><input class="full" type="text" value="poa-2024.pdf" readonly></div>
-                        <div><label class="block"><span aria-hidden="true">&nbsp;</span></label><button type="button" class="btn" style="width:100%;">Replace</button></div>
-                      </div>
+                    <div class="doc-cols" aria-hidden="true">
+                      <span>Type</span><span>Other label</span><span>Last updated</span><span>File</span><span></span>
+                    </div>
+                    <div class="doc-row-1l" title="One row = one file">
+                      <select class="input-tight" aria-label="Document type">
+                        <option>Physician orders / signed POLST</option>
+                        <option>Health care POA</option>
+                        <option>Advanced directive</option>
+                        <option>ID or insurance (copy)</option>
+                        <option>Other&hellip;</option>
+                      </select>
+                      <input class="input-tight" type="text" value="" placeholder="Label if Other" disabled aria-label="Custom document name if Other">
+                      <input class="input-tight" type="date" value="2025-10-12" title="Last updated" aria-label="Last updated">
+                      <input class="input-tight" type="text" value="" placeholder="No file" readonly aria-label="File name">
+                      <button type="button" class="btn btn-sm">File</button>
                     </div>
 
-                    <div class="doc-line">
-                      <div class="grid2" style="margin-bottom:8px;">
-                        <div>
-                          <label class="block">Document type</label>
-                          <select class="full">
-                            <option>Physician orders / signed POLST</option>
-                            <option>Health care POA</option>
-                            <option>Advanced directive (living will)</option>
-                            <option>Insurance or ID (copy)</option>
-                            <option selected>Other (custom name below)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="block">Custom name (if Other)</label>
-                          <input class="full" type="text" value="Discharge summary, General Hospital" placeholder="e.g. MOLST, cardiology letter">
-                        </div>
-                      </div>
-                      <div class="grid2">
-                        <div><label class="block">File</label><input class="full" type="text" value="" placeholder="No file chosen"></div>
-                        <div><label class="block"><span aria-hidden="true">&nbsp;</span></label><button type="button" class="btn" style="width:100%;">Upload</button></div>
-                      </div>
+                    <div class="doc-row-1l">
+                      <select class="input-tight" aria-label="Document type">
+                        <option>Physician orders / signed POLST</option>
+                        <option selected>Health care POA</option>
+                        <option>Advanced directive</option>
+                        <option>ID or insurance (copy)</option>
+                        <option>Other&hellip;</option>
+                      </select>
+                      <input class="input-tight" type="text" value="" placeholder="Label if Other" disabled>
+                      <input class="input-tight" type="date" value="2024-06-01" aria-label="Last updated">
+                      <input class="input-tight" type="text" value="poa-2024.pdf" readonly>
+                      <button type="button" class="btn btn-sm">Replace</button>
                     </div>
 
-                    <div><button type="button" class="btn btn-outline" style="width:100%;">+ Add document</button></div>
+                    <div class="doc-row-1l">
+                      <select class="input-tight" aria-label="Document type">
+                        <option>Physician orders / signed POLST</option>
+                        <option>Health care POA</option>
+                        <option>Advanced directive</option>
+                        <option>ID or insurance (copy)</option>
+                        <option selected>Other&hellip;</option>
+                      </select>
+                      <input class="input-tight" type="text" value="Discharge summary" placeholder="Label if Other" aria-label="Custom document name">
+                      <input class="input-tight" type="date" value="2026-01-20" aria-label="Last updated">
+                      <input class="input-tight" type="text" value="" placeholder="No file" readonly>
+                      <button type="button" class="btn btn-sm">Upload</button>
+                    </div>
+
+                    <div class="row-h" style="margin-top:4px;">
+                      <button type="button" class="btn btn-sm btn-outline">+ Add</button>
+                    </div>
                   </div>
                 </details>
 
                 <details class="section">
                   <summary>
                     <span>Health &amp; medical</span>
-                    <span class="summary-meta">Code status + dx + meds + history</span>
+                    <span class="summary-meta">6 meds &middot; code &middot; history</span>
                   </summary>
                   <div class="section-body">
-                    <p class="tiny" style="margin-top:0;">Everything clinical lives under this single fold. Sub-headings below are <strong>not</strong> extra accordions&mdash;just sections inside one panel (mock).</p>
 
                     <div class="hm-block">
                       <h3 class="subhead">Code status &amp; life-sustaining goals</h3>
-                      <p class="tiny" style="margin-top:0;">Each line is explicit. Check the box when the choice matches a signed order you uploaded under <strong>Documents</strong>.</p>
-                      <p style="margin:0 0 10px;"><button type="button" class="btn btn-ghost">View linked physician orders document</button></p>
+                      <p class="row-h" style="margin:0 0 8px;font-size:12px;">
+                        <button type="button" class="linkish" style="font-size:12px;">View physician orders in Documents</button>
+                        <button type="button" class="ico-hint" title="If this matches your uploaded POLST/orders, check the box.">i</button>
+                      </p>
                       <div class="code-row">
                         <label class="block">DNR (no CPR)</label>
                         <select class="full">
                           <option>DNR / no CPR</option>
                           <option>Full resuscitation</option>
-                          <option>Not recorded; see document</option>
+                          <option>See document</option>
                         </select>
-                        <label class="check-pair"><input type="checkbox" checked> Stated the same in physician orders on file</label>
+                        <label class="check-pair"><input type="checkbox" checked> Matches order on file</label>
                       </div>
                       <div class="code-row">
                         <label class="block">DNI</label>
                         <select class="full">
                           <option>Intubation not desired</option>
-                          <option>Intubation if clinically indicated</option>
-                          <option>Not recorded; see document</option>
+                          <option>Intubation if indicated</option>
+                          <option>See document</option>
                         </select>
-                        <label class="check-pair"><input type="checkbox" checked> Stated the same in physician orders on file</label>
+                        <label class="check-pair"><input type="checkbox" checked> Matches order on file</label>
                       </div>
                       <div class="code-row">
                         <label class="block">Artificial nutrition</label>
                         <select class="full">
-                          <option>Preferences documented</option>
+                          <option>As documented</option>
                           <option>Comfort / trial as ordered</option>
                           <option>Not desired</option>
-                          <option>Not recorded; see document</option>
+                          <option>See document</option>
                         </select>
-                        <label class="check-pair"><input type="checkbox"> Stated the same in physician orders on file</label>
+                        <label class="check-pair"><input type="checkbox"> Matches order on file</label>
                       </div>
                     </div>
 
                     <div class="hm-block">
                       <h3 class="subhead">Diagnoses</h3>
-                      <label class="block">Active diagnoses (short list; mock)</label>
-                      <textarea class="full" style="min-height:56px;" placeholder="e.g. Type 2 diabetes, hypertension, mild cognitive impairment, osteoarthritis">Type 2 diabetes mellitus, essential hypertension, mild neurocognitive disorder, osteoarthritis of knees, hyperlipidemia</textarea>
+                      <label class="block">Active (comma or short list)</label>
+                      <textarea class="full" style="min-height:48px;">Type 2 diabetes mellitus, essential hypertension, mild neurocognitive disorder, osteoarthritis of knees, hyperlipidemia</textarea>
                     </div>
 
                     <div class="hm-block">
-                      <h3 class="subhead">Conditions &amp; what responders should know</h3>
-                      <label class="block">Current conditions, devices, or limits (not the same as formal diagnoses; mock)</label>
-                      <textarea class="full" style="min-height:56px;" placeholder="Hearing loss; uses walker; allergy to sulfa.">Hearing loss (hearing aids in usual setting), uses a rolling walker, allergic to sulfa drugs, prior falls at home.</textarea>
+                      <h3 class="subhead">Drug allergies &amp; reactions</h3>
+                      <p class="tiny" style="margin-top:0;">List each substance separately when you can. <button type="button" class="ico-hint" title="Include reaction, how severe, and about when it started.">i</button></p>
+                      <div class="allergy-line">
+                        <div>
+                          <label class="block">Substance / drug</label>
+                          <input class="input-tight" value="Sulfa (e.g. sulfamethoxazole)">
+                        </div>
+                        <div>
+                          <label class="block">Reaction / symptoms</label>
+                          <input class="input-tight" value="Hives, nausea / vomiting">
+                        </div>
+                        <div>
+                          <label class="block">Onset (approx.)</label>
+                          <input class="input-tight" value="1998&mdash;ongoing avoid">
+                        </div>
+                      </div>
+                      <div class="allergy-line">
+                        <div>
+                          <label class="block">Substance / drug</label>
+                          <input class="input-tight" value="Penicillin" placeholder="Substance">
+                        </div>
+                        <div>
+                          <label class="block">Reaction / symptoms</label>
+                          <input class="input-tight" value="Unknown&mdash;avoid" placeholder="Reaction">
+                        </div>
+                        <div>
+                          <label class="block">Onset (approx.)</label>
+                          <input class="input-tight" value="Childhood" placeholder="Onset">
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-outline">+ Allergy</button>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Devices, mobility, and what responders should know</h3>
+                      <label class="block">Non-allergy context (hearing, walker, fall risk&hellip;)</label>
+                      <textarea class="full" style="min-height:48px;">Hearing loss (aids in usual setting), uses rolling walker, history of falls at home.</textarea>
                     </div>
 
                     <div class="hm-block">
                       <h3 class="subhead">Brief history</h3>
-                      <label class="block">1&ndash;2 sentences: recent hospitalization, PCP, goals of care in plain language (mock)</label>
-                      <textarea class="full" style="min-height:70px;" placeholder="Optional narrative for ICE / EMS.">Lives with son. Last hospitalization 2 months ago for UTI, recovered at home. Primary care: Dr. Patel at Midtown Family (example). Wants comfort-focused care if not herself.</textarea>
+                      <label class="block">Optional narrative</label>
+                      <textarea class="full" style="min-height:64px;">Lives with son. Last hospitalization 2 months ago for UTI, recovered at home. PCP: Dr. Patel, Midtown Family. Comfort-focused if not herself.</textarea>
                     </div>
 
                     <div class="hm-block">
                       <h3 class="subhead">Medications</h3>
-                      <p class="med-preview">6 on ICE list (all listed below) &mdash; Metformin 500mg &middot; Lisinopril 10mg &middot; Donepezil 5mg &middot; Melatonin 3mg &middot; Acetaminophen 500mg &middot; Lorazepam 0.5mg</p>
-                      <div class="med-toolbar">
-                        <button type="button" class="btn btn-primary">Edit all medications</button>
-                        <button type="button" class="btn btn-outline">Add medication</button>
+                      <div class="row-h" style="justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;">
+                        <div class="med-toolbar" style="margin:0;">
+                          <button type="button" class="btn btn-primary">Edit all medications</button>
+                          <button type="button" class="btn btn-sm btn-outline">Add</button>
+                        </div>
+                        <span class="tiny" style="margin:0;">6 on ICE. Details open in Edit all. <button type="button" class="ico-hint" title="This row is a compact summary only until Edit all is on.">i</button></span>
                       </div>
-                      <div class="med-row-grid">
-                        <div>
-                          <div class="cell-label">Name</div>
-                          <input class="full" value="Metformin" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Dose</div>
-                          <input class="full" value="500mg" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Frequency</div>
-                          <input class="full" value="Three times daily" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label" aria-hidden="true">&nbsp;</div>
-                          <button type="button" class="btn btn-outline" style="width:100%;">Edit</button>
-                        </div>
-                      </div>
-                      <div class="med-row-grid">
-                        <div>
-                          <div class="cell-label">Name</div>
-                          <input class="full" value="Lisinopril" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Dose</div>
-                          <input class="full" value="10mg" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Frequency</div>
-                          <input class="full" value="Once daily" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label" aria-hidden="true">&nbsp;</div>
-                          <button type="button" class="btn btn-outline" style="width:100%;">Edit</button>
-                        </div>
-                      </div>
-                      <div class="med-row-grid">
-                        <div>
-                          <div class="cell-label">Name</div>
-                          <input class="full" value="Donepezil" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Dose</div>
-                          <input class="full" value="5mg" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Frequency</div>
-                          <input class="full" value="Nightly" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label" aria-hidden="true">&nbsp;</div>
-                          <button type="button" class="btn btn-outline" style="width:100%;">Edit</button>
-                        </div>
-                      </div>
-                      <div class="med-row-grid">
-                        <div>
-                          <div class="cell-label">Name</div>
-                          <input class="full" value="Melatonin" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Dose</div>
-                          <input class="full" value="3mg" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Frequency</div>
-                          <input class="full" value="Nightly as needed" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label" aria-hidden="true">&nbsp;</div>
-                          <button type="button" class="btn btn-outline" style="width:100%;">Edit</button>
-                        </div>
-                      </div>
-                      <div class="med-row-grid">
-                        <div>
-                          <div class="cell-label">Name</div>
-                          <input class="full" value="Acetaminophen" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Dose</div>
-                          <input class="full" value="500mg" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Frequency</div>
-                          <input class="full" value="As needed for pain" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label" aria-hidden="true">&nbsp;</div>
-                          <button type="button" class="btn btn-outline" style="width:100%;">Edit</button>
-                        </div>
-                      </div>
-                      <div class="med-row-grid">
-                        <div>
-                          <div class="cell-label">Name</div>
-                          <input class="full" value="Lorazepam" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Dose</div>
-                          <input class="full" value="0.5mg" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label">Frequency</div>
-                          <input class="full" value="As needed for anxiety" readonly>
-                        </div>
-                        <div>
-                          <div class="cell-label" aria-hidden="true">&nbsp;</div>
-                          <button type="button" class="btn btn-outline" style="width:100%;">Edit</button>
-                        </div>
-                      </div>
-                      <p class="tiny" style="margin-top:4px;">Summary line lists all six; the six rows match that count. Deep editors stay in &ldquo;Edit all&rdquo; or row <strong>Edit</strong> (mock).</p>
+                      <div class="med-line med-line--tight"><span>Metformin 500mg, three times daily</span></div>
+                      <div class="med-line med-line--tight"><span>Lisinopril 10mg, once daily</span></div>
+                      <div class="med-line med-line--tight"><span>Donepezil 5mg, nightly</span></div>
+                      <div class="med-line med-line--tight"><span>Melatonin 3mg, PRN for sleep</span></div>
+                      <div class="med-line med-line--tight"><span>Acetaminophen 500mg, PRN pain</span></div>
+                      <div class="med-line med-line--tight"><span>Lorazepam 0.5mg, PRN anxiety</span></div>
                     </div>
 
                     <div class="hm-block">
                       <h3 class="subhead">Other</h3>
-                      <label class="block">Anything else for clinicians (devices, last labs, care team notes&mdash;mock)</label>
-                      <textarea class="full" style="min-height:56px;" placeholder="e.g. Pacemaker; warfarin held; prefers female caregivers.">DNR and goals discussed with PCP; copy of most recent med list faxed to pharmacy Jan 2026 (mock).</textarea>
+                      <label class="block">Anything else (labs, care team&hellip;)</label>
+                      <textarea class="full" style="min-height:48px;">Most recent med list to pharmacy, Jan 2026.</textarea>
                     </div>
                   </div>
                 </details>
@@ -701,107 +660,19 @@
                 <details class="section">
                   <summary>
                     <span>Emergency contacts</span>
-                    <span class="summary-meta">Proxy, POA, + family (name-able roles)</span>
+                    <span class="summary-meta">3 &middot; role &middot; call order</span>
                   </summary>
                   <div class="section-body">
-                    <p class="tiny" style="margin-top:0;">One list: <strong>role / type</strong> (name-able), <strong>relationship</strong>, <strong>level</strong> (call order), <strong>name</strong>, <strong>phone</strong>. No separate &ldquo;Proxy + POA&rdquo; block.</p>
-                    <div class="med-toolbar">
-                      <button type="button" class="btn btn-primary">Edit all contacts</button>
-                      <button type="button" class="btn btn-outline">Add contact</button>
+                    <div class="row-h" style="justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                      <div class="med-toolbar" style="margin:0;">
+                        <button type="button" class="btn btn-primary">Edit all contacts</button>
+                        <button type="button" class="btn btn-sm btn-outline">Add</button>
+                      </div>
+                      <span class="tiny" style="margin:0;">Summary rows; fields in Edit all. <button type="button" class="ico-hint" title="Name, role/type, relationship, level, phone.">i</button></span>
                     </div>
-
-                    <div class="ec-card">
-                      <div class="ec-head">
-                        <div><label class="block">Role / type</label>
-                          <select class="full">
-                            <option>POA (health care)</option>
-                            <option>Medical proxy (surrogate decision-maker)</option>
-                            <option>Family / friend</option>
-                            <option>Other (name below)</option>
-                          </select>
-                        </div>
-                        <div><label class="block">Custom label (if Other)</label><input class="full" value="" placeholder="e.g. chaplain, neighbor"></div>
-                        <div><label class="block">Level</label>
-                          <select class="full">
-                            <option>1st call (primary)</option>
-                            <option>2nd call</option>
-                            <option>3rd call</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div class="grid2">
-                        <div><label class="block">Name</label><input class="full" value="James Foster"></div>
-                        <div><label class="block">Relationship</label><input class="full" value="Son / durable POA"></div>
-                      </div>
-                      <div class="grid2" style="margin-top:8px;">
-                        <div><label class="block">Phone</label><input class="full" value="(555) 000-0000"></div>
-                        <div class="ec-actions" style="align-self:flex-end;">
-                          <button type="button" class="linkish">Remove</button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="ec-card">
-                      <div class="ec-head">
-                        <div><label class="block">Role / type</label>
-                          <select class="full">
-                            <option selected>Medical proxy (surrogate decision-maker)</option>
-                            <option>POA (health care)</option>
-                            <option>Family / friend</option>
-                            <option>Other (name below)</option>
-                          </select>
-                        </div>
-                        <div><label class="block">Custom label (if Other)</label><input class="full" value="" disabled></div>
-                        <div><label class="block">Level</label>
-                          <select class="full">
-                            <option selected>1st call (primary)</option>
-                            <option>2nd call</option>
-                            <option>3rd call</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div class="grid2">
-                        <div><label class="block">Name</label><input class="full" value="James Foster"></div>
-                        <div><label class="block">Relationship</label><input class="full" value="Appointed MPOA; same as POA"></div>
-                      </div>
-                      <div class="grid2" style="margin-top:8px;">
-                        <div><label class="block">Phone</label><input class="full" value="(555) 000-0000"></div>
-                        <div class="ec-actions" style="align-self:flex-end;">
-                          <button type="button" class="linkish">Remove</button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="ec-card">
-                      <div class="ec-head">
-                        <div><label class="block">Role / type</label>
-                          <select class="full">
-                            <option>Family / friend</option>
-                            <option>POA (health care)</option>
-                            <option>Medical proxy (surrogate decision-maker)</option>
-                            <option>Other (name below)</option>
-                          </select>
-                        </div>
-                        <div><label class="block">Custom label (if Other)</label><input class="full" value="" disabled></div>
-                        <div><label class="block">Level</label>
-                          <select class="full">
-                            <option>1st call (primary)</option>
-                            <option selected>2nd call</option>
-                            <option>3rd call</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div class="grid2">
-                        <div><label class="block">Name</label><input class="full" value="Dean Foster"></div>
-                        <div><label class="block">Relationship</label><input class="full" value="Son"></div>
-                      </div>
-                      <div class="grid2" style="margin-top:8px;">
-                        <div><label class="block">Phone</label><input class="full" value="(555) 100-1000"></div>
-                        <div class="ec-actions" style="align-self:flex-end;">
-                          <button type="button" class="linkish">Remove</button>
-                        </div>
-                      </div>
-                    </div>
+                    <div class="ec-line"><span>James Foster &middot; Health care POA &middot; 1st &middot; (555) 000-0000 &middot; son</span></div>
+                    <div class="ec-line"><span>James Foster &middot; Medical proxy (MPOA) &middot; 1st &middot; (555) 000-0000</span></div>
+                    <div class="ec-line"><span>Dean Foster &middot; Family &middot; 2nd &middot; (555) 100-1000 &middot; son</span></div>
                   </div>
                 </details>
 
@@ -835,7 +706,7 @@
               </aside>
             </div>
 
-            <p class="mock-note">v1 on v2 shell: <strong>Documents</strong> = list (recommended types in copy + <strong>Other</strong> with custom name). <strong>Health &amp; medical</strong> = one fold, flat sub-headings (no nested accordions): code status, diagnoses, conditions, brief history, six medication rows, other. Emergency contacts unchanged. Identity strip and Edit/Add photo stay visible; top-level ICE sections start collapsed. Save and PDF in the sticky column only.</p>
+            <p class="mock-note">Dev-only note (not product copy): v1 on v2 shell, compact rows, i = extra help on hover.</p>
           </div>
         </details>
       </div>

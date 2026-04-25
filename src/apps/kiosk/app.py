@@ -283,19 +283,28 @@ class MeridianKioskApp:
             (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
         )
         try:
+<<<<<<< HEAD
             webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = webview_debug
+=======
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = True
+>>>>>>> 160-refine-top-3-webapp
         except Exception:
             pass
         kiosk_user_agent = (
             os.environ.get("MERIDIAN_KIOSK_USER_AGENT") or "Meridian-Kiosk/1.0"
         ).strip()
         gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
+        kiosk_debug = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
         if gui_pref:
             try:
                 if gui_pref != "qt":
                     logger.info(f"Kiosk pywebview GUI (non-default): {gui_pref}")
                 webview.start(
+<<<<<<< HEAD
                     debug=webview_debug,
+=======
+                    debug=kiosk_debug,
+>>>>>>> 160-refine-top-3-webapp
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )

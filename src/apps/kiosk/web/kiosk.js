@@ -1027,5 +1027,12 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
       if (name === 'medications') {
           mountMedicationsEditor();
       }
+      if (name === 'family' && typeof applyKioskFamilyMapViewOffset === 'function' && window._familyMap) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            applyKioskFamilyMapViewOffset(window._familyMap);
+          });
+        });
+      }
   };
 })();

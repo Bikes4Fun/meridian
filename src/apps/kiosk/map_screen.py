@@ -66,6 +66,7 @@ def _is_care_recipient(contact: dict, kiosk_user_id: str) -> bool:
     return relationship in ("care recipient", "care_recipient", "patient", "you")
 
 
+<<<<<<< HEAD
 def _family_member_detail_key(user_id: str, display_name: str, location: str) -> str:
     """Stable key for list rows, detail JSON, and map markers (must match across surfaces)."""
     uid = (user_id or "").strip()
@@ -76,6 +77,8 @@ def _family_member_detail_key(user_id: str, display_name: str, location: str) ->
     return f"n:{n}|{loc}"
 
 
+=======
+>>>>>>> 160-refine-top-3-webapp
 def _format_last_checked_label(checkin: dict) -> str:
     raw = (
         checkin.get("last_checked_at")
@@ -141,14 +144,20 @@ def _family_panel_body_fragment(
     checkins_data: Optional[list],
     kiosk_user_id: str,
     home_place_name: str,
+<<<<<<< HEAD
 ) -> tuple[str, dict[str, dict]]:
     rows: list[str] = []
     details: dict[str, dict] = {}
+=======
+) -> str:
+    rows: list[str] = []
+>>>>>>> 160-refine-top-3-webapp
     you_photo_src = (
         loc_svc.get_user_photo_b64((kiosk_user_id or "").strip())
         if loc_svc and kiosk_user_id
         else None
     )
+<<<<<<< HEAD
     dk_you = _family_member_detail_key(kiosk_user_id, "You", home_place_name)
     details[dk_you] = {
         "display_name": "You",
@@ -160,6 +169,10 @@ def _family_panel_body_fragment(
     }
     rows.append(
         f'<div class="family-member-row family-member-row--you" data-detail-key="{html.escape(dk_you)}">'
+=======
+    rows.append(
+        '<div class="family-member-row family-member-row--you">'
+>>>>>>> 160-refine-top-3-webapp
         f"{_family_avatar_fragment('You', you_photo_src)}"
         '<div class="family-member-main">'
         '<div class="family-member-topline">'
@@ -176,7 +189,11 @@ def _family_panel_body_fragment(
     )
     if not checkins_data:
         rows.append('<div class="family-empty-state">No locations yet</div>')
+<<<<<<< HEAD
         return f'<div class="family-member-list">{"".join(rows)}</div>', details
+=======
+        return f'<div class="family-member-list">{"".join(rows)}</div>'
+>>>>>>> 160-refine-top-3-webapp
 
     seen: set[str] = set()
     for c in checkins_data:
@@ -211,6 +228,7 @@ def _family_panel_body_fragment(
             if safe_last_checked
             else ""
         )
+<<<<<<< HEAD
         dk = _family_member_detail_key(uid, display_name, loc_raw)
         details[dk] = {
             "display_name": display_name,
@@ -222,6 +240,10 @@ def _family_panel_body_fragment(
         }
         rows.append(
             f'<div class="family-member-row" data-detail-key="{html.escape(dk)}">'
+=======
+        rows.append(
+            '<div class="family-member-row">'
+>>>>>>> 160-refine-top-3-webapp
             f"{_family_avatar_fragment(display_name, photo_src)}"
             '<div class="family-member-main">'
             '<div class="family-member-topline">'
@@ -238,7 +260,11 @@ def _family_panel_body_fragment(
             f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>{_PHONE_ICON_SVG}</button>'
             "</div>"
         )
+<<<<<<< HEAD
     return f'<div class="family-member-list">{"".join(rows)}</div>', details
+=======
+    return f'<div class="family-member-list">{"".join(rows)}</div>'
+>>>>>>> 160-refine-top-3-webapp
 
 
 def build_checkin_html(
@@ -302,7 +328,11 @@ def build_checkin_html(
         if not home_place:
             home_place = raw_places[0]
         home_place_name = (home_place.get("location_name") or "Home").strip() or "Home"
+<<<<<<< HEAD
     panel_body, family_details = _family_panel_body_fragment(
+=======
+    panel_body = _family_panel_body_fragment(
+>>>>>>> 160-refine-top-3-webapp
         loc_svc,
         hp,
         contacts_by_uid,
@@ -384,8 +414,11 @@ def build_checkin_html(
         + '<div class="family-panel-body" id="family-panel-body">'
         + panel_body
         + "</div>"
+<<<<<<< HEAD
         + details_script
         + call_icon_tpl
+=======
+>>>>>>> 160-refine-top-3-webapp
         + "</div>"
         + "</div>"
     )

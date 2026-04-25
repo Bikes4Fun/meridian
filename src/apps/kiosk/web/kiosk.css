@@ -993,11 +993,7 @@ body[data-screen="family"] #screen-content {
 
 .family-page-actions {
   position: fixed;
-<<<<<<< HEAD
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safe-margin));
-=======
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-lg));
->>>>>>> 160-refine-top-3-webapp
   right: calc(env(safe-area-inset-right, 0px) + var(--safe-margin));
   top: unset;
   display: flex;
@@ -1046,38 +1042,24 @@ body[data-screen="family"] .leaflet-top.leaflet-left .leaflet-control-zoom {
 .family-panel {
   position: absolute;
   left: var(--safe-margin);
-<<<<<<< HEAD
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safe-margin));
-=======
-  bottom: var(--safe-margin);
->>>>>>> 160-refine-top-3-webapp
   z-index: 10;
   width: clamp(280px, 46vw, 440px);
   height: auto;
   max-height: clamp(36vh, 48vh, 54vh);
   overflow: hidden;
-<<<<<<< HEAD
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warm-cream) 86%, rgba(255, 255, 255, 0) 14%);
-=======
-  padding: 0 var(--space-md) var(--space-md) var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--warm-cream) 94%, #fff 6%);
->>>>>>> 160-refine-top-3-webapp
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 
 button.family-panel-head {
   box-sizing: border-box;
   width: 100%;
-<<<<<<< HEAD
   max-height: max(40px, 3.8vh);
   display: flex;
   flex-direction: column;
@@ -1086,34 +1068,16 @@ button.family-panel-head {
   background: color-mix(in srgb, var(--warm-cream) 86%, rgba(255, 255, 255, 0) 14%);
   cursor: pointer;
   padding: 0;
-=======
-  min-height: max(40px, 3.8vh);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0 0 var(--space-md) 0;
->>>>>>> 160-refine-top-3-webapp
   border-radius: var(--radius-md);
 }
 
 button.family-panel-head:hover,
 button.family-panel-head:focus-visible {
-<<<<<<< HEAD
   background: color-mix(in srgb, var(--warm-cream) 90%, rgba(255, 255, 255, 0) 10%);
 }
 
 button.family-panel-head:active {
   background: color-mix(in srgb, var(--warm-cream) 88%, rgba(255, 255, 255, 0) 12%);
-=======
-  background: var(--overlay-light);
-}
-
-button.family-panel-head:active {
-  background: var(--overlay-medium);
->>>>>>> 160-refine-top-3-webapp
 }
 
 .family-panel-head .family-panel-handle {
@@ -1121,7 +1085,6 @@ button.family-panel-head:active {
   height: 6px;
   border-radius: 999px;
   background: var(--warm-border-strong);
-<<<<<<< HEAD
   margin: 0;
 }
 
@@ -1133,18 +1096,6 @@ button.family-panel-head:active {
 .family-panel--minimized .family-panel-head {
   height: max(40px, 3.8vh);
   min-height: 0;
-=======
-}
-
-.family-panel--minimized {
-  max-height: none;
-  padding: 0 var(--space-md);
-  gap: 0;
-}
-
-.family-panel--minimized button.family-panel-head {
-  padding-bottom: 0;
->>>>>>> 160-refine-top-3-webapp
 }
 
 .family-panel--minimized .family-panel-body {
@@ -1160,7 +1111,6 @@ button.family-panel-head:active {
   background: transparent;
 }
 
-<<<<<<< HEAD
 #family-member-details {
   display: none;
 }
@@ -1343,8 +1293,6 @@ button.family-panel-head:active {
   cursor: pointer;
 }
 
-=======
->>>>>>> 160-refine-top-3-webapp
 .family-empty-state {
   margin: 0;
   padding: var(--space-md) var(--space-sm);
@@ -1373,25 +1321,11 @@ button.family-panel-head:active {
   border-top: 1px solid var(--warm-border);
 }
 
-<<<<<<< HEAD
 .family-member-row--you {
   background: color-mix(in srgb, var(--warm-chat-tint) 76%, transparent);
   border-radius: 6px;
   padding: var(--space-sm) var(--space-md);
   box-shadow: inset 0 0 0 1px rgba(90, 86, 78, 0.12);
-=======
-.family-member-row .family-member-action:empty {
-  width: 36px;
-  min-width: 36px;
-  flex-shrink: 0;
-}
-
-.family-member-row--you {
-  background: color-mix(in srgb, var(--warm-chat-tint) 76%, transparent);
-  border-radius: var(--radius-sm);
-  padding: var(--space-sm) var(--space-md);
-  margin-bottom: var(--space-md);
->>>>>>> 160-refine-top-3-webapp
 }
 
 .family-member-main {

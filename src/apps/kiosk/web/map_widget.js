@@ -340,13 +340,9 @@ function initMap(markersJson, placesJson) {
       placeMarkers();
       if (markers.length > 0) map.on('zoomend', placeMarkers);
       map.invalidateSize();
-<<<<<<< HEAD
       requestAnimationFrame(function() {
         map.invalidateSize();
       });
-=======
-      applyKioskFamilyMapViewOffset(map);
->>>>>>> 160-refine-top-3-webapp
     } catch (e) {
       var mapEl = document.getElementById('map');
       if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';

@@ -1051,7 +1051,7 @@ body[data-screen="family"] .leaflet-top.leaflet-left .leaflet-control-zoom {
   padding: 0 var(--space-md) var(--space-md) var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 0;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warm-cream) 94%, #fff 6%);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
@@ -1067,7 +1067,7 @@ button.family-panel-head {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0;
+  padding: 0 0 var(--space-md) 0;
   border-radius: var(--radius-md);
 }
 
@@ -1091,6 +1091,10 @@ button.family-panel-head:active {
   max-height: none;
   padding: 0 var(--space-md);
   gap: 0;
+}
+
+.family-panel--minimized button.family-panel-head {
+  padding-bottom: 0;
 }
 
 .family-panel--minimized .family-panel-body {
@@ -1134,10 +1138,17 @@ button.family-panel-head:active {
   border-top: 1px solid var(--warm-border);
 }
 
+.family-member-row .family-member-action:empty {
+  width: 36px;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
 .family-member-row--you {
   background: color-mix(in srgb, var(--warm-chat-tint) 76%, transparent);
   border-radius: var(--radius-sm);
   padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
 }
 
 .family-member-main {

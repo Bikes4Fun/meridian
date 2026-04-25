@@ -45,6 +45,8 @@ final class LocationRefreshHandler: NSObject {
         case .denied, .restricted:
             pendingFamilyCircleId = nil
             pendingSession = nil
+        case .authorizedWhenInUse, .authorizedAlways:
+            startLocationRequest(familyCircleId: familyCircleId, session: session)
         @unknown default:
             pendingFamilyCircleId = nil
             pendingSession = nil
@@ -60,7 +62,7 @@ final class LocationRefreshHandler: NSObject {
 
 extension LocationRefreshHandler: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        guard let fcId = pendingFamilyCircleId, let s = pendingSession else { return }
+        guard pendingFamilyCircleId != nil, pendingSession != nil else { return }
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()

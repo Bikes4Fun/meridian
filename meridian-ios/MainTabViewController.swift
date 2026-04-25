@@ -408,7 +408,7 @@ final class HomeViewController: UIViewController {
                     APIService.shared.clearHttpCookies()
                     serverPromptCard.isHidden = true
                     serverPromptStatusLabel.text = ""
-                    Task { await refreshHomeData() }
+                    Task { await self.refreshHomeData() }
                 } else {
                     serverPromptStatusLabel.text = "Could not reach /api/health on that host."
                     serverPromptStatusLabel.textColor = .systemOrange

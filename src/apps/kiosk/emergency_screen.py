@@ -165,6 +165,35 @@ def build_emergency_html(services, api_url: str) -> str:
             )
         html_parts.append("</div>")
 
+    html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Emergency Contacts</div>')
+    if sorted_contacts:
+        for c in sorted_contacts:
+            name = (c.get("display_name") or "").strip() or "Unknown"
+            relation = (c.get("relationship") or "").strip() or "No relationship"
+            phone = (c.get("phone") or "").strip()
+            is_primary = str(c.get("emergency_priority") or "").lower() == "primary_emergency"
+            phone_html = (
+                f'<div class="emergency-warm-contact-phone">{_esc(phone)}</div>'
+                if phone
+                else '<div class="emergency-warm-contact-phone emergency-warm-contact-phone-empty">No phone on file</div>'
+            )
+            primary_badge = (
+                '<span class="emergency-warm-primary-badge">Primary</span>' if is_primary else ""
+            )
+            html_parts.append(
+                '<div class="emergency-warm-contact-row">'
+                f'<div class="emergency-warm-contact-avatar">{_esc(_initials(name))}</div>'
+                '<div class="emergency-warm-contact-info">'
+                f'<div class="emergency-warm-contact-name">{_esc(name)} {primary_badge}</div>'
+                f'<div class="emergency-warm-contact-relation">{_esc(relation)}</div>'
+                "</div>"
+                f"{phone_html}"
+                "</div>"
+            )
+    else:
+        html_parts.append('<div class="emergency-warm-empty">No emergency contacts configured</div>')
+    html_parts.append("</div>")
+
     html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Allergies</div>')
     if allergies:
         html_parts.append('<div class="emergency-warm-allergies">')
@@ -196,11 +225,11 @@ def build_emergency_html(services, api_url: str) -> str:
             med_name = (med.get("name") or "Medication").strip()
             med_dose = (med.get("dosage") or "").strip()
             med_freq = (med.get("frequency") or "").strip()
-            med_detail = " ".join([part for part in [med_dose, med_freq] if part]).strip() or med_name
+            med_detail = " · ".join([part for part in [med_dose, med_freq] if part])
             html_parts.append(
-                '<div class="emergency-warm-info-row">'
-                f'<div class="emergency-warm-info-label">{_esc(med_name)}</div>'
-                f'<div class="emergency-warm-info-value">{_esc(med_detail)}</div>'
+                '<div class="emergency-med-row">'
+                f'<div class="emergency-med-name">{_esc(med_name)}</div>'
+                f'<div class="emergency-med-dose">{_esc(med_detail)}</div>'
                 "</div>"
             )
     else:
@@ -230,35 +259,6 @@ def build_emergency_html(services, api_url: str) -> str:
                 "</div>"
             )
         html_parts.append("</div>")
-
-    html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Emergency Contacts</div>')
-    if sorted_contacts:
-        for c in sorted_contacts:
-            name = (c.get("display_name") or "").strip() or "Unknown"
-            relation = (c.get("relationship") or "").strip() or "No relationship"
-            phone = (c.get("phone") or "").strip()
-            is_primary = str(c.get("emergency_priority") or "").lower() == "primary_emergency"
-            phone_html = (
-                f'<div class="emergency-warm-contact-phone">{_esc(phone)}</div>'
-                if phone
-                else '<div class="emergency-warm-contact-phone emergency-warm-contact-phone-empty">No phone on file</div>'
-            )
-            primary_badge = (
-                '<span class="emergency-warm-primary-badge">Primary</span>' if is_primary else ""
-            )
-            html_parts.append(
-                '<div class="emergency-warm-contact-row">'
-                f'<div class="emergency-warm-contact-avatar">{_esc(_initials(name))}</div>'
-                '<div class="emergency-warm-contact-info">'
-                f'<div class="emergency-warm-contact-name">{_esc(name)} {primary_badge}</div>'
-                f'<div class="emergency-warm-contact-relation">{_esc(relation)}</div>'
-                "</div>"
-                f"{phone_html}"
-                "</div>"
-            )
-    else:
-        html_parts.append('<div class="emergency-warm-empty">No emergency contacts configured</div>')
-    html_parts.append("</div>")
 
     brief_history = (e_data.get("brief_history") or "").strip()
     devices_notes = (e_data.get("devices_notes") or "").strip()

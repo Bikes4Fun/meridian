@@ -2145,7 +2145,7 @@ button.family-panel-head:active {
 }
 
 .emergency-warm-section {
-  padding: 14px 20px 4px;
+  padding: 8px 20px 2px;
 }
 
 .emergency-warm-section-head {
@@ -2154,8 +2154,8 @@ button.family-panel-head:active {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #aaa49c;
-  margin-bottom: 9px;
-  padding-bottom: 5px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
   border-bottom: 1px solid #ece7df;
 }
 
@@ -2179,8 +2179,35 @@ button.family-panel-head:active {
 .emergency-warm-info-row {
   display: flex;
   gap: 10px;
-  padding: 6px 0;
+  padding: 4px 0;
   border-bottom: 1px solid #f0ebe3;
+}
+
+.emergency-med-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0ebe3;
+}
+
+.emergency-med-row:last-child {
+  border-bottom: none;
+}
+
+.emergency-med-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a2a2a;
+  min-width: 0;
+}
+
+.emergency-med-dose {
+  font-size: 12px;
+  color: #6e6760;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .emergency-warm-info-row:last-child {
@@ -2312,13 +2339,14 @@ button.family-panel-head:active {
 .emergency-warm-call-floater {
   position: absolute;
   right: 20px;
-  bottom: 14px;
+  bottom: 80px;
   z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
   animation: emergency-warm-drift 3.5s ease-in-out infinite;
+  pointer-events: none;
 }
 
 @keyframes emergency-warm-drift {

@@ -219,6 +219,17 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     window.meridianKioskEvents.openAddModal();
     return;
   }
+  var familyHead = e.target.closest('.family-panel-head');
+  if (familyHead) {
+    var famPanel = familyHead.closest('.family-panel');
+    if (famPanel) {
+      e.preventDefault();
+      famPanel.classList.toggle('family-panel--minimized');
+      var collapsed = famPanel.classList.contains('family-panel--minimized');
+      familyHead.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+    return;
+  }
   var medTakenBtn = e.target.closest('.med-taken-btn');
   if (medTakenBtn && medTakenBtn.dataset.medId && medTakenBtn.dataset.medTime && typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.mark_medication_taken) {
     var mid = parseInt(medTakenBtn.dataset.medId, 10);
@@ -864,6 +875,13 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
   window.onKioskScreenShown = function (name) {
       if (name === 'medications') {
           mountMedicationsEditor();
+      }
+      if (name === 'family' && typeof applyKioskFamilyMapViewOffset === 'function' && window._familyMap) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            applyKioskFamilyMapViewOffset(window._familyMap);
+          });
+        });
       }
   };
 })();

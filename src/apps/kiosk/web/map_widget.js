@@ -186,6 +186,35 @@ function buildMarkerLayer(markers, useClusters) {
 // MAP: container setup, tiles, places, and marker placement
 // -----------------------------------------------------------------------------
 
+/** Family screen: pan map so geographic center sits at viewport center of the band above the open panel (no zoom change). */
+function applyKioskFamilyMapViewOffset(map) {
+  try {
+    if (typeof document === 'undefined' || !document.body) return;
+    if (document.body.dataset.screen !== 'family') return;
+    var panel = document.querySelector('.family-locations-layout .family-panel');
+    var container = map.getContainer();
+    if (!panel || !container) return;
+    var mapSize = map.getSize();
+    if (!mapSize || mapSize.x < 80 || mapSize.y < 80) return;
+    var mapRect = container.getBoundingClientRect();
+    var wasMin = panel.classList.contains('family-panel--minimized');
+    if (wasMin) panel.classList.remove('family-panel--minimized');
+    void panel.offsetHeight;
+    var panelRect = panel.getBoundingClientRect();
+    if (wasMin) panel.classList.add('family-panel--minimized');
+    var panelTopRel = panelRect.top - mapRect.top;
+    if (panelTopRel < 24 || panelTopRel > mapSize.y - 8) return;
+    var cx = mapSize.x / 2;
+    var cy = panelTopRel / 2;
+    var ll = map.getCenter();
+    var cur = map.latLngToContainerPoint(ll);
+    var dx = cx - cur.x;
+    var dy = cy - cur.y;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+    map.panBy(L.point(dx, dy), { animate: false });
+  } catch (e) {}
+}
+
 function drawPlaceCircles(map, places) {
   places.forEach(function(p) {
     if (p.gps_latitude != null && p.gps_longitude != null) {
@@ -207,6 +236,7 @@ function initMap(markersJson, placesJson) {
       if (window._meridianMap) {
         try { window._meridianMap.remove(); } catch (e) {}
         window._meridianMap = null;
+        window._familyMap = null;
       }
       var mapEl = document.getElementById('map');
       if (!mapEl) return;
@@ -218,7 +248,10 @@ function initMap(markersJson, placesJson) {
       var places = placesJson ? JSON.parse(placesJson) : [];
       var center, zoom = 11;
       if (markers.length > 0) {
-        center = [markers[0].lat, markers[0].lon];
+        var latlngs = markers.map(function(m) {
+          return [m.lat, m.lon];
+        });
+        center = L.latLngBounds(latlngs).getCenter();
       } else if (places.length > 0 && places[0].gps_latitude != null && places[0].gps_longitude != null) {
         center = [places[0].gps_latitude, places[0].gps_longitude];
       } else {
@@ -228,6 +261,7 @@ function initMap(markersJson, placesJson) {
 
       var map = L.map('map').setView(center, zoom);
       window._meridianMap = map;
+      window._familyMap = map;
       var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
       var isHttpOrigin = origin && /^https?:\/\//i.test(origin);
       var osmRemote = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -251,6 +285,7 @@ function initMap(markersJson, placesJson) {
       placeMarkers();
       if (markers.length > 0) map.on('zoomend', placeMarkers);
       map.invalidateSize();
+      applyKioskFamilyMapViewOffset(map);
     } catch (e) {
       var mapEl = document.getElementById('map');
       if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';

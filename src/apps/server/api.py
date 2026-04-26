@@ -1306,7 +1306,25 @@ def create_server_app(db_path=None):
         @app.route("/ice-editor")
         @app.route("/ice_editor.html")
         def serve_ice_editor():
-            return send_from_directory(_webapp_dist, "ice_editor.html")
+            """ICE editor HTML; inject session into head like index for cookie-backed flows."""
+            ice_path = os.path.join(_webapp_dist, "ice_editor.html")
+            with open(ice_path, encoding="utf-8") as f:
+                html = f.read()
+            uid = session.get("user_id") or ""
+            fid = session.get("family_circle_id") or ""
+            boot = json.dumps({"user_id": uid, "family_circle_id": fid})
+            idle_sec = int(app.config.get("MERIDIAN_SESSION_IDLE_SEC", 1800))
+            inject = (
+                f"<script>window.__MERIDIAN_SESSION__={boot};"
+                f"window.__MERIDIAN_IDLE_LOGOUT_SEC__={idle_sec};</script>"
+            )
+            if "</head>" in html:
+                html = html.replace("</head>", inject + "</head>", 1)
+            else:
+                html = inject + html
+            resp = Response(html, mimetype="text/html; charset=utf-8")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
 
         @app.route("/info.html")
         def serve_info_guide():
@@ -1509,8 +1527,15 @@ def create_server_app(db_path=None):
             if not path:
                 path = "kiosk.html"
             if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
-                return send_from_directory(_kiosk_icons, path[6:])
-            return send_from_directory(_kiosk_web, path)
+                resp = send_from_directory(_kiosk_icons, path[6:])
+            else:
+                resp = send_from_directory(_kiosk_web, path)
+            if (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1":
+                ext = os.path.splitext(path)[1].lower()
+                if ext in (".css", ".js", ".html"):
+                    resp.headers["Cache-Control"] = "no-store, max-age=0"
+                    resp.headers["Pragma"] = "no-cache"
+            return resp
 
     return app
 

@@ -26,7 +26,7 @@
             '<button id="healthMedsMarkAllBtn" type="button" class="btn-health-secondary" disabled>Mark all non-PRN (not as-needed) as taken</button>' +
             '</div>' +
             '<div id="healthMedsList" class="health-meds-list-host">' +
-            '<div class="health-meds-skeleton" aria-busy="true" aria-label="Loading medications">' +
+            '<div class="health-meds-skeleton" aria-hidden="true">' +
             '<div class="health-meds-skeleton__card"></div>' +
             '<div class="health-meds-skeleton__card"></div>' +
             '<div class="health-meds-skeleton__card"></div>' +
@@ -77,7 +77,7 @@
         var chips = [];
         if (tTotal > 0) {
             chips.push(
-                '<span class="health-meds-chip health-meds-chip--stat" role="status">' +
+                '<span class="health-meds-chip health-meds-chip--stat">' +
                     tDone +
                     ' / ' +
                     tTotal +
@@ -104,7 +104,7 @@
             );
         }
         bar.innerHTML =
-            '<div class="health-meds-chips" role="status">' + chips.join('') + '</div>';
+            '<div class="health-meds-chips">' + chips.join('') + '</div>';
     }
 
     function updateMarkAllButton() {
@@ -254,7 +254,7 @@
         var limitNote = '';
         if (hasMax && !canTake) {
             limitNote =
-                '<p class="med-card__prn-limit-note" role="status">' +
+                '<p class="med-card__prn-limit-note">' +
                 'Daily limit reached for today (' +
                 doses +
                 ' of ' +
@@ -365,7 +365,7 @@
                         '</div>' +
                         (
                             prnItems.length
-                                ? '<section class="health-meds-prn-sticky" aria-label="As needed medications">' +
+                                ? '<section class="health-meds-prn-sticky">' +
                                   '<h4 class="health-meds-prn-sticky__title">As needed</h4>' +
                                   '<ul class="list-panel list-panel--meds list-panel--prn-sticky">' +
                                   prnItems.join('') +
@@ -674,7 +674,7 @@
             '<div class="ice-med-times-row">' + timeChecks + '</div>' +
             '<div class="ice-med-delete-cell">' +
             '<label class="ice-med-select-label">' +
-            '<input type="checkbox" class="ice-med-select" aria-label="Select to remove this row">' +
+            '<input type="checkbox" class="ice-med-select">' +
             '<span class="ice-med-select__trash" aria-hidden="true">' + TRASH_SVG + '</span>' +
             '</label></div></div></div>';
     }

@@ -139,6 +139,15 @@ class EmergencyService:
                         elif r["role"] == "poa":
                             poa_name, poa_phone = c.get("display_name"), c.get("phone")
 
+        documents_result = self.db_manager.execute_query(
+            "SELECT doc_type, doc_label, doc_date, file_path"
+            " FROM care_recipient_documents"
+            " WHERE family_circle_id = ?"
+            " ORDER BY sort_order, id",
+            (family_circle_id,),
+        )
+        documents = (documents_result.data or []) if documents_result.success else []
+
         if (
             not care_row
             and not conditions_list
@@ -182,6 +191,7 @@ class EmergencyService:
             "last_updated": None,
             "last_updated_by": None,
             "emergency_contacts": emergency_contacts,
+            "documents": documents,
         }
         return ServiceResult.success_result(data)
 

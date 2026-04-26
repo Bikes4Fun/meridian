@@ -226,6 +226,24 @@ def build_emergency_html(services, api_url: str) -> str:
         html_parts.append('<div class="emergency-warm-empty">No emergency contacts configured</div>')
     html_parts.append("</div>")
 
+    documents = e_data.get("documents") or []
+    if documents:
+        html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Documents on File</div>')
+        for doc in documents:
+            doc_type = _esc(doc.get("doc_type") or "Document")
+            doc_label = _esc(doc.get("doc_label") or "")
+            doc_date = _esc(doc.get("doc_date") or "")
+            has_file = bool((doc.get("file_path") or "").strip())
+            label_text = doc_label if doc_label else doc_type
+            meta_parts = [p for p in [doc_date, "uploaded" if has_file else "no file"] if p]
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                f'<div class="emergency-warm-info-label">{label_text}</div>'
+                f'<div class="emergency-warm-info-value">{" · ".join(meta_parts)}</div>'
+                "</div>"
+            )
+        html_parts.append("</div>")
+
     print_js = "pywebview.api.print_emergency()"
     html_parts.append(
         '<div class="emergency-warm-print-wrap">'

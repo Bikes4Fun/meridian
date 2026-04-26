@@ -226,6 +226,34 @@ def build_emergency_html(services, api_url: str) -> str:
         html_parts.append('<div class="emergency-warm-empty">No emergency contacts configured</div>')
     html_parts.append("</div>")
 
+    brief_history = (e_data.get("brief_history") or "").strip()
+    devices_notes = (e_data.get("devices_notes") or "").strip()
+    other_notes = (e_data.get("other_notes") or "").strip()
+    if brief_history or devices_notes or other_notes:
+        html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Additional Notes</div>')
+        if brief_history:
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">History / PCP</div>'
+                f'<div class="emergency-warm-info-value">{_esc(brief_history)}</div>'
+                "</div>"
+            )
+        if devices_notes:
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">Devices / mobility</div>'
+                f'<div class="emergency-warm-info-value">{_esc(devices_notes)}</div>'
+                "</div>"
+            )
+        if other_notes:
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">Other</div>'
+                f'<div class="emergency-warm-info-value">{_esc(other_notes)}</div>'
+                "</div>"
+            )
+        html_parts.append("</div>")
+
     documents = e_data.get("documents") or []
     if documents:
         html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Documents on File</div>')

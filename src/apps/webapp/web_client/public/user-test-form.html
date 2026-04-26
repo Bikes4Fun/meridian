@@ -17,6 +17,27 @@
     .task { border-top: 1px solid #ece6dc; padding-top: 10px; margin-top: 10px; }
     .task:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
     .task-title { font-weight: 700; margin-bottom: 8px; }
+    .task-prompt { margin-bottom: 8px; color: #6a645d; font-style: italic; }
+    .chip { display: inline-block; border: 1px solid #cfc6ba; border-radius: 999px; padding: 2px 9px; font-size: 12px; color: #6a645d; margin-left: 6px; }
+    .severity-group, .rating-group, .trust-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .severity-group input, .rating-group input, .trust-group input { position: absolute; opacity: 0; pointer-events: none; }
+    .severity-group label, .rating-group label, .trust-group label {
+      display: inline-block;
+      border: 1px solid #cfc6ba;
+      background: #fff;
+      color: #3a3937;
+      padding: 8px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .severity-group input:checked + label, .rating-group input:checked + label, .trust-group input:checked + label { border-color: #0a84a2; background: #eaf6fa; color: #0a84a2; }
+    .severity-group input[value="Worked"]:checked + label { border-color: #2f7d32; background: #ebf7ed; color: #2f7d32; }
+    .severity-group input[value="Cosmetic"]:checked + label { border-color: #8a6d1a; background: #fcf8e8; color: #8a6d1a; }
+    .severity-group input[value="Minor"]:checked + label { border-color: #b96911; background: #fff1e1; color: #b96911; }
+    .severity-group input[value="Critical"]:checked + label { border-color: #a52222; background: #fdecec; color: #a52222; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; font-weight: 700; color: #3a3937; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     button { border: 1px solid #0a84a2; background: #0a84a2; color: #fff; padding: 9px 12px; border-radius: 7px; cursor: pointer; }
     button.secondary { background: #fff; color: #0a84a2; }
@@ -27,68 +48,167 @@
   <div class="wrap">
     <div class="card">
       <h1>Meridian User Test Form</h1>
-      <p>Goal: capture what physically/functionally worked, what did not, what users expected, and what looked good/bad.</p>
-      <p class="hint">Use this during live testing. Save local, download JSON, or draft an email with the results.</p>
+      <p>Goal: capture the top demo flows and issue severity.</p>
+      <p class="hint">Use this during live testing. Download JSON or draft an email with the results.</p>
     </div>
 
     <form id="testForm">
       <div class="card">
-        <h2>Tester Info</h2>
-        <div class="row"><label for="tester_name">Tester name</label><input id="tester_name" name="tester_name" type="text"></div>
-        <div class="row"><label for="test_date">Date</label><input id="test_date" name="test_date" type="date"></div>
         <div class="row"><label for="devices">Devices used</label><input id="devices" name="devices" type="text" placeholder="Kiosk + Browser + iPhone model"></div>
       </div>
 
       <div class="card">
-        <h2>Kiosk Tasks</h2>
+        <h2>Primary Demo Tasks (Must Run)</h2>
         <div class="task">
-          <div class="task-title">Task 1: Navigate Home, Family, Settings, Emergency</div>
-          <div class="row"><label>Expected</label><textarea name="kiosk_t1_expected"></textarea></div>
-          <div class="row"><label>Actual</label><textarea name="kiosk_t1_actual"></textarea></div>
-          <div class="row"><label>Result</label><select name="kiosk_t1_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+          <div class="task-title">Task 1: Kiosk nav + Home basics <span class="chip">Primary</span></div>
+          <p class="task-prompt">Can the tester move between main tabs and quickly understand what to do next?</p>
+          <div class="row">
+            <label>Severity</label>
+            <div class="severity-group">
+              <input type="radio" id="kiosk_t1_worked" name="kiosk_t1_result" value="Worked"><label for="kiosk_t1_worked">Worked</label>
+              <input type="radio" id="kiosk_t1_cosmetic" name="kiosk_t1_result" value="Cosmetic"><label for="kiosk_t1_cosmetic">Cosmetic</label>
+              <input type="radio" id="kiosk_t1_minor" name="kiosk_t1_result" value="Minor"><label for="kiosk_t1_minor">Minor</label>
+              <input type="radio" id="kiosk_t1_critical" name="kiosk_t1_result" value="Critical"><label for="kiosk_t1_critical">Critical</label>
+            </div>
+          </div>
         </div>
         <div class="task">
-          <div class="task-title">Task 2: Family map cards + call buttons + "Where is everyone?"</div>
-          <div class="row"><label>Expected</label><textarea name="kiosk_t2_expected"></textarea></div>
-          <div class="row"><label>Actual</label><textarea name="kiosk_t2_actual"></textarea></div>
-          <div class="row"><label>Result</label><select name="kiosk_t2_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+          <div class="task-title">Task 2: Kiosk Family + calling flow <span class="chip">Primary</span></div>
+          <p class="task-prompt">Was there a warning before calling and a clear indicator while a call was active?</p>
+          <div class="row">
+            <label>Severity</label>
+            <div class="severity-group">
+              <input type="radio" id="kiosk_t2_worked" name="kiosk_t2_result" value="Worked"><label for="kiosk_t2_worked">Worked</label>
+              <input type="radio" id="kiosk_t2_cosmetic" name="kiosk_t2_result" value="Cosmetic"><label for="kiosk_t2_cosmetic">Cosmetic</label>
+              <input type="radio" id="kiosk_t2_minor" name="kiosk_t2_result" value="Minor"><label for="kiosk_t2_minor">Minor</label>
+              <input type="radio" id="kiosk_t2_critical" name="kiosk_t2_result" value="Critical"><label for="kiosk_t2_critical">Critical</label>
+            </div>
+          </div>
+        </div>
+        <div class="task">
+          <div class="task-title">Task 3: Emergency action flow <span class="chip">Primary</span></div>
+          <p class="task-prompt">Was emergency action discoverable and did confirmation/status feedback feel trustworthy?</p>
+          <div class="row">
+            <label>Severity</label>
+            <div class="severity-group">
+              <input type="radio" id="kiosk_t3_worked" name="kiosk_t3_result" value="Worked"><label for="kiosk_t3_worked">Worked</label>
+              <input type="radio" id="kiosk_t3_cosmetic" name="kiosk_t3_result" value="Cosmetic"><label for="kiosk_t3_cosmetic">Cosmetic</label>
+              <input type="radio" id="kiosk_t3_minor" name="kiosk_t3_result" value="Minor"><label for="kiosk_t3_minor">Minor</label>
+              <input type="radio" id="kiosk_t3_critical" name="kiosk_t3_result" value="Critical"><label for="kiosk_t3_critical">Critical</label>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <h2>Webapp Tasks</h2>
+        <h2>Webapp Primary Task</h2>
         <div class="task">
-          <div class="task-title">Task 3: Open Health/Events/Settings/Info and complete one edit/save flow</div>
-          <div class="row"><label>Expected</label><textarea name="web_t1_expected"></textarea></div>
-          <div class="row"><label>Actual</label><textarea name="web_t1_actual"></textarea></div>
-          <div class="row"><label>Result</label><select name="web_t1_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+          <div class="task-title">Task 4: Webapp Health + Events add/edit save <span class="chip">Primary</span></div>
+          <p class="task-prompt">Can users add and edit an event and see that it actually saved?</p>
+          <div class="row">
+            <label>Severity</label>
+            <div class="severity-group">
+              <input type="radio" id="web_t1_worked" name="web_t1_result" value="Worked"><label for="web_t1_worked">Worked</label>
+              <input type="radio" id="web_t1_cosmetic" name="web_t1_result" value="Cosmetic"><label for="web_t1_cosmetic">Cosmetic</label>
+              <input type="radio" id="web_t1_minor" name="web_t1_result" value="Minor"><label for="web_t1_minor">Minor</label>
+              <input type="radio" id="web_t1_critical" name="web_t1_result" value="Critical"><label for="web_t1_critical">Critical</label>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <h2>iOS Tasks</h2>
+        <h2>iOS Primary Task</h2>
         <div class="task">
-          <div class="task-title">Task 4: Check-in flow and any available response/call flow</div>
-          <div class="row"><label>Expected</label><textarea name="ios_t1_expected"></textarea></div>
-          <div class="row"><label>Actual</label><textarea name="ios_t1_actual"></textarea></div>
-          <div class="row"><label>Result</label><select name="ios_t1_result"><option>Worked</option><option>Partly worked</option><option>Failed</option></select></div>
+          <div class="task-title">Task 5: iOS check-in flow <span class="chip">Primary</span></div>
+          <p class="task-prompt">Can a user complete check-in without confusion or dead ends?</p>
+          <div class="row">
+            <label>Severity</label>
+            <div class="severity-group">
+              <input type="radio" id="ios_t1_worked" name="ios_t1_result" value="Worked"><label for="ios_t1_worked">Worked</label>
+              <input type="radio" id="ios_t1_cosmetic" name="ios_t1_result" value="Cosmetic"><label for="ios_t1_cosmetic">Cosmetic</label>
+              <input type="radio" id="ios_t1_minor" name="ios_t1_result" value="Minor"><label for="ios_t1_minor">Minor</label>
+              <input type="radio" id="ios_t1_critical" name="ios_t1_result" value="Critical"><label for="ios_t1_critical">Critical</label>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>Secondary Tasks (If Time Allows)</h2>
+        <details>
+          <summary>Kiosk settings + sensor checks</summary>
+          <div class="task">
+            <div class="task-title">Secondary 1: Kiosk settings and sensor status</div>
+            <div class="row">
+              <label>Severity</label>
+              <div class="severity-group">
+                <input type="radio" id="kiosk_s1_worked" name="kiosk_s1_result" value="Worked"><label for="kiosk_s1_worked">Worked</label>
+                <input type="radio" id="kiosk_s1_cosmetic" name="kiosk_s1_result" value="Cosmetic"><label for="kiosk_s1_cosmetic">Cosmetic</label>
+                <input type="radio" id="kiosk_s1_minor" name="kiosk_s1_result" value="Minor"><label for="kiosk_s1_minor">Minor</label>
+                <input type="radio" id="kiosk_s1_critical" name="kiosk_s1_result" value="Critical"><label for="kiosk_s1_critical">Critical</label>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details>
+          <summary>Webapp settings + ICE contact editor</summary>
+          <div class="task">
+            <div class="task-title">Secondary 2: Webapp settings and ICE editor</div>
+            <div class="row">
+              <label>Severity</label>
+              <div class="severity-group">
+                <input type="radio" id="web_s1_worked" name="web_s1_result" value="Worked"><label for="web_s1_worked">Worked</label>
+                <input type="radio" id="web_s1_cosmetic" name="web_s1_result" value="Cosmetic"><label for="web_s1_cosmetic">Cosmetic</label>
+                <input type="radio" id="web_s1_minor" name="web_s1_result" value="Minor"><label for="web_s1_minor">Minor</label>
+                <input type="radio" id="web_s1_critical" name="web_s1_result" value="Critical"><label for="web_s1_critical">Critical</label>
+              </div>
+            </div>
+          </div>
+        </details>
+        <details>
+          <summary>iOS call/response flow</summary>
+          <div class="task">
+            <div class="task-title">Secondary 3: iOS call or response flow</div>
+            <div class="row">
+              <label>Severity</label>
+              <div class="severity-group">
+                <input type="radio" id="ios_s1_worked" name="ios_s1_result" value="Worked"><label for="ios_s1_worked">Worked</label>
+                <input type="radio" id="ios_s1_cosmetic" name="ios_s1_result" value="Cosmetic"><label for="ios_s1_cosmetic">Cosmetic</label>
+                <input type="radio" id="ios_s1_minor" name="ios_s1_result" value="Minor"><label for="ios_s1_minor">Minor</label>
+                <input type="radio" id="ios_s1_critical" name="ios_s1_result" value="Critical"><label for="ios_s1_critical">Critical</label>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="card">
         <h2>Overall Feedback</h2>
-        <div class="row"><label>What looked good?</label><textarea name="good"></textarea></div>
-        <div class="row"><label>What looked bad?</label><textarea name="bad"></textarea></div>
-        <div class="row"><label>Expected feature but did not work</label><textarea name="missing"></textarea></div>
         <div class="row"><label>Top blockers</label><textarea name="blockers"></textarea></div>
-        <div class="row"><label>Trust for own family</label><select name="trust"><option>Yes</option><option>Maybe</option><option>No</option></select></div>
-        <div class="row"><label>Why?</label><textarea name="trust_why"></textarea></div>
+        <div class="row">
+          <label>Ease of use (1-5)</label>
+          <div class="rating-group">
+            <input type="radio" id="ease_1" name="ease_of_use" value="1"><label for="ease_1">1</label>
+            <input type="radio" id="ease_2" name="ease_of_use" value="2"><label for="ease_2">2</label>
+            <input type="radio" id="ease_3" name="ease_of_use" value="3"><label for="ease_3">3</label>
+            <input type="radio" id="ease_4" name="ease_of_use" value="4"><label for="ease_4">4</label>
+            <input type="radio" id="ease_5" name="ease_of_use" value="5"><label for="ease_5">5</label>
+          </div>
+        </div>
+        <div class="row">
+          <label>Trust for own family</label>
+          <div class="trust-group">
+            <input type="radio" id="trust_yes" name="trust" value="Yes"><label for="trust_yes">Yes</label>
+            <input type="radio" id="trust_maybe" name="trust" value="Maybe"><label for="trust_maybe">Maybe</label>
+            <input type="radio" id="trust_not_yet" name="trust" value="Not yet"><label for="trust_not_yet">Not yet</label>
+          </div>
+        </div>
       </div>
     </form>
 
     <div class="card">
       <div class="actions">
-        <button type="button" id="saveLocalBtn">Save local</button>
         <button type="button" id="downloadJsonBtn" class="secondary">Download JSON</button>
         <button type="button" id="emailBtn" class="secondary">Draft email</button>
       </div>
@@ -98,7 +218,6 @@
 
   <script>
     (function () {
-      var FORM_ID = "meridian_user_test_form_v1";
       var form = document.getElementById("testForm");
       var statusEl = document.getElementById("status");
 
@@ -113,27 +232,42 @@
         statusEl.textContent = msg || "";
       }
 
-      function loadSaved() {
-        try {
-          var raw = localStorage.getItem(FORM_ID);
-          if (!raw) return;
-          var data = JSON.parse(raw);
-          Object.keys(data).forEach(function (k) {
-            var el = form.elements.namedItem(k);
-            if (el && typeof data[k] === "string") el.value = data[k];
-          });
-          setStatus("Loaded previous local draft.");
-        } catch (_e) {}
+      function formatTaskLine(data, label, resultKey) {
+        var result = data[resultKey] || "Not set";
+        return label + ": " + result;
       }
 
-      document.getElementById("saveLocalBtn").addEventListener("click", function () {
-        try {
-          localStorage.setItem(FORM_ID, JSON.stringify(toObject()));
-          setStatus("Saved locally on this browser.");
-        } catch (e) {
-          setStatus("Could not save locally: " + String(e));
-        }
-      });
+      function emailBody(data) {
+        var parts = [
+          "Meridian User Test Feedback",
+          "",
+          "Tester: " + (data.tester_name || ""),
+          "Date: " + (data.test_date || ""),
+          "Devices: " + (data.devices || ""),
+          "",
+          "Primary Tasks",
+          formatTaskLine(data, "Kiosk nav + Home basics", "kiosk_t1_result"),
+          "",
+          formatTaskLine(data, "Kiosk Family + calling flow", "kiosk_t2_result"),
+          "",
+          formatTaskLine(data, "Emergency action flow", "kiosk_t3_result"),
+          "",
+          formatTaskLine(data, "Webapp Health + Events add/edit save", "web_t1_result"),
+          "",
+          formatTaskLine(data, "iOS check-in flow", "ios_t1_result"),
+          "",
+          "Secondary Tasks",
+          formatTaskLine(data, "Kiosk settings + sensor", "kiosk_s1_result"),
+          formatTaskLine(data, "Webapp settings + ICE", "web_s1_result"),
+          formatTaskLine(data, "iOS call/response", "ios_s1_result"),
+          "",
+          "Overall Feedback",
+          data.blockers ? "Blockers: " + data.blockers : "",
+          data.ease_of_use ? "Ease of use: " + data.ease_of_use + "/5" : "",
+          data.trust ? "Trust: " + data.trust : ""
+        ];
+        return parts.filter(Boolean).join("\n");
+      }
 
       document.getElementById("downloadJsonBtn").addEventListener("click", function () {
         var payload = JSON.stringify(toObject(), null, 2);
@@ -148,13 +282,11 @@
       });
 
       document.getElementById("emailBtn").addEventListener("click", function () {
-        var payload = JSON.stringify(toObject(), null, 2);
+        var payload = emailBody(toObject());
         var subject = encodeURIComponent("Meridian user test feedback");
         var body = encodeURIComponent(payload);
         window.location.href = "mailto:?subject=" + subject + "&body=" + body;
       });
-
-      loadSaved();
     })();
   </script>
 </body>

@@ -32,9 +32,9 @@
                 </div>
                 <nav id="appNav" class="app-nav app-nav--tabs" aria-label="Main sections">
                     <div class="app-nav__primary">
-                        <button type="button" class="nav-btn" data-page="health" data-target-id="pageHealth">Patient health data</button>
+                        <button type="button" class="nav-btn active" data-page="health" data-target-id="pageHealth">Patient health data</button>
                         <button type="button" class="nav-btn" data-page="events" data-target-id="pageEvents">Events</button>
-                        <button type="button" class="nav-btn active" data-page="settings" data-target-id="pageSettings">Settings</button>
+                        <button type="button" class="nav-btn" data-page="settings" data-target-id="pageSettings">Settings</button>
                         <button type="button" class="nav-btn" data-page="info" data-target-id="pageInfo">Info</button>
                     </div>
                 </nav>
@@ -42,7 +42,7 @@
         </header>
         <main class="app-main">
             <div class="app-page-stack">
-                <div id="pageHealth" class="page">
+                <div id="pageHealth" class="page active">
                     <!-- meridian-page-layout + meridian-inpage-nav: same pattern as Events, Mobile, Settings, Info -->
                     <div class="meridian-page-layout">
                         <nav class="meridian-inpage-nav" aria-label="Health page sections">
@@ -51,14 +51,13 @@
                                 <ul class="meridian-inpage-nav__list">
                                     <li><a class="meridian-inpage-nav__link" href="#health-section-today-meds">Today&rsquo;s medications</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#health-section-polst">POLST &amp; ICE</a></li>
-                                    <li><a class="meridian-inpage-nav__link" href="#health-section-medications">Medications</a></li>
                                     <li><a class="meridian-inpage-nav__link" href="#health-section-history">Medication history</a></li>
                                 </ul>
                             </div>
                         </nav>
                         <div class="meridian-page-main">
                     <h1 class="page-title">Patient health data</h1>
-                    <details id="health-section-today-meds" class="card card--pad health-section health-meds-board card--meds meridian-fold health-section--page-anchor" open>
+                    <details id="health-section-today-meds" class="card card--pad health-section health-meds-board card--meds meridian-fold health-section--page-anchor">
                         <summary class="meridian-fold__summary" id="health-meds-title">Today&rsquo;s medications</summary>
                         <div class="meridian-fold__body">
                         <div class="health-meds-board__snapshot">
@@ -70,14 +69,271 @@
                     <details id="health-section-polst" class="card card--pad health-section meridian-fold health-section--page-anchor">
                         <summary class="meridian-fold__summary" id="health-polst-heading">POLST &amp; emergency (ICE)</summary>
                         <div class="meridian-fold__body">
-                            <div id="healthIceCompleteness" class="ice-completeness" aria-live="polite"></div>
-                            <a href="/ice-editor" class="btn-add health-section__cta">Open emergency &amp; ICE profile</a>
+                            <p class="muted page-lead page-lead--tight visually-hidden">Edit the care recipient emergency profile here; it syncs to the kiosk Emergency screen.</p>
+                            <div id="iceBanner" class="ice-banner" hidden></div>
+                            <div id="iceStatus" class="ice-status"></div>
+                            <form id="iceForm" class="ice-mockv1">
+                                <input type="hidden" id="iceCareRecipientId" name="iceCareRecipientId" value="">
+                                <div class="ice-main">
+                                    <div class="identity-bar">
+                                        <div class="avatar" aria-hidden="true">
+                                            <span id="iceIdentityAvatar" class="avatar-initials">—</span>
+                                            <img id="icePhotoPreview" class="avatar-photo ice-photo-preview" alt="" width="72" height="72" hidden decoding="async">
+                                        </div>
+                                        <div class="identity-fields">
+                                            <div class="row2">
+                                                <div>
+                                                    <label for="iceName">Name</label>
+                                                    <input type="text" id="iceName" class="ice-mock-identity-name" autocomplete="name">
+                                                </div>
+                                                <div>
+                                                    <label for="iceDob">Date of birth</label>
+                                                    <input type="date" id="iceDob" class="ice-mock-identity-dob">
+                                                </div>
+                                                <div>
+                                                    <label>Code status (current)</label>
+                                                    <span id="iceCodeReadout" class="code-readout">—</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="identity-actions">
+                                            <button type="button" class="btn" id="iceIdentityEditBtn">Edit</button>
+                                        </div>
+                                    </div>
+
+                                    <details class="section" id="ice-mock-section-docs">
+                                        <summary>
+                                            <span>Documents</span>
+                                            <span class="summary-meta" id="iceDocsSummaryMeta">Photo on file &middot; upload POLST/POA</span>
+                                        </summary>
+                                        <div class="section-body">
+                                            <div class="doc-toolbar">
+                                                <span class="row-h" style="gap:6px;">One row per file. Menu lists common types; pick Other to name your own. <button type="button" class="ico-hint" title="Examples: signed POLST or orders, health care POA, living will, ID/insurance.">i</button></span>
+                                            </div>
+                                            <div class="doc-cols" aria-hidden="true">
+                                                <span>Type</span><span>Other label</span><span>Last updated</span><span>File</span><span></span>
+                                            </div>
+                                            <div class="doc-row-1l" title="One row = one file">
+                                                <select class="input-tight ice-doc-type" aria-label="Document type">
+                                                    <option selected>Physician orders / signed POLST</option>
+                                                    <option>Health care POA</option>
+                                                    <option>Advanced directive</option>
+                                                    <option>ID or insurance (copy)</option>
+                                                    <option>Other&hellip;</option>
+                                                </select>
+                                                <input class="input-tight ice-doc-label" type="text" value="" placeholder="Label if Other" disabled aria-label="Custom document name if Other">
+                                                <input class="input-tight ice-doc-date" type="date" aria-label="Last updated">
+                                                <input type="text" id="iceDnrDocName" class="input-tight" value="No file" readonly aria-label="File name">
+                                                <div class="ice-mock-doc-cta">
+                                                    <input type="file" id="iceDnrDoc" class="ice-mock-file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*">
+                                                    <button type="button" id="iceDnrUploadBtn" class="btn btn-sm" disabled>Upload</button>
+                                                </div>
+                                            </div>
+                                            <div class="doc-row-1l ice-mock-doc-placeholder">
+                                                <select class="input-tight" aria-label="Document type" disabled>
+                                                    <option>Physician orders / signed POLST</option>
+                                                    <option selected>Health care POA</option>
+                                                    <option>Advanced directive</option>
+                                                    <option>ID or insurance (copy)</option>
+                                                    <option>Other&hellip;</option>
+                                                </select>
+                                                <input class="input-tight" type="text" value="" placeholder="Label if Other" disabled>
+                                                <input class="input-tight" type="date" value="2024-06-01" disabled aria-label="Last updated">
+                                                <input class="input-tight" type="text" value="poa-2024.pdf" readonly disabled tabindex="-1">
+                                                <button type="button" class="btn btn-sm" disabled>Replace</button>
+                                            </div>
+                                            <div class="doc-row-1l ice-mock-doc-placeholder">
+                                                <select class="input-tight" aria-label="Document type" disabled>
+                                                    <option>Physician orders / signed POLST</option>
+                                                    <option>Health care POA</option>
+                                                    <option>Advanced directive</option>
+                                                    <option>ID or insurance (copy)</option>
+                                                    <option selected>Other&hellip;</option>
+                                                </select>
+                                                <input class="input-tight" type="text" value="Discharge summary" disabled aria-label="Custom document name">
+                                                <input class="input-tight" type="date" value="2026-01-20" disabled aria-label="Last updated">
+                                                <input class="input-tight" type="text" value="" placeholder="No file" readonly disabled tabindex="-1">
+                                                <button type="button" class="btn btn-sm" disabled>Upload</button>
+                                            </div>
+                                            <div class="row-h" style="margin-top:4px;">
+                                                <button type="button" class="btn btn-sm btn-outline" disabled title="More document rows coming soon">+ Add</button>
+                                            </div>
+                                            <p class="ice-mock-doc-view"><a id="iceDnrDocLink" class="linkish" href="#" hidden>View uploaded document</a></p>
                         </div>
                     </details>
-                    <details id="health-section-medications" class="card card--pad health-section health-section--meds-editor meridian-fold health-section--page-anchor">
-                        <summary class="meridian-fold__summary" id="health-medications-editor-title">Medications</summary>
-                        <div class="meridian-fold__body">
-                            <div id="healthMedsEditorHost" class="settings-meds-host"></div>
+
+                                    <details class="section" id="ice-vnext-health">
+                                        <summary>
+                                            <span>Health &amp; medical</span>
+                                            <span class="summary-meta" id="iceHealthSummaryMeta">Code goals &amp; clinical</span>
+                                        </summary>
+                                        <div class="section-body">
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Code status &amp; life-sustaining goals</h3>
+                                                <p class="row-h" style="margin:0 0 10px;font-size:12px;">
+                                                    <button type="button" class="linkish" style="font-size:12px;" id="iceOpenDocsBtn">Open physician orders in Documents</button>
+                                                    <button type="button" class="ico-hint" title="Opens the Documents section or linked POLST/orders.">i</button>
+                                                </p>
+                                                <div class="code-grid-3">
+                                                    <div class="code-cell">
+                                                        <span class="code-sub">DNR (no CPR)</span>
+                                                        <p class="code-selected">Now: <span id="iceDnrCurrent">—</span></p>
+                                                        <select id="iceDnr" class="full" style="margin-bottom:0;" aria-label="DNR (no CPR)">
+                                                            <option value="1">DNR / no CPR</option>
+                                                            <option value="0">Full resuscitation</option>
+                                                            <option value="2">See document</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="code-cell">
+                                                        <span class="code-sub">DNI</span>
+                                                        <p class="code-selected">Now: <span id="iceDniCurrentLine">—</span></p>
+                                                        <select id="iceDniStatus" class="full" style="margin-bottom:0;" aria-label="DNI">
+                                                            <option selected>Intubation not desired</option>
+                                                            <option>Intubation if indicated</option>
+                                                            <option>See document</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="code-cell">
+                                                        <span class="code-sub">Artificial nutrition</span>
+                                                        <p class="code-selected">Now: <span id="iceNutritionCurrentLine">—</span></p>
+                                                        <select id="iceNutritionStatus" class="full" style="margin-bottom:0;" aria-label="Artificial nutrition">
+                                                            <option selected>As documented</option>
+                                                            <option>Comfort / trial as ordered</option>
+                                                            <option>Not desired</option>
+                                                            <option>See document</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="ice-polst-extra" role="note" aria-label="POLST sections C and D">
+                                                    <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">C · ARTIFICIAL NUTRITION / FLUIDS</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
+                                                    <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">D · ANTIBIOTICS / BLOOD</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
+                                                </div>
+                                                <p class="row-h check-pair" style="margin:8px 0 0;padding-top:8px;border-top:1px solid var(--warm-border);flex-wrap:wrap;">
+                                                    <span class="row-h" style="font-size:12px;gap:4px;align-items:center;">
+                                                        <span>Matches signed order in Documents: DNR &middot; DNI &middot; Nutrition</span>
+                                                        <button type="button" class="ico-hint" title="Check each box if that goal is spelled out the same way in the physician order or POLST you uploaded under Documents.">i</button>
+                                                    </span>
+                                                    <span class="row-h" style="flex-wrap:wrap;gap:8px 12px;margin-top:4px;">
+                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNR</label>
+                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNI</label>
+                                                        <label class="check-pair" style="margin:0;"><input type="checkbox"> Nutrition</label>
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Diagnoses</h3>
+                                                <label class="block" for="iceConditions">Active (comma or short list)</label>
+                                                <textarea id="iceConditions" class="full" style="min-height:48px;" readonly rows="2"></textarea>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Drug allergies &amp; reactions</h3>
+                                                <p class="tiny" style="margin-top:0;">One row per substance. <button type="button" class="ico-hint" title="Reaction, severity, when it started.">i</button></p>
+                                                <div id="iceAllergies" class="ice-allergies-mount"></div>
+                                                <p class="ice-mock-hintrow"><button type="button" class="btn btn-sm btn-outline" disabled title="Allergy grid editing coming soon">+ Allergy</button></p>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Devices, mobility, and what responders should know</h3>
+                                                <label class="block" for="iceDevicesNotes">Non-allergy context (hearing, walker, fall risk&hellip;)</label>
+                                                <textarea id="iceDevicesNotes" class="full" style="min-height:48px;" readonly rows="2" placeholder="Hearing, mobility, fall risk&hellip;"></textarea>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Brief history</h3>
+                                                <label class="block" for="iceBriefHistory">Optional narrative</label>
+                                                <textarea id="iceBriefHistory" class="full" style="min-height:64px;" readonly rows="3" placeholder="Hospitalizations, PCP, goals of care&hellip;"></textarea>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Medications</h3>
+                                                <div class="row-h" style="justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;">
+                                                    <div class="med-toolbar" style="margin:0;">
+                                                        <button type="button" class="btn btn-primary" id="iceMedsEditAllBtn">Edit all medications</button>
+                                                        <button type="button" class="btn btn-sm btn-outline" id="iceMedsAddFocusBtn">Add</button>
+                                                    </div>
+                                                    <span class="tiny" style="margin:0;">Details below. <button type="button" class="ico-hint" title="List is editable in the table below.">i</button></span>
+                                                </div>
+                                                <p class="ice-mock-med-admin row-h">
+                                                    <label class="ice-med-autosave-label"><input type="checkbox" id="iceMedsAutoSave" class="ice-med-autosave-cb"> Autosave</label>
+                                                    <button type="button" id="iceMedsSelectAllBtn" class="btn btn-sm">Select all</button>
+                                                    <button type="button" id="iceMedsDeleteSelectedBtn" class="btn btn-sm">Delete selected</button>
+                                                    <button type="button" id="iceAddMedBtn" class="btn btn-sm">Add medication</button>
+                                                </p>
+                                                <div id="iceMedications" class="ice-medications-editor"></div>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Other</h3>
+                                                <label class="block" for="iceOtherNotes">Anything else (labs, care team&hellip;)</label>
+                                                <textarea id="iceOtherNotes" class="full" style="min-height:48px;" readonly rows="2" placeholder="Care team, labs&hellip;"></textarea>
+                                            </div>
+                                        </div>
+                                    </details>
+
+                                    <details class="section" id="ice-mock-section-ec">
+                                        <summary>
+                                            <span>Emergency contacts</span>
+                                            <span class="summary-meta" id="iceEcSummaryMeta">Proxy, POA, family</span>
+                                        </summary>
+                                        <div class="section-body">
+                                            <div class="row-h" style="justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                                                <div class="med-toolbar" style="margin:0;">
+                                                    <button type="button" class="btn btn-primary" id="iceEcEditAllBtn">Edit all contacts</button>
+                                                    <button type="button" class="btn btn-sm btn-outline" id="iceEcAddCompactBtn">Add</button>
+                                                </div>
+                                                <span class="tiny" style="margin:0;">Summary rows; full fields below. <button type="button" class="ico-hint" title="Name, role/type, relationship, level, phone.">i</button></span>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Decision-makers</h3>
+                                                <p><label class="block" for="iceProxyName">Medical proxy name</label>
+                                                <input type="text" id="iceProxyName" class="input-tight full" autocomplete="name"></p>
+                                                <p><label class="block" for="iceProxyPhone">Medical proxy phone</label>
+                                                <input type="tel" id="iceProxyPhone" class="input-tight full" autocomplete="tel"></p>
+                                                <p><label class="block" for="icePoaName">Power of attorney name</label>
+                                                <input type="text" id="icePoaName" class="input-tight full" autocomplete="name"></p>
+                                                <p><label class="block" for="icePoaPhone">Power of attorney phone</label>
+                                                <input type="tel" id="icePoaPhone" class="input-tight full" autocomplete="tel"></p>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Contacts</h3>
+                                                <div id="iceEmergencyContacts" class="ice-emergency-contacts"></div>
+                                                <p><button type="button" id="iceAddEmergencyContactBtn" class="btn btn-sm">Add emergency contact</button></p>
+                                            </div>
+                                        </div>
+                                    </details>
+
+                                    <details class="section" id="ice-mock-section-notes">
+                                        <summary>
+                                            <span>Notes for responders</span>
+                                            <span class="summary-meta">Optional</span>
+                                        </summary>
+                                        <div class="section-body">
+                                            <label class="block" for="iceNotes">Notes</label>
+                                            <textarea id="iceNotes" class="full" rows="3" placeholder="Short notes for EMS or family"></textarea>
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <div class="ice-bar-bottom" role="region" aria-label="Save ICE profile">
+                                    <div class="ice-bar-bottom-inner">
+                                        <details class="completion-pop">
+                                            <summary class="completion-summary" title="View what&rsquo;s filled in and what&rsquo;s still missing" aria-label="ICE POLST completion. Show or hide checklist.">
+                                                <span class="completion-summary-line">
+                                                    <span class="completion-summary-eyebrow">ICE / POLST form</span>
+                                                    <span class="completion-summary-sep" aria-hidden="true">&middot;</span>
+                                                    <span class="completion-summary-main" id="iceCompletionSummaryMain">Loading&hellip;</span>
+                                                </span>
+                                                <span class="chev-wrap" aria-hidden="true">
+                                                    <svg class="completion-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                                                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                    </svg>
+                                                </span>
+                                            </summary>
+                                            <div id="healthIceCompleteness" class="completion-pop-body ice-mock-completeness-host" aria-live="polite"></div>
+                                        </details>
+                                        <div class="ice-bar-actions">
+                                            <button type="submit" id="iceSaveBtn" class="btn btn-primary">Save profile</button>
+                                            <a id="icePdfLink" class="btn btn-outline" href="#" target="_blank" rel="noopener">Download emergency PDF</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </details>
                     <details id="health-section-history" class="card card--pad health-section med-history-card meridian-fold health-section--page-anchor">
@@ -142,7 +398,7 @@
                         </div>
                     </div>
                 </div>
-                <div id="pageSettings" class="page active">
+                <div id="pageSettings" class="page">
                     <div class="meridian-page-layout">
                         <nav class="meridian-inpage-nav" aria-label="Settings sections">
                             <div class="meridian-inpage-nav__group">
@@ -163,7 +419,7 @@
                     <p class="muted page-lead">Family manager controls for this Family Circle. Any control marked with <strong>*</strong> is not implemented yet.</p>
 
                     <div class="meridian-fold-stack">
-                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor" open>
+                    <details id="settings-section-permissions" class="card card--pad meridian-fold settings-section--page-anchor">
                         <summary class="meridian-fold__summary">Members &amp; roles</summary>
                         <div class="meridian-fold__body">
                             <p class="muted page-lead page-lead--tight">Manage members in this Family Circle, role presets, and explicit permission keys.</p>
@@ -627,8 +883,8 @@
                     <details id="settings-section-meds" class="card card--pad card--meds meridian-fold settings-section--page-anchor">
                         <summary class="meridian-fold__summary">Medications</summary>
                         <div class="meridian-fold__body">
-                            <p class="muted page-lead page-lead--tight">The medication list is edited on Patient health data &mdash; same editor whether you open it here or there.</p>
-                            <button type="button" id="settingsMedicationListBtn" class="btn-health-secondary">Open medication list</button>
+                            <p class="muted page-lead page-lead--tight">Medications are managed inside <strong>POLST &amp; emergency (ICE)</strong> under the <strong>Health &amp; medical</strong> section.</p>
+                            <button type="button" id="settingsMedicationListBtn" class="btn-health-secondary">Open health medications section</button>
                         </div>
                     </details>
                     </div>
@@ -865,7 +1121,7 @@
             <div class="section-label sl-web">Web Dashboard</div>
             <h1>Health tab *</h1>
             <p class="page-lead">Main entry point for health data — POLST profile, medications, and the kiosk emergency alert.</p>
-            <p>Folding panels cover <strong>Today&rsquo;s medications</strong>, <strong>POLST &amp; emergency (ICE)</strong>, <strong>Medications</strong>, and <strong>Medication history</strong> * — click each section title to expand or collapse. Use <strong>Open emergency &amp; ICE profile</strong> for the full ICE editor page. The same <code>meridian-fold</code> pattern is used on the Settings admin blocks.</p>
+            <p>Folding panels cover <strong>Today&rsquo;s medications</strong>, <strong>POLST &amp; emergency (ICE)</strong>, <strong>Medications</strong>, and <strong>Medication history</strong> * — click each section title to expand or collapse. Expand <strong>POLST &amp; emergency (ICE)</strong> to edit the full emergency profile on this page. The same <code>meridian-fold</code> pattern is used on the Settings admin blocks.</p>
             <ul>
               <li><strong>POLST &amp; emergency (ICE)</strong> — link to the ICE profile editor</li>
               <li><strong>Kiosk emergency alert</strong> — activate or cancel alert mode on the kiosk when that API path is enabled for your deployment</li>
@@ -882,7 +1138,7 @@
           <div class="section-card">
             <div class="section-label sl-web">Web Dashboard</div>
             <h1>ICE / POLST editor</h1>
-            <p class="page-lead">Open from Health → "Open emergency &amp; ICE profile".</p>
+            <p class="page-lead">Open the <strong>Patient health data</strong> tab and expand <strong>POLST &amp; emergency (ICE)</strong>.</p>
             <ul>
               <li><strong>Save profile</strong> persists name, DOB, DNR checkbox, notes, proxy/POA, emergency contacts, and medications.</li>
               <li><strong>Emergency contacts:</strong> primary and secondary appear on the kiosk; <strong>Not on ICE list</strong> hides from the emergency screen.</li>
@@ -1064,125 +1320,6 @@
       </div>
     </div>
                 </div>
-                <div id="pageIce" class="page ice-pending">Loading…</div>
-                <div id="iceApp" class="ice-app" hidden>
-                    <header class="ice-masthead">
-                        <a href="/" class="app-link ice-back">← Dashboard</a>
-                        <h1 class="ice-title">Emergency &amp; ICE profile</h1>
-                        <p class="muted ice-sub">Information shown on the kiosk emergency screen and in the printable document.</p>
-                    </header>
-            
-                    <div id="iceBanner" class="ice-banner" role="status" hidden></div>
-                    <div id="iceCompleteness" class="ice-completeness" aria-live="polite"></div>
-            
-                    <div class="ice-actions-top">
-                        <a id="icePdfLink" class="btn-add" href="#" target="_blank" rel="noopener">Print emergency document (PDF)</a>
-                    </div>
-            
-                    <form id="iceForm" class="ice-form">
-                        <input type="hidden" id="iceCareRecipientId" name="care_recipient_user_id" value="">
-            
-                        <section class="card card--pad ice-section">
-                            <h2 class="page-section-title">Care recipient</h2>
-                            <label class="field-label" for="iceName">Full name</label>
-                            <input type="text" id="iceName" name="name" autocomplete="name" required>
-            
-                            <label class="field-label" for="iceDob">Date of birth</label>
-                            <input type="date" id="iceDob" name="dob">
-            
-                            <div class="ice-toggle">
-                                <input type="checkbox" id="iceDnr" name="dnr">
-                                <label for="iceDnr">Do not resuscitate (DNR) on file</label>
-                            </div>
-            
-                            <label class="field-label" for="iceNotes">Notes for responders</label>
-                            <textarea id="iceNotes" name="notes" rows="3" class="ice-textarea" placeholder="Other instructions, device IDs, etc."></textarea>
-                        </section>
-            
-                        <section class="card card--pad ice-section">
-                            <h2 class="page-section-title">Medical proxy &amp; POA</h2>
-                            <label class="field-label" for="iceProxyName">Medical proxy name</label>
-                            <input type="text" id="iceProxyName" name="proxy_name" autocomplete="name">
-            
-                            <label class="field-label" for="iceProxyPhone">Medical proxy phone</label>
-                            <input type="tel" id="iceProxyPhone" name="proxy_phone" autocomplete="tel">
-            
-                            <label class="field-label" for="icePoaName">Power of attorney name</label>
-                            <input type="text" id="icePoaName" name="poa_name" autocomplete="name">
-            
-                            <label class="field-label" for="icePoaPhone">Power of attorney phone</label>
-                            <input type="tel" id="icePoaPhone" name="poa_phone" autocomplete="tel">
-                        </section>
-            
-                        <section class="card card--pad ice-section">
-                            <h2 class="page-section-title">Emergency contacts (ICE)</h2>
-                            <p class="muted ice-hint">Shown on the emergency flow when marked primary or secondary. Saved with <strong>Save profile</strong> (same as medications).</p>
-                            <div id="iceEmergencyContacts" class="ice-emergency-contacts" aria-live="polite"></div>
-                            <button type="button" class="btn-add ice-add-ec-btn" id="iceAddEmergencyContactBtn">Add emergency contact</button>
-                        </section>
-            
-                        <section class="card card--pad ice-section ice-section--uploads">
-                            <h2 class="page-section-title">Photo &amp; DNR document</h2>
-                            <p class="muted ice-hint">Choose a file, then use the upload button for each item. Uploaded photo and DNR/POLST files are used by kiosk emergency and ICE views immediately.</p>
-                            <label class="field-label" for="icePhoto">Care recipient photo</label>
-                            <input type="file" id="icePhoto" accept="image/*">
-                            <button type="button" class="btn-inline" id="icePhotoUploadBtn" disabled>Upload photo</button>
-                            <p id="icePhotoName" class="muted ice-file-name"></p>
-                            <div class="ice-preview-wrap">
-                                <img id="icePhotoPreview" class="ice-photo-preview" alt="" hidden>
-                            </div>
-            
-                            <label class="field-label" for="iceDnrDoc">DNR or POLST file (PDF, image, DOC, or DOCX)</label>
-                            <input type="file" id="iceDnrDoc" accept=".pdf,.doc,.docx,image/*">
-                            <button type="button" class="btn-inline" id="iceDnrUploadBtn" disabled>Upload document</button>
-                            <p id="iceDnrDocName" class="muted ice-file-name"></p>
-                            <p class="ice-dnr-doc-view-wrap"><a id="iceDnrDocLink" class="muted" href="#" target="_blank" rel="noopener" hidden>View uploaded document</a></p>
-                        </section>
-            
-                        <section class="card card--pad ice-section">
-                            <h2 class="page-section-title">Conditions, allergies &amp; medications</h2>
-                            <p class="muted ice-hint">Conditions and allergies are display-only here for now. Edit all medications inline below; use <strong>Save profile</strong> to apply meds, contacts, and the rest together.</p>
-                            <div class="ice-readonly-block">
-                                <h3 class="ice-readonly-title">Conditions</h3>
-                                <p id="iceConditions" class="ice-readonly-text">—</p>
-                            </div>
-                            <div class="ice-readonly-block">
-                                <h3 class="ice-readonly-title">Allergies</h3>
-                                <ul id="iceAllergies" class="ice-readonly-list"></ul>
-                            </div>
-                            <div class="ice-readonly-block ice-meds-block">
-                                <h3 class="ice-readonly-title">Medications</h3>
-                                <div class="ice-med-toolbar-top">
-                                    <button type="button" class="btn-inline ice-med-select-all-btn" id="iceMedsSelectAllBtn">Select all</button>
-                                    <label class="ice-med-autosave-label">
-                                        <input type="checkbox" id="iceMedsAutoSave" class="ice-med-autosave-cb">
-                                        Save as you go</label>
-                                </div>
-                                <div id="iceMedications" class="ice-medications-editor" aria-live="polite"></div>
-                                <div class="ice-med-editor-actions ice-med-block-actions">
-                                    <button type="button" class="btn-add ice-add-med-btn" id="iceAddMedBtn">Add medication</button>
-                                    <button type="button" class="btn-inline btn-delete ice-med-delete-selected-btn" id="iceMedsDeleteSelectedBtn">
-                                        <span class="ice-med-delete-selected-btn__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></span>
-                                        <span>Delete selected</span></button>
-                                </div>
-                            </div>
-                        </section>
-            
-                        <section class="card card--pad ice-section ice-section--log">
-                            <h2 class="page-section-title">Change history</h2>
-                            <p class="muted ice-hint">Last five changes with who and when — backend not wired yet.</p>
-                            <ul id="iceVersionLog" class="ice-version-log">
-                                <li class="muted">No history yet.</li>
-                            </ul>
-                        </section>
-            
-                        <div class="ice-form-actions">
-                            <button type="submit" class="btn-add" id="iceSaveBtn">Save profile</button>
-                        </div>
-                    </form>
-            
-                    <div id="iceStatus" class="status-stack ice-status" role="status" aria-live="polite"></div>
-                </div>
             </div>
 
             <div id="status" class="status-stack" role="status" aria-live="polite"></div>
@@ -1198,5 +1335,6 @@
     <script src="/src/features/events.js"></script>
     <script src="/src/features/medications.js"></script>
     <script src="/src/features/app.js"></script>
+    <script src="/src/features/ice_editor.js"></script>
 </body>
 </html>

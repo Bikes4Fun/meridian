@@ -19,6 +19,8 @@
     .task-title { font-weight: 700; margin-bottom: 8px; }
     .task-prompt { margin-bottom: 8px; color: #6a645d; font-style: italic; }
     .chip { display: inline-block; border: 1px solid #cfc6ba; border-radius: 999px; padding: 2px 9px; font-size: 12px; color: #6a645d; margin-left: 6px; }
+    .chip.new { border-color: #0a84a2; color: #0a84a2; }
+    .chip.fixed { border-color: #2f7d32; color: #2f7d32; }
     .severity-group, .rating-group, .trust-group { display: flex; flex-wrap: wrap; gap: 8px; }
     .severity-group input, .rating-group input, .trust-group input { position: absolute; opacity: 0; pointer-events: none; }
     .severity-group label, .rating-group label, .trust-group label {
@@ -38,10 +40,19 @@
     .severity-group input[value="Critical"]:checked + label { border-color: #a52222; background: #fdecec; color: #a52222; }
     details { margin-top: 10px; }
     summary { cursor: pointer; font-weight: 700; color: #3a3937; }
+    .card > details > summary { margin-top: 0; margin-bottom: 10px; list-style: disclosure-closed; }
+    .card > details[open] > summary { list-style: disclosure-open; margin-bottom: 10px; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     button { border: 1px solid #0a84a2; background: #0a84a2; color: #fff; padding: 9px 12px; border-radius: 7px; cursor: pointer; }
     button.secondary { background: #fff; color: #0a84a2; }
     .hint { font-size: 13px; color: #6a645d; }
+    .notes-row { margin-top: 8px; }
+    .notes-row label { display: block; font-size: 13px; color: #6a645d; margin-bottom: 4px; }
+    .notes-row textarea { min-height: 44px; }
+    .drop-zone { border: 2px dashed #cfc6ba; border-radius: 8px; padding: 18px; text-align: center; color: #6a645d; font-size: 13px; cursor: pointer; margin-top: 10px; position: relative; }
+    .drop-zone.over { border-color: #0a84a2; background: #eaf6fa; }
+    .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .drop-zone img { max-width: 100%; max-height: 200px; display: block; margin: 8px auto 0; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -54,84 +65,209 @@
 
     <form id="testForm">
       <div class="card">
-        <div class="row"><label for="devices">Devices used</label><input id="devices" name="devices" type="text" placeholder="Kiosk + Browser + iPhone model"></div>
-      </div>
-
-      <div class="card">
-        <h2>Primary Demo Tasks (Must Run)</h2>
-        <div class="task">
-          <div class="task-title">Task 1: Kiosk nav + Home basics <span class="chip">Primary</span></div>
-          <p class="task-prompt">Can the tester move between main tabs and quickly understand what to do next?</p>
-          <div class="row">
-            <label>Severity</label>
-            <div class="severity-group">
-              <input type="radio" id="kiosk_t1_worked" name="kiosk_t1_result" value="Worked"><label for="kiosk_t1_worked">Worked</label>
-              <input type="radio" id="kiosk_t1_cosmetic" name="kiosk_t1_result" value="Cosmetic"><label for="kiosk_t1_cosmetic">Cosmetic</label>
-              <input type="radio" id="kiosk_t1_minor" name="kiosk_t1_result" value="Minor"><label for="kiosk_t1_minor">Minor</label>
-              <input type="radio" id="kiosk_t1_critical" name="kiosk_t1_result" value="Critical"><label for="kiosk_t1_critical">Critical</label>
-            </div>
-          </div>
-        </div>
-        <div class="task">
-          <div class="task-title">Task 2: Kiosk Family + calling flow <span class="chip">Primary</span></div>
-          <p class="task-prompt">Was there a warning before calling and a clear indicator while a call was active?</p>
-          <div class="row">
-            <label>Severity</label>
-            <div class="severity-group">
-              <input type="radio" id="kiosk_t2_worked" name="kiosk_t2_result" value="Worked"><label for="kiosk_t2_worked">Worked</label>
-              <input type="radio" id="kiosk_t2_cosmetic" name="kiosk_t2_result" value="Cosmetic"><label for="kiosk_t2_cosmetic">Cosmetic</label>
-              <input type="radio" id="kiosk_t2_minor" name="kiosk_t2_result" value="Minor"><label for="kiosk_t2_minor">Minor</label>
-              <input type="radio" id="kiosk_t2_critical" name="kiosk_t2_result" value="Critical"><label for="kiosk_t2_critical">Critical</label>
-            </div>
-          </div>
-        </div>
-        <div class="task">
-          <div class="task-title">Task 3: Emergency action flow <span class="chip">Primary</span></div>
-          <p class="task-prompt">Was emergency action discoverable and did confirmation/status feedback feel trustworthy?</p>
-          <div class="row">
-            <label>Severity</label>
-            <div class="severity-group">
-              <input type="radio" id="kiosk_t3_worked" name="kiosk_t3_result" value="Worked"><label for="kiosk_t3_worked">Worked</label>
-              <input type="radio" id="kiosk_t3_cosmetic" name="kiosk_t3_result" value="Cosmetic"><label for="kiosk_t3_cosmetic">Cosmetic</label>
-              <input type="radio" id="kiosk_t3_minor" name="kiosk_t3_result" value="Minor"><label for="kiosk_t3_minor">Minor</label>
-              <input type="radio" id="kiosk_t3_critical" name="kiosk_t3_result" value="Critical"><label for="kiosk_t3_critical">Critical</label>
-            </div>
-          </div>
+<div class="drop-zone" id="screenshotDrop">
+          <input type="file" accept="image/*" id="screenshotInput">
+          Drop a screenshot here, or click to choose
+          <img id="screenshotPreview" style="display:none;">
         </div>
       </div>
 
       <div class="card">
-        <h2>Webapp Primary Task</h2>
+        <details>
+        <summary><h2 style="display:inline;font-size:inherit;">Webapp — Patient Health Data</h2></summary>
+
         <div class="task">
-          <div class="task-title">Task 4: Webapp Health + Events add/edit save <span class="chip">Primary</span></div>
-          <p class="task-prompt">Can users add and edit an event and see that it actually saved?</p>
-          <div class="row">
-            <label>Severity</label>
-            <div class="severity-group">
-              <input type="radio" id="web_t1_worked" name="web_t1_result" value="Worked"><label for="web_t1_worked">Worked</label>
-              <input type="radio" id="web_t1_cosmetic" name="web_t1_result" value="Cosmetic"><label for="web_t1_cosmetic">Cosmetic</label>
-              <input type="radio" id="web_t1_minor" name="web_t1_result" value="Minor"><label for="web_t1_minor">Minor</label>
-              <input type="radio" id="web_t1_critical" name="web_t1_result" value="Critical"><label for="web_t1_critical">Critical</label>
-            </div>
-          </div>
+          <div class="task-title">Task 1: Name and date of birth</div>
+          <p class="task-prompt">Update the care recipient's name and date of birth.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t1_worked" name="web_t1_result" value="Worked"><label for="web_t1_worked">Worked</label>
+            <input type="checkbox" id="web_t1_cosmetic" name="web_t1_result" value="Cosmetic"><label for="web_t1_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t1_minor" name="web_t1_result" value="Minor"><label for="web_t1_minor">Minor</label>
+            <input type="checkbox" id="web_t1_critical" name="web_t1_result" value="Critical"><label for="web_t1_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t1_notes" placeholder="What happened?"></textarea></div>
         </div>
+
+        <div class="task">
+          <div class="task-title">Task 2: Documents <span class="chip">Upload, edit, delete</span></div>
+          <p class="task-prompt">Add a document row. Upload a file to it. Edit the label and date. Then delete the row.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t2_worked" name="web_t2_result" value="Worked"><label for="web_t2_worked">Worked</label>
+            <input type="checkbox" id="web_t2_cosmetic" name="web_t2_result" value="Cosmetic"><label for="web_t2_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t2_minor" name="web_t2_result" value="Minor"><label for="web_t2_minor">Minor</label>
+            <input type="checkbox" id="web_t2_critical" name="web_t2_result" value="Critical"><label for="web_t2_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t2_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 3: Code status</div>
+          <p class="task-prompt">Change the DNR, DNI / intubation, and artificial nutrition settings.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t3_worked" name="web_t3_result" value="Worked"><label for="web_t3_worked">Worked</label>
+            <input type="checkbox" id="web_t3_cosmetic" name="web_t3_result" value="Cosmetic"><label for="web_t3_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t3_minor" name="web_t3_result" value="Minor"><label for="web_t3_minor">Minor</label>
+            <input type="checkbox" id="web_t3_critical" name="web_t3_result" value="Critical"><label for="web_t3_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t3_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 4: Diagnoses</div>
+          <p class="task-prompt">Add one or more diagnoses.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t4_worked" name="web_t4_result" value="Worked"><label for="web_t4_worked">Worked</label>
+            <input type="checkbox" id="web_t4_cosmetic" name="web_t4_result" value="Cosmetic"><label for="web_t4_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t4_minor" name="web_t4_result" value="Minor"><label for="web_t4_minor">Minor</label>
+            <input type="checkbox" id="web_t4_critical" name="web_t4_result" value="Critical"><label for="web_t4_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t4_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 5: Drug allergies</div>
+          <p class="task-prompt">Add two allergies with reactions, remove one.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t5_worked" name="web_t5_result" value="Worked"><label for="web_t5_worked">Worked</label>
+            <input type="checkbox" id="web_t5_cosmetic" name="web_t5_result" value="Cosmetic"><label for="web_t5_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t5_minor" name="web_t5_result" value="Minor"><label for="web_t5_minor">Minor</label>
+            <input type="checkbox" id="web_t5_critical" name="web_t5_result" value="Critical"><label for="web_t5_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t5_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 6: Medications</div>
+          <p class="task-prompt">Add a medication with dose and times, edit it, then delete it.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t6_worked" name="web_t6_result" value="Worked"><label for="web_t6_worked">Worked</label>
+            <input type="checkbox" id="web_t6_cosmetic" name="web_t6_result" value="Cosmetic"><label for="web_t6_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t6_minor" name="web_t6_result" value="Minor"><label for="web_t6_minor">Minor</label>
+            <input type="checkbox" id="web_t6_critical" name="web_t6_result" value="Critical"><label for="web_t6_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t6_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 7: Brief history &amp; notes</div>
+          <p class="task-prompt">Fill in the brief history field (care providers, devices, mobility).</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t7_worked" name="web_t7_result" value="Worked"><label for="web_t7_worked">Worked</label>
+            <input type="checkbox" id="web_t7_cosmetic" name="web_t7_result" value="Cosmetic"><label for="web_t7_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t7_minor" name="web_t7_result" value="Minor"><label for="web_t7_minor">Minor</label>
+            <input type="checkbox" id="web_t7_critical" name="web_t7_result" value="Critical"><label for="web_t7_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t7_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 8: Medical proxy and POA</div>
+          <p class="task-prompt">Edit either the POA or Medical Proxy. Clear the other. Enter a new one in its place.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t8_worked" name="web_t8_result" value="Worked"><label for="web_t8_worked">Worked</label>
+            <input type="checkbox" id="web_t8_cosmetic" name="web_t8_result" value="Cosmetic"><label for="web_t8_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t8_minor" name="web_t8_result" value="Minor"><label for="web_t8_minor">Minor</label>
+            <input type="checkbox" id="web_t8_critical" name="web_t8_result" value="Critical"><label for="web_t8_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t8_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 9: Emergency contacts</div>
+          <p class="task-prompt">Add two emergency contacts, edit one, remove one.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t9_worked" name="web_t9_result" value="Worked"><label for="web_t9_worked">Worked</label>
+            <input type="checkbox" id="web_t9_cosmetic" name="web_t9_result" value="Cosmetic"><label for="web_t9_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t9_minor" name="web_t9_result" value="Minor"><label for="web_t9_minor">Minor</label>
+            <input type="checkbox" id="web_t9_critical" name="web_t9_result" value="Critical"><label for="web_t9_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t9_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 10: Notes for responders</div>
+          <p class="task-prompt">Fill in the notes for EMS / family field.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t10_worked" name="web_t10_result" value="Worked"><label for="web_t10_worked">Worked</label>
+            <input type="checkbox" id="web_t10_cosmetic" name="web_t10_result" value="Cosmetic"><label for="web_t10_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t10_minor" name="web_t10_result" value="Minor"><label for="web_t10_minor">Minor</label>
+            <input type="checkbox" id="web_t10_critical" name="web_t10_result" value="Critical"><label for="web_t10_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t10_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 11: Photo <span class="chip fixed">Optional</span></div>
+          <p class="task-prompt">Change the care recipient's profile photo.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t11_worked" name="web_t11_result" value="Worked"><label for="web_t11_worked">Worked</label>
+            <input type="checkbox" id="web_t11_cosmetic" name="web_t11_result" value="Cosmetic"><label for="web_t11_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t11_minor" name="web_t11_result" value="Minor"><label for="web_t11_minor">Minor</label>
+            <input type="checkbox" id="web_t11_critical" name="web_t11_result" value="Critical"><label for="web_t11_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t11_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        </details>
       </div>
 
       <div class="card">
-        <h2>iOS Primary Task</h2>
+        <details>
+        <summary><h2 style="display:inline;font-size:inherit;">iOS</h2></summary>
         <div class="task">
-          <div class="task-title">Task 5: iOS check-in flow <span class="chip">Primary</span></div>
-          <p class="task-prompt">Can a user complete check-in without confusion or dead ends?</p>
+          <div class="task-title">iOS 1: Check-in flow</div>
+          <p class="task-prompt">Complete a check-in from the iOS app.</p>
           <div class="row">
-            <label>Severity</label>
+            <label>Result</label>
             <div class="severity-group">
-              <input type="radio" id="ios_t1_worked" name="ios_t1_result" value="Worked"><label for="ios_t1_worked">Worked</label>
-              <input type="radio" id="ios_t1_cosmetic" name="ios_t1_result" value="Cosmetic"><label for="ios_t1_cosmetic">Cosmetic</label>
-              <input type="radio" id="ios_t1_minor" name="ios_t1_result" value="Minor"><label for="ios_t1_minor">Minor</label>
-              <input type="radio" id="ios_t1_critical" name="ios_t1_result" value="Critical"><label for="ios_t1_critical">Critical</label>
+              <input type="checkbox" id="ios_t1_worked" name="ios_t1_result" value="Worked"><label for="ios_t1_worked">Worked</label>
+              <input type="checkbox" id="ios_t1_cosmetic" name="ios_t1_result" value="Cosmetic"><label for="ios_t1_cosmetic">Cosmetic</label>
+              <input type="checkbox" id="ios_t1_minor" name="ios_t1_result" value="Minor"><label for="ios_t1_minor">Minor</label>
+              <input type="checkbox" id="ios_t1_critical" name="ios_t1_result" value="Critical"><label for="ios_t1_critical">Critical</label>
             </div>
           </div>
+          <div class="notes-row"><label>Notes</label><textarea name="ios_t1_notes" placeholder="What happened?"></textarea></div>
         </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <details>
+        <summary><h2 style="display:inline;font-size:inherit;">Kiosk</h2></summary>
+        <div class="task">
+          <div class="task-title">Kiosk 1: Nav + Home basics</div>
+          <p class="task-prompt">Move between main tabs and orient to what to do next.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="kiosk_t1_worked" name="kiosk_t1_result" value="Worked"><label for="kiosk_t1_worked">Worked</label>
+            <input type="checkbox" id="kiosk_t1_cosmetic" name="kiosk_t1_result" value="Cosmetic"><label for="kiosk_t1_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="kiosk_t1_minor" name="kiosk_t1_result" value="Minor"><label for="kiosk_t1_minor">Minor</label>
+            <input type="checkbox" id="kiosk_t1_critical" name="kiosk_t1_result" value="Critical"><label for="kiosk_t1_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="kiosk_t1_notes" placeholder="What happened?"></textarea></div>
+        </div>
+        <div class="task">
+          <div class="task-title">Kiosk 2: Family + calling flow</div>
+          <p class="task-prompt">Call a family member from the kiosk.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="kiosk_t2_worked" name="kiosk_t2_result" value="Worked"><label for="kiosk_t2_worked">Worked</label>
+            <input type="checkbox" id="kiosk_t2_cosmetic" name="kiosk_t2_result" value="Cosmetic"><label for="kiosk_t2_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="kiosk_t2_minor" name="kiosk_t2_result" value="Minor"><label for="kiosk_t2_minor">Minor</label>
+            <input type="checkbox" id="kiosk_t2_critical" name="kiosk_t2_result" value="Critical"><label for="kiosk_t2_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="kiosk_t2_notes" placeholder="What happened?"></textarea></div>
+        </div>
+        <div class="task">
+          <div class="task-title">Kiosk 3: Emergency action flow</div>
+          <p class="task-prompt">Trigger and confirm an emergency alert.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="kiosk_t3_worked" name="kiosk_t3_result" value="Worked"><label for="kiosk_t3_worked">Worked</label>
+            <input type="checkbox" id="kiosk_t3_cosmetic" name="kiosk_t3_result" value="Cosmetic"><label for="kiosk_t3_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="kiosk_t3_minor" name="kiosk_t3_result" value="Minor"><label for="kiosk_t3_minor">Minor</label>
+            <input type="checkbox" id="kiosk_t3_critical" name="kiosk_t3_result" value="Critical"><label for="kiosk_t3_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="kiosk_t3_notes" placeholder="What happened?"></textarea></div>
+        </div>
+        </details>
       </div>
 
       <div class="card">
@@ -141,44 +277,31 @@
           <div class="task">
             <div class="task-title">Secondary 1: Kiosk settings and sensor status</div>
             <div class="row">
-              <label>Severity</label>
+              <label>Result</label>
               <div class="severity-group">
-                <input type="radio" id="kiosk_s1_worked" name="kiosk_s1_result" value="Worked"><label for="kiosk_s1_worked">Worked</label>
-                <input type="radio" id="kiosk_s1_cosmetic" name="kiosk_s1_result" value="Cosmetic"><label for="kiosk_s1_cosmetic">Cosmetic</label>
-                <input type="radio" id="kiosk_s1_minor" name="kiosk_s1_result" value="Minor"><label for="kiosk_s1_minor">Minor</label>
-                <input type="radio" id="kiosk_s1_critical" name="kiosk_s1_result" value="Critical"><label for="kiosk_s1_critical">Critical</label>
+                <input type="checkbox" id="kiosk_s1_worked" name="kiosk_s1_result" value="Worked"><label for="kiosk_s1_worked">Worked</label>
+                <input type="checkbox" id="kiosk_s1_cosmetic" name="kiosk_s1_result" value="Cosmetic"><label for="kiosk_s1_cosmetic">Cosmetic</label>
+                <input type="checkbox" id="kiosk_s1_minor" name="kiosk_s1_result" value="Minor"><label for="kiosk_s1_minor">Minor</label>
+                <input type="checkbox" id="kiosk_s1_critical" name="kiosk_s1_result" value="Critical"><label for="kiosk_s1_critical">Critical</label>
               </div>
             </div>
-          </div>
-        </details>
-        <details>
-          <summary>Webapp settings + ICE contact editor</summary>
-          <div class="task">
-            <div class="task-title">Secondary 2: Webapp settings and ICE editor</div>
-            <div class="row">
-              <label>Severity</label>
-              <div class="severity-group">
-                <input type="radio" id="web_s1_worked" name="web_s1_result" value="Worked"><label for="web_s1_worked">Worked</label>
-                <input type="radio" id="web_s1_cosmetic" name="web_s1_result" value="Cosmetic"><label for="web_s1_cosmetic">Cosmetic</label>
-                <input type="radio" id="web_s1_minor" name="web_s1_result" value="Minor"><label for="web_s1_minor">Minor</label>
-                <input type="radio" id="web_s1_critical" name="web_s1_result" value="Critical"><label for="web_s1_critical">Critical</label>
-              </div>
-            </div>
+            <div class="notes-row"><label>Notes</label><textarea name="kiosk_s1_notes" placeholder="What happened?"></textarea></div>
           </div>
         </details>
         <details>
           <summary>iOS call/response flow</summary>
           <div class="task">
-            <div class="task-title">Secondary 3: iOS call or response flow</div>
+            <div class="task-title">Secondary 2: iOS call or response flow</div>
             <div class="row">
-              <label>Severity</label>
+              <label>Result</label>
               <div class="severity-group">
-                <input type="radio" id="ios_s1_worked" name="ios_s1_result" value="Worked"><label for="ios_s1_worked">Worked</label>
-                <input type="radio" id="ios_s1_cosmetic" name="ios_s1_result" value="Cosmetic"><label for="ios_s1_cosmetic">Cosmetic</label>
-                <input type="radio" id="ios_s1_minor" name="ios_s1_result" value="Minor"><label for="ios_s1_minor">Minor</label>
-                <input type="radio" id="ios_s1_critical" name="ios_s1_result" value="Critical"><label for="ios_s1_critical">Critical</label>
+                <input type="checkbox" id="ios_s1_worked" name="ios_s1_result" value="Worked"><label for="ios_s1_worked">Worked</label>
+                <input type="checkbox" id="ios_s1_cosmetic" name="ios_s1_result" value="Cosmetic"><label for="ios_s1_cosmetic">Cosmetic</label>
+                <input type="checkbox" id="ios_s1_minor" name="ios_s1_result" value="Minor"><label for="ios_s1_minor">Minor</label>
+                <input type="checkbox" id="ios_s1_critical" name="ios_s1_result" value="Critical"><label for="ios_s1_critical">Critical</label>
               </div>
             </div>
+            <div class="notes-row"><label>Notes</label><textarea name="ios_s1_notes" placeholder="What happened?"></textarea></div>
           </div>
         </details>
       </div>
@@ -187,7 +310,7 @@
         <h2>Overall Feedback</h2>
         <div class="row"><label>Top blockers</label><textarea name="blockers"></textarea></div>
         <div class="row">
-          <label>Ease of use (1-5)</label>
+          <label>Ease of use (1–5)</label>
           <div class="rating-group">
             <input type="radio" id="ease_1" name="ease_of_use" value="1"><label for="ease_1">1</label>
             <input type="radio" id="ease_2" name="ease_of_use" value="2"><label for="ease_2">2</label>
@@ -220,21 +343,117 @@
     (function () {
       var form = document.getElementById("testForm");
       var statusEl = document.getElementById("status");
+      var screenshotData = null;
+      var STORAGE_KEY = 'meridian_test_form_v1';
+
+      // Persist and restore form state via localStorage
+      function saveState() {
+        var state = { checkboxes: {}, textareas: {}, radios: {} };
+        form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+          if (!state.checkboxes[cb.name]) state.checkboxes[cb.name] = [];
+          if (cb.checked) state.checkboxes[cb.name].push(cb.value);
+        });
+        form.querySelectorAll('textarea').forEach(function (ta) {
+          if (ta.name) state.textareas[ta.name] = ta.value;
+        });
+        form.querySelectorAll('input[type="radio"]').forEach(function (r) {
+          if (r.checked) state.radios[r.name] = r.value;
+        });
+        if (screenshotData) state.screenshot = screenshotData;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      }
+
+      function restoreState() {
+        var raw;
+        try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+        if (!raw) return;
+        var state;
+        try { state = JSON.parse(raw); } catch (e) { return; }
+        if (state.checkboxes) {
+          Object.keys(state.checkboxes).forEach(function (name) {
+            var vals = state.checkboxes[name];
+            form.querySelectorAll('input[type="checkbox"][name="' + name + '"]').forEach(function (cb) {
+              cb.checked = vals.indexOf(cb.value) !== -1;
+            });
+          });
+        }
+        if (state.textareas) {
+          Object.keys(state.textareas).forEach(function (name) {
+            var el = form.querySelector('textarea[name="' + name + '"]');
+            if (el) el.value = state.textareas[name];
+          });
+        }
+        if (state.radios) {
+          Object.keys(state.radios).forEach(function (name) {
+            var el = form.querySelector('input[type="radio"][name="' + name + '"][value="' + state.radios[name] + '"]');
+            if (el) el.checked = true;
+          });
+        }
+        if (state.screenshot) {
+          screenshotData = state.screenshot;
+          var preview = document.getElementById('screenshotPreview');
+          if (preview) { preview.src = screenshotData; preview.style.display = 'block'; }
+        }
+      }
+
+      restoreState();
+      form.addEventListener('change', saveState);
+      form.addEventListener('input', saveState);
+
+      var severityKeys = [
+        'web_t1_result','web_t2_result','web_t3_result','web_t4_result','web_t5_result',
+        'web_t6_result','web_t7_result','web_t8_result','web_t9_result','web_t10_result','web_t11_result',
+        'ios_t1_result',
+        'kiosk_t1_result','kiosk_t2_result','kiosk_t3_result',
+        'kiosk_s1_result','ios_s1_result'
+      ];
+
+      (function initDrop() {
+        var zone = document.getElementById("screenshotDrop");
+        var inp = document.getElementById("screenshotInput");
+        var preview = document.getElementById("screenshotPreview");
+        function loadFile(file) {
+          if (!file || !file.type.startsWith("image/")) return;
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            screenshotData = e.target.result;
+            preview.src = screenshotData;
+            preview.style.display = "block";
+            saveState();
+          };
+          reader.readAsDataURL(file);
+        }
+        inp.addEventListener("change", function () { loadFile(inp.files[0]); });
+        zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("over"); });
+        zone.addEventListener("dragleave", function () { zone.classList.remove("over"); });
+        zone.addEventListener("drop", function (e) {
+          e.preventDefault(); zone.classList.remove("over"); loadFile(e.dataTransfer.files[0]);
+        });
+      })();
+
+      function collectCheckbox(name) {
+        var vals = [];
+        document.querySelectorAll('input[name="' + name + '"]:checked').forEach(function (cb) { vals.push(cb.value); });
+        return vals.join(', ') || '';
+      }
 
       function toObject() {
         var fd = new FormData(form);
         var out = { submitted_at: new Date().toISOString() };
-        fd.forEach(function (value, key) { out[key] = value; });
+        fd.forEach(function (value, key) {
+          if (!severityKeys.includes(key)) out[key] = value;
+        });
+        severityKeys.forEach(function (key) { out[key] = collectCheckbox(key); });
+        if (screenshotData) out.screenshot = screenshotData;
         return out;
       }
 
-      function setStatus(msg) {
-        statusEl.textContent = msg || "";
-      }
+      function setStatus(msg) { statusEl.textContent = msg || ""; }
 
-      function formatTaskLine(data, label, resultKey) {
-        var result = data[resultKey] || "Not set";
-        return label + ": " + result;
+      function line(data, label, resultKey, notesKey) {
+        var result = data[resultKey] || "Not tested";
+        var notes = notesKey && data[notesKey] ? " — " + data[notesKey] : "";
+        return label + ": " + result + notes;
       }
 
       function emailBody(data) {
@@ -245,28 +464,38 @@
           "Date: " + (data.test_date || ""),
           "Devices: " + (data.devices || ""),
           "",
-          "Primary Tasks",
-          formatTaskLine(data, "Kiosk nav + Home basics", "kiosk_t1_result"),
+          "— Patient Health Data —",
+          line(data, "Name and DOB", "web_t1_result", "web_t1_notes"),
+          line(data, "Documents", "web_t2_result", "web_t2_notes"),
+          line(data, "Code status", "web_t3_result", "web_t3_notes"),
+          line(data, "Diagnoses", "web_t4_result", "web_t4_notes"),
+          line(data, "Drug allergies", "web_t5_result", "web_t5_notes"),
+          line(data, "Medications", "web_t6_result", "web_t6_notes"),
+          line(data, "Brief history & notes", "web_t7_result", "web_t7_notes"),
+          line(data, "Medical proxy and POA", "web_t8_result", "web_t8_notes"),
+          line(data, "Emergency contacts", "web_t9_result", "web_t9_notes"),
+          line(data, "Notes for responders", "web_t10_result", "web_t10_notes"),
+          line(data, "Photo", "web_t11_result", "web_t11_notes"),
           "",
-          formatTaskLine(data, "Kiosk Family + calling flow", "kiosk_t2_result"),
+          "— iOS —",
+          line(data, "Check-in flow", "ios_t1_result", "ios_t1_notes"),
           "",
-          formatTaskLine(data, "Emergency action flow", "kiosk_t3_result"),
+          "— Kiosk —",
+          line(data, "Nav + Home basics", "kiosk_t1_result", "kiosk_t1_notes"),
+          line(data, "Family + calling flow", "kiosk_t2_result", "kiosk_t2_notes"),
+          line(data, "Emergency action flow", "kiosk_t3_result", "kiosk_t3_notes"),
           "",
-          formatTaskLine(data, "Webapp Health + Events add/edit save", "web_t1_result"),
+          "— Secondary —",
+          line(data, "Kiosk settings + sensors", "kiosk_s1_result", "kiosk_s1_notes"),
+          line(data, "iOS call/response", "ios_s1_result", "ios_s1_notes"),
           "",
-          formatTaskLine(data, "iOS check-in flow", "ios_t1_result"),
-          "",
-          "Secondary Tasks",
-          formatTaskLine(data, "Kiosk settings + sensor", "kiosk_s1_result"),
-          formatTaskLine(data, "Webapp settings + ICE", "web_s1_result"),
-          formatTaskLine(data, "iOS call/response", "ios_s1_result"),
-          "",
-          "Overall Feedback",
+          "— Overall —",
           data.blockers ? "Blockers: " + data.blockers : "",
           data.ease_of_use ? "Ease of use: " + data.ease_of_use + "/5" : "",
-          data.trust ? "Trust: " + data.trust : ""
+          data.trust ? "Trust for own family: " + data.trust : "",
+          screenshotData ? "(screenshot included in JSON export)" : ""
         ];
-        return parts.filter(Boolean).join("\n");
+        return parts.filter(function (l) { return l !== undefined && l !== null; }).join("\n");
       }
 
       document.getElementById("downloadJsonBtn").addEventListener("click", function () {

@@ -131,7 +131,13 @@ def build_emergency_html(services, api_url: str) -> str:
     if allergies:
         html_parts.append('<div class="emergency-warm-allergies">')
         for allergy in allergies:
-            html_parts.append(f'<span class="emergency-warm-allergy-pill">{_esc(allergy)}</span>')
+            if isinstance(allergy, dict):
+                label = _esc(allergy.get("allergen") or "")
+                reaction = _esc(allergy.get("reaction") or "")
+                text = f"{label} — {reaction}" if reaction else label
+            else:
+                text = _esc(allergy)
+            html_parts.append(f'<span class="emergency-warm-allergy-pill">{text}</span>')
         html_parts.append("</div>")
     else:
         html_parts.append('<div class="emergency-warm-empty">No known allergies</div>')

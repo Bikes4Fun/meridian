@@ -184,20 +184,28 @@ class CareRecipientService:
         return ServiceResult.success_result(True)
 
     def replace_all_allergies(self, care_recipient_user_id: str, allergens: list) -> ServiceResult:
-        """Delete all allergies for care recipient and reinsert the given list."""
+        """Delete all allergies for care recipient and reinsert the given list.
+
+        Each item may be a string (allergen only) or a dict with 'allergen' and optional 'reaction'.
+        """
         del_r = self.db_manager.execute_update(
             "DELETE FROM allergies WHERE care_recipient_user_id = ?",
             (care_recipient_user_id,),
         )
         if not del_r.success:
             return del_r
-        for allergen in allergens:
-            allergen = (allergen or "").strip()
+        for item in allergens:
+            if isinstance(item, dict):
+                allergen = (item.get("allergen") or "").strip()
+                reaction = (item.get("reaction") or "").strip() or None
+            else:
+                allergen = (item or "").strip()
+                reaction = None
             if not allergen:
                 continue
             self.db_manager.execute_update(
-                "INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen) VALUES (?, ?)",
-                (care_recipient_user_id, allergen),
+                "INSERT INTO allergies (care_recipient_user_id, allergen, reaction) VALUES (?, ?, ?)",
+                (care_recipient_user_id, allergen, reaction),
             )
         return ServiceResult.success_result(True)
 

@@ -121,7 +121,12 @@ def build_pdf(profile_data: Optional[dict[str, Any]] = None) -> bytes:
     if allergies:
         y = _draw_heading(c, y, height, "Allergies")
         for a in allergies:
-            label = str(a).strip()
+            if isinstance(a, dict):
+                allergen = (a.get("allergen") or "").strip()
+                reaction = (a.get("reaction") or "").strip()
+                label = f"{allergen} — {reaction}" if reaction else allergen
+            else:
+                label = str(a).strip()
             if label:
                 y = _draw_lines(c, y, height, [f"• {label}"])
 

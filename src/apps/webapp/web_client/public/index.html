@@ -83,12 +83,14 @@
                                         <div class="identity-fields">
                                             <div class="row2">
                                                 <div>
-                                                    <label for="iceName">Name</label>
-                                                    <input type="text" id="iceName" class="ice-mock-identity-name" autocomplete="name">
+                                                    <label for="iceFirstName">First name</label>
+                                                    <input type="text" id="iceFirstName" class="ice-mock-identity-name" autocomplete="given-name" placeholder="First">
+                                                    <label for="iceLastName" style="margin-top:4px;">Last name</label>
+                                                    <input type="text" id="iceLastName" class="ice-mock-identity-name" autocomplete="family-name" placeholder="Last">
                                                 </div>
                                                 <div>
                                                     <label for="iceDob">Date of birth</label>
-                                                    <input type="date" id="iceDob" class="ice-mock-identity-dob">
+                                                    <input type="text" id="iceDob" class="ice-mock-identity-dob" placeholder="YYYY-MM-DD" autocomplete="bday">
                                                 </div>
                                                 <div>
                                                     <label>Code status (current)</label>
@@ -115,7 +117,7 @@
                                                 <span class="row-h" style="gap:6px;">One row per file. Menu lists common types; pick Other to name your own. <button type="button" class="ico-hint" title="Examples: signed POLST or orders, health care POA, living will, ID/insurance.">i</button></span>
                                             </div>
                                             <div class="doc-cols" aria-hidden="true">
-                                                <span>Type</span><span>Other label</span><span>Last updated</span><span>File</span><span></span>
+                                                <span>Type</span><span>Label</span><span>Last updated</span><span>File</span><span></span>
                                             </div>
                                             <div id="iceDocsContainer"></div>
                                             <div class="row-h" style="margin-top:4px;">

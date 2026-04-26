@@ -3079,18 +3079,23 @@ body.app-dashboard .meridian-page-main > .meridian-fold.health-section:last-of-t
 
 #iceForm.ice-mockv1 .ice-mock-identity-name,
 #iceForm.ice-mockv1 .ice-mock-identity-dob {
-    border: none;
-    background: transparent;
+    border: 1px solid var(--warm-border);
+    background: var(--web-surface);
     font-size: 16px;
     font-weight: 600;
     color: var(--web-body);
-    padding: 0;
+    padding: 4px 8px;
     max-width: 100%;
     font-family: inherit;
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-#iceForm.ice-mockv1 .ice-mock-identity-dob {
-    min-height: 1.4em;
+#iceForm.ice-mockv1 .ice-mock-identity-name:focus,
+#iceForm.ice-mockv1 .ice-mock-identity-dob:focus {
+    outline: 2px solid var(--web-accent, #0a84a2);
+    border-color: var(--web-accent, #0a84a2);
 }
 
 #iceForm.ice-mockv1 .code-readout {
@@ -3248,10 +3253,11 @@ body.app-dashboard .meridian-page-main > .meridian-fold.health-section:last-of-t
 
 #iceForm.ice-mockv1 .ice-mock-doc-cta {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 4px;
     min-width: 0;
-    align-items: stretch;
+    align-items: center;
+    flex-wrap: nowrap;
 }
 
 #iceForm.ice-mockv1 .ice-mock-file {
@@ -3661,9 +3667,9 @@ body.app-dashboard .meridian-page-main > .meridian-fold.health-section:last-of-t
 
 #iceForm.ice-mockv1 .allergy-line {
     display: grid;
-    grid-template-columns: 1fr 1fr 0.8fr;
+    grid-template-columns: 1fr 1fr auto;
     gap: 8px;
-    align-items: end;
+    align-items: center;
     margin-bottom: 6px;
     padding: 6px 0;
     border-bottom: 1px dashed #ece6dc;

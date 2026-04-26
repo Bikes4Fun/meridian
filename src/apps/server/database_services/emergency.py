@@ -54,14 +54,14 @@ class EmergencyService:
 
         allergies_result = (
             self.db_manager.execute_query(
-                "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
+                "SELECT allergen, reaction FROM allergies WHERE care_recipient_user_id = ?",
                 (care_recipient_user_id,),
             )
             if care_recipient_user_id
             else self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         )
         allergies = (
-            [a["allergen"] for a in allergies_result.data]
+            [{"allergen": a["allergen"], "reaction": a["reaction"]} for a in allergies_result.data]
             if allergies_result.success and allergies_result.data
             else []
         )

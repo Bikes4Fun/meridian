@@ -50,6 +50,7 @@ _COLUMN_MIGRATIONS = [
     ("care_recipients", "devices_notes", "TEXT"),
     ("care_recipients", "brief_history", "TEXT"),
     ("care_recipients", "other_notes", "TEXT"),
+    ("allergies", "reaction", "TEXT"),
 ]
 
 

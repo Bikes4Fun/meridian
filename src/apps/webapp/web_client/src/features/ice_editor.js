@@ -251,10 +251,13 @@
             '</div>';
     }
 
-    function allergyRowHtml(allergen) {
+    function allergyRowHtml(allergy) {
+        var allergen = typeof allergy === 'string' ? allergy : (allergy && allergy.allergen) || '';
+        var reaction = typeof allergy === 'string' ? '' : (allergy && allergy.reaction) || '';
         return '<div class="allergy-line">' +
-            '<input class="input-tight ice-allergy-value" type="text" value="' + escapeHtml(allergen || '') + '" placeholder="Substance / drug">' +
-            '<button type="button" class="btn-inline btn-delete ice-allergy-remove">Remove</button>' +
+            '<input class="input-tight ice-allergy-value" type="text" value="' + escapeHtml(allergen) + '" placeholder="Substance / drug">' +
+            '<input class="input-tight ice-allergy-reaction" type="text" value="' + escapeHtml(reaction) + '" placeholder="Reaction (optional)">' +
+            '<button type="button" class="btn-inline btn-delete ice-allergy-remove">✕</button>' +
             '</div>';
     }
 
@@ -281,9 +284,12 @@
 
     function collectAllergyRows() {
         var out = [];
-        document.querySelectorAll('#iceAllergies .ice-allergy-value').forEach(function (inp) {
-            var v = (inp.value || '').trim();
-            if (v) out.push(v);
+        document.querySelectorAll('#iceAllergies .allergy-line').forEach(function (row) {
+            var allergenInp = row.querySelector('.ice-allergy-value');
+            var reactionInp = row.querySelector('.ice-allergy-reaction');
+            var allergen = allergenInp ? (allergenInp.value || '').trim() : '';
+            if (!allergen) return;
+            out.push({ allergen: allergen, reaction: reactionInp ? (reactionInp.value || '').trim() : '' });
         });
         return out;
     }
@@ -297,9 +303,14 @@
         return dnrEl.checked ? 1 : 0;
     }
 
+    function getFullName() {
+        var first = (document.getElementById('iceFirstName') || {}).value || '';
+        var last = (document.getElementById('iceLastName') || {}).value || '';
+        return [first.trim(), last.trim()].filter(Boolean).join(' ');
+    }
+
     function updateIceIdentityStrip() {
-        var nameEl = document.getElementById('iceName');
-        var name = nameEl ? nameEl.value : '';
+        var name = getFullName();
         var av = document.getElementById('iceIdentityAvatar');
         if (av) {
             var t = (name || '').trim();
@@ -388,9 +399,12 @@
         if (idInput) idInput.value = crId;
 
         var profile = data.profile || {};
-        var nameEl = document.getElementById('iceName');
+        var nameParts = (profile.name || '').trim().split(/\s+/);
+        var firstEl = document.getElementById('iceFirstName');
+        var lastEl = document.getElementById('iceLastName');
         var dobEl = document.getElementById('iceDob');
-        if (nameEl) nameEl.value = profile.name || '';
+        if (firstEl) firstEl.value = nameParts[0] || '';
+        if (lastEl) lastEl.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
         if (dobEl) dobEl.value = (profile.dob || '').slice(0, 10);
 
         var medical = data.medical || {};
@@ -480,16 +494,15 @@
         var docLabel = doc.doc_label || '';
         var docDate = doc.doc_date || '';
         var filePath = doc.file_path || '';
-        var isOther = docType === 'Other…';
         return '<div class="doc-row-1l" data-doc-id="' + escapeHtml(String(id)) + '">' +
             docTypeSelectHtml(docType) +
-            '<input class="input-tight ice-doc-label" type="text" value="' + escapeHtml(docLabel) + '" placeholder="Label if Other"' + (isOther ? '' : ' disabled') + ' aria-label="Custom document name if Other">' +
+            '<input class="input-tight ice-doc-label" type="text" value="' + escapeHtml(docLabel) + '" placeholder="Label (optional)" aria-label="Document label">' +
             '<input class="input-tight ice-doc-date" type="date" value="' + escapeHtml(docDate) + '" aria-label="Last updated">' +
             '<input type="text" class="input-tight ice-doc-filename" value="' + escapeHtml(filePath ? filePath.replace(/^[0-9a-f]{32}/, '').replace(/^\./, '') || filePath : 'No file') + '" readonly aria-label="File name">' +
             '<div class="ice-mock-doc-cta">' +
-            '<input type="file" class="ice-mock-file ice-doc-file-input" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*">' +
+            '<input type="file" class="ice-mock-file ice-doc-file-input" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*">' +
             '<button type="button" class="btn btn-sm ice-doc-upload-btn">' + (filePath ? 'Replace' : 'Upload') + '</button>' +
-            '<button type="button" class="btn btn-sm btn-outline ice-doc-delete-btn" style="margin-left:4px;">Remove</button>' +
+            '<button type="button" class="btn btn-sm btn-outline ice-doc-delete-btn">Remove</button>' +
             '</div>' +
             '</div>';
     }
@@ -545,19 +558,16 @@
         }
 
         if (typeSel) {
-            typeSel.addEventListener('change', function () {
-                if (labelInp) labelInp.disabled = typeSel.value !== 'Other…';
-                saveMetadata();
-            });
+            typeSel.addEventListener('change', saveMetadata);
         }
         if (dateInp) dateInp.addEventListener('change', saveMetadata);
         if (labelInp) labelInp.addEventListener('change', saveMetadata);
 
         if (fileInp && uploadBtn) {
-            fileInp.addEventListener('change', function () {
-                uploadBtn.disabled = !(fileInp.files && fileInp.files[0]);
-            });
             uploadBtn.addEventListener('click', function () {
+                fileInp.click();
+            });
+            fileInp.addEventListener('change', function () {
                 var f = fileInp.files && fileInp.files[0];
                 if (!f || !_familyCircleId) return;
                 uploadBtn.disabled = true;
@@ -570,6 +580,7 @@
                         var body = response && response.body;
                         var fp = (body && body.data && body.data.file_path) || '';
                         if (filenameInp) filenameInp.value = fp ? fp.replace(/^[0-9a-f]{32}/, '').replace(/^\./, '') || fp : '';
+                        uploadBtn.disabled = false;
                         uploadBtn.textContent = 'Replace';
                         fileInp.value = '';
                         showIceStatus('Saved ✓', 'success');
@@ -732,10 +743,10 @@
                 }
             });
         }
-        var nameForAvatar = document.getElementById('iceName');
-        if (nameForAvatar) {
-            nameForAvatar.addEventListener('input', updateIceIdentityStrip);
-        }
+        var firstForAvatar = document.getElementById('iceFirstName');
+        var lastForAvatar = document.getElementById('iceLastName');
+        if (firstForAvatar) firstForAvatar.addEventListener('input', updateIceIdentityStrip);
+        if (lastForAvatar) lastForAvatar.addEventListener('input', updateIceIdentityStrip);
         var dnrU = document.getElementById('iceDnr');
         if (dnrU) dnrU.addEventListener('change', updateIceIdentityStrip);
         var dniU = document.getElementById('iceDniStatus');
@@ -745,11 +756,8 @@
         var idEd = document.getElementById('iceIdentityEditBtn');
         if (idEd) {
             idEd.addEventListener('click', function () {
-                var n = document.getElementById('iceName');
-                if (n) {
-                    n.focus();
-                    n.select();
-                }
+                var n = document.getElementById('iceFirstName');
+                if (n) { n.focus(); n.select(); }
             });
         }
         var medEdit = document.getElementById('iceMedsEditAllBtn');
@@ -921,7 +929,7 @@
                 var payload = {
                     care_recipient_user_id: crId,
                     profile: {
-                        name: (document.getElementById('iceName') || {}).value.trim(),
+                        name: getFullName(),
                         dob: (document.getElementById('iceDob') || {}).value || null
                     },
                     medical: {

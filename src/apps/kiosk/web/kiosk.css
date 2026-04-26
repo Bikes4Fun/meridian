@@ -1915,7 +1915,7 @@ button.family-panel-head:active {
   font-size: var(--font-body);
 }
 
-.family-member-card .family-member-call-btn {
+.family-member-call-btn {
   width: 34px;
   min-width: 34px;
   height: 34px;
@@ -1927,12 +1927,12 @@ button.family-panel-head:active {
   border-radius: 9px;
 }
 
-.family-member-card .family-member-call-btn svg {
+.family-member-call-btn svg {
   width: 14px;
   height: 14px;
 }
 
-.family-member-card .family-member-call-btn:disabled svg {
+.family-member-call-btn:disabled svg {
   opacity: 0.45;
 }
 

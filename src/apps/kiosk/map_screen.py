@@ -291,6 +291,7 @@ def build_checkin_html(
             ]
 
         checkins_result = loc_svc.get_checkins(family_circle_id)
+
     raw_places = places_result.data if places_result and places_result.success else None
     raw_checkins = checkins_result.data if checkins_result and checkins_result.success else None
     home_place_name = "Home"

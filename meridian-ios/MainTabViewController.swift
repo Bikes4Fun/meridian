@@ -83,6 +83,10 @@ final class HomeViewController: UIViewController {
     private let scheduleHeadingLabel = UILabel()
     private let timelineStack = UIStackView()
     private let scheduleFootnoteLabel = UILabel()
+    private let alertSummaryCard = UIView()
+    private let alertSummaryIconView = UIImageView()
+    private let alertMedicalLabel = UILabel()
+    private let alertMedicalValueLabel = UILabel()
     private let checkInsCard = UIView()
     private let recentCheckInsLabel = UILabel()
 
@@ -102,6 +106,23 @@ final class HomeViewController: UIViewController {
         return f
     }()
 
+    private static let timelineTimeInputFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
+    private static let timelineTimeOutputFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private static func formatTimeDisplay(_ raw: String) -> String {
+        guard let date = timelineTimeInputFormatter.date(from: raw) else { return raw }
+        return timelineTimeOutputFormatter.string(from: date)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = MeridianPalette.background
@@ -109,6 +130,7 @@ final class HomeViewController: UIViewController {
         configureCard(serverPromptCard)
         configureCard(emergencyCard)
         configureCard(scheduleCard)
+        configureCard(alertSummaryCard)
         configureCard(checkInsCard)
         scheduleCard.backgroundColor = MeridianPalette.surfaceSchedule
 
@@ -276,10 +298,60 @@ final class HomeViewController: UIViewController {
             ])
         }
 
+        alertSummaryIconView.contentMode = .scaleAspectFit
+        alertSummaryIconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .footnote)
+        alertSummaryIconView.setContentHuggingPriority(.required, for: .horizontal)
+        alertSummaryIconView.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        alertMedicalLabel.font = .preferredFont(forTextStyle: .footnote)
+        alertMedicalLabel.text = "Medical alert"
+
+        alertMedicalValueLabel.font = .preferredFont(forTextStyle: .footnote)
+        alertMedicalValueLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let stoveLabel = UILabel()
+        stoveLabel.font = .preferredFont(forTextStyle: .footnote)
+        stoveLabel.textColor = MeridianPalette.primaryText
+        stoveLabel.text = "Stove"
+
+        let stoveValueLabel = UILabel()
+        stoveValueLabel.font = .preferredFont(forTextStyle: .footnote)
+        stoveValueLabel.textColor = MeridianPalette.mutedText
+        stoveValueLabel.text = "Normal"
+        stoveValueLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let iconSpacer = UIView()
+        iconSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let iconRow = UIStackView(arrangedSubviews: [alertSummaryIconView, iconSpacer])
+        iconRow.axis = .horizontal
+
+        let medicalRow = UIStackView(arrangedSubviews: [alertMedicalLabel, alertMedicalValueLabel])
+        medicalRow.axis = .horizontal
+        medicalRow.spacing = 8
+
+        let stoveRow = UIStackView(arrangedSubviews: [stoveLabel, stoveValueLabel])
+        stoveRow.axis = .horizontal
+        stoveRow.spacing = 8
+
+        let alertInner = UIStackView(arrangedSubviews: [iconRow, medicalRow, stoveRow])
+        alertInner.axis = .vertical
+        alertInner.spacing = 6
+        alertInner.translatesAutoresizingMaskIntoConstraints = false
+        alertSummaryCard.addSubview(alertInner)
+        NSLayoutConstraint.activate([
+            alertInner.topAnchor.constraint(equalTo: alertSummaryCard.topAnchor, constant: MeridianLayout.cardPadding),
+            alertInner.leadingAnchor.constraint(equalTo: alertSummaryCard.leadingAnchor, constant: MeridianLayout.cardPadding),
+            alertInner.trailingAnchor.constraint(equalTo: alertSummaryCard.trailingAnchor, constant: -MeridianLayout.cardPadding),
+            alertInner.bottomAnchor.constraint(equalTo: alertSummaryCard.bottomAnchor, constant: -MeridianLayout.cardPadding),
+        ])
+
         contentStack.addArrangedSubview(serverPromptCard)
         contentStack.addArrangedSubview(scheduleCard)
         contentStack.addArrangedSubview(checkInsCard)
         contentStack.addArrangedSubview(emergencyCard)
+        contentStack.addArrangedSubview(alertSummaryCard)
+
+        updateAlertSummaryCard(medicalActive: false)
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.contentInsetAdjustmentBehavior = .automatic
@@ -355,7 +427,7 @@ final class HomeViewController: UIViewController {
                     APIService.shared.clearHttpCookies()
                     serverPromptCard.isHidden = true
                     serverPromptStatusLabel.text = ""
-                    Task { await refreshHomeData() }
+                    Task { await self.refreshHomeData() }
                 } else {
                     serverPromptStatusLabel.text = "Could not reach /api/health on that host."
                     serverPromptStatusLabel.textColor = .systemOrange
@@ -383,6 +455,7 @@ final class HomeViewController: UIViewController {
                 hasCompletedHomeRefresh = true
                 emergencyStatusLabel.text = isActive ? "Active emergency alert in progress." : "No active emergency alerts."
                 emergencyStatusLabel.textColor = isActive ? MeridianPalette.alert : MeridianPalette.primaryText
+                updateAlertSummaryCard(medicalActive: isActive)
 
                 scheduleHeroDateLabel.text = Self.scheduleHeroDateFormatter.string(from: Date())
                 let entries = APIService.buildHomeTodayTimeline(
@@ -555,7 +628,7 @@ final class HomeViewController: UIViewController {
         ])
 
         let timeLabel = UILabel()
-        timeLabel.text = entry.timeDisplay
+        timeLabel.text = Self.formatTimeDisplay(entry.timeDisplay)
         timeLabel.font = .preferredFont(forTextStyle: .caption1)
         timeLabel.textColor = MeridianPalette.mutedText
 
@@ -614,6 +687,42 @@ final class HomeViewController: UIViewController {
         row.layoutMargins = UIEdgeInsets(top: 10, left: 0, bottom: 10, right: 0)
         row.isLayoutMarginsRelativeArrangement = true
         return row
+    }
+
+    private func updateAlertSummaryCard(medicalActive: Bool) {
+        if medicalActive {
+            alertSummaryCard.backgroundColor = UIColor(red: 1, green: 0.95, blue: 0.93, alpha: 1)
+            alertSummaryCard.layer.borderColor = MeridianPalette.alert.cgColor
+            alertSummaryIconView.image = UIImage(systemName: "exclamationmark.triangle.fill")
+            alertSummaryIconView.tintColor = MeridianPalette.alert
+            alertMedicalLabel.textColor = MeridianPalette.alert
+            alertMedicalLabel.font = UIFont.systemFont(
+                ofSize: UIFont.preferredFont(forTextStyle: .footnote).pointSize,
+                weight: .semibold
+            )
+            alertMedicalValueLabel.text = "Active"
+            alertMedicalValueLabel.textColor = MeridianPalette.alert
+            alertMedicalValueLabel.font = UIFont.systemFont(
+                ofSize: UIFont.preferredFont(forTextStyle: .footnote).pointSize,
+                weight: .semibold
+            )
+            contentStack.removeArrangedSubview(alertSummaryCard)
+            alertSummaryCard.removeFromSuperview()
+            contentStack.insertArrangedSubview(alertSummaryCard, at: 0)
+        } else {
+            alertSummaryCard.backgroundColor = MeridianPalette.surface
+            alertSummaryCard.layer.borderColor = MeridianPalette.border.cgColor
+            alertSummaryIconView.image = UIImage(systemName: "checkmark.shield")
+            alertSummaryIconView.tintColor = MeridianPalette.primaryAction
+            alertMedicalLabel.textColor = MeridianPalette.primaryText
+            alertMedicalLabel.font = .preferredFont(forTextStyle: .footnote)
+            alertMedicalValueLabel.text = "None active"
+            alertMedicalValueLabel.textColor = MeridianPalette.mutedText
+            alertMedicalValueLabel.font = .preferredFont(forTextStyle: .footnote)
+            contentStack.removeArrangedSubview(alertSummaryCard)
+            alertSummaryCard.removeFromSuperview()
+            contentStack.addArrangedSubview(alertSummaryCard)
+        }
     }
 
     private func configureCard(_ card: UIView) {

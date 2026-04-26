@@ -76,7 +76,7 @@
                                 <input type="hidden" id="iceCareRecipientId" name="iceCareRecipientId" value="">
                                 <div class="ice-main">
                                     <div class="identity-bar">
-                                        <div class="avatar" aria-hidden="true">
+                                        <div class="avatar" aria-hidden="true" title="Click to change photo" style="cursor:pointer;">
                                             <span id="iceIdentityAvatar" class="avatar-initials">—</span>
                                             <img id="icePhotoPreview" class="avatar-photo ice-photo-preview" alt="" width="72" height="72" hidden decoding="async">
                                         </div>
@@ -90,11 +90,7 @@
                                                 </div>
                                                 <div>
                                                     <label for="iceDob">Date of birth</label>
-                                                    <input type="text" id="iceDob" class="ice-mock-identity-dob" placeholder="YYYY-MM-DD" autocomplete="bday" maxlength="10" pattern="\d{4}-\d{2}-\d{2}">
-                                                </div>
-                                                <div>
-                                                    <label>Code status (current)</label>
-                                                    <span id="iceCodeReadout" class="code-readout">—</span>
+                                                    <input type="date" id="iceDob" class="ice-mock-identity-dob" autocomplete="bday">
                                                 </div>
                                             </div>
                                         </div>
@@ -139,6 +135,7 @@
                                                     <button type="button" class="linkish" style="font-size:12px;" id="iceOpenDocsBtn">Open physician orders in Documents</button>
                                                     <button type="button" class="ico-hint" title="Opens the Documents section or linked POLST/orders.">i</button>
                                                 </p>
+                                                <p style="margin:0 0 8px;font-size:12px;color:var(--warm-muted);">Current: <span id="iceCodeReadout" class="code-readout">—</span></p>
                                                 <div class="code-grid-3">
                                                     <div class="code-cell">
                                                         <span class="code-sub">DNR (no CPR)</span>
@@ -153,19 +150,19 @@
                                                         <span class="code-sub">DNI</span>
                                                         <p class="code-selected">Now: <span id="iceDniCurrentLine">—</span></p>
                                                         <select id="iceDniStatus" class="full" style="margin-bottom:0;" aria-label="DNI">
-                                                            <option selected>Intubation not desired</option>
-                                                            <option>Intubation if indicated</option>
-                                                            <option>See document</option>
+                                                            <option value="Intubation not desired" selected>Intubation not desired</option>
+                                                            <option value="Intubation if indicated">Intubation if indicated</option>
+                                                            <option value="See document">See document</option>
                                                         </select>
                                                     </div>
                                                     <div class="code-cell">
                                                         <span class="code-sub">Artificial nutrition</span>
                                                         <p class="code-selected">Now: <span id="iceNutritionCurrentLine">—</span></p>
                                                         <select id="iceNutritionStatus" class="full" style="margin-bottom:0;" aria-label="Artificial nutrition">
-                                                            <option selected>As documented</option>
-                                                            <option>Comfort / trial as ordered</option>
-                                                            <option>Not desired</option>
-                                                            <option>See document</option>
+                                                            <option value="As documented" selected>As documented</option>
+                                                            <option value="Comfort / trial as ordered">Comfort / trial as ordered</option>
+                                                            <option value="Not desired">Not desired</option>
+                                                            <option value="See document">See document</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -197,26 +194,19 @@
                                                 <p class="ice-mock-hintrow"><button type="button" class="btn btn-sm btn-outline" id="iceAddAllergyBtn">+ Allergy</button></p>
                                             </div>
                                             <div class="hm-block">
-                                                <h3 class="subhead">Clinical notes</h3>
-                                                <label class="block" for="iceBriefHistory">Brief history, care providers, devices, mobility</label>
-                                                <textarea id="iceBriefHistory" class="full" style="min-height:80px;" rows="4" placeholder="Hospitalizations, PCP, mobility aids, fall risk, goals of care&hellip;"></textarea>
-                                            </div>
-                                            <div class="hm-block">
                                                 <h3 class="subhead">Medications</h3>
-                                                <div class="row-h" style="justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;">
-                                                    <div class="med-toolbar" style="margin:0;">
-                                                        <button type="button" class="btn" id="iceMedsEditAllBtn">Edit all medications</button>
-                                                        <button type="button" class="btn btn-sm btn-outline" id="iceMedsAddFocusBtn">Add</button>
-                                                    </div>
-                                                    <span class="tiny" style="margin:0;">Details below. <button type="button" class="ico-hint" title="List is editable in the table below.">i</button></span>
-                                                </div>
-                                                <p class="ice-mock-med-admin row-h">
-                                                    <label class="ice-med-autosave-label"><input type="checkbox" id="iceMedsAutoSave" class="ice-med-autosave-cb"> Autosave</label>
+                                                <p class="ice-mock-med-admin row-h" style="margin-bottom:6px;">
+                                                    <button type="button" class="btn btn-outline" id="iceMedsEditAllBtn">Edit all</button>
                                                     <button type="button" id="iceMedsSelectAllBtn" class="btn btn-sm">Select all</button>
                                                     <button type="button" id="iceMedsDeleteSelectedBtn" class="btn btn-sm">Delete selected</button>
                                                     <button type="button" id="iceAddMedBtn" class="btn btn-sm">Add medication</button>
                                                 </p>
                                                 <div id="iceMedications" class="ice-medications-editor"></div>
+                                            </div>
+                                            <div class="hm-block">
+                                                <h3 class="subhead">Brief history &amp; notes</h3>
+                                                <label class="block" for="iceBriefHistory">Brief history, care providers, devices, mobility</label>
+                                                <textarea id="iceBriefHistory" class="full" style="min-height:80px;" rows="4" placeholder="Hospitalizations, PCP, mobility aids, fall risk, goals of care&hellip;"></textarea>
                                             </div>
                                         </div>
                                     </details>
@@ -229,20 +219,21 @@
                                         <div class="section-body">
                                             <div class="row-h" style="justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
                                                 <div class="med-toolbar" style="margin:0;">
-                                                    <button type="button" class="btn" id="iceEcEditAllBtn">Edit all contacts</button>
-                                                    <button type="button" class="btn btn-sm btn-outline" id="iceEcAddCompactBtn">Add</button>
+                                                    <button type="button" class="btn btn-outline" id="iceEcEditAllBtn">Edit all contacts</button>
                                                 </div>
                                                 <span class="tiny" style="margin:0;">Summary rows; full fields below. <button type="button" class="ico-hint" title="Name, role/type, relationship, level, phone.">i</button></span>
                                             </div>
                                             <div class="hm-block">
                                                 <h3 class="subhead">Decision-makers</h3>
-                                                <p><label class="block" for="iceProxyName">Medical proxy name</label>
-                                                <input type="text" id="iceProxyName" class="input-tight full" autocomplete="name"></p>
-                                                <p><label class="block" for="iceProxyPhone">Medical proxy phone</label>
+                                                <p style="display:flex;align-items:center;gap:6px;"><label class="block" for="iceProxyName" style="margin:0;min-width:120px;">Medical proxy name</label>
+                                                <button type="button" id="iceProxyClearBtn" class="btn btn-sm btn-outline" style="margin-left:auto;font-size:11px;">Clear proxy</button></p>
+                                                <input type="text" id="iceProxyName" class="input-tight full" autocomplete="name">
+                                                <p style="margin-top:6px;"><label class="block" for="iceProxyPhone">Medical proxy phone</label>
                                                 <input type="tel" id="iceProxyPhone" class="input-tight full" autocomplete="tel"></p>
-                                                <p><label class="block" for="icePoaName">Power of attorney name</label>
-                                                <input type="text" id="icePoaName" class="input-tight full" autocomplete="name"></p>
-                                                <p><label class="block" for="icePoaPhone">Power of attorney phone</label>
+                                                <p style="display:flex;align-items:center;gap:6px;margin-top:10px;"><label class="block" for="icePoaName" style="margin:0;min-width:120px;">Power of attorney name</label>
+                                                <button type="button" id="icePoaClearBtn" class="btn btn-sm btn-outline" style="margin-left:auto;font-size:11px;">Clear POA</button></p>
+                                                <input type="text" id="icePoaName" class="input-tight full" autocomplete="name">
+                                                <p style="margin-top:6px;"><label class="block" for="icePoaPhone">Power of attorney phone</label>
                                                 <input type="tel" id="icePoaPhone" class="input-tight full" autocomplete="tel"></p>
                                             </div>
                                             <div class="hm-block">

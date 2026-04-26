@@ -160,15 +160,21 @@
         return chain;
     }
 
+    function isValidPhone(val) {
+        if (!val) return true;
+        var digits = val.replace(/\D/g, '');
+        return digits.length >= 7 && digits.length <= 15;
+    }
+
     function showIceStatus(message, type) {
-        var container = document.getElementById('iceStatus');
-        if (!container) return;
-        container.innerHTML = '';
-        var box = document.createElement('div');
-        box.className = type;
-        box.textContent = message;
-        container.appendChild(box);
-        setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 3000);
+        var existing = document.getElementById('iceStatusToast');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        var toast = document.createElement('div');
+        toast.id = 'iceStatusToast';
+        toast.className = 'ice-status-toast ice-status-toast--' + (type || 'info');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3000);
     }
 
     function setUploadButtonState(buttonId, enabled) {
@@ -207,16 +213,24 @@
         var hasProxy = hasProxyName && hasProxyPhone;
         var hasPhoto = !!String(d.photo_path || '').trim();
         var hasDnrDoc = !!String(d.dnr_document_path || '').trim();
-        var done = [hasName, hasDob, hasDnr, hasEmergencyContact, hasProxy, hasPhoto, hasDnrDoc]
-            .filter(Boolean).length;
+        var fields = [
+            { label: 'Patient name', done: hasName },
+            { label: 'Date of birth', done: hasDob },
+            { label: 'Code status (DNR)', done: hasDnr },
+            { label: 'Emergency contact', done: hasEmergencyContact },
+            { label: 'Medical proxy (name + phone)', done: hasProxy },
+            { label: 'Photo', done: hasPhoto },
+            { label: 'POLST / DNR document', done: hasDnrDoc }
+        ];
+        var done = fields.filter(function (f) { return f.done; }).length;
         var primaryExists = contacts.some(function (c) {
             return (c && c.emergency_priority) === 'primary_emergency';
         });
         var warnings = [];
-        if (!hasDnrDoc) warnings.push('Missing DNR/POLST document');
-        if (!primaryExists) warnings.push('No primary emergency contact');
-        if (!hasProxyPhone) warnings.push('Missing proxy phone number');
-        return { done: done, warnings: warnings };
+        if (!hasDnrDoc) warnings.push('Upload signed POLST or DNR document');
+        if (!primaryExists) warnings.push('Designate a primary emergency contact');
+        if (hasProxyName && !hasProxyPhone) warnings.push('Add phone number for medical proxy');
+        return { done: done, fields: fields, warnings: warnings };
     }
 
     function renderIceCompleteness(data) {
@@ -227,25 +241,20 @@
         var sm = document.getElementById('iceCompletionSummaryMain');
         if (sm) sm.textContent = done + ' of 7 fields complete';
         var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
-        var completeHints = [];
-        if (done >= 1) completeHints.push('Identity started');
-        if (done >= 3) completeHints.push('Core code-status fields saved');
-        if (done >= 5) completeHints.push('At least one contact and proxy info present');
-        if (done >= 7) completeHints.push('Critical fields complete');
-        if (!completeHints.length) completeHints.push('No core fields complete yet');
-        var completeHtml = '<ul class="list-tight">' + completeHints.map(function (w) {
-            return '<li>' + escapeHtml(w) + '</li>';
-        }).join('') + '</ul>';
-        var missingHtml = model.warnings.length
-            ? '<ul class="list-tight list-tight--miss">' + model.warnings.map(function (w) {
-                return '<li>' + escapeHtml(w) + '</li>';
-            }).join('') + '</ul>'
-            : '<ul class="list-tight list-tight--miss"><li>No urgent missing items.</li></ul>';
+        var inPlace = model.fields.filter(function (f) { return f.done; });
+        var missing = model.fields.filter(function (f) { return !f.done; });
+        var inPlaceHtml = inPlace.length
+            ? '<ul class="list-tight">' + inPlace.map(function (f) { return '<li>' + escapeHtml(f.label) + '</li>'; }).join('') + '</ul>'
+            : '<ul class="list-tight"><li class="muted">None yet</li></ul>';
+        var stillToDoItems = missing.map(function (f) { return f.label; }).concat(model.warnings);
+        var missingHtml = stillToDoItems.length
+            ? '<ul class="list-tight list-tight--miss">' + stillToDoItems.map(function (w) { return '<li>' + escapeHtml(w) + '</li>'; }).join('') + '</ul>'
+            : '<ul class="list-tight list-tight--miss"><li>All critical fields complete.</li></ul>';
         host.innerHTML =
             '<div class="bar bar--slim"><div style="height:100%;width:' + pct + '%;background:#c4a574"></div></div>' +
             '<div class="completion-sec">' +
             '<p class="completion-sec-h">In place</p>' +
-            completeHtml +
+            inPlaceHtml +
             '</div>' +
             '<div class="completion-sec">' +
             '<p class="completion-sec-h">Still to do</p>' +
@@ -429,6 +438,8 @@
         var polstNutEl = document.getElementById('icePolstNutritionSigned');
         if (polstNutEl) polstNutEl.checked = !!medical.polst_nutrition_signed;
 
+        _loadedPaths._devices_notes = data.devices_notes || null;
+        _loadedPaths._other_notes = data.other_notes || null;
         var devEl = document.getElementById('iceDevicesNotes');
         if (devEl) devEl.value = data.devices_notes || '';
         var histEl = document.getElementById('iceBriefHistory');
@@ -519,7 +530,11 @@
         _documents = docs || [];
         var container = document.getElementById('iceDocsContainer');
         if (!container) return;
-        container.innerHTML = _documents.map(docRowHtml).join('');
+        if (_documents.length === 0) {
+            container.innerHTML = '<p class="tiny muted" style="margin:8px 0;">No documents on file — use + Add to upload a POLST, DNR order, or other document.</p>';
+        } else {
+            container.innerHTML = _documents.map(docRowHtml).join('');
+        }
         var addBtn = document.getElementById('iceDocsAddBtn');
         if (addBtn) addBtn.disabled = false;
     }
@@ -720,8 +735,13 @@
     function wirePhotoUpload() {
         var photoInput = document.getElementById('icePhotoInput');
         var photoBtn = document.getElementById('icePhotoUploadBtn');
-        if (!photoInput || !photoBtn) return;
-        photoBtn.addEventListener('click', function () { photoInput.click(); });
+        if (!photoInput) return;
+        // Clicking the avatar circle or photo preview also triggers upload
+        var avatar = document.querySelector('.identity-bar .avatar');
+        if (avatar) avatar.addEventListener('click', function () { photoInput.click(); });
+        var photoPreview = document.getElementById('icePhotoPreview');
+        if (photoPreview) photoPreview.addEventListener('click', function () { photoInput.click(); });
+        if (photoBtn) photoBtn.addEventListener('click', function () { photoInput.click(); });
         photoInput.addEventListener('change', function () {
             var f = photoInput.files && photoInput.files[0];
             if (!f) return;
@@ -787,10 +807,23 @@
                 if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             });
         }
-        var ecAdd = document.getElementById('iceEcAddCompactBtn');
-        var ecAddMain = document.getElementById('iceAddEmergencyContactBtn');
-        if (ecAdd && ecAddMain) {
-            ecAdd.addEventListener('click', function () { ecAddMain.click(); });
+        var proxyClear = document.getElementById('iceProxyClearBtn');
+        if (proxyClear) {
+            proxyClear.addEventListener('click', function () {
+                var n = document.getElementById('iceProxyName');
+                var p = document.getElementById('iceProxyPhone');
+                if (n) n.value = '';
+                if (p) p.value = '';
+            });
+        }
+        var poaClear = document.getElementById('icePoaClearBtn');
+        if (poaClear) {
+            poaClear.addEventListener('click', function () {
+                var n = document.getElementById('icePoaName');
+                var p = document.getElementById('icePoaPhone');
+                if (n) n.value = '';
+                if (p) p.value = '';
+            });
         }
 
         var medContainer = document.getElementById('iceMedications');
@@ -863,13 +896,6 @@
             });
         }
 
-        var docsContainer = document.getElementById('iceDocsContainer');
-        if (docsContainer) {
-            docsContainer.addEventListener('click', function (e) {
-                var row = e.target.closest('[data-doc-id]');
-                if (row) wireDocumentRow(row);
-            });
-        }
         var docsAddBtn = document.getElementById('iceDocsAddBtn');
         if (docsAddBtn) {
             docsAddBtn.addEventListener('click', function () {
@@ -932,6 +958,19 @@
                     showIceStatus('Cannot save without a care recipient id on file.', 'error');
                     return;
                 }
+                // Phone validation — warn but don't block
+                var phoneWarnings = [];
+                var proxyPhoneVal = (document.getElementById('iceProxyPhone') || {}).value || '';
+                var poaPhoneVal = (document.getElementById('icePoaPhone') || {}).value || '';
+                if (proxyPhoneVal && !isValidPhone(proxyPhoneVal)) phoneWarnings.push('Medical proxy phone');
+                if (poaPhoneVal && !isValidPhone(poaPhoneVal)) phoneWarnings.push('POA phone');
+                document.querySelectorAll('#iceEmergencyContacts .ice-ec-phone').forEach(function (inp) {
+                    var v = inp.value.trim();
+                    if (v && !isValidPhone(v)) phoneWarnings.push('Emergency contact phone (' + v + ')');
+                });
+                if (phoneWarnings.length) {
+                    showIceStatus('Phone number may be invalid: ' + phoneWarnings.join(', ') + '. Saving anyway.', 'error');
+                }
                 var dniSel = document.getElementById('iceDniStatus');
                 var nutSel = document.getElementById('iceNutritionStatus');
                 var payload = {
@@ -957,9 +996,9 @@
                     poa_name: (document.getElementById('icePoaName') || {}).value.trim() || null,
                     poa_phone: (document.getElementById('icePoaPhone') || {}).value.trim() || null,
                     notes: (document.getElementById('iceNotes') || {}).value.trim() || null,
-                    devices_notes: null,
+                    devices_notes: (document.getElementById('iceDevicesNotes') || {}).value ? (document.getElementById('iceDevicesNotes') || {}).value.trim() || null : _loadedPaths._devices_notes || null,
                     brief_history: (document.getElementById('iceBriefHistory') || {}).value.trim() || null,
-                    other_notes: null,
+                    other_notes: (document.getElementById('iceOtherNotes') || {}).value ? (document.getElementById('iceOtherNotes') || {}).value.trim() || null : _loadedPaths._other_notes || null,
                     photo_path: _loadedPaths.photo_path,
                     dnr_document_path: _loadedPaths.dnr_document_path
                 };

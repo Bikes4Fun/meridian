@@ -18,7 +18,7 @@
     .task:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
     .task-title { font-weight: 700; margin-bottom: 8px; }
     .task-prompt { margin-bottom: 8px; color: #6a645d; font-style: italic; }
-.chip { display: inline-block; border: 1px solid #cfc6ba; border-radius: 999px; padding: 2px 9px; font-size: 12px; color: #6a645d; margin-left: 6px; }
+    .chip { display: inline-block; border: 1px solid #cfc6ba; border-radius: 999px; padding: 2px 9px; font-size: 12px; color: #6a645d; margin-left: 6px; }
     .chip.new { border-color: #0a84a2; color: #0a84a2; }
     .chip.fixed { border-color: #2f7d32; color: #2f7d32; }
     .severity-group, .rating-group, .trust-group { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -65,7 +65,7 @@
 
     <form id="testForm">
       <div class="card">
-        <div class="drop-zone" id="screenshotDrop">
+<div class="drop-zone" id="screenshotDrop">
           <input type="file" accept="image/*" id="screenshotInput">
           Drop a screenshot here, or click to choose
           <img id="screenshotPreview" style="display:none;">
@@ -78,158 +78,134 @@
 
         <div class="task">
           <div class="task-title">Task 1: Name and date of birth</div>
-          <p class="task-prompt">Update the care recipient's name and date of birth and save.</p>
+          <p class="task-prompt">Update the care recipient's name and date of birth.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t4_worked" name="web_t4_result" value="Worked"><label for="web_t4_worked">Worked</label>
-            <input type="radio" id="web_t4_cosmetic" name="web_t4_result" value="Cosmetic"><label for="web_t4_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t4_minor" name="web_t4_result" value="Minor"><label for="web_t4_minor">Minor</label>
-            <input type="radio" id="web_t4_critical" name="web_t4_result" value="Critical"><label for="web_t4_critical">Critical</label>
+            <input type="checkbox" id="web_t1_worked" name="web_t1_result" value="Worked"><label for="web_t1_worked">Worked</label>
+            <input type="checkbox" id="web_t1_cosmetic" name="web_t1_result" value="Cosmetic"><label for="web_t1_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t1_minor" name="web_t1_result" value="Minor"><label for="web_t1_minor">Minor</label>
+            <input type="checkbox" id="web_t1_critical" name="web_t1_result" value="Critical"><label for="web_t1_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t1_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 2: Documents <span class="chip">Upload, edit, delete</span></div>
+          <p class="task-prompt">Add a document row. Upload a file to it. Edit the label and date. Then delete the row.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t2_worked" name="web_t2_result" value="Worked"><label for="web_t2_worked">Worked</label>
+            <input type="checkbox" id="web_t2_cosmetic" name="web_t2_result" value="Cosmetic"><label for="web_t2_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t2_minor" name="web_t2_result" value="Minor"><label for="web_t2_minor">Minor</label>
+            <input type="checkbox" id="web_t2_critical" name="web_t2_result" value="Critical"><label for="web_t2_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t2_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 3: Code status</div>
+          <p class="task-prompt">Change the DNR, DNI / intubation, and artificial nutrition settings.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t3_worked" name="web_t3_result" value="Worked"><label for="web_t3_worked">Worked</label>
+            <input type="checkbox" id="web_t3_cosmetic" name="web_t3_result" value="Cosmetic"><label for="web_t3_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t3_minor" name="web_t3_result" value="Minor"><label for="web_t3_minor">Minor</label>
+            <input type="checkbox" id="web_t3_critical" name="web_t3_result" value="Critical"><label for="web_t3_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t3_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 4: Diagnoses</div>
+          <p class="task-prompt">Add one or more diagnoses.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t4_worked" name="web_t4_result" value="Worked"><label for="web_t4_worked">Worked</label>
+            <input type="checkbox" id="web_t4_cosmetic" name="web_t4_result" value="Cosmetic"><label for="web_t4_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t4_minor" name="web_t4_result" value="Minor"><label for="web_t4_minor">Minor</label>
+            <input type="checkbox" id="web_t4_critical" name="web_t4_result" value="Critical"><label for="web_t4_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="web_t4_notes" placeholder="What happened?"></textarea></div>
         </div>
 
         <div class="task">
-          <div class="task-title">Task 2: Photo</div>
-          <p class="task-prompt">Change the care recipient's profile photo.</p>
+          <div class="task-title">Task 5: Drug allergies</div>
+          <p class="task-prompt">Add two allergies with reactions, remove one.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t5_worked" name="web_t5_result" value="Worked"><label for="web_t5_worked">Worked</label>
-            <input type="radio" id="web_t5_cosmetic" name="web_t5_result" value="Cosmetic"><label for="web_t5_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t5_minor" name="web_t5_result" value="Minor"><label for="web_t5_minor">Minor</label>
-            <input type="radio" id="web_t5_critical" name="web_t5_result" value="Critical"><label for="web_t5_critical">Critical</label>
+            <input type="checkbox" id="web_t5_worked" name="web_t5_result" value="Worked"><label for="web_t5_worked">Worked</label>
+            <input type="checkbox" id="web_t5_cosmetic" name="web_t5_result" value="Cosmetic"><label for="web_t5_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t5_minor" name="web_t5_result" value="Minor"><label for="web_t5_minor">Minor</label>
+            <input type="checkbox" id="web_t5_critical" name="web_t5_result" value="Critical"><label for="web_t5_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="web_t5_notes" placeholder="What happened?"></textarea></div>
         </div>
 
         <div class="task">
-          <div class="task-title">Task 3: Code status</div>
-          <p class="task-prompt">Change the DNR, DNI / intubation, and artificial nutrition settings and save.</p>
+          <div class="task-title">Task 6: Medications</div>
+          <p class="task-prompt">Add a medication with dose and times, edit it, then delete it.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t6_worked" name="web_t6_result" value="Worked"><label for="web_t6_worked">Worked</label>
-            <input type="radio" id="web_t6_cosmetic" name="web_t6_result" value="Cosmetic"><label for="web_t6_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t6_minor" name="web_t6_result" value="Minor"><label for="web_t6_minor">Minor</label>
-            <input type="radio" id="web_t6_critical" name="web_t6_result" value="Critical"><label for="web_t6_critical">Critical</label>
+            <input type="checkbox" id="web_t6_worked" name="web_t6_result" value="Worked"><label for="web_t6_worked">Worked</label>
+            <input type="checkbox" id="web_t6_cosmetic" name="web_t6_result" value="Cosmetic"><label for="web_t6_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t6_minor" name="web_t6_result" value="Minor"><label for="web_t6_minor">Minor</label>
+            <input type="checkbox" id="web_t6_critical" name="web_t6_result" value="Critical"><label for="web_t6_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="web_t6_notes" placeholder="What happened?"></textarea></div>
         </div>
 
         <div class="task">
-          <div class="task-title">Task 4: Diagnoses</div>
-          <p class="task-prompt">Add one or more diagnoses and save.</p>
+          <div class="task-title">Task 7: Brief history &amp; notes</div>
+          <p class="task-prompt">Fill in the brief history field (care providers, devices, mobility).</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t9_worked" name="web_t9_result" value="Worked"><label for="web_t9_worked">Worked</label>
-            <input type="radio" id="web_t9_cosmetic" name="web_t9_result" value="Cosmetic"><label for="web_t9_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t9_minor" name="web_t9_result" value="Minor"><label for="web_t9_minor">Minor</label>
-            <input type="radio" id="web_t9_critical" name="web_t9_result" value="Critical"><label for="web_t9_critical">Critical</label>
+            <input type="checkbox" id="web_t7_worked" name="web_t7_result" value="Worked"><label for="web_t7_worked">Worked</label>
+            <input type="checkbox" id="web_t7_cosmetic" name="web_t7_result" value="Cosmetic"><label for="web_t7_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t7_minor" name="web_t7_result" value="Minor"><label for="web_t7_minor">Minor</label>
+            <input type="checkbox" id="web_t7_critical" name="web_t7_result" value="Critical"><label for="web_t7_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t7_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 8: Medical proxy and POA</div>
+          <p class="task-prompt">Edit either the POA or Medical Proxy. Clear the other. Enter a new one in its place.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t8_worked" name="web_t8_result" value="Worked"><label for="web_t8_worked">Worked</label>
+            <input type="checkbox" id="web_t8_cosmetic" name="web_t8_result" value="Cosmetic"><label for="web_t8_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t8_minor" name="web_t8_result" value="Minor"><label for="web_t8_minor">Minor</label>
+            <input type="checkbox" id="web_t8_critical" name="web_t8_result" value="Critical"><label for="web_t8_critical">Critical</label>
+          </div></div>
+          <div class="notes-row"><label>Notes</label><textarea name="web_t8_notes" placeholder="What happened?"></textarea></div>
+        </div>
+
+        <div class="task">
+          <div class="task-title">Task 9: Emergency contacts</div>
+          <p class="task-prompt">Add two emergency contacts, edit one, remove one.</p>
+          <div class="row"><label>Result</label><div class="severity-group">
+            <input type="checkbox" id="web_t9_worked" name="web_t9_result" value="Worked"><label for="web_t9_worked">Worked</label>
+            <input type="checkbox" id="web_t9_cosmetic" name="web_t9_result" value="Cosmetic"><label for="web_t9_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t9_minor" name="web_t9_result" value="Minor"><label for="web_t9_minor">Minor</label>
+            <input type="checkbox" id="web_t9_critical" name="web_t9_result" value="Critical"><label for="web_t9_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="web_t9_notes" placeholder="What happened?"></textarea></div>
         </div>
 
         <div class="task">
-          <div class="task-title">Task 5: Drug allergies</div>
-          <p class="task-prompt">Add two allergies, remove one, and save.</p>
+          <div class="task-title">Task 10: Notes for responders</div>
+          <p class="task-prompt">Fill in the notes for EMS / family field.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t10_worked" name="web_t10_result" value="Worked"><label for="web_t10_worked">Worked</label>
-            <input type="radio" id="web_t10_cosmetic" name="web_t10_result" value="Cosmetic"><label for="web_t10_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t10_minor" name="web_t10_result" value="Minor"><label for="web_t10_minor">Minor</label>
-            <input type="radio" id="web_t10_critical" name="web_t10_result" value="Critical"><label for="web_t10_critical">Critical</label>
+            <input type="checkbox" id="web_t10_worked" name="web_t10_result" value="Worked"><label for="web_t10_worked">Worked</label>
+            <input type="checkbox" id="web_t10_cosmetic" name="web_t10_result" value="Cosmetic"><label for="web_t10_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t10_minor" name="web_t10_result" value="Minor"><label for="web_t10_minor">Minor</label>
+            <input type="checkbox" id="web_t10_critical" name="web_t10_result" value="Critical"><label for="web_t10_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="web_t10_notes" placeholder="What happened?"></textarea></div>
         </div>
 
         <div class="task">
-          <div class="task-title">Task 6: Devices and mobility</div>
-          <p class="task-prompt">Fill in the devices / mobility notes field and save.</p>
+          <div class="task-title">Task 11: Photo <span class="chip fixed">Optional</span></div>
+          <p class="task-prompt">Change the care recipient's profile photo.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t11_worked" name="web_t11_result" value="Worked"><label for="web_t11_worked">Worked</label>
-            <input type="radio" id="web_t11_cosmetic" name="web_t11_result" value="Cosmetic"><label for="web_t11_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t11_minor" name="web_t11_result" value="Minor"><label for="web_t11_minor">Minor</label>
-            <input type="radio" id="web_t11_critical" name="web_t11_result" value="Critical"><label for="web_t11_critical">Critical</label>
+            <input type="checkbox" id="web_t11_worked" name="web_t11_result" value="Worked"><label for="web_t11_worked">Worked</label>
+            <input type="checkbox" id="web_t11_cosmetic" name="web_t11_result" value="Cosmetic"><label for="web_t11_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="web_t11_minor" name="web_t11_result" value="Minor"><label for="web_t11_minor">Minor</label>
+            <input type="checkbox" id="web_t11_critical" name="web_t11_result" value="Critical"><label for="web_t11_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="web_t11_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 7: Brief history and care providers</div>
-          <p class="task-prompt">Fill in the brief history / PCP field and save.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t12_worked" name="web_t12_result" value="Worked"><label for="web_t12_worked">Worked</label>
-            <input type="radio" id="web_t12_cosmetic" name="web_t12_result" value="Cosmetic"><label for="web_t12_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t12_minor" name="web_t12_result" value="Minor"><label for="web_t12_minor">Minor</label>
-            <input type="radio" id="web_t12_critical" name="web_t12_result" value="Critical"><label for="web_t12_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t12_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 8: Medications</div>
-          <p class="task-prompt">Add a medication with dose and times, edit it, then delete it.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t13_worked" name="web_t13_result" value="Worked"><label for="web_t13_worked">Worked</label>
-            <input type="radio" id="web_t13_cosmetic" name="web_t13_result" value="Cosmetic"><label for="web_t13_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t13_minor" name="web_t13_result" value="Minor"><label for="web_t13_minor">Minor</label>
-            <input type="radio" id="web_t13_critical" name="web_t13_result" value="Critical"><label for="web_t13_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t13_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 9: Other notes</div>
-          <p class="task-prompt">Fill in the other notes / care team field and save.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t14_worked" name="web_t14_result" value="Worked"><label for="web_t14_worked">Worked</label>
-            <input type="radio" id="web_t14_cosmetic" name="web_t14_result" value="Cosmetic"><label for="web_t14_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t14_minor" name="web_t14_result" value="Minor"><label for="web_t14_minor">Minor</label>
-            <input type="radio" id="web_t14_critical" name="web_t14_result" value="Critical"><label for="web_t14_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t14_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 10: Medical proxy and POA</div>
-          <p class="task-prompt">Set a contact as medical proxy and another as power of attorney and save.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t15_worked" name="web_t15_result" value="Worked"><label for="web_t15_worked">Worked</label>
-            <input type="radio" id="web_t15_cosmetic" name="web_t15_result" value="Cosmetic"><label for="web_t15_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t15_minor" name="web_t15_result" value="Minor"><label for="web_t15_minor">Minor</label>
-            <input type="radio" id="web_t15_critical" name="web_t15_result" value="Critical"><label for="web_t15_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t15_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 11: Emergency contacts</div>
-          <p class="task-prompt">Add two emergency contacts, edit one, remove one, and save.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t17_worked" name="web_t17_result" value="Worked"><label for="web_t17_worked">Worked</label>
-            <input type="radio" id="web_t17_cosmetic" name="web_t17_result" value="Cosmetic"><label for="web_t17_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t17_minor" name="web_t17_result" value="Minor"><label for="web_t17_minor">Minor</label>
-            <input type="radio" id="web_t17_critical" name="web_t17_result" value="Critical"><label for="web_t17_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t17_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 12: Notes for responders</div>
-          <p class="task-prompt">Fill in the notes for EMS / family field and save.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t18_worked" name="web_t18_result" value="Worked"><label for="web_t18_worked">Worked</label>
-            <input type="radio" id="web_t18_cosmetic" name="web_t18_result" value="Cosmetic"><label for="web_t18_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t18_minor" name="web_t18_result" value="Minor"><label for="web_t18_minor">Minor</label>
-            <input type="radio" id="web_t18_critical" name="web_t18_result" value="Critical"><label for="web_t18_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t18_notes" placeholder="What happened?"></textarea></div>
-        </div>
-
-        <div class="task">
-          <div class="task-title">Task 13: Documents</div>
-          <p class="task-prompt">Add a document row, upload a file to it, then delete the row.</p>
-          <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="web_t19_worked" name="web_t19_result" value="Worked"><label for="web_t19_worked">Worked</label>
-            <input type="radio" id="web_t19_cosmetic" name="web_t19_result" value="Cosmetic"><label for="web_t19_cosmetic">Cosmetic</label>
-            <input type="radio" id="web_t19_minor" name="web_t19_result" value="Minor"><label for="web_t19_minor">Minor</label>
-            <input type="radio" id="web_t19_critical" name="web_t19_result" value="Critical"><label for="web_t19_critical">Critical</label>
-          </div></div>
-          <div class="notes-row"><label>Notes</label><textarea name="web_t19_notes" placeholder="What happened?"></textarea></div>
         </div>
 
         </details>
@@ -244,10 +220,10 @@
           <div class="row">
             <label>Result</label>
             <div class="severity-group">
-              <input type="radio" id="ios_t1_worked" name="ios_t1_result" value="Worked"><label for="ios_t1_worked">Worked</label>
-              <input type="radio" id="ios_t1_cosmetic" name="ios_t1_result" value="Cosmetic"><label for="ios_t1_cosmetic">Cosmetic</label>
-              <input type="radio" id="ios_t1_minor" name="ios_t1_result" value="Minor"><label for="ios_t1_minor">Minor</label>
-              <input type="radio" id="ios_t1_critical" name="ios_t1_result" value="Critical"><label for="ios_t1_critical">Critical</label>
+              <input type="checkbox" id="ios_t1_worked" name="ios_t1_result" value="Worked"><label for="ios_t1_worked">Worked</label>
+              <input type="checkbox" id="ios_t1_cosmetic" name="ios_t1_result" value="Cosmetic"><label for="ios_t1_cosmetic">Cosmetic</label>
+              <input type="checkbox" id="ios_t1_minor" name="ios_t1_result" value="Minor"><label for="ios_t1_minor">Minor</label>
+              <input type="checkbox" id="ios_t1_critical" name="ios_t1_result" value="Critical"><label for="ios_t1_critical">Critical</label>
             </div>
           </div>
           <div class="notes-row"><label>Notes</label><textarea name="ios_t1_notes" placeholder="What happened?"></textarea></div>
@@ -262,10 +238,10 @@
           <div class="task-title">Kiosk 1: Nav + Home basics</div>
           <p class="task-prompt">Move between main tabs and orient to what to do next.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="kiosk_t1_worked" name="kiosk_t1_result" value="Worked"><label for="kiosk_t1_worked">Worked</label>
-            <input type="radio" id="kiosk_t1_cosmetic" name="kiosk_t1_result" value="Cosmetic"><label for="kiosk_t1_cosmetic">Cosmetic</label>
-            <input type="radio" id="kiosk_t1_minor" name="kiosk_t1_result" value="Minor"><label for="kiosk_t1_minor">Minor</label>
-            <input type="radio" id="kiosk_t1_critical" name="kiosk_t1_result" value="Critical"><label for="kiosk_t1_critical">Critical</label>
+            <input type="checkbox" id="kiosk_t1_worked" name="kiosk_t1_result" value="Worked"><label for="kiosk_t1_worked">Worked</label>
+            <input type="checkbox" id="kiosk_t1_cosmetic" name="kiosk_t1_result" value="Cosmetic"><label for="kiosk_t1_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="kiosk_t1_minor" name="kiosk_t1_result" value="Minor"><label for="kiosk_t1_minor">Minor</label>
+            <input type="checkbox" id="kiosk_t1_critical" name="kiosk_t1_result" value="Critical"><label for="kiosk_t1_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="kiosk_t1_notes" placeholder="What happened?"></textarea></div>
         </div>
@@ -273,10 +249,10 @@
           <div class="task-title">Kiosk 2: Family + calling flow</div>
           <p class="task-prompt">Call a family member from the kiosk.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="kiosk_t2_worked" name="kiosk_t2_result" value="Worked"><label for="kiosk_t2_worked">Worked</label>
-            <input type="radio" id="kiosk_t2_cosmetic" name="kiosk_t2_result" value="Cosmetic"><label for="kiosk_t2_cosmetic">Cosmetic</label>
-            <input type="radio" id="kiosk_t2_minor" name="kiosk_t2_result" value="Minor"><label for="kiosk_t2_minor">Minor</label>
-            <input type="radio" id="kiosk_t2_critical" name="kiosk_t2_result" value="Critical"><label for="kiosk_t2_critical">Critical</label>
+            <input type="checkbox" id="kiosk_t2_worked" name="kiosk_t2_result" value="Worked"><label for="kiosk_t2_worked">Worked</label>
+            <input type="checkbox" id="kiosk_t2_cosmetic" name="kiosk_t2_result" value="Cosmetic"><label for="kiosk_t2_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="kiosk_t2_minor" name="kiosk_t2_result" value="Minor"><label for="kiosk_t2_minor">Minor</label>
+            <input type="checkbox" id="kiosk_t2_critical" name="kiosk_t2_result" value="Critical"><label for="kiosk_t2_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="kiosk_t2_notes" placeholder="What happened?"></textarea></div>
         </div>
@@ -284,13 +260,49 @@
           <div class="task-title">Kiosk 3: Emergency action flow</div>
           <p class="task-prompt">Trigger and confirm an emergency alert.</p>
           <div class="row"><label>Result</label><div class="severity-group">
-            <input type="radio" id="kiosk_t3_worked" name="kiosk_t3_result" value="Worked"><label for="kiosk_t3_worked">Worked</label>
-            <input type="radio" id="kiosk_t3_cosmetic" name="kiosk_t3_result" value="Cosmetic"><label for="kiosk_t3_cosmetic">Cosmetic</label>
-            <input type="radio" id="kiosk_t3_minor" name="kiosk_t3_result" value="Minor"><label for="kiosk_t3_minor">Minor</label>
-            <input type="radio" id="kiosk_t3_critical" name="kiosk_t3_result" value="Critical"><label for="kiosk_t3_critical">Critical</label>
+            <input type="checkbox" id="kiosk_t3_worked" name="kiosk_t3_result" value="Worked"><label for="kiosk_t3_worked">Worked</label>
+            <input type="checkbox" id="kiosk_t3_cosmetic" name="kiosk_t3_result" value="Cosmetic"><label for="kiosk_t3_cosmetic">Cosmetic</label>
+            <input type="checkbox" id="kiosk_t3_minor" name="kiosk_t3_result" value="Minor"><label for="kiosk_t3_minor">Minor</label>
+            <input type="checkbox" id="kiosk_t3_critical" name="kiosk_t3_result" value="Critical"><label for="kiosk_t3_critical">Critical</label>
           </div></div>
           <div class="notes-row"><label>Notes</label><textarea name="kiosk_t3_notes" placeholder="What happened?"></textarea></div>
         </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2>Secondary Tasks (If Time Allows)</h2>
+        <details>
+          <summary>Kiosk settings + sensor checks</summary>
+          <div class="task">
+            <div class="task-title">Secondary 1: Kiosk settings and sensor status</div>
+            <div class="row">
+              <label>Result</label>
+              <div class="severity-group">
+                <input type="checkbox" id="kiosk_s1_worked" name="kiosk_s1_result" value="Worked"><label for="kiosk_s1_worked">Worked</label>
+                <input type="checkbox" id="kiosk_s1_cosmetic" name="kiosk_s1_result" value="Cosmetic"><label for="kiosk_s1_cosmetic">Cosmetic</label>
+                <input type="checkbox" id="kiosk_s1_minor" name="kiosk_s1_result" value="Minor"><label for="kiosk_s1_minor">Minor</label>
+                <input type="checkbox" id="kiosk_s1_critical" name="kiosk_s1_result" value="Critical"><label for="kiosk_s1_critical">Critical</label>
+              </div>
+            </div>
+            <div class="notes-row"><label>Notes</label><textarea name="kiosk_s1_notes" placeholder="What happened?"></textarea></div>
+          </div>
+        </details>
+        <details>
+          <summary>iOS call/response flow</summary>
+          <div class="task">
+            <div class="task-title">Secondary 2: iOS call or response flow</div>
+            <div class="row">
+              <label>Result</label>
+              <div class="severity-group">
+                <input type="checkbox" id="ios_s1_worked" name="ios_s1_result" value="Worked"><label for="ios_s1_worked">Worked</label>
+                <input type="checkbox" id="ios_s1_cosmetic" name="ios_s1_result" value="Cosmetic"><label for="ios_s1_cosmetic">Cosmetic</label>
+                <input type="checkbox" id="ios_s1_minor" name="ios_s1_result" value="Minor"><label for="ios_s1_minor">Minor</label>
+                <input type="checkbox" id="ios_s1_critical" name="ios_s1_result" value="Critical"><label for="ios_s1_critical">Critical</label>
+              </div>
+            </div>
+            <div class="notes-row"><label>Notes</label><textarea name="ios_s1_notes" placeholder="What happened?"></textarea></div>
+          </div>
         </details>
       </div>
 
@@ -305,6 +317,14 @@
             <input type="radio" id="ease_3" name="ease_of_use" value="3"><label for="ease_3">3</label>
             <input type="radio" id="ease_4" name="ease_of_use" value="4"><label for="ease_4">4</label>
             <input type="radio" id="ease_5" name="ease_of_use" value="5"><label for="ease_5">5</label>
+          </div>
+        </div>
+        <div class="row">
+          <label>Trust for own family</label>
+          <div class="trust-group">
+            <input type="radio" id="trust_yes" name="trust" value="Yes"><label for="trust_yes">Yes</label>
+            <input type="radio" id="trust_maybe" name="trust" value="Maybe"><label for="trust_maybe">Maybe</label>
+            <input type="radio" id="trust_not_yet" name="trust" value="Not yet"><label for="trust_not_yet">Not yet</label>
           </div>
         </div>
       </div>
@@ -325,11 +345,18 @@
       var statusEl = document.getElementById("status");
       var screenshotData = null;
 
+      var severityKeys = [
+        'web_t1_result','web_t2_result','web_t3_result','web_t4_result','web_t5_result',
+        'web_t6_result','web_t7_result','web_t8_result','web_t9_result','web_t10_result','web_t11_result',
+        'ios_t1_result',
+        'kiosk_t1_result','kiosk_t2_result','kiosk_t3_result',
+        'kiosk_s1_result','ios_s1_result'
+      ];
+
       (function initDrop() {
         var zone = document.getElementById("screenshotDrop");
         var inp = document.getElementById("screenshotInput");
         var preview = document.getElementById("screenshotPreview");
-
         function loadFile(file) {
           if (!file || !file.type.startsWith("image/")) return;
           var reader = new FileReader();
@@ -337,32 +364,35 @@
             screenshotData = e.target.result;
             preview.src = screenshotData;
             preview.style.display = "block";
-            zone.querySelector("input + text, input").nextSibling.textContent = " ";
           };
           reader.readAsDataURL(file);
         }
-
         inp.addEventListener("change", function () { loadFile(inp.files[0]); });
         zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("over"); });
         zone.addEventListener("dragleave", function () { zone.classList.remove("over"); });
         zone.addEventListener("drop", function (e) {
-          e.preventDefault();
-          zone.classList.remove("over");
-          loadFile(e.dataTransfer.files[0]);
+          e.preventDefault(); zone.classList.remove("over"); loadFile(e.dataTransfer.files[0]);
         });
       })();
+
+      function collectCheckbox(name) {
+        var vals = [];
+        document.querySelectorAll('input[name="' + name + '"]:checked').forEach(function (cb) { vals.push(cb.value); });
+        return vals.join(', ') || '';
+      }
 
       function toObject() {
         var fd = new FormData(form);
         var out = { submitted_at: new Date().toISOString() };
-        fd.forEach(function (value, key) { out[key] = value; });
+        fd.forEach(function (value, key) {
+          if (!severityKeys.includes(key)) out[key] = value;
+        });
+        severityKeys.forEach(function (key) { out[key] = collectCheckbox(key); });
         if (screenshotData) out.screenshot = screenshotData;
         return out;
       }
 
-      function setStatus(msg) {
-        statusEl.textContent = msg || "";
-      }
+      function setStatus(msg) { statusEl.textContent = msg || ""; }
 
       function line(data, label, resultKey, notesKey) {
         var result = data[resultKey] || "Not tested";
@@ -374,20 +404,22 @@
         var parts = [
           "Meridian User Test Feedback",
           "",
+          "Tester: " + (data.tester_name || ""),
+          "Date: " + (data.test_date || ""),
+          "Devices: " + (data.devices || ""),
+          "",
           "— Patient Health Data —",
-          line(data, "Name and DOB", "web_t4_result", "web_t4_notes"),
-          line(data, "Photo", "web_t5_result", "web_t5_notes"),
-          line(data, "Code status (DNR / DNI / Nutrition)", "web_t6_result", "web_t6_notes"),
-          line(data, "Diagnoses", "web_t9_result", "web_t9_notes"),
-          line(data, "Drug allergies", "web_t10_result", "web_t10_notes"),
-          line(data, "Devices and mobility", "web_t11_result", "web_t11_notes"),
-          line(data, "Brief history / care providers", "web_t12_result", "web_t12_notes"),
-          line(data, "Medications", "web_t13_result", "web_t13_notes"),
-          line(data, "Other notes", "web_t14_result", "web_t14_notes"),
-          line(data, "Medical proxy and POA", "web_t15_result", "web_t15_notes"),
-          line(data, "Emergency contacts", "web_t17_result", "web_t17_notes"),
-          line(data, "Notes for responders", "web_t18_result", "web_t18_notes"),
-          line(data, "Documents", "web_t19_result", "web_t19_notes"),
+          line(data, "Name and DOB", "web_t1_result", "web_t1_notes"),
+          line(data, "Documents", "web_t2_result", "web_t2_notes"),
+          line(data, "Code status", "web_t3_result", "web_t3_notes"),
+          line(data, "Diagnoses", "web_t4_result", "web_t4_notes"),
+          line(data, "Drug allergies", "web_t5_result", "web_t5_notes"),
+          line(data, "Medications", "web_t6_result", "web_t6_notes"),
+          line(data, "Brief history & notes", "web_t7_result", "web_t7_notes"),
+          line(data, "Medical proxy and POA", "web_t8_result", "web_t8_notes"),
+          line(data, "Emergency contacts", "web_t9_result", "web_t9_notes"),
+          line(data, "Notes for responders", "web_t10_result", "web_t10_notes"),
+          line(data, "Photo", "web_t11_result", "web_t11_notes"),
           "",
           "— iOS —",
           line(data, "Check-in flow", "ios_t1_result", "ios_t1_notes"),
@@ -397,9 +429,14 @@
           line(data, "Family + calling flow", "kiosk_t2_result", "kiosk_t2_notes"),
           line(data, "Emergency action flow", "kiosk_t3_result", "kiosk_t3_notes"),
           "",
+          "— Secondary —",
+          line(data, "Kiosk settings + sensors", "kiosk_s1_result", "kiosk_s1_notes"),
+          line(data, "iOS call/response", "ios_s1_result", "ios_s1_notes"),
+          "",
           "— Overall —",
           data.blockers ? "Blockers: " + data.blockers : "",
           data.ease_of_use ? "Ease of use: " + data.ease_of_use + "/5" : "",
+          data.trust ? "Trust for own family: " + data.trust : "",
           screenshotData ? "(screenshot included in JSON export)" : ""
         ];
         return parts.filter(function (l) { return l !== undefined && l !== null; }).join("\n");

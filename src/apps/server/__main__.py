@@ -120,7 +120,7 @@ def _prepare_server_runtime(logger=None, requested_port=None) -> tuple[int, str,
     create_service_container(db_path).ensure_schema()
     ensure_local_seed_prerequisites(db_path)
     if logger is not None:
-        logger.info(f"Database: local - {db_path}")
+        logger.debug(f"Database: local - {db_path}")
 
     api_base_url = get_local_api_base_url(
         host=host,

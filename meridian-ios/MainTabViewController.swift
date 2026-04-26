@@ -87,6 +87,9 @@ final class HomeViewController: UIViewController {
     private let alertSummaryIconView = UIImageView()
     private let alertMedicalLabel = UILabel()
     private let alertMedicalValueLabel = UILabel()
+    private let checkInsCard = UIView()
+    private let recentCheckInsLabel = UILabel()
+
     private var hasCompletedHomeRefresh = false
 
     private static let homeRecentTimeFormatter: DateFormatter = {
@@ -128,6 +131,7 @@ final class HomeViewController: UIViewController {
         configureCard(emergencyCard)
         configureCard(scheduleCard)
         configureCard(alertSummaryCard)
+        configureCard(checkInsCard)
         scheduleCard.backgroundColor = MeridianPalette.surfaceSchedule
 
         upNextContainer.backgroundColor = MeridianPalette.upNextFill
@@ -136,7 +140,7 @@ final class HomeViewController: UIViewController {
         upNextContainer.layer.borderColor = MeridianPalette.upNextBorder.cgColor
 
         upNextKickerLabel.text = "Up next"
-        upNextKickerLabel.font = .preferredFont(forTextStyle: .caption1)
+        upNextKickerLabel.font = .preferredFont(forTextStyle: .subheadline)
         upNextKickerLabel.textColor = MeridianPalette.mutedText
 
         upNextIconView.translatesAutoresizingMaskIntoConstraints = false
@@ -145,7 +149,7 @@ final class HomeViewController: UIViewController {
         upNextIconView.tintColor = MeridianPalette.primaryAction
         upNextIconView.setContentHuggingPriority(.required, for: .horizontal)
 
-        let upNextTitleDesc = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .title3)
+        let upNextTitleDesc = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .title1)
         upNextTitleLabel.font = UIFont(
             descriptor: upNextTitleDesc.withSymbolicTraits(.traitBold) ?? upNextTitleDesc,
             size: 0
@@ -154,7 +158,7 @@ final class HomeViewController: UIViewController {
         upNextTitleLabel.numberOfLines = 0
         upNextTitleLabel.adjustsFontForContentSizeCategory = true
 
-        upNextMetaLabel.font = .preferredFont(forTextStyle: .footnote)
+        upNextMetaLabel.font = .preferredFont(forTextStyle: .subheadline)
         upNextMetaLabel.textColor = MeridianPalette.mutedText
         upNextMetaLabel.numberOfLines = 0
 
@@ -246,6 +250,11 @@ final class HomeViewController: UIViewController {
         scheduleFootnoteLabel.text = "Medications could not be loaded."
         scheduleFootnoteLabel.isHidden = true
 
+        recentCheckInsLabel.numberOfLines = 0
+        recentCheckInsLabel.font = .preferredFont(forTextStyle: .footnote)
+        recentCheckInsLabel.textColor = MeridianPalette.primaryText
+        recentCheckInsLabel.text = "Loading recent check-ins…"
+
         contentStack.axis = .vertical
         contentStack.spacing = MeridianLayout.sectionSpacing
         contentStack.translatesAutoresizingMaskIntoConstraints = false
@@ -271,7 +280,16 @@ final class HomeViewController: UIViewController {
         scheduleCard.addSubview(scheduleInner)
         scheduleInner.translatesAutoresizingMaskIntoConstraints = false
 
-        [emergencyStack, scheduleInner].forEach { stack in
+        let checkInsStack = UIStackView(arrangedSubviews: [
+            sectionTitle("Family check-ins"),
+            recentCheckInsLabel
+        ])
+        checkInsStack.axis = .vertical
+        checkInsStack.spacing = 8
+        checkInsCard.addSubview(checkInsStack)
+        checkInsStack.translatesAutoresizingMaskIntoConstraints = false
+
+        [emergencyStack, scheduleInner, checkInsStack].forEach { stack in
             NSLayoutConstraint.activate([
                 stack.topAnchor.constraint(equalTo: stack.superview!.topAnchor, constant: MeridianLayout.cardPadding),
                 stack.leadingAnchor.constraint(equalTo: stack.superview!.leadingAnchor, constant: MeridianLayout.cardPadding),
@@ -329,6 +347,7 @@ final class HomeViewController: UIViewController {
 
         contentStack.addArrangedSubview(serverPromptCard)
         contentStack.addArrangedSubview(scheduleCard)
+        contentStack.addArrangedSubview(checkInsCard)
         contentStack.addArrangedSubview(emergencyCard)
         contentStack.addArrangedSubview(alertSummaryCard)
 
@@ -423,11 +442,13 @@ final class HomeViewController: UIViewController {
 
             async let alertActive = APIService.shared.getEmergencyAlertStatus()
             async let today = APIService.shared.getTodayEventSummary(familyCircleId: s.familyCircleId)
+            async let recentCheckins = APIService.shared.getCheckins(familyCircleId: s.familyCircleId)
             async let meds = APIService.shared.getMedicationHomeSnapshot(familyCircleId: s.familyCircleId)
 
             let isActive = (try? await alertActive) ?? false
             let todaySummaryResult = try? await today
             let todaySummary = todaySummaryResult ?? nil
+            let checkinsResult = try? await recentCheckins
             let medsSnap = try? await meds
 
             await MainActor.run {
@@ -442,6 +463,8 @@ final class HomeViewController: UIViewController {
                     appointment: todaySummary
                 )
                 rebuildTimeline(entries: entries, medsFetchFailed: medsSnap == nil, sessionFailed: false)
+
+                recentCheckInsLabel.text = Self.formatRecentCheckIns(checkinsResult ?? [])
             }
         } catch {
             await MainActor.run {
@@ -450,6 +473,7 @@ final class HomeViewController: UIViewController {
                 emergencyStatusLabel.textColor = MeridianPalette.primaryText
                 scheduleHeroDateLabel.text = Self.scheduleHeroDateFormatter.string(from: Date())
                 rebuildTimeline(entries: [], medsFetchFailed: false, sessionFailed: true)
+                recentCheckInsLabel.text = "Could not load check-ins."
             }
         }
     }
@@ -600,28 +624,30 @@ final class HomeViewController: UIViewController {
         }
         NSLayoutConstraint.activate([
             bar.widthAnchor.constraint(equalToConstant: 4),
-            bar.heightAnchor.constraint(equalToConstant: 44)
+            bar.heightAnchor.constraint(greaterThanOrEqualToConstant: 36)
         ])
 
         let timeLabel = UILabel()
         timeLabel.text = Self.formatTimeDisplay(entry.timeDisplay)
         timeLabel.font = .preferredFont(forTextStyle: .caption1)
         timeLabel.textColor = MeridianPalette.mutedText
-        timeLabel.widthAnchor.constraint(equalToConstant: 60).isActive = true
-        timeLabel.setContentHuggingPriority(.required, for: .horizontal)
-        timeLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let titleLabel = UILabel()
         titleLabel.text = entry.title
         titleLabel.font = .preferredFont(forTextStyle: .subheadline)
         titleLabel.textColor = entry.done ? MeridianPalette.mutedText : MeridianPalette.primaryText
-        titleLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        titleLabel.numberOfLines = 0
+
+        let textColumn = UIStackView(arrangedSubviews: [timeLabel, titleLabel])
+        textColumn.axis = .vertical
+        textColumn.spacing = 2
+        textColumn.alignment = .leading
 
         let statusLabel = UILabel()
         statusLabel.font = .preferredFont(forTextStyle: .caption2)
         statusLabel.textColor = MeridianPalette.mutedText
+        statusLabel.textAlignment = .right
         statusLabel.setContentHuggingPriority(.required, for: .horizontal)
-        statusLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         switch entry.kind {
         case .medication:
             statusLabel.text = entry.done ? "Taken" : "Pending"
@@ -631,7 +657,11 @@ final class HomeViewController: UIViewController {
             statusLabel.text = "PRN"
         }
 
-        var rowSubviews: [UIView] = [bar, timeLabel, titleLabel, statusLabel]
+        let trailingStack = UIStackView()
+        trailingStack.axis = .vertical
+        trailingStack.spacing = 6
+        trailingStack.alignment = .trailing
+        trailingStack.addArrangedSubview(statusLabel)
 
         switch entry.kind {
         case .medication, .prn:
@@ -645,16 +675,17 @@ final class HomeViewController: UIViewController {
             if entry.kind == .medication {
                 action.isEnabled = !entry.done
             }
-            rowSubviews.append(action)
+            trailingStack.addArrangedSubview(action)
         case .appointment:
             break
         }
 
-        let row = UIStackView(arrangedSubviews: rowSubviews)
+        let row = UIStackView(arrangedSubviews: [bar, textColumn, trailingStack])
         row.axis = .horizontal
         row.alignment = .center
-        row.spacing = 8
-        row.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        row.spacing = 10
+        row.layoutMargins = UIEdgeInsets(top: 10, left: 0, bottom: 10, right: 0)
+        row.isLayoutMarginsRelativeArrangement = true
         return row
     }
 
@@ -709,8 +740,19 @@ final class HomeViewController: UIViewController {
         return label
     }
 
-}
+    private static func formatRecentCheckIns(_ checkins: [CheckIn]) -> String {
+        let top = Array(checkins.prefix(4))
+        guard !top.isEmpty else {
+            return "No check-ins yet. Use the Check-In tab to share your location."
+        }
+        return top.map { c in
+            let loc = c.locationName ?? "Location unknown"
+            let t = homeRecentTimeFormatter.string(from: c.timestamp)
+            return "• \(c.contactName) · \(loc) · \(t)"
+        }.joined(separator: "\n")
+    }
 
+}
 
 final class SettingsViewController: UIViewController {
     var onOpenDeveloperTools: (() -> Void)?

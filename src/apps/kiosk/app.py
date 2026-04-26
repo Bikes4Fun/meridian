@@ -279,20 +279,24 @@ class MeridianKioskApp:
             threading.Thread(target=self._on_ready, daemon=True).start()
 
         self._window.events.loaded += on_loaded
+        webview_debug = (
+            (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
+        )
         try:
-            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
+            webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = webview_debug
         except Exception:
             pass
         kiosk_user_agent = (
             os.environ.get("MERIDIAN_KIOSK_USER_AGENT") or "Meridian-Kiosk/1.0"
         ).strip()
         gui_pref = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_GUI") or "qt").strip().lower()
+        kiosk_debug = (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1"
         if gui_pref:
             try:
                 if gui_pref != "qt":
                     logger.info(f"Kiosk pywebview GUI (non-default): {gui_pref}")
                 webview.start(
-                    debug=False,
+                    debug=webview_debug,
                     gui=gui_pref,
                     user_agent=kiosk_user_agent,
                 )
@@ -355,7 +359,7 @@ class MeridianKioskApp:
         (#kiosk-boot-corner) with status text until _boot_cache_warmup (photos, places, tiles) finishes.
         The corner floater persists across navigations until caching completes.
         """
-        logger.info("Kiosk loaded, initializing...")
+        logger.debug("Kiosk loaded, initializing...")
         self._set_corner_boot_loading(False, "")
         self._set_boot_loading(True, "Starting Meridian...")
         time.sleep(0.3)
@@ -431,11 +435,11 @@ class MeridianKioskApp:
         try:
             contact_svc = self.services.get_contact_service()
             if not contact_svc:
-                logger.info("Photo warmup skipped: contact service unavailable")
+                logger.debug("Photo warmup skipped: contact service unavailable")
                 return
             result = contact_svc.get_contacts()
             if not result.success or not result.data:
-                logger.info("Photo warmup skipped: no contacts")
+                logger.debug("Photo warmup skipped: no contacts")
                 return
             total = len(result.data)
             for c in result.data:

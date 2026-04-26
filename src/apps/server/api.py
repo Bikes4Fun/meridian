@@ -1509,8 +1509,15 @@ def create_server_app(db_path=None):
             if not path:
                 path = "kiosk.html"
             if path.startswith("icons/") and os.path.isdir(_kiosk_icons):
-                return send_from_directory(_kiosk_icons, path[6:])
-            return send_from_directory(_kiosk_web, path)
+                resp = send_from_directory(_kiosk_icons, path[6:])
+            else:
+                resp = send_from_directory(_kiosk_web, path)
+            if (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1":
+                ext = os.path.splitext(path)[1].lower()
+                if ext in (".css", ".js", ".html"):
+                    resp.headers["Cache-Control"] = "no-store, max-age=0"
+                    resp.headers["Pragma"] = "no-cache"
+            return resp
 
     return app
 

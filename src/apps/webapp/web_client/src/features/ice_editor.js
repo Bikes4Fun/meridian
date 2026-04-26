@@ -948,9 +948,9 @@
                     poa_name: (document.getElementById('icePoaName') || {}).value.trim() || null,
                     poa_phone: (document.getElementById('icePoaPhone') || {}).value.trim() || null,
                     notes: (document.getElementById('iceNotes') || {}).value.trim() || null,
-                    devices_notes: (document.getElementById('iceDevicesNotes') || {}).value.trim() || null,
+                    devices_notes: null,
                     brief_history: (document.getElementById('iceBriefHistory') || {}).value.trim() || null,
-                    other_notes: (document.getElementById('iceOtherNotes') || {}).value.trim() || null,
+                    other_notes: null,
                     photo_path: _loadedPaths.photo_path,
                     dnr_document_path: _loadedPaths.dnr_document_path
                 };

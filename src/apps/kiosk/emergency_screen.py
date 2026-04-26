@@ -197,6 +197,30 @@ def build_emergency_html(services, api_url: str) -> str:
         html_parts.append('<div class="emergency-warm-empty">No medications listed</div>')
     html_parts.append("</div>")
 
+    proxy_name = (e_contacts.get("medical_proxy_name") or "").strip()
+    proxy_phone = (e_contacts.get("medical_proxy_phone") or "").strip()
+    poa_name = (e_contacts.get("poa_name") or "").strip()
+    poa_phone = (e_contacts.get("poa_phone") or "").strip()
+    if proxy_name or poa_name:
+        html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Medical Proxy &amp; POA</div>')
+        if proxy_name:
+            proxy_val = proxy_name + (f" · {proxy_phone}" if proxy_phone else "")
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">Medical Proxy</div>'
+                f'<div class="emergency-warm-info-value">{_esc(proxy_val)}</div>'
+                "</div>"
+            )
+        if poa_name:
+            poa_val = poa_name + (f" · {poa_phone}" if poa_phone else "")
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">POA</div>'
+                f'<div class="emergency-warm-info-value">{_esc(poa_val)}</div>'
+                "</div>"
+            )
+        html_parts.append("</div>")
+
     html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Emergency Contacts</div>')
     if sorted_contacts:
         for c in sorted_contacts:

@@ -2156,6 +2156,18 @@ button.family-panel-head:active {
   border: 1px solid #4a1d6040;
 }
 
+.emergency-warm-chip-abx {
+  background: #1a4a2222;
+  color: #1a4a22;
+  border: 1px solid #1a4a2240;
+}
+
+.emergency-warm-chip-bld {
+  background: #5a1a1a22;
+  color: #5a1a1a;
+  border: 1px solid #5a1a1a40;
+}
+
 .emergency-warm-history-text {
   font-size: 11px;
   color: #5a5450;

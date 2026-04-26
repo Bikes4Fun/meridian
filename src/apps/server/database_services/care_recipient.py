@@ -47,6 +47,12 @@ class CareRecipientService:
         polst_dnr_signed = int(bool(medical.get("polst_dnr_signed")))
         polst_dni_signed = int(bool(medical.get("polst_dni_signed")))
         polst_nutrition_signed = int(bool(medical.get("polst_nutrition_signed")))
+        raw_antibiotic = medical.get("antibiotic_status")
+        medical_antibiotic_status = int(raw_antibiotic) if raw_antibiotic is not None else 0
+        raw_blood = medical.get("blood_product_status")
+        medical_blood_product_status = int(raw_blood) if raw_blood is not None else 0
+        polst_antibiotic_signed = int(bool(medical.get("polst_antibiotic_signed")))
+        polst_blood_product_signed = int(bool(medical.get("polst_blood_product_signed")))
         devices_notes = data.get("devices_notes")
         brief_history = data.get("brief_history")
         other_notes = data.get("other_notes")
@@ -61,8 +67,10 @@ class CareRecipientService:
                medical_dnr, dnr_document_path, notes,
                medical_dni_status, medical_nutrition_status,
                polst_dnr_signed, polst_dni_signed, polst_nutrition_signed,
-               devices_notes, brief_history, other_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               devices_notes, brief_history, other_notes,
+               medical_antibiotic_status, medical_blood_product_status,
+               polst_antibiotic_signed, polst_blood_product_signed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 family_circle_id,
@@ -81,6 +89,10 @@ class CareRecipientService:
                 devices_notes,
                 brief_history,
                 other_notes,
+                medical_antibiotic_status,
+                medical_blood_product_status,
+                polst_antibiotic_signed,
+                polst_blood_product_signed,
             ),
         )
         if not result.success:
@@ -229,7 +241,7 @@ class CareRecipientService:
     def get_documents(self, family_circle_id: str) -> ServiceResult:
         """Return all documents for the care recipient of this family circle."""
         r = self.db_manager.execute_query(
-            "SELECT id, doc_type, doc_label, doc_date, file_path, sort_order"
+            "SELECT id, doc_type, doc_label, doc_date, file_path, sort_order, linked_directives"
             " FROM care_recipient_documents"
             " WHERE family_circle_id = ?"
             " ORDER BY sort_order, id",
@@ -248,12 +260,13 @@ class CareRecipientService:
         )
 
     def update_document(self, doc_id: int, family_circle_id: str,
-                        doc_type: str, doc_label: str, doc_date: str) -> ServiceResult:
+                        doc_type: str, doc_label: str, doc_date: str,
+                        linked_directives: str = None) -> ServiceResult:
         return self.db_manager.execute_update(
             "UPDATE care_recipient_documents"
-            " SET doc_type=?, doc_label=?, doc_date=?"
+            " SET doc_type=?, doc_label=?, doc_date=?, linked_directives=?"
             " WHERE id=? AND family_circle_id=?",
-            (doc_type, doc_label, doc_date, doc_id, family_circle_id),
+            (doc_type, doc_label, doc_date, linked_directives, doc_id, family_circle_id),
         )
 
     def set_document_file(self, doc_id: int, family_circle_id: str, file_path: str) -> ServiceResult:
@@ -285,6 +298,31 @@ class CareRecipientService:
         if r.success and r.data:
             return r.data[0].get("care_recipient_user_id")
         return None
+
+    def get_contact_roles(self, family_circle_id: str) -> ServiceResult:
+        """Return all ice_contact_roles for this family."""
+        return self.db_manager.execute_query(
+            "SELECT role, contact_id FROM ice_contact_roles WHERE family_circle_id = ?",
+            (family_circle_id,),
+        )
+
+    def delete_contact_role(self, family_circle_id: str, role: str) -> ServiceResult:
+        """Remove a specific role assignment for this family."""
+        return self.db_manager.execute_update(
+            "DELETE FROM ice_contact_roles WHERE family_circle_id = ? AND role = ?",
+            (family_circle_id, role),
+        )
+
+    def delete_contact(self, family_circle_id: str, contact_id: str) -> ServiceResult:
+        """Delete a contact and any associated role assignments."""
+        self.db_manager.execute_update(
+            "DELETE FROM ice_contact_roles WHERE family_circle_id = ? AND contact_id = ?",
+            (family_circle_id, contact_id),
+        )
+        return self.db_manager.execute_update(
+            "DELETE FROM contacts WHERE family_circle_id = ? AND id = ?",
+            (family_circle_id, contact_id),
+        )
 
     def add_allergy(self, care_recipient_user_id: str, allergen: str) -> ServiceResult:
         """Add allergy for care recipient."""

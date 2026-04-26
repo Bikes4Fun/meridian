@@ -70,6 +70,7 @@
                         <summary class="meridian-fold__summary" id="health-polst-heading">POLST &amp; emergency (ICE)</summary>
                         <div class="meridian-fold__body">
                             <p class="muted page-lead page-lead--tight visually-hidden">Edit the care recipient emergency profile here; it syncs to the kiosk Emergency screen.</p>
+                            <p style="margin:0 0 12px;"><a href="/ice-editor" class="btn btn-outline" style="display:inline-block;padding:8px 16px;border-radius:7px;font-weight:700;font-size:14px;border:1px solid var(--warm-terracotta);background:#fff;color:var(--warm-terracotta);text-decoration:none;">Open emergency &amp; ICE profile editor →</a></p>
                             <div id="iceBanner" class="ice-banner" hidden></div>
                             <div id="iceStatus" class="ice-status"></div>
                             <form id="iceForm" class="ice-mockv1">
@@ -90,7 +91,8 @@
                                                 </div>
                                                 <div>
                                                     <label for="iceDob">Date of birth</label>
-                                                    <input type="date" id="iceDob" class="ice-mock-identity-dob" autocomplete="bday">
+                                                    <input type="date" id="iceDob" class="ice-mock-identity-dob" autocomplete="bday" min="1900-01-01">
+                                                    <p class="tiny error-msg" id="iceDobError" style="display:none;color:var(--error,#dc2626);margin:2px 0 0;"></p>
                                                 </div>
                                             </div>
                                         </div>

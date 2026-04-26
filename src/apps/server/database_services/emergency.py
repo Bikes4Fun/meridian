@@ -26,7 +26,9 @@ class EmergencyService:
             "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes,"
             " medical_dni_status, medical_nutrition_status,"
             " polst_dnr_signed, polst_dni_signed, polst_nutrition_signed,"
-            " devices_notes, brief_history, other_notes"
+            " devices_notes, brief_history, other_notes,"
+            " medical_antibiotic_status, medical_blood_product_status,"
+            " polst_antibiotic_signed, polst_blood_product_signed"
             " FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
@@ -180,6 +182,10 @@ class EmergencyService:
                 "polst_dnr_signed": bool(care_row["polst_dnr_signed"]) if care_row else False,
                 "polst_dni_signed": bool(care_row["polst_dni_signed"]) if care_row else False,
                 "polst_nutrition_signed": bool(care_row["polst_nutrition_signed"]) if care_row else False,
+                "antibiotic_status": int(care_row["medical_antibiotic_status"] or 0) if care_row else 0,
+                "blood_product_status": int(care_row["medical_blood_product_status"] or 0) if care_row else 0,
+                "polst_antibiotic_signed": bool(care_row["polst_antibiotic_signed"]) if care_row else False,
+                "polst_blood_product_signed": bool(care_row["polst_blood_product_signed"]) if care_row else False,
                 "allergies": allergies,
                 "medications": medications,
             },

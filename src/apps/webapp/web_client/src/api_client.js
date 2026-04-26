@@ -167,6 +167,18 @@
                 payload
             );
         },
+        deleteContact: function (familyCircleId, contactId) {
+            return del('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contacts/' + encodeURIComponent(contactId));
+        },
+        getContactRoles: function (familyCircleId) {
+            return get('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contact-roles');
+        },
+        setContactRole: function (familyCircleId, role, contactId) {
+            return postJson('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contact-roles', { role: role, contact_id: contactId });
+        },
+        deleteContactRole: function (familyCircleId, role) {
+            return del('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contact-roles/' + encodeURIComponent(role));
+        },
         // Family permissions
         getFamilyMembers: function (familyCircleId) {
             return get('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/family-members');

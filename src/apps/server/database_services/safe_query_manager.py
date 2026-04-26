@@ -54,6 +54,11 @@ _COLUMN_MIGRATIONS = [
     ("care_recipients", "polst_dni_signed", "INTEGER DEFAULT 0"),
     ("care_recipients", "polst_nutrition_signed", "INTEGER DEFAULT 0"),
     ("allergies", "reaction", "TEXT"),
+    ("care_recipients", "medical_antibiotic_status", "INTEGER DEFAULT 0"),
+    ("care_recipients", "medical_blood_product_status", "INTEGER DEFAULT 0"),
+    ("care_recipients", "polst_antibiotic_signed", "INTEGER DEFAULT 0"),
+    ("care_recipients", "polst_blood_product_signed", "INTEGER DEFAULT 0"),
+    ("care_recipient_documents", "linked_directives", "TEXT"),
 ]
 
 

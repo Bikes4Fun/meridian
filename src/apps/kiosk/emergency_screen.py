@@ -70,8 +70,19 @@ def build_emergency_html(services, api_url: str) -> str:
         except ValueError:
             age_text = ""
     dnr_val = int(medical_data.get("dnr", 0) or 0)
-    code_status = {0: "FULL CODE", 1: "DNR / No CPR"}.get(dnr_val, "DNR")
+    code_status = {0: "Full resuscitation", 1: "Do Not Resuscitate", 2: "Per document"}.get(dnr_val, "Do Not Resuscitate")
     updated_text = datetime.now().strftime("Updated %b %d %Y")
+
+    _DNI_LABELS       = {0: "Intubation OK",          1: "Do Not Intubate",               2: "Per document"}
+    _NUTRITION_LABELS = {0: "Artificial nutrition OK", 1: "No artificial nutrition",        2: "Per document"}
+    _ANTIBIOTIC_LABELS= {0: "Antibiotics permitted",   1: "No antibiotics",                 2: "Per document"}
+    _BLOOD_LABELS     = {0: "Blood products OK",       1: "No blood products",              2: "Per document"}
+
+    def _dir_label(raw, lookup):
+        try:
+            return lookup.get(int(raw or 0), str(raw))
+        except (TypeError, ValueError):
+            return str(raw) if raw else ""
 
     allergies = medical_data.get("allergies") or []
     conditions = medical_data.get("conditions") or []
@@ -92,8 +103,10 @@ def build_emergency_html(services, api_url: str) -> str:
     )
     call_contact_name = (call_contact.get("display_name") if call_contact else "No active call") or "No active call"
 
-    dni_status = (medical_data.get("dni_status") or "").strip()
-    nutrition_status = (medical_data.get("nutrition_status") or "").strip()
+    dni_status        = _dir_label(medical_data.get("dni_status"),            _DNI_LABELS)
+    nutrition_status  = _dir_label(medical_data.get("nutrition_status"),       _NUTRITION_LABELS)
+    antibiotic_status = _dir_label(medical_data.get("antibiotic_status"),      _ANTIBIOTIC_LABELS)
+    blood_status      = _dir_label(medical_data.get("blood_product_status"),   _BLOOD_LABELS)
     polst_dnr_signed = bool(medical_data.get("polst_dnr_signed"))
     polst_dni_signed = bool(medical_data.get("polst_dni_signed"))
     polst_nutrition_signed = bool(medical_data.get("polst_nutrition_signed"))
@@ -128,14 +141,13 @@ def build_emergency_html(services, api_url: str) -> str:
         hero_meta += f" · AGE {age_text}"
 
     # All code directives in hero chips — first responders see them immediately
-    dni_chip = (
-        f'<span class="emergency-warm-chip emergency-warm-chip-dni">DNI: {_esc(dni_status)}</span>'
-        if dni_status else ""
-    )
-    nut_chip = (
-        f'<span class="emergency-warm-chip emergency-warm-chip-nut">Nutrition: {_esc(nutrition_status)}</span>'
-        if nutrition_status else ""
-    )
+    def _dir_chip(css_cls, prefix, label):
+        return f'<span class="emergency-warm-chip {css_cls}">{_esc(prefix)}: {_esc(label)}</span>' if label else ""
+
+    dni_chip        = _dir_chip("emergency-warm-chip-dni", "DNI",        dni_status)
+    nut_chip        = _dir_chip("emergency-warm-chip-nut", "Nutrition",  nutrition_status)
+    antibiotic_chip = _dir_chip("emergency-warm-chip-abx", "Antibiotics", antibiotic_status)
+    blood_chip      = _dir_chip("emergency-warm-chip-bld", "Blood",      blood_status)
     html_parts.append(
         '<div class="emergency-warm-hero">'
         f'<div class="emergency-warm-photo">{photo_html}</div>'
@@ -143,8 +155,8 @@ def build_emergency_html(services, api_url: str) -> str:
         f'<div class="emergency-warm-name">{_esc(patient_name)}</div>'
         '<div class="emergency-warm-chips">'
         f'<span class="emergency-warm-chip emergency-warm-chip-dob">{_esc(hero_meta)}</span>'
-        f'<span class="emergency-warm-chip emergency-warm-chip-code">{_esc(code_status)}</span>'
-        f'{dni_chip}{nut_chip}'
+        f'<span class="emergency-warm-chip emergency-warm-chip-code">DNR: {_esc(code_status)}</span>'
+        f'{dni_chip}{nut_chip}{antibiotic_chip}{blood_chip}'
         "</div>"
         "</div>"
         "</div>"

@@ -577,16 +577,33 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": r.data})
 
-    @app.route("/api/family_circles/<family_circle_id>/contact-roles", methods=["POST"])
+    @app.route("/api/family_circles/<family_circle_id>/contact-roles", methods=["GET", "POST"])
     def api_set_contact_role(family_circle_id):
-        """Assign contact role (medical_proxy, poa)."""
+        """GET: list all role assignments. POST: assign contact role (medical_proxy, poa)."""
         _require_family_access(family_circle_id)
+        if request.method == "GET":
+            r = care_recipient_svc.get_contact_roles(family_circle_id)
+            return jsonify({"data": r.data or []})
         data = request.get_json() or {}
         role = data.get("role")
         contact_id = data.get("contact_id")
         if not role or not contact_id:
             return jsonify({"error": "role and contact_id required"}), 400
         r = care_recipient_svc.set_contact_role(family_circle_id, role, contact_id)
+        return jsonify({"data": True})
+
+    @app.route("/api/family_circles/<family_circle_id>/contact-roles/<role>", methods=["DELETE"])
+    def api_delete_contact_role(family_circle_id, role):
+        """Remove a role assignment (clears medical_proxy or poa)."""
+        _require_family_access(family_circle_id)
+        care_recipient_svc.delete_contact_role(family_circle_id, role)
+        return jsonify({"data": True})
+
+    @app.route("/api/family_circles/<family_circle_id>/contacts/<contact_id>", methods=["DELETE"])
+    def api_delete_contact(family_circle_id, contact_id):
+        """Delete a contact and any associated ice_contact_roles."""
+        _require_family_access(family_circle_id)
+        care_recipient_svc.delete_contact(family_circle_id, contact_id)
         return jsonify({"data": True})
 
     @app.route(
@@ -853,11 +870,16 @@ def create_server_app(db_path=None):
                 photo_upload_svc.remove_replaced_file_in_uploads_dir(uploads, old_fp, None)
             return jsonify({"data": True})
         data = request.get_json() or {}
+        linked = data.get("linked_directives")
+        if isinstance(linked, list):
+            import json as _json
+            linked = _json.dumps(linked)
         r = care_recipient_svc.update_document(
             doc_id, family_circle_id,
             data.get("doc_type") or "",
             data.get("doc_label") or "",
             data.get("doc_date") or "",
+            linked,
         )
         if not r.success:
             return jsonify({"error": r.error}), 500

@@ -166,6 +166,38 @@
         return digits.length >= 7 && digits.length <= 15;
     }
 
+    function todayIso() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function validateDob(val) {
+        if (!val) return null;
+        var today = todayIso();
+        if (val < '1900-01-01') return 'Cannot be before 1900.';
+        if (val > today) return 'Cannot be in the future.';
+        return null;
+    }
+
+    function wireDobValidation() {
+        var dobEl = document.getElementById('iceDob');
+        var errEl = document.getElementById('iceDobError');
+        if (!dobEl) return;
+        dobEl.max = todayIso();
+        dobEl.addEventListener('blur', function () {
+            var msg = validateDob(dobEl.value);
+            if (errEl) {
+                errEl.textContent = msg || '';
+                errEl.style.display = msg ? '' : 'none';
+            }
+            dobEl.setCustomValidity(msg || '');
+        });
+        dobEl.addEventListener('input', function () {
+            dobEl.setCustomValidity('');
+            if (errEl) errEl.style.display = 'none';
+        });
+    }
+
     function showIceStatus(message, type) {
         var existing = document.getElementById('iceStatusToast');
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
@@ -552,8 +584,9 @@
                     });
                 }
             })
-            .catch(function () {
+            .catch(function (err) {
                 renderDocuments([]);
+                showIceStatus((err && err.message) || 'Could not load documents', 'error');
             });
     }
 
@@ -758,6 +791,7 @@
 
     function init() {
         var pdfLink = document.getElementById('icePdfLink');
+        wireDobValidation();
         wireUploadPreviews();
         wirePhotoUpload();
 
@@ -956,6 +990,15 @@
                 var crId = (document.getElementById('iceCareRecipientId') || {}).value;
                 if (!crId) {
                     showIceStatus('Cannot save without a care recipient id on file.', 'error');
+                    return;
+                }
+                // DOB validation — block save if out of range
+                var dobVal = (document.getElementById('iceDob') || {}).value || '';
+                var dobErr = validateDob(dobVal);
+                if (dobErr) {
+                    var errEl = document.getElementById('iceDobError');
+                    if (errEl) { errEl.textContent = dobErr; errEl.style.display = ''; }
+                    showIceStatus(dobErr, 'error');
                     return;
                 }
                 // Phone validation — warn but don't block

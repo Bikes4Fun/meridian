@@ -344,6 +344,61 @@
       var form = document.getElementById("testForm");
       var statusEl = document.getElementById("status");
       var screenshotData = null;
+      var STORAGE_KEY = 'meridian_test_form_v1';
+
+      // Persist and restore form state via localStorage
+      function saveState() {
+        var state = { checkboxes: {}, textareas: {}, radios: {} };
+        form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+          if (!state.checkboxes[cb.name]) state.checkboxes[cb.name] = [];
+          if (cb.checked) state.checkboxes[cb.name].push(cb.value);
+        });
+        form.querySelectorAll('textarea').forEach(function (ta) {
+          if (ta.name) state.textareas[ta.name] = ta.value;
+        });
+        form.querySelectorAll('input[type="radio"]').forEach(function (r) {
+          if (r.checked) state.radios[r.name] = r.value;
+        });
+        if (screenshotData) state.screenshot = screenshotData;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      }
+
+      function restoreState() {
+        var raw;
+        try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+        if (!raw) return;
+        var state;
+        try { state = JSON.parse(raw); } catch (e) { return; }
+        if (state.checkboxes) {
+          Object.keys(state.checkboxes).forEach(function (name) {
+            var vals = state.checkboxes[name];
+            form.querySelectorAll('input[type="checkbox"][name="' + name + '"]').forEach(function (cb) {
+              cb.checked = vals.indexOf(cb.value) !== -1;
+            });
+          });
+        }
+        if (state.textareas) {
+          Object.keys(state.textareas).forEach(function (name) {
+            var el = form.querySelector('textarea[name="' + name + '"]');
+            if (el) el.value = state.textareas[name];
+          });
+        }
+        if (state.radios) {
+          Object.keys(state.radios).forEach(function (name) {
+            var el = form.querySelector('input[type="radio"][name="' + name + '"][value="' + state.radios[name] + '"]');
+            if (el) el.checked = true;
+          });
+        }
+        if (state.screenshot) {
+          screenshotData = state.screenshot;
+          var preview = document.getElementById('screenshotPreview');
+          if (preview) { preview.src = screenshotData; preview.style.display = 'block'; }
+        }
+      }
+
+      restoreState();
+      form.addEventListener('change', saveState);
+      form.addEventListener('input', saveState);
 
       var severityKeys = [
         'web_t1_result','web_t2_result','web_t3_result','web_t4_result','web_t5_result',
@@ -364,6 +419,7 @@
             screenshotData = e.target.result;
             preview.src = screenshotData;
             preview.style.display = "block";
+            saveState();
           };
           reader.readAsDataURL(file);
         }

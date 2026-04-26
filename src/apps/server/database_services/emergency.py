@@ -23,7 +23,9 @@ class EmergencyService:
     def get_emergency_profile(self, family_circle_id: str) -> ServiceResult:
         """Compose emergency profile from canonical sources. No data stored in this service."""
         care = self.db_manager.execute_query(
-            "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes FROM care_recipients WHERE family_circle_id = ?",
+            "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes,"
+            " medical_dni_status, medical_nutrition_status, devices_notes, brief_history, other_notes"
+            " FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
         care_row = care.data[0] if care.success and care.data else None
@@ -161,7 +163,9 @@ class EmergencyService:
             },
             "medical": {
                 "conditions": medical_conditions,
-                "dnr": bool(care_row["medical_dnr"]) if care_row else False,
+                "dnr": int(care_row["medical_dnr"]) if care_row and care_row["medical_dnr"] is not None else 0,
+                "dni_status": care_row["medical_dni_status"] if care_row else None,
+                "nutrition_status": care_row["medical_nutrition_status"] if care_row else None,
                 "allergies": allergies,
                 "medications": medications,
             },
@@ -172,9 +176,12 @@ class EmergencyService:
             "poa_name": poa_name,
             "poa_phone": poa_phone,
             "notes": care_row["notes"] if care_row else None,
+            "devices_notes": care_row["devices_notes"] if care_row else None,
+            "brief_history": care_row["brief_history"] if care_row else None,
+            "other_notes": care_row["other_notes"] if care_row else None,
             "last_updated": None,
             "last_updated_by": None,
-            "emergency_contacts": emergency_contacts,  # TODO: include POA and proxy in e_contacts and simply separate them by 'econtacts','poa','proxy' ?
+            "emergency_contacts": emergency_contacts,
         }
         return ServiceResult.success_result(data)
 

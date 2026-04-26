@@ -214,3 +214,16 @@ CREATE TABLE IF NOT EXISTS kiosk_emergency_alerts (
     FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
 );
 
+CREATE TABLE IF NOT EXISTS care_recipient_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    family_circle_id TEXT NOT NULL,
+    care_recipient_user_id TEXT NOT NULL,
+    doc_type TEXT,
+    doc_label TEXT,
+    doc_date TEXT,
+    file_path TEXT,
+    sort_order INTEGER DEFAULT 0,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id),
+    FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
+);
+

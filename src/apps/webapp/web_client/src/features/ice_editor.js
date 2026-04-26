@@ -11,6 +11,7 @@
     var _iceMedsInitial = [];
     var _iceEcInitial = [];
     var _iceMedAutosave = null;
+    var _documents = [];
 
     function cloneEcSnapshot(rows) {
         return JSON.parse(JSON.stringify(rows || []));
@@ -250,49 +251,50 @@
             '</div>';
     }
 
-    // TODO: When conditions/allergies become editable on this page, add inputs and merge into save payload;
-    // today this only updates display from emergency profile GET.
+    function allergyRowHtml(allergen) {
+        return '<div class="allergy-line">' +
+            '<input class="input-tight ice-allergy-value" type="text" value="' + escapeHtml(allergen || '') + '" placeholder="Substance / drug">' +
+            '<button type="button" class="btn-inline btn-delete ice-allergy-remove">Remove</button>' +
+            '</div>';
+    }
+
     function syncConditionsAllergiesFromMedical(medical) {
         medical = medical || {};
         var condEl = document.getElementById('iceConditions');
         if (condEl) {
-            var ct = medical.conditions || '—';
-            if (condEl.tagName === 'TEXTAREA' || (condEl.tagName === 'INPUT' && condEl.type === 'text')) {
-                condEl.value = ct;
-            } else {
-                condEl.textContent = ct;
-            }
+            var ct = medical.conditions || '';
+            condEl.value = ct;
         }
 
+        renderAllergyRows(medical.allergies || []);
+    }
+
+    function renderAllergyRows(allergens) {
         var algEl = document.getElementById('iceAllergies');
-        if (algEl) {
-            var allergies = medical.allergies || [];
-            if (allergies.length === 0) {
-                algEl.innerHTML = '<p class="tiny muted">None listed</p>';
-            } else {
-                algEl.innerHTML = allergies.map(function (a) {
-                    return (
-                        '<div class="allergy-line">' +
-                        '<div><label class="block">Substance / drug</label>' +
-                        '<input class="input-tight" readonly value="' + escapeHtml(a) + '"></div>' +
-                        '<div><label class="block">Reaction / symptoms</label>' +
-                        '<input class="input-tight" readonly value=""></div>' +
-                        '<div><label class="block">Onset (approx.)</label>' +
-                        '<input class="input-tight" readonly value=""></div>' +
-                        '</div>'
-                    );
-                }).join('');
-            }
+        if (!algEl) return;
+        if (!allergens.length) {
+            algEl.innerHTML = '<p class="tiny muted" id="iceAllergiesEmpty">None listed — use + Allergy to add</p>';
+        } else {
+            algEl.innerHTML = allergens.map(allergyRowHtml).join('');
         }
     }
 
-    function dnrBooleanFromForm() {
+    function collectAllergyRows() {
+        var out = [];
+        document.querySelectorAll('#iceAllergies .ice-allergy-value').forEach(function (inp) {
+            var v = (inp.value || '').trim();
+            if (v) out.push(v);
+        });
+        return out;
+    }
+
+    function dnrValueFromForm() {
         var dnrEl = document.getElementById('iceDnr');
-        if (!dnrEl) return false;
+        if (!dnrEl) return 0;
         if (dnrEl.tagName === 'SELECT') {
-            return dnrEl.value === '1';
+            return parseInt(dnrEl.value, 10) || 0;
         }
-        return !!dnrEl.checked;
+        return dnrEl.checked ? 1 : 0;
     }
 
     function updateIceIdentityStrip() {
@@ -395,11 +397,22 @@
         var dnrEl = document.getElementById('iceDnr');
         if (dnrEl) {
             if (dnrEl.tagName === 'SELECT') {
-                dnrEl.value = medical.dnr ? '1' : '0';
+                dnrEl.value = String(medical.dnr !== undefined && medical.dnr !== null ? medical.dnr : 0);
             } else {
                 dnrEl.checked = !!medical.dnr;
             }
         }
+        var dniEl = document.getElementById('iceDniStatus');
+        if (dniEl && medical.dni_status) dniEl.value = medical.dni_status;
+        var nutEl = document.getElementById('iceNutritionStatus');
+        if (nutEl && medical.nutrition_status) nutEl.value = medical.nutrition_status;
+
+        var devEl = document.getElementById('iceDevicesNotes');
+        if (devEl) devEl.value = data.devices_notes || '';
+        var histEl = document.getElementById('iceBriefHistory');
+        if (histEl) histEl.value = data.brief_history || '';
+        var otherEl = document.getElementById('iceOtherNotes');
+        if (otherEl) otherEl.value = data.other_notes || '';
 
         var emergency = data.emergency || {};
         var proxy = emergency.proxy || {};
@@ -443,6 +456,146 @@
         renderEmergencyContacts(ecs);
         renderIceCompleteness(data);
         updateIceIdentityStrip();
+    }
+
+    var _DOC_TYPE_OPTIONS = [
+        'Physician orders / signed POLST',
+        'Health care POA',
+        'Advanced directive',
+        'ID or insurance (copy)',
+        'Other…'
+    ];
+
+    function docTypeSelectHtml(selected) {
+        return '<select class="input-tight ice-doc-type" aria-label="Document type">' +
+            _DOC_TYPE_OPTIONS.map(function (t) {
+                return '<option' + (t === selected ? ' selected' : '') + '>' + escapeHtml(t) + '</option>';
+            }).join('') +
+            '</select>';
+    }
+
+    function docRowHtml(doc) {
+        var id = doc.id || '';
+        var docType = doc.doc_type || _DOC_TYPE_OPTIONS[0];
+        var docLabel = doc.doc_label || '';
+        var docDate = doc.doc_date || '';
+        var filePath = doc.file_path || '';
+        var isOther = docType === 'Other…';
+        return '<div class="doc-row-1l" data-doc-id="' + escapeHtml(String(id)) + '">' +
+            docTypeSelectHtml(docType) +
+            '<input class="input-tight ice-doc-label" type="text" value="' + escapeHtml(docLabel) + '" placeholder="Label if Other"' + (isOther ? '' : ' disabled') + ' aria-label="Custom document name if Other">' +
+            '<input class="input-tight ice-doc-date" type="date" value="' + escapeHtml(docDate) + '" aria-label="Last updated">' +
+            '<input type="text" class="input-tight ice-doc-filename" value="' + escapeHtml(filePath ? filePath.replace(/^[0-9a-f]{32}/, '').replace(/^\./, '') || filePath : 'No file') + '" readonly aria-label="File name">' +
+            '<div class="ice-mock-doc-cta">' +
+            '<input type="file" class="ice-mock-file ice-doc-file-input" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*">' +
+            '<button type="button" class="btn btn-sm ice-doc-upload-btn">' + (filePath ? 'Replace' : 'Upload') + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline ice-doc-delete-btn" style="margin-left:4px;">Remove</button>' +
+            '</div>' +
+            '</div>';
+    }
+
+    function renderDocuments(docs) {
+        _documents = docs || [];
+        var container = document.getElementById('iceDocsContainer');
+        if (!container) return;
+        container.innerHTML = _documents.map(docRowHtml).join('');
+        var addBtn = document.getElementById('iceDocsAddBtn');
+        if (addBtn) addBtn.disabled = false;
+    }
+
+    function loadDocumentsPromise() {
+        if (!_familyCircleId) return Promise.resolve();
+        return meridianApiClient.getDocuments(_familyCircleId)
+            .then(function (response) {
+                var body = response && response.body;
+                renderDocuments((body && body.data) || []);
+                var container = document.getElementById('iceDocsContainer');
+                if (container) {
+                    container.querySelectorAll('[data-doc-id]').forEach(function (row) {
+                        wireDocumentRow(row);
+                    });
+                }
+            })
+            .catch(function () {
+                renderDocuments([]);
+            });
+    }
+
+    function loadDocuments() {
+        loadDocumentsPromise();
+    }
+
+    function wireDocumentRow(rowEl) {
+        var docId = parseInt(rowEl.getAttribute('data-doc-id'), 10);
+        var typeSel = rowEl.querySelector('.ice-doc-type');
+        var labelInp = rowEl.querySelector('.ice-doc-label');
+        var dateInp = rowEl.querySelector('.ice-doc-date');
+        var fileInp = rowEl.querySelector('.ice-doc-file-input');
+        var uploadBtn = rowEl.querySelector('.ice-doc-upload-btn');
+        var deleteBtn = rowEl.querySelector('.ice-doc-delete-btn');
+        var filenameInp = rowEl.querySelector('.ice-doc-filename');
+
+        function saveMetadata() {
+            if (!docId || !_familyCircleId) return Promise.resolve();
+            return meridianApiClient.updateDocument(_familyCircleId, docId, {
+                doc_type: typeSel ? typeSel.value : '',
+                doc_label: labelInp ? labelInp.value.trim() : '',
+                doc_date: dateInp ? dateInp.value : ''
+            });
+        }
+
+        if (typeSel) {
+            typeSel.addEventListener('change', function () {
+                if (labelInp) labelInp.disabled = typeSel.value !== 'Other…';
+                saveMetadata();
+            });
+        }
+        if (dateInp) dateInp.addEventListener('change', saveMetadata);
+        if (labelInp) labelInp.addEventListener('change', saveMetadata);
+
+        if (fileInp && uploadBtn) {
+            fileInp.addEventListener('change', function () {
+                uploadBtn.disabled = !(fileInp.files && fileInp.files[0]);
+            });
+            uploadBtn.addEventListener('click', function () {
+                var f = fileInp.files && fileInp.files[0];
+                if (!f || !_familyCircleId) return;
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading…';
+                saveMetadata()
+                    .then(function () {
+                        return meridianApiClient.uploadDocumentFile(_familyCircleId, docId, f);
+                    })
+                    .then(function (response) {
+                        var body = response && response.body;
+                        var fp = (body && body.data && body.data.file_path) || '';
+                        if (filenameInp) filenameInp.value = fp ? fp.replace(/^[0-9a-f]{32}/, '').replace(/^\./, '') || fp : '';
+                        uploadBtn.textContent = 'Replace';
+                        fileInp.value = '';
+                        showIceStatus('Saved ✓', 'success');
+                        loadDocuments();
+                    })
+                    .catch(function (err) {
+                        showIceStatus(err.message || 'Upload failed', 'error');
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = 'Upload';
+                    });
+            });
+        }
+
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function () {
+                if (!_familyCircleId) return;
+                meridianApiClient.deleteDocument(_familyCircleId, docId)
+                    .then(function () {
+                        rowEl.remove();
+                        showIceStatus('Saved ✓', 'success');
+                    })
+                    .catch(function (err) {
+                        showIceStatus(err.message || 'Delete failed', 'error');
+                    });
+            });
+        }
     }
 
     function updateDnrDocLink(crId) {
@@ -545,9 +698,29 @@
         }
     }
 
+    function wirePhotoUpload() {
+        var photoInput = document.getElementById('icePhotoInput');
+        var photoBtn = document.getElementById('icePhotoUploadBtn');
+        if (!photoInput || !photoBtn) return;
+        photoBtn.addEventListener('click', function () { photoInput.click(); });
+        photoInput.addEventListener('change', function () {
+            var f = photoInput.files && photoInput.files[0];
+            if (!f) return;
+            photoBtn.disabled = true;
+            photoBtn.textContent = 'Uploading…';
+            uploadCareRecipientPhoto(f).then(function () {
+                photoBtn.disabled = false;
+                photoBtn.textContent = 'Change photo';
+                photoInput.value = '';
+                showIceStatus('Saved ✓', 'success');
+            });
+        });
+    }
+
     function init() {
         var pdfLink = document.getElementById('icePdfLink');
         wireUploadPreviews();
+        wirePhotoUpload();
 
         var openDocs = document.getElementById('iceOpenDocsBtn');
         if (openDocs) {
@@ -649,6 +822,63 @@
             });
         }
 
+        var algContainer = document.getElementById('iceAllergies');
+        if (algContainer) {
+            algContainer.addEventListener('click', function (e) {
+                if (!e.target.classList.contains('ice-allergy-remove')) return;
+                var row = e.target.closest('.allergy-line');
+                if (row) {
+                    row.remove();
+                    if (!algContainer.querySelector('.ice-allergy-value')) {
+                        algContainer.innerHTML = '<p class="tiny muted" id="iceAllergiesEmpty">None listed — use + Allergy to add</p>';
+                    }
+                }
+            });
+        }
+        var addAllergyBtn = document.getElementById('iceAddAllergyBtn');
+        if (addAllergyBtn) {
+            addAllergyBtn.addEventListener('click', function () {
+                var emptyP = document.getElementById('iceAllergiesEmpty');
+                if (emptyP) emptyP.remove();
+                if (!algContainer) return;
+                var d = document.createElement('div');
+                d.innerHTML = allergyRowHtml('');
+                algContainer.appendChild(d.firstChild);
+            });
+        }
+
+        var docsContainer = document.getElementById('iceDocsContainer');
+        if (docsContainer) {
+            docsContainer.addEventListener('click', function (e) {
+                var row = e.target.closest('[data-doc-id]');
+                if (row) wireDocumentRow(row);
+            });
+        }
+        var docsAddBtn = document.getElementById('iceDocsAddBtn');
+        if (docsAddBtn) {
+            docsAddBtn.addEventListener('click', function () {
+                if (!_familyCircleId) return;
+                docsAddBtn.disabled = true;
+                meridianApiClient.addDocument(_familyCircleId, {
+                    doc_type: _DOC_TYPE_OPTIONS[0],
+                    doc_label: '',
+                    doc_date: '',
+                    sort_order: _documents.length
+                })
+                    .then(function () {
+                        return loadDocumentsPromise();
+                    })
+                    .then(function () {
+                        docsAddBtn.disabled = false;
+                        showIceStatus('Saved ✓', 'success');
+                    })
+                    .catch(function (err) {
+                        showIceStatus(err.message || 'Could not add row', 'error');
+                        docsAddBtn.disabled = false;
+                    });
+            });
+        }
+
         meridianApiClient.getSession()
             .then(function (response) {
                 var session = response && response.body;
@@ -670,6 +900,7 @@
                 if (app) app.hidden = false;
                 var data = body && body.data ? body.data : null;
                 applyProfile(data);
+                loadDocuments();
             })
             .catch(function () {
                 var pending = document.getElementById('icePending');
@@ -685,6 +916,8 @@
                     showIceStatus('Cannot save without a care recipient id on file.', 'error');
                     return;
                 }
+                var dniSel = document.getElementById('iceDniStatus');
+                var nutSel = document.getElementById('iceNutritionStatus');
                 var payload = {
                     care_recipient_user_id: crId,
                     profile: {
@@ -692,7 +925,9 @@
                         dob: (document.getElementById('iceDob') || {}).value || null
                     },
                     medical: {
-                        dnr: dnrBooleanFromForm()
+                        dnr: dnrValueFromForm(),
+                        dni_status: dniSel ? dniSel.value : null,
+                        nutrition_status: nutSel ? nutSel.value : null
                     },
                     emergency: {
                         proxy: {
@@ -703,9 +938,16 @@
                     poa_name: (document.getElementById('icePoaName') || {}).value.trim() || null,
                     poa_phone: (document.getElementById('icePoaPhone') || {}).value.trim() || null,
                     notes: (document.getElementById('iceNotes') || {}).value.trim() || null,
+                    devices_notes: (document.getElementById('iceDevicesNotes') || {}).value.trim() || null,
+                    brief_history: (document.getElementById('iceBriefHistory') || {}).value.trim() || null,
+                    other_notes: (document.getElementById('iceOtherNotes') || {}).value.trim() || null,
                     photo_path: _loadedPaths.photo_path,
                     dnr_document_path: _loadedPaths.dnr_document_path
                 };
+                var condEl = document.getElementById('iceConditions');
+                var condText = condEl ? condEl.value : '';
+                var conditions = condText.split(/[,\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+                var allergens = collectAllergyRows();
                 var medContainer = document.getElementById('iceMedications');
                 var medRows = MeridianMedicationsInline.collectRows(medContainer);
                 var ecRows = collectEmergencyContactsFromDom();
@@ -717,13 +959,19 @@
                         return meridianApiClient.updateEmergencyProfile(_familyCircleId, payload);
                     })
                     .then(function () {
+                        return meridianApiClient.replaceAllConditions(_familyCircleId, conditions);
+                    })
+                    .then(function () {
+                        return meridianApiClient.replaceAllAllergies(_familyCircleId, allergens);
+                    })
+                    .then(function () {
                         return meridianApiClient.getEmergencyProfile(_familyCircleId);
                     })
                     .then(function (response) {
                         var body = response && response.body;
                         var data = body && body.data ? body.data : null;
                         if (data) applyProfile(data);
-                        showIceStatus('Profile saved.', 'success');
+                        showIceStatus('Saved ✓', 'success');
                         if (typeof window.meridianRefreshHealthIceCompleteness === 'function') {
                             window.meridianRefreshHealthIceCompleteness();
                         }

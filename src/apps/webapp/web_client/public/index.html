@@ -98,6 +98,10 @@
                                         </div>
                                         <div class="identity-actions">
                                             <button type="button" class="btn" id="iceIdentityEditBtn">Edit</button>
+                                            <div style="margin-top:4px;">
+                                                <input type="file" id="icePhotoInput" accept="image/*" style="display:none;">
+                                                <button type="button" class="btn btn-sm btn-outline" id="icePhotoUploadBtn">Change photo</button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -113,50 +117,9 @@
                                             <div class="doc-cols" aria-hidden="true">
                                                 <span>Type</span><span>Other label</span><span>Last updated</span><span>File</span><span></span>
                                             </div>
-                                            <div class="doc-row-1l" title="One row = one file">
-                                                <select class="input-tight ice-doc-type" aria-label="Document type">
-                                                    <option selected>Physician orders / signed POLST</option>
-                                                    <option>Health care POA</option>
-                                                    <option>Advanced directive</option>
-                                                    <option>ID or insurance (copy)</option>
-                                                    <option>Other&hellip;</option>
-                                                </select>
-                                                <input class="input-tight ice-doc-label" type="text" value="" placeholder="Label if Other" disabled aria-label="Custom document name if Other">
-                                                <input class="input-tight ice-doc-date" type="date" aria-label="Last updated">
-                                                <input type="text" id="iceDnrDocName" class="input-tight" value="No file" readonly aria-label="File name">
-                                                <div class="ice-mock-doc-cta">
-                                                    <input type="file" id="iceDnrDoc" class="ice-mock-file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*">
-                                                    <button type="button" id="iceDnrUploadBtn" class="btn btn-sm" disabled>Upload</button>
-                                                </div>
-                                            </div>
-                                            <div class="doc-row-1l ice-mock-doc-placeholder">
-                                                <select class="input-tight" aria-label="Document type" disabled>
-                                                    <option>Physician orders / signed POLST</option>
-                                                    <option selected>Health care POA</option>
-                                                    <option>Advanced directive</option>
-                                                    <option>ID or insurance (copy)</option>
-                                                    <option>Other&hellip;</option>
-                                                </select>
-                                                <input class="input-tight" type="text" value="" placeholder="Label if Other" disabled>
-                                                <input class="input-tight" type="date" value="2024-06-01" disabled aria-label="Last updated">
-                                                <input class="input-tight" type="text" value="poa-2024.pdf" readonly disabled tabindex="-1">
-                                                <button type="button" class="btn btn-sm" disabled>Replace</button>
-                                            </div>
-                                            <div class="doc-row-1l ice-mock-doc-placeholder">
-                                                <select class="input-tight" aria-label="Document type" disabled>
-                                                    <option>Physician orders / signed POLST</option>
-                                                    <option>Health care POA</option>
-                                                    <option>Advanced directive</option>
-                                                    <option>ID or insurance (copy)</option>
-                                                    <option selected>Other&hellip;</option>
-                                                </select>
-                                                <input class="input-tight" type="text" value="Discharge summary" disabled aria-label="Custom document name">
-                                                <input class="input-tight" type="date" value="2026-01-20" disabled aria-label="Last updated">
-                                                <input class="input-tight" type="text" value="" placeholder="No file" readonly disabled tabindex="-1">
-                                                <button type="button" class="btn btn-sm" disabled>Upload</button>
-                                            </div>
+                                            <div id="iceDocsContainer"></div>
                                             <div class="row-h" style="margin-top:4px;">
-                                                <button type="button" class="btn btn-sm btn-outline" disabled title="More document rows coming soon">+ Add</button>
+                                                <button type="button" class="btn btn-sm btn-outline" id="iceDocsAddBtn">+ Add</button>
                                             </div>
                                             <p class="ice-mock-doc-view"><a id="iceDnrDocLink" class="linkish" href="#" hidden>View uploaded document</a></p>
                         </div>
@@ -223,23 +186,23 @@
                                             <div class="hm-block">
                                                 <h3 class="subhead">Diagnoses</h3>
                                                 <label class="block" for="iceConditions">Active (comma or short list)</label>
-                                                <textarea id="iceConditions" class="full" style="min-height:48px;" readonly rows="2"></textarea>
+                                                <textarea id="iceConditions" class="full" style="min-height:48px;" rows="2" placeholder="e.g. Alzheimer's disease, hypertension"></textarea>
                                             </div>
                                             <div class="hm-block">
                                                 <h3 class="subhead">Drug allergies &amp; reactions</h3>
                                                 <p class="tiny" style="margin-top:0;">One row per substance. <button type="button" class="ico-hint" title="Reaction, severity, when it started.">i</button></p>
                                                 <div id="iceAllergies" class="ice-allergies-mount"></div>
-                                                <p class="ice-mock-hintrow"><button type="button" class="btn btn-sm btn-outline" disabled title="Allergy grid editing coming soon">+ Allergy</button></p>
+                                                <p class="ice-mock-hintrow"><button type="button" class="btn btn-sm btn-outline" id="iceAddAllergyBtn">+ Allergy</button></p>
                                             </div>
                                             <div class="hm-block">
                                                 <h3 class="subhead">Devices, mobility, and what responders should know</h3>
                                                 <label class="block" for="iceDevicesNotes">Non-allergy context (hearing, walker, fall risk&hellip;)</label>
-                                                <textarea id="iceDevicesNotes" class="full" style="min-height:48px;" readonly rows="2" placeholder="Hearing, mobility, fall risk&hellip;"></textarea>
+                                                <textarea id="iceDevicesNotes" class="full" style="min-height:48px;" rows="2" placeholder="Hearing, mobility, fall risk&hellip;"></textarea>
                                             </div>
                                             <div class="hm-block">
-                                                <h3 class="subhead">Brief history</h3>
-                                                <label class="block" for="iceBriefHistory">Optional narrative</label>
-                                                <textarea id="iceBriefHistory" class="full" style="min-height:64px;" readonly rows="3" placeholder="Hospitalizations, PCP, goals of care&hellip;"></textarea>
+                                                <h3 class="subhead">Brief history / care providers</h3>
+                                                <label class="block" for="iceBriefHistory">Hospitalizations, PCP, goals of care</label>
+                                                <textarea id="iceBriefHistory" class="full" style="min-height:64px;" rows="3" placeholder="Hospitalizations, PCP, goals of care&hellip;"></textarea>
                                             </div>
                                             <div class="hm-block">
                                                 <h3 class="subhead">Medications</h3>
@@ -261,7 +224,7 @@
                                             <div class="hm-block">
                                                 <h3 class="subhead">Other</h3>
                                                 <label class="block" for="iceOtherNotes">Anything else (labs, care team&hellip;)</label>
-                                                <textarea id="iceOtherNotes" class="full" style="min-height:48px;" readonly rows="2" placeholder="Care team, labs&hellip;"></textarea>
+                                                <textarea id="iceOtherNotes" class="full" style="min-height:48px;" rows="2" placeholder="Care team, labs&hellip;"></textarea>
                                             </div>
                                         </div>
                                     </details>

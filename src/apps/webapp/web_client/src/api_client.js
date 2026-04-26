@@ -283,6 +283,47 @@
                 formData
             );
         },
+        // Conditions (replace-all)
+        replaceAllConditions: function (familyCircleId, conditions) {
+            return postJson(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/conditions/replace-all',
+                { conditions: conditions }
+            );
+        },
+        // Allergies (replace-all)
+        replaceAllAllergies: function (familyCircleId, allergens) {
+            return postJson(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/allergies/replace-all',
+                { allergens: allergens }
+            );
+        },
+        // Documents
+        getDocuments: function (familyCircleId) {
+            return get('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents');
+        },
+        addDocument: function (familyCircleId, payload) {
+            return postJson('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents', payload);
+        },
+        updateDocument: function (familyCircleId, docId, payload) {
+            return putJson(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId),
+                payload
+            );
+        },
+        deleteDocument: function (familyCircleId, docId) {
+            return del('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId));
+        },
+        uploadDocumentFile: function (familyCircleId, docId, file) {
+            var formData = new FormData();
+            formData.append('document', file);
+            return postForm(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId) + '/upload',
+                formData
+            );
+        },
+        getDocumentFileUrl: function (familyCircleId, docId) {
+            return build('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId) + '/file');
+        },
         getUserPhotoUrl: function (userId) {
             return buildUserPhotoUrl(userId);
         },

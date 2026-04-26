@@ -25,21 +25,40 @@ class CareRecipientService:
         proxy = emergency.get("proxy") or {}
         profile_name = profile.get("name")
         profile_dob = profile.get("dob")
-        medical_dnr = 1 if medical.get("dnr") else 0
+        # medical_dnr: accept integer 0/1/2 or boolean; kiosk reads bool(value) so any nonzero = truthy
+        raw_dnr = medical.get("dnr")
+        if isinstance(raw_dnr, bool):
+            medical_dnr = 1 if raw_dnr else 0
+        elif raw_dnr is not None:
+            try:
+                medical_dnr = int(raw_dnr)
+            except (TypeError, ValueError):
+                medical_dnr = 0
+        else:
+            medical_dnr = 0
         photo_path = data.get("photo_path")
         dnr_document_path = data.get("dnr_document_path")
         medical_proxy_phone = data.get("medical_proxy_phone")
         poa_name = data.get("poa_name")
         poa_phone = data.get("poa_phone")
         notes = data.get("notes")
+        medical_dni_status = medical.get("dni_status")
+        medical_nutrition_status = medical.get("nutrition_status")
+        devices_notes = data.get("devices_notes")
+        brief_history = data.get("brief_history")
+        other_notes = data.get("other_notes")
 
         if not care_recipient_user_id:
             return ServiceResult.error_result("care_recipient_user_id required")
 
         result = self.db_manager.execute_update(
             """
-            INSERT OR REPLACE INTO care_recipients (family_circle_id, care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO care_recipients
+              (family_circle_id, care_recipient_user_id, name, dob, photo_path,
+               medical_dnr, dnr_document_path, notes,
+               medical_dni_status, medical_nutrition_status,
+               devices_notes, brief_history, other_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 family_circle_id,
@@ -50,6 +69,11 @@ class CareRecipientService:
                 medical_dnr,
                 dnr_document_path,
                 notes,
+                medical_dni_status,
+                medical_nutrition_status,
+                devices_notes,
+                brief_history,
+                other_notes,
             ),
         )
         if not result.success:
@@ -140,6 +164,102 @@ class CareRecipientService:
                 "dnr_document_path": dnr_document_path,
             }
         )
+
+    def replace_all_conditions(self, care_recipient_user_id: str, condition_names: list) -> ServiceResult:
+        """Delete all conditions for care recipient and reinsert the given list."""
+        del_r = self.db_manager.execute_update(
+            "DELETE FROM conditions WHERE care_recipient_user_id = ?",
+            (care_recipient_user_id,),
+        )
+        if not del_r.success:
+            return del_r
+        for name in condition_names:
+            name = (name or "").strip()
+            if not name:
+                continue
+            self.db_manager.execute_update(
+                "INSERT OR REPLACE INTO conditions (care_recipient_user_id, condition_name) VALUES (?, ?)",
+                (care_recipient_user_id, name),
+            )
+        return ServiceResult.success_result(True)
+
+    def replace_all_allergies(self, care_recipient_user_id: str, allergens: list) -> ServiceResult:
+        """Delete all allergies for care recipient and reinsert the given list."""
+        del_r = self.db_manager.execute_update(
+            "DELETE FROM allergies WHERE care_recipient_user_id = ?",
+            (care_recipient_user_id,),
+        )
+        if not del_r.success:
+            return del_r
+        for allergen in allergens:
+            allergen = (allergen or "").strip()
+            if not allergen:
+                continue
+            self.db_manager.execute_update(
+                "INSERT OR REPLACE INTO allergies (care_recipient_user_id, allergen) VALUES (?, ?)",
+                (care_recipient_user_id, allergen),
+            )
+        return ServiceResult.success_result(True)
+
+    def get_documents(self, family_circle_id: str) -> ServiceResult:
+        """Return all documents for the care recipient of this family circle."""
+        r = self.db_manager.execute_query(
+            "SELECT id, doc_type, doc_label, doc_date, file_path, sort_order"
+            " FROM care_recipient_documents"
+            " WHERE family_circle_id = ?"
+            " ORDER BY sort_order, id",
+            (family_circle_id,),
+        )
+        return r
+
+    def add_document(self, family_circle_id: str, care_recipient_user_id: str,
+                     doc_type: str, doc_label: str, doc_date: str, file_path: str,
+                     sort_order: int = 0) -> ServiceResult:
+        return self.db_manager.execute_insert(
+            "INSERT INTO care_recipient_documents"
+            " (family_circle_id, care_recipient_user_id, doc_type, doc_label, doc_date, file_path, sort_order)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (family_circle_id, care_recipient_user_id, doc_type, doc_label, doc_date, file_path, sort_order),
+        )
+
+    def update_document(self, doc_id: int, family_circle_id: str,
+                        doc_type: str, doc_label: str, doc_date: str) -> ServiceResult:
+        return self.db_manager.execute_update(
+            "UPDATE care_recipient_documents"
+            " SET doc_type=?, doc_label=?, doc_date=?"
+            " WHERE id=? AND family_circle_id=?",
+            (doc_type, doc_label, doc_date, doc_id, family_circle_id),
+        )
+
+    def set_document_file(self, doc_id: int, family_circle_id: str, file_path: str) -> ServiceResult:
+        return self.db_manager.execute_update(
+            "UPDATE care_recipient_documents SET file_path=? WHERE id=? AND family_circle_id=?",
+            (file_path, doc_id, family_circle_id),
+        )
+
+    def get_document_file_path(self, doc_id: int, family_circle_id: str):
+        r = self.db_manager.execute_query(
+            "SELECT file_path FROM care_recipient_documents WHERE id=? AND family_circle_id=?",
+            (doc_id, family_circle_id),
+        )
+        if r.success and r.data:
+            return r.data[0].get("file_path")
+        return None
+
+    def delete_document(self, doc_id: int, family_circle_id: str) -> ServiceResult:
+        return self.db_manager.execute_update(
+            "DELETE FROM care_recipient_documents WHERE id=? AND family_circle_id=?",
+            (doc_id, family_circle_id),
+        )
+
+    def get_care_recipient_user_id(self, family_circle_id: str):
+        r = self.db_manager.execute_query(
+            "SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id=? LIMIT 1",
+            (family_circle_id,),
+        )
+        if r.success and r.data:
+            return r.data[0].get("care_recipient_user_id")
+        return None
 
     def add_allergy(self, care_recipient_user_id: str, allergen: str) -> ServiceResult:
         """Add allergy for care recipient."""

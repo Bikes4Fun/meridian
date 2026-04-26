@@ -786,6 +786,140 @@ def create_server_app(db_path=None):
             mt = "application/octet-stream"
         return send_from_directory(uploads, fn, mimetype=mt, as_attachment=False)
 
+    @app.route("/api/family_circles/<family_circle_id>/conditions/replace-all", methods=["POST"])
+    def api_replace_all_conditions(family_circle_id):
+        """Replace all conditions for the family's care recipient with the given list."""
+        _require_family_access(family_circle_id)
+        data = request.get_json() or {}
+        cr_id = care_recipient_svc.get_care_recipient_user_id(family_circle_id)
+        if not cr_id:
+            return jsonify({"error": "no care recipient for this family"}), 404
+        names = data.get("conditions") or []
+        r = care_recipient_svc.replace_all_conditions(cr_id, names)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": True})
+
+    @app.route("/api/family_circles/<family_circle_id>/allergies/replace-all", methods=["POST"])
+    def api_replace_all_allergies(family_circle_id):
+        """Replace all allergies for the family's care recipient with the given list."""
+        _require_family_access(family_circle_id)
+        data = request.get_json() or {}
+        cr_id = care_recipient_svc.get_care_recipient_user_id(family_circle_id)
+        if not cr_id:
+            return jsonify({"error": "no care recipient for this family"}), 404
+        allergens = data.get("allergens") or []
+        r = care_recipient_svc.replace_all_allergies(cr_id, allergens)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": True})
+
+    @app.route("/api/family_circles/<family_circle_id>/documents", methods=["GET", "POST"])
+    def api_documents(family_circle_id):
+        """GET: list docs. POST: create new doc row (no file yet)."""
+        _require_family_access(family_circle_id)
+        if request.method == "GET":
+            r = care_recipient_svc.get_documents(family_circle_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 500
+            return jsonify({"data": r.data or []})
+        data = request.get_json() or {}
+        cr_id = care_recipient_svc.get_care_recipient_user_id(family_circle_id)
+        if not cr_id:
+            return jsonify({"error": "no care recipient for this family"}), 404
+        r = care_recipient_svc.add_document(
+            family_circle_id, cr_id,
+            data.get("doc_type") or "",
+            data.get("doc_label") or "",
+            data.get("doc_date") or "",
+            "",
+            data.get("sort_order") or 0,
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": {"id": r.data}}), 201
+
+    @app.route("/api/family_circles/<family_circle_id>/documents/<int:doc_id>", methods=["PUT", "DELETE"])
+    def api_document(family_circle_id, doc_id):
+        """PUT: update metadata. DELETE: remove row and file."""
+        _require_family_access(family_circle_id)
+        if request.method == "DELETE":
+            old_fp = care_recipient_svc.get_document_file_path(doc_id, family_circle_id)
+            r = care_recipient_svc.delete_document(doc_id, family_circle_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 500
+            if old_fp:
+                uploads = get_uploads_dir()
+                photo_upload_svc.remove_replaced_file_in_uploads_dir(uploads, old_fp, None)
+            return jsonify({"data": True})
+        data = request.get_json() or {}
+        r = care_recipient_svc.update_document(
+            doc_id, family_circle_id,
+            data.get("doc_type") or "",
+            data.get("doc_label") or "",
+            data.get("doc_date") or "",
+        )
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": True})
+
+    @app.route("/api/family_circles/<family_circle_id>/documents/<int:doc_id>/upload", methods=["POST"])
+    def api_document_upload(family_circle_id, doc_id):
+        """Upload or replace file for an existing document row."""
+        _require_family_access(family_circle_id)
+        up = request.files.get("document")
+        if not up or not (up.filename or "").strip():
+            return jsonify({"error": "document file required"}), 400
+        orig = secure_filename(up.filename) or "document.pdf"
+        ext = Path(orig).suffix.lower()
+        if ext not in _DNR_UPLOAD_EXTS:
+            return jsonify({"error": "allowed types: pdf, doc, docx, jpg, png, gif, webp"}), 400
+        new_fn = f"{uuid.uuid4().hex}{ext}"
+        uploads = get_uploads_dir()
+        os.makedirs(uploads, exist_ok=True)
+        dest = os.path.join(uploads, new_fn)
+        up.save(dest)
+        if os.path.getsize(dest) > _MAX_CARE_RECIPIENT_DNR_BYTES:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            return jsonify({"error": "document too large"}), 413
+        old_fp = care_recipient_svc.get_document_file_path(doc_id, family_circle_id)
+        r = care_recipient_svc.set_document_file(doc_id, family_circle_id, new_fn)
+        if not r.success:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            return jsonify({"error": r.error}), 500
+        if old_fp:
+            photo_upload_svc.remove_replaced_file_in_uploads_dir(uploads, old_fp, new_fn)
+        return jsonify({"data": {"file_path": new_fn}})
+
+    @app.route("/api/family_circles/<family_circle_id>/documents/<int:doc_id>/file")
+    def api_serve_document(family_circle_id, doc_id):
+        """Serve uploaded document file."""
+        _require_family_access(family_circle_id)
+        fp = care_recipient_svc.get_document_file_path(doc_id, family_circle_id)
+        if not fp:
+            abort(404)
+        uploads = get_uploads_dir()
+        path = os.path.join(uploads, fp)
+        if not os.path.isfile(path):
+            abort(404)
+        uploads_abs = os.path.abspath(uploads)
+        try:
+            in_uploads = os.path.commonpath([uploads_abs, os.path.abspath(path)]) == uploads_abs
+        except ValueError:
+            in_uploads = False
+        if not in_uploads:
+            abort(404)
+        mt, _ = mimetypes.guess_type(fp)
+        if not mt:
+            mt = "application/octet-stream"
+        return send_from_directory(uploads, fp, mimetype=mt, as_attachment=False)
+
     @app.route("/api/family_circles/<family_circle_id>/calendar/headers")
     def api_calendar_headers(family_circle_id):
         _require_family_access(family_circle_id)

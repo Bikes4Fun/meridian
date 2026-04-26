@@ -38,8 +38,19 @@ _KNOWN_TABLE_NAMES = frozenset(
         "user_push_tokens",
         "call_signals",
         "kiosk_emergency_alerts",
+        "care_recipient_documents",
     }
 )
+
+# Columns that may be missing on databases created before these were added.
+# Format: (table, column, definition)
+_COLUMN_MIGRATIONS = [
+    ("care_recipients", "medical_dni_status", "TEXT"),
+    ("care_recipients", "medical_nutrition_status", "TEXT"),
+    ("care_recipients", "devices_notes", "TEXT"),
+    ("care_recipients", "brief_history", "TEXT"),
+    ("care_recipients", "other_notes", "TEXT"),
+]
 
 
 class QueryManager:
@@ -121,6 +132,16 @@ class QueryManager:
             return ServiceResult.success_result(result.data[0]["count"])
         return result
 
+    def _apply_column_migrations(self, conn) -> None:
+        """Add any missing columns to existing tables (forward-only, never removes)."""
+        cursor = conn.cursor()
+        for table, column, definition in _COLUMN_MIGRATIONS:
+            cursor.execute(f'PRAGMA table_info("{table}")')
+            existing = {row[1] for row in cursor.fetchall()}
+            if column not in existing:
+                cursor.execute(f'ALTER TABLE "{table}" ADD COLUMN "{column}" {definition}')
+        conn.commit()
+
     def create_database_schema(self) -> ServiceResult:
         schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
         if not os.path.exists(schema_path):
@@ -131,6 +152,7 @@ class QueryManager:
             with self.get_connection() as conn:
                 conn.executescript(schema_sql)
                 conn.commit()
+                self._apply_column_migrations(conn)
             self.logger.info("Database schema created: %s", self.config.path)
             return ServiceResult.success_result(self.config.path)
         except Exception as e:

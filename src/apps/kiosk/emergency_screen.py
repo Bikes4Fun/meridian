@@ -69,7 +69,8 @@ def build_emergency_html(services, api_url: str) -> str:
             age_text = str(max(age, 0))
         except ValueError:
             age_text = ""
-    code_status = "DNR" if bool(medical_data.get("dnr", False)) else "FULL CODE"
+    dnr_val = int(medical_data.get("dnr", 0) or 0)
+    code_status = {0: "FULL CODE", 1: "DNR / No CPR"}.get(dnr_val, "DNR")
     family_circle_name = (patient_data.get("family_circle_name") or e_data.get("family_circle_name") or e_data.get("family_circle_id") or "").strip()
     updated_text = datetime.now().strftime("Updated %b %d %Y")
 
@@ -126,6 +127,33 @@ def build_emergency_html(services, api_url: str) -> str:
         "</div>"
         "</div>"
     )
+
+    dni_status = (medical_data.get("dni_status") or "").strip()
+    nutrition_status = (medical_data.get("nutrition_status") or "").strip()
+    dnr_detail = {0: "Full resuscitation", 1: "DNR / No CPR", 2: "See document"}.get(dnr_val, "See document")
+    if dni_status or nutrition_status:
+        html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">POLST Directives</div>')
+        html_parts.append(
+            '<div class="emergency-warm-info-row">'
+            '<div class="emergency-warm-info-label">CPR / Code</div>'
+            f'<div class="emergency-warm-info-value">{_esc(dnr_detail)}</div>'
+            "</div>"
+        )
+        if dni_status:
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">Intubation (DNI)</div>'
+                f'<div class="emergency-warm-info-value">{_esc(dni_status)}</div>'
+                "</div>"
+            )
+        if nutrition_status:
+            html_parts.append(
+                '<div class="emergency-warm-info-row">'
+                '<div class="emergency-warm-info-label">Nutrition</div>'
+                f'<div class="emergency-warm-info-value">{_esc(nutrition_status)}</div>'
+                "</div>"
+            )
+        html_parts.append("</div>")
 
     html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Allergies</div>')
     if allergies:

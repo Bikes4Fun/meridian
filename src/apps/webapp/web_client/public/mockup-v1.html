@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ICE mockup v1 (v2 shell)</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --card: #fff;
+      --line: #ddd3c6;
+      --text: #3a3937;
+      --muted: #6a645d;
+      --title: #2c2620;
+      --terracotta: #b45334;
+      --sage: #5c8a58;
+      --warn-bar: #c4a574;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      line-height: 1.35;
+      font-size: 15px;
+    }
+    .app-shell { max-width: 1360px; margin: 0 auto; padding: 16px; }
+    .masthead {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .masthead-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #faf8f5;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .tab--active {
+      background: var(--terracotta);
+      color: #fff;
+      border-color: var(--terracotta);
+    }
+    .page-layout {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .page-layout { grid-template-columns: 1fr; }
+    }
+    .inpage-nav h2 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .inpage-nav ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .inpage-nav a {
+      display: block;
+      padding: 6px 0;
+      color: var(--terracotta);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .page-title {
+      margin: 0 0 14px;
+      font-size: 1.6rem;
+      color: var(--title);
+    }
+    .fold {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      margin-bottom: 12px;
+    }
+    .fold > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      font-weight: 700;
+      border-bottom: 1px solid transparent;
+    }
+    .fold[open] > summary { border-bottom-color: var(--line); }
+    .fold-body { padding: 14px; }
+    details.fold[open] > .fold-body {
+      max-height: min(82vh, 1000px);
+      overflow-y: auto;
+      position: relative;
+    }
+    .ice-main { min-width: 0; }
+    .ice-bar-bottom {
+      position: sticky;
+      bottom: 0;
+      z-index: 3;
+      margin-top: 16px;
+      margin-left: 0;
+      margin-right: 0;
+      padding: 8px 0 6px;
+      background: #fff;
+      background: linear-gradient(to top, #fff 85%, rgba(255, 255, 255, 0.92));
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+    }
+    .ice-bar-bottom-inner {
+      padding: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 12px 24px;
+    }
+    @media (max-width: 560px) {
+      .ice-bar-bottom-inner {
+        grid-template-columns: 1fr;
+      }
+    }
+    .ice-bar-bottom .ice-bar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    @media (max-width: 560px) {
+      .ice-bar-bottom .ice-bar-actions { justify-content: stretch; }
+      .ice-bar-bottom .ice-bar-actions .btn { flex: 1 1 auto; text-align: center; }
+    }
+    details.completion-pop {
+      border: 0;
+      margin: 0;
+      min-width: 0;
+      width: 100%;
+    }
+    details.completion-pop > summary.completion-summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 5px 8px 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #faf8f5;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset;
+    }
+    details.completion-pop > summary.completion-summary::-webkit-details-marker { display: none; }
+    .completion-summary-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 6px;
+      min-width: 0;
+      line-height: 1.25;
+    }
+    .completion-summary-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+    }
+    .completion-summary-sep {
+      color: #b5ada3;
+      font-weight: 400;
+      font-size: 12px;
+    }
+    .completion-summary-main {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--title);
+    }
+    .completion-summary .chev-wrap {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--terracotta);
+    }
+    .completion-chevron {
+      display: block;
+      transition: transform 0.15s ease;
+    }
+    details.completion-pop[open] > summary.completion-summary {
+      border-color: #c9b8a4;
+    }
+    details.completion-pop[open] > summary .completion-chevron {
+      transform: rotate(180deg);
+    }
+    .completion-pop-body {
+      margin-top: 6px;
+      padding: 8px 10px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    .completion-pop-body .bar--slim {
+      height: 4px;
+      margin: 0 0 6px;
+    }
+    .completion-pop-body .completion-sec {
+      margin: 0 0 6px;
+    }
+    .completion-pop-body .completion-sec:last-of-type { margin-bottom: 0; }
+    .completion-pop-body .completion-sec-h {
+      margin: 0 0 3px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .completion-pop-body .list-tight {
+      margin: 0;
+      padding-left: 1.1em;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--text);
+    }
+    .completion-pop-body .list-tight li { margin: 0 0 2px; }
+    .completion-pop-body .list-tight li:last-child { margin-bottom: 0; }
+    .completion-pop-body .list-tight--miss {
+      color: #6b5340;
+    }
+    .identity-bar {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+    @media (max-width: 600px) {
+      .identity-bar { grid-template-columns: 1fr; text-align: center; }
+    }
+    .avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #e8e0d4;
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: var(--muted);
+    }
+    .identity-fields { min-width: 0; }
+    .identity-fields .row2 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 24px;
+      align-items: baseline;
+    }
+    .identity-fields label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .identity-fields input {
+      border: none;
+      background: transparent;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      padding: 0;
+      max-width: 100%;
+    }
+    .code-readout {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.3;
+      max-width: 42ch;
+    }
+    .code-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    @media (min-width: 800px) {
+      .code-grid-3 { grid-template-columns: repeat(3, 1fr); gap: 0 12px; }
+    }
+    .code-cell {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px 10px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    @media (min-width: 800px) {
+      .code-cell { margin-bottom: 0; min-height: 100%; }
+    }
+    .code-sub {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--title);
+      margin: 0 0 2px;
+    }
+    p.code-selected {
+      font-size: 11px;
+      color: var(--muted);
+      margin: 0 0 6px;
+      line-height: 1.35;
+    }
+    .ice-polst-extra {
+      margin: 10px 0 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #faf8f5;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text);
+    }
+    .ice-polst-extra-line { margin: 0; }
+    .ice-polst-extra-line + .ice-polst-extra-line { margin-top: 6px; }
+    .ice-polst-extra-label {
+      display: block;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .ice-polst-extra-val { color: var(--text); }
+    .btn {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid var(--line);
+      background: #faf8f5;
+      color: var(--text);
+      cursor: default;
+      text-align: center;
+    }
+    .btn-primary { background: var(--sage); color: #fff; border-color: var(--sage); }
+    .btn-outline { background: #fff; color: var(--terracotta); border-color: var(--terracotta); }
+    .btn-ghost { background: #fff; color: var(--muted); border-color: var(--line); }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+    }
+    input.input-tight, select.input-tight {
+      padding: 4px 7px;
+      font-size: 13px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    .input-tight[type="date"] { min-width: 0; }
+    .row-h {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button.ico-hint {
+      display: inline-flex;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: #faf8f5;
+      cursor: help;
+      line-height: 1;
+      font-family: inherit;
+    }
+    .doc-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .doc-row-1l {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.15fr) minmax(0, 140px) 128px 1fr auto;
+      gap: 8px 10px;
+      align-items: center;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      border: 1px solid #ece6dc;
+      border-radius: 8px;
+      background: #fdfcfa;
+    }
+    @media (max-width: 960px) {
+      .doc-row-1l { grid-template-columns: 1fr; }
+    }
+    .doc-cols {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.15fr) minmax(0, 140px) 128px 1fr auto;
+      gap: 8px 10px;
+      padding: 0 8px 2px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    @media (max-width: 960px) {
+      .doc-cols { display: none; }
+    }
+    details.section {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      margin-bottom: 8px;
+    }
+    details.section > summary {
+      list-style: none;
+      padding: 10px 12px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+    }
+    details[open].section > summary { border-bottom-color: var(--line); }
+    .summary-meta { font-size: 12px; font-weight: 500; color: var(--muted); }
+    .section-body { padding: 12px; }
+    .hm-block {
+      padding-top: 14px;
+      margin-top: 0;
+      border-top: 1px solid var(--line);
+    }
+    .section-body > div.hm-block:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+    .subhead {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--title);
+    }
+    .med-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .med-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid #ece6dc;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+      background: #fdfcfa;
+    }
+    .med-line span { color: var(--text); }
+    .med-line .actions { flex-shrink: 0; display: flex; gap: 6px; }
+    .linkish {
+      background: none;
+      border: none;
+      color: var(--terracotta);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+    }
+    .med-line--tight {
+      padding: 5px 10px;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .ec-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 10px;
+      border: 1px solid #ece6dc;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      background: #fdfcfa;
+    }
+    .ec-line span { min-width: 0; }
+    .allergy-line {
+      display: grid;
+      grid-template-columns: 1fr 1fr 0.8fr;
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 6px;
+      padding: 6px 0;
+      border-bottom: 1px dashed #ece6dc;
+    }
+    .allergy-line:last-of-type { border-bottom: 0; }
+    @media (max-width: 640px) {
+      .allergy-line { grid-template-columns: 1fr; }
+    }
+    .code-row { margin-bottom: 0; }
+    .check-pair {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .completion-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: #ece6dc;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .bar > div { height: 100%; width: 57%; background: var(--warn-bar); }
+    .warn-list {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 13px;
+      color: #6b5340;
+    }
+    label.block { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input.full, select.full, textarea.full {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px;
+      font-size: 14px;
+    }
+    textarea.full { min-height: 70px; resize: vertical; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+    .mock-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 12px;
+      padding: 8px 10px;
+      background: #f0ebe3;
+      border-radius: 8px;
+      border: 1px dashed var(--line);
+    }
+    .tiny { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="masthead">
+      <div class="masthead-row">
+        <span>Meridian (mock shell)</span>
+        <span>Signed in &middot; User test form &middot; Log out</span>
+      </div>
+      <div class="tabs">
+        <span class="tab tab--active">Patient health data</span>
+        <span class="tab">Events</span>
+        <span class="tab">Settings</span>
+        <span class="tab">Info</span>
+      </div>
+    </header>
+
+    <div class="page-layout">
+      <nav class="inpage-nav" aria-label="On this page">
+        <h2>On this page</h2>
+        <ul>
+          <li><a href="#">Today&rsquo;s medications</a></li>
+          <li><a href="#">POLST &amp; ICE</a></li>
+          <li><a href="#">Medications</a></li>
+          <li><a href="#">Medication history</a></li>
+        </ul>
+      </nav>
+
+      <div>
+        <h1 class="page-title">Patient health data</h1>
+
+        <details class="fold" open>
+          <summary>POLST &amp; emergency (ICE)</summary>
+          <div class="fold-body">
+            <div class="ice-main">
+                <div class="identity-bar">
+                  <div class="avatar" aria-hidden="true">MF</div>
+                  <div class="identity-fields">
+                    <div class="row2">
+                      <div>
+                        <label>Name</label>
+                        <input type="text" value="Marian Foster" readonly>
+                      </div>
+                      <div>
+                        <label>Date of birth</label>
+                        <input type="text" value="March 14, 1952" readonly>
+                      </div>
+                      <div>
+                        <label>Code status (current)</label>
+                        <span class="code-readout">DNR: no CPR &middot; DNI: not intubate &middot; Nutrition: as documented</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <button type="button" class="btn">Edit</button>
+                    <div style="margin-top:8px;"><button type="button" class="btn btn-outline" style="width:100%;">Add photo</button></div>
+                  </div>
+                </div>
+
+                <details class="section">
+                  <summary>
+                    <span>Documents</span>
+                    <span class="summary-meta">Photo on file &middot; 2 files</span>
+                  </summary>
+                  <div class="section-body">
+                    <div class="doc-toolbar">
+                      <span class="row-h" style="gap:6px;">One row per file. Menu lists common types; pick Other to name your own. <button type="button" class="ico-hint" title="Examples: signed POLST or orders, health care POA, living will, ID/insurance.">i</button></span>
+                    </div>
+
+                    <div class="doc-cols" aria-hidden="true">
+                      <span>Type</span><span>Other label</span><span>Last updated</span><span>File</span><span></span>
+                    </div>
+                    <div class="doc-row-1l" title="One row = one file">
+                      <select class="input-tight" aria-label="Document type">
+                        <option>Physician orders / signed POLST</option>
+                        <option>Health care POA</option>
+                        <option>Advanced directive</option>
+                        <option>ID or insurance (copy)</option>
+                        <option>Other&hellip;</option>
+                      </select>
+                      <input class="input-tight" type="text" value="" placeholder="Label if Other" disabled aria-label="Custom document name if Other">
+                      <input class="input-tight" type="date" value="2025-10-12" title="Last updated" aria-label="Last updated">
+                      <input class="input-tight" type="text" value="" placeholder="No file" readonly aria-label="File name">
+                      <button type="button" class="btn btn-sm">File</button>
+                    </div>
+
+                    <div class="doc-row-1l">
+                      <select class="input-tight" aria-label="Document type">
+                        <option>Physician orders / signed POLST</option>
+                        <option selected>Health care POA</option>
+                        <option>Advanced directive</option>
+                        <option>ID or insurance (copy)</option>
+                        <option>Other&hellip;</option>
+                      </select>
+                      <input class="input-tight" type="text" value="" placeholder="Label if Other" disabled>
+                      <input class="input-tight" type="date" value="2024-06-01" aria-label="Last updated">
+                      <input class="input-tight" type="text" value="poa-2024.pdf" readonly>
+                      <button type="button" class="btn btn-sm">Replace</button>
+                    </div>
+
+                    <div class="doc-row-1l">
+                      <select class="input-tight" aria-label="Document type">
+                        <option>Physician orders / signed POLST</option>
+                        <option>Health care POA</option>
+                        <option>Advanced directive</option>
+                        <option>ID or insurance (copy)</option>
+                        <option selected>Other&hellip;</option>
+                      </select>
+                      <input class="input-tight" type="text" value="Discharge summary" placeholder="Label if Other" aria-label="Custom document name">
+                      <input class="input-tight" type="date" value="2026-01-20" aria-label="Last updated">
+                      <input class="input-tight" type="text" value="" placeholder="No file" readonly>
+                      <button type="button" class="btn btn-sm">Upload</button>
+                    </div>
+
+                    <div class="row-h" style="margin-top:4px;">
+                      <button type="button" class="btn btn-sm btn-outline">+ Add</button>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="section">
+                  <summary>
+                    <span>Health &amp; medical</span>
+                    <span class="summary-meta">DNR no CPR &middot; DNI not intubate &middot; 6 meds</span>
+                  </summary>
+                  <div class="section-body">
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Code status &amp; life-sustaining goals</h3>
+                      <p class="row-h" style="margin:0 0 10px;font-size:12px;">
+                        <button type="button" class="linkish" style="font-size:12px;">Open physician orders in Documents</button>
+                        <button type="button" class="ico-hint" title="Opens the Documents section or linked POLST/orders.">i</button>
+                      </p>
+                      <div class="code-grid-3">
+                        <div class="code-cell">
+                          <span class="code-sub">DNR (no CPR)</span>
+                          <p class="code-selected">Now: DNR / no CPR</p>
+                          <select class="full" style="margin-bottom:0;" aria-label="DNR (no CPR)">
+                            <option>DNR / no CPR</option>
+                            <option>Full resuscitation</option>
+                            <option>See document</option>
+                          </select>
+                        </div>
+                        <div class="code-cell">
+                          <span class="code-sub">DNI</span>
+                          <p class="code-selected">Now: Intubation not desired</p>
+                          <select class="full" style="margin-bottom:0;" aria-label="DNI">
+                            <option>Intubation not desired</option>
+                            <option>Intubation if indicated</option>
+                            <option>See document</option>
+                          </select>
+                        </div>
+                        <div class="code-cell">
+                          <span class="code-sub">Artificial nutrition</span>
+                          <p class="code-selected">Now: As documented in orders or goals of care</p>
+                          <select class="full" style="margin-bottom:0;" aria-label="Artificial nutrition">
+                            <option>As documented</option>
+                            <option>Comfort / trial as ordered</option>
+                            <option>Not desired</option>
+                            <option>See document</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="ice-polst-extra" role="note" aria-label="POLST sections C and D">
+                        <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">C · ARTIFICIAL NUTRITION / FLUIDS</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
+                        <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">D · ANTIBIOTICS / BLOOD</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
+                      </div>
+                      <p class="row-h check-pair" style="margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);flex-wrap:wrap;">
+                        <span class="row-h" style="font-size:12px;gap:4px;align-items:center;">
+                          <span>Matches signed order in Documents: DNR &middot; DNI &middot; Nutrition</span>
+                          <button type="button" class="ico-hint" title="Check each box if that goal is spelled out the same way in the physician order or POLST you uploaded under Documents.">i</button>
+                        </span>
+                        <span class="row-h" style="flex-wrap:wrap;gap:8px 12px;margin-top:4px;">
+                          <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNR</label>
+                          <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNI</label>
+                          <label class="check-pair" style="margin:0;"><input type="checkbox"> Nutrition</label>
+                        </span>
+                      </p>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Diagnoses</h3>
+                      <label class="block">Active (comma or short list)</label>
+                      <textarea class="full" style="min-height:48px;">Type 2 diabetes mellitus, essential hypertension, mild neurocognitive disorder, osteoarthritis of knees, hyperlipidemia</textarea>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Drug allergies &amp; reactions</h3>
+                      <p class="tiny" style="margin-top:0;">One row per substance. <button type="button" class="ico-hint" title="Reaction, severity, when it started.">i</button></p>
+                      <div class="allergy-line">
+                        <div>
+                          <label class="block">Substance / drug</label>
+                          <input class="input-tight" value="Sulfa (e.g. sulfamethoxazole)">
+                        </div>
+                        <div>
+                          <label class="block">Reaction / symptoms</label>
+                          <input class="input-tight" value="Hives, nausea / vomiting">
+                        </div>
+                        <div>
+                          <label class="block">Onset (approx.)</label>
+                          <input class="input-tight" value="1998&mdash;ongoing avoid">
+                        </div>
+                      </div>
+                      <div class="allergy-line">
+                        <div>
+                          <label class="block">Substance / drug</label>
+                          <input class="input-tight" value="Penicillin" placeholder="Substance">
+                        </div>
+                        <div>
+                          <label class="block">Reaction / symptoms</label>
+                          <input class="input-tight" value="Unknown&mdash;avoid" placeholder="Reaction">
+                        </div>
+                        <div>
+                          <label class="block">Onset (approx.)</label>
+                          <input class="input-tight" value="Childhood" placeholder="Onset">
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-outline">+ Allergy</button>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Devices, mobility, and what responders should know</h3>
+                      <label class="block">Non-allergy context (hearing, walker, fall risk&hellip;)</label>
+                      <textarea class="full" style="min-height:48px;">Hearing loss (aids in usual setting), uses rolling walker, history of falls at home.</textarea>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Brief history</h3>
+                      <label class="block">Optional narrative</label>
+                      <textarea class="full" style="min-height:64px;">Lives with son. Last hospitalization 2 months ago for UTI, recovered at home. PCP: Dr. Patel, Midtown Family. Comfort-focused if not herself.</textarea>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Medications</h3>
+                      <div class="row-h" style="justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;">
+                        <div class="med-toolbar" style="margin:0;">
+                          <button type="button" class="btn btn-primary">Edit all medications</button>
+                          <button type="button" class="btn btn-sm btn-outline">Add</button>
+                        </div>
+                        <span class="tiny" style="margin:0;">6 on ICE. Details open in Edit all. <button type="button" class="ico-hint" title="This row is a compact summary only until Edit all is on.">i</button></span>
+                      </div>
+                      <div class="med-line med-line--tight"><span>Metformin 500mg, three times daily</span></div>
+                      <div class="med-line med-line--tight"><span>Lisinopril 10mg, once daily</span></div>
+                      <div class="med-line med-line--tight"><span>Donepezil 5mg, nightly</span></div>
+                      <div class="med-line med-line--tight"><span>Melatonin 3mg, PRN for sleep</span></div>
+                      <div class="med-line med-line--tight"><span>Acetaminophen 500mg, PRN pain</span></div>
+                      <div class="med-line med-line--tight"><span>Lorazepam 0.5mg, PRN anxiety</span></div>
+                    </div>
+
+                    <div class="hm-block">
+                      <h3 class="subhead">Other</h3>
+                      <label class="block">Anything else (labs, care team&hellip;)</label>
+                      <textarea class="full" style="min-height:48px;">Most recent med list to pharmacy, Jan 2026.</textarea>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="section">
+                  <summary>
+                    <span>Emergency contacts</span>
+                    <span class="summary-meta">3 &middot; role &middot; call order</span>
+                  </summary>
+                  <div class="section-body">
+                    <div class="row-h" style="justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                      <div class="med-toolbar" style="margin:0;">
+                        <button type="button" class="btn btn-primary">Edit all contacts</button>
+                        <button type="button" class="btn btn-sm btn-outline">Add</button>
+                      </div>
+                      <span class="tiny" style="margin:0;">Summary rows; fields in Edit all. <button type="button" class="ico-hint" title="Name, role/type, relationship, level, phone.">i</button></span>
+                    </div>
+                    <div class="ec-line"><span>James Foster &middot; Health care POA &middot; 1st &middot; (555) 000-0000 &middot; son</span></div>
+                    <div class="ec-line"><span>James Foster &middot; Medical proxy (MPOA) &middot; 1st &middot; (555) 000-0000</span></div>
+                    <div class="ec-line"><span>Dean Foster &middot; Family &middot; 2nd &middot; (555) 100-1000 &middot; son</span></div>
+                  </div>
+                </details>
+
+                <details class="section">
+                  <summary>
+                    <span>Notes for responders</span>
+                    <span class="summary-meta">Optional</span>
+                  </summary>
+                  <div class="section-body">
+                    <label class="block">Notes</label>
+                    <textarea class="full" placeholder="Short notes for EMS or family"></textarea>
+                  </div>
+                </details>
+            </div>
+
+            <div class="ice-bar-bottom" role="region" aria-label="Save ICE profile">
+              <div class="ice-bar-bottom-inner">
+                <details class="completion-pop">
+                  <summary class="completion-summary" title="View what&rsquo;s filled in and what&rsquo;s still missing" aria-label="ICE POLST form, 4 of 7 fields complete. Show or hide checklist.">
+                    <span class="completion-summary-line">
+                      <span class="completion-summary-eyebrow">ICE / POLST form</span>
+                      <span class="completion-summary-sep" aria-hidden="true">·</span>
+                      <span class="completion-summary-main">4 of 7 fields complete</span>
+                    </span>
+                    <span class="chev-wrap" aria-hidden="true">
+                      <svg class="completion-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                  </summary>
+                  <div class="completion-pop-body">
+                    <div class="bar bar--slim"><div></div></div>
+                    <div class="completion-sec">
+                      <p class="completion-sec-h">In place (mock)</p>
+                      <ul class="list-tight">
+                        <li>Name, DOB, code status (identity strip)</li>
+                        <li>Code goals in Health &amp; medical: DNR, DNI, nutrition</li>
+                        <li>POA file under Documents</li>
+                      </ul>
+                    </div>
+                    <div class="completion-sec">
+                      <p class="completion-sec-h">Still to do</p>
+                      <ul class="list-tight list-tight--miss">
+                        <li>Upload POLST/orders (for &ldquo;matches order&rdquo; checkboxes)</li>
+                        <li>Add 1st-call family contact (not only the POA)</li>
+                        <li>Check nutrition line vs. latest order (unchecked here)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </details>
+                <div class="ice-bar-actions">
+                  <button type="button" class="btn btn-primary">Save profile</button>
+                  <button type="button" class="btn btn-outline">Download emergency PDF</button>
+                </div>
+              </div>
+            </div>
+
+            <p class="mock-note">Dev-only note (not product copy): v1 on v2 shell, compact rows, i = extra help on hover.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

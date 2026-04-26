@@ -1306,7 +1306,25 @@ def create_server_app(db_path=None):
         @app.route("/ice-editor")
         @app.route("/ice_editor.html")
         def serve_ice_editor():
-            return send_from_directory(_webapp_dist, "ice_editor.html")
+            """ICE editor HTML; inject session into head like index for cookie-backed flows."""
+            ice_path = os.path.join(_webapp_dist, "ice_editor.html")
+            with open(ice_path, encoding="utf-8") as f:
+                html = f.read()
+            uid = session.get("user_id") or ""
+            fid = session.get("family_circle_id") or ""
+            boot = json.dumps({"user_id": uid, "family_circle_id": fid})
+            idle_sec = int(app.config.get("MERIDIAN_SESSION_IDLE_SEC", 1800))
+            inject = (
+                f"<script>window.__MERIDIAN_SESSION__={boot};"
+                f"window.__MERIDIAN_IDLE_LOGOUT_SEC__={idle_sec};</script>"
+            )
+            if "</head>" in html:
+                html = html.replace("</head>", inject + "</head>", 1)
+            else:
+                html = inject + html
+            resp = Response(html, mimetype="text/html; charset=utf-8")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
 
         @app.route("/info.html")
         def serve_info_guide():

@@ -23,7 +23,13 @@ class EmergencyService:
     def get_emergency_profile(self, family_circle_id: str) -> ServiceResult:
         """Compose emergency profile from canonical sources. No data stored in this service."""
         care = self.db_manager.execute_query(
-            "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes FROM care_recipients WHERE family_circle_id = ?",
+            "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes,"
+            " medical_dni_status, medical_nutrition_status,"
+            " polst_dnr_signed, polst_dni_signed, polst_nutrition_signed,"
+            " devices_notes, brief_history, other_notes,"
+            " medical_antibiotic_status, medical_blood_product_status,"
+            " polst_antibiotic_signed, polst_blood_product_signed"
+            " FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
         care_row = care.data[0] if care.success and care.data else None
@@ -52,14 +58,14 @@ class EmergencyService:
 
         allergies_result = (
             self.db_manager.execute_query(
-                "SELECT allergen FROM allergies WHERE care_recipient_user_id = ?",
+                "SELECT allergen, reaction FROM allergies WHERE care_recipient_user_id = ?",
                 (care_recipient_user_id,),
             )
             if care_recipient_user_id
             else self.db_manager.execute_query("SELECT 1 WHERE 0", ())
         )
         allergies = (
-            [a["allergen"] for a in allergies_result.data]
+            [{"allergen": a["allergen"], "reaction": a["reaction"]} for a in allergies_result.data]
             if allergies_result.success and allergies_result.data
             else []
         )
@@ -137,6 +143,15 @@ class EmergencyService:
                         elif r["role"] == "poa":
                             poa_name, poa_phone = c.get("display_name"), c.get("phone")
 
+        documents_result = self.db_manager.execute_query(
+            "SELECT doc_type, doc_label, doc_date, file_path"
+            " FROM care_recipient_documents"
+            " WHERE family_circle_id = ?"
+            " ORDER BY sort_order, id",
+            (family_circle_id,),
+        )
+        documents = (documents_result.data or []) if documents_result.success else []
+
         if (
             not care_row
             and not conditions_list
@@ -161,7 +176,16 @@ class EmergencyService:
             },
             "medical": {
                 "conditions": medical_conditions,
-                "dnr": bool(care_row["medical_dnr"]) if care_row else False,
+                "dnr": int(care_row["medical_dnr"]) if care_row and care_row["medical_dnr"] is not None else 0,
+                "dni_status": care_row["medical_dni_status"] if care_row else None,
+                "nutrition_status": care_row["medical_nutrition_status"] if care_row else None,
+                "polst_dnr_signed": bool(care_row["polst_dnr_signed"]) if care_row else False,
+                "polst_dni_signed": bool(care_row["polst_dni_signed"]) if care_row else False,
+                "polst_nutrition_signed": bool(care_row["polst_nutrition_signed"]) if care_row else False,
+                "antibiotic_status": int(care_row["medical_antibiotic_status"] or 0) if care_row else 0,
+                "blood_product_status": int(care_row["medical_blood_product_status"] or 0) if care_row else 0,
+                "polst_antibiotic_signed": bool(care_row["polst_antibiotic_signed"]) if care_row else False,
+                "polst_blood_product_signed": bool(care_row["polst_blood_product_signed"]) if care_row else False,
                 "allergies": allergies,
                 "medications": medications,
             },
@@ -172,9 +196,13 @@ class EmergencyService:
             "poa_name": poa_name,
             "poa_phone": poa_phone,
             "notes": care_row["notes"] if care_row else None,
+            "devices_notes": care_row["devices_notes"] if care_row else None,
+            "brief_history": care_row["brief_history"] if care_row else None,
+            "other_notes": care_row["other_notes"] if care_row else None,
             "last_updated": None,
             "last_updated_by": None,
-            "emergency_contacts": emergency_contacts,  # TODO: include POA and proxy in e_contacts and simply separate them by 'econtacts','poa','proxy' ?
+            "emergency_contacts": emergency_contacts,
+            "documents": documents,
         }
         return ServiceResult.success_result(data)
 

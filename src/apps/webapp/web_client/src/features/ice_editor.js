@@ -11,6 +11,7 @@
     var _iceMedsInitial = [];
     var _iceEcInitial = [];
     var _iceMedAutosave = null;
+    var _documents = [];
 
     function cloneEcSnapshot(rows) {
         return JSON.parse(JSON.stringify(rows || []));
@@ -159,13 +160,53 @@
         return chain;
     }
 
+    function isValidPhone(val) {
+        if (!val) return true;
+        var digits = val.replace(/\D/g, '');
+        return digits.length >= 7 && digits.length <= 15;
+    }
+
+    function todayIso() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function validateDob(val) {
+        if (!val) return null;
+        var today = todayIso();
+        if (val < '1900-01-01') return 'Cannot be before 1900.';
+        if (val > today) return 'Cannot be in the future.';
+        return null;
+    }
+
+    function wireDobValidation() {
+        var dobEl = document.getElementById('iceDob');
+        var errEl = document.getElementById('iceDobError');
+        if (!dobEl) return;
+        dobEl.max = todayIso();
+        dobEl.addEventListener('blur', function () {
+            var msg = validateDob(dobEl.value);
+            if (errEl) {
+                errEl.textContent = msg || '';
+                errEl.style.display = msg ? '' : 'none';
+            }
+            dobEl.setCustomValidity(msg || '');
+        });
+        dobEl.addEventListener('input', function () {
+            dobEl.setCustomValidity('');
+            if (errEl) errEl.style.display = 'none';
+        });
+    }
+
     function showIceStatus(message, type) {
-        var container = document.getElementById('iceStatus');
-        if (!container) return;
-        var box = document.createElement('div');
-        box.className = type;
-        box.textContent = message;
-        container.appendChild(box);
+        var existing = document.getElementById('iceStatusToast');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        var toast = document.createElement('div');
+        toast.id = 'iceStatusToast';
+        toast.className = 'ice-status-toast ice-status-toast--' + (type || 'info');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3000);
     }
 
     function setUploadButtonState(buttonId, enabled) {
@@ -204,16 +245,24 @@
         var hasProxy = hasProxyName && hasProxyPhone;
         var hasPhoto = !!String(d.photo_path || '').trim();
         var hasDnrDoc = !!String(d.dnr_document_path || '').trim();
-        var done = [hasName, hasDob, hasDnr, hasEmergencyContact, hasProxy, hasPhoto, hasDnrDoc]
-            .filter(Boolean).length;
+        var fields = [
+            { label: 'Patient name', done: hasName },
+            { label: 'Date of birth', done: hasDob },
+            { label: 'Code status (DNR)', done: hasDnr },
+            { label: 'Emergency contact', done: hasEmergencyContact },
+            { label: 'Medical proxy (name + phone)', done: hasProxy },
+            { label: 'Photo', done: hasPhoto },
+            { label: 'POLST / DNR document', done: hasDnrDoc }
+        ];
+        var done = fields.filter(function (f) { return f.done; }).length;
         var primaryExists = contacts.some(function (c) {
             return (c && c.emergency_priority) === 'primary_emergency';
         });
         var warnings = [];
-        if (!hasDnrDoc) warnings.push('Missing DNR/POLST document');
-        if (!primaryExists) warnings.push('No primary emergency contact');
-        if (!hasProxyPhone) warnings.push('Missing proxy phone number');
-        return { done: done, warnings: warnings };
+        if (!hasDnrDoc) warnings.push('Upload signed POLST or DNR document');
+        if (!primaryExists) warnings.push('Designate a primary emergency contact');
+        if (hasProxyName && !hasProxyPhone) warnings.push('Add phone number for medical proxy');
+        return { done: done, fields: fields, warnings: warnings };
     }
 
     function renderIceCompleteness(data) {
@@ -224,25 +273,20 @@
         var sm = document.getElementById('iceCompletionSummaryMain');
         if (sm) sm.textContent = done + ' of 7 fields complete';
         var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
-        var completeHints = [];
-        if (done >= 1) completeHints.push('Identity started');
-        if (done >= 3) completeHints.push('Core code-status fields saved');
-        if (done >= 5) completeHints.push('At least one contact and proxy info present');
-        if (done >= 7) completeHints.push('Critical fields complete');
-        if (!completeHints.length) completeHints.push('No core fields complete yet');
-        var completeHtml = '<ul class="list-tight">' + completeHints.map(function (w) {
-            return '<li>' + escapeHtml(w) + '</li>';
-        }).join('') + '</ul>';
-        var missingHtml = model.warnings.length
-            ? '<ul class="list-tight list-tight--miss">' + model.warnings.map(function (w) {
-                return '<li>' + escapeHtml(w) + '</li>';
-            }).join('') + '</ul>'
-            : '<ul class="list-tight list-tight--miss"><li>No urgent missing items.</li></ul>';
+        var inPlace = model.fields.filter(function (f) { return f.done; });
+        var missing = model.fields.filter(function (f) { return !f.done; });
+        var inPlaceHtml = inPlace.length
+            ? '<ul class="list-tight">' + inPlace.map(function (f) { return '<li>' + escapeHtml(f.label) + '</li>'; }).join('') + '</ul>'
+            : '<ul class="list-tight"><li class="muted">None yet</li></ul>';
+        var stillToDoItems = missing.map(function (f) { return f.label; }).concat(model.warnings);
+        var missingHtml = stillToDoItems.length
+            ? '<ul class="list-tight list-tight--miss">' + stillToDoItems.map(function (w) { return '<li>' + escapeHtml(w) + '</li>'; }).join('') + '</ul>'
+            : '<ul class="list-tight list-tight--miss"><li>All critical fields complete.</li></ul>';
         host.innerHTML =
             '<div class="bar bar--slim"><div style="height:100%;width:' + pct + '%;background:#c4a574"></div></div>' +
             '<div class="completion-sec">' +
             '<p class="completion-sec-h">In place</p>' +
-            completeHtml +
+            inPlaceHtml +
             '</div>' +
             '<div class="completion-sec">' +
             '<p class="completion-sec-h">Still to do</p>' +
@@ -250,54 +294,66 @@
             '</div>';
     }
 
-    // TODO: When conditions/allergies become editable on this page, add inputs and merge into save payload;
-    // today this only updates display from emergency profile GET.
+    function allergyRowHtml(allergy) {
+        var allergen = typeof allergy === 'string' ? allergy : (allergy && allergy.allergen) || '';
+        var reaction = typeof allergy === 'string' ? '' : (allergy && allergy.reaction) || '';
+        return '<div class="allergy-line">' +
+            '<input class="input-tight ice-allergy-value" type="text" value="' + escapeHtml(allergen) + '" placeholder="Substance / drug">' +
+            '<input class="input-tight ice-allergy-reaction" type="text" value="' + escapeHtml(reaction) + '" placeholder="Reaction (optional)">' +
+            '<button type="button" class="btn-inline btn-delete ice-allergy-remove">✕</button>' +
+            '</div>';
+    }
+
     function syncConditionsAllergiesFromMedical(medical) {
         medical = medical || {};
         var condEl = document.getElementById('iceConditions');
         if (condEl) {
-            var ct = medical.conditions || '—';
-            if (condEl.tagName === 'TEXTAREA' || (condEl.tagName === 'INPUT' && condEl.type === 'text')) {
-                condEl.value = ct;
-            } else {
-                condEl.textContent = ct;
-            }
+            var ct = medical.conditions || '';
+            condEl.value = ct;
         }
 
+        renderAllergyRows(medical.allergies || []);
+    }
+
+    function renderAllergyRows(allergens) {
         var algEl = document.getElementById('iceAllergies');
-        if (algEl) {
-            var allergies = medical.allergies || [];
-            if (allergies.length === 0) {
-                algEl.innerHTML = '<p class="tiny muted">None listed</p>';
-            } else {
-                algEl.innerHTML = allergies.map(function (a) {
-                    return (
-                        '<div class="allergy-line">' +
-                        '<div><label class="block">Substance / drug</label>' +
-                        '<input class="input-tight" readonly value="' + escapeHtml(a) + '"></div>' +
-                        '<div><label class="block">Reaction / symptoms</label>' +
-                        '<input class="input-tight" readonly value=""></div>' +
-                        '<div><label class="block">Onset (approx.)</label>' +
-                        '<input class="input-tight" readonly value=""></div>' +
-                        '</div>'
-                    );
-                }).join('');
-            }
+        if (!algEl) return;
+        if (!allergens.length) {
+            algEl.innerHTML = '<p class="tiny muted" id="iceAllergiesEmpty">None listed — use + Allergy to add</p>';
+        } else {
+            algEl.innerHTML = allergens.map(allergyRowHtml).join('');
         }
     }
 
-    function dnrBooleanFromForm() {
+    function collectAllergyRows() {
+        var out = [];
+        document.querySelectorAll('#iceAllergies .allergy-line').forEach(function (row) {
+            var allergenInp = row.querySelector('.ice-allergy-value');
+            var reactionInp = row.querySelector('.ice-allergy-reaction');
+            var allergen = allergenInp ? (allergenInp.value || '').trim() : '';
+            if (!allergen) return;
+            out.push({ allergen: allergen, reaction: reactionInp ? (reactionInp.value || '').trim() : '' });
+        });
+        return out;
+    }
+
+    function dnrValueFromForm() {
         var dnrEl = document.getElementById('iceDnr');
-        if (!dnrEl) return false;
+        if (!dnrEl) return 0;
         if (dnrEl.tagName === 'SELECT') {
-            return dnrEl.value === '1';
+            return parseInt(dnrEl.value, 10) || 0;
         }
-        return !!dnrEl.checked;
+        return dnrEl.checked ? 1 : 0;
+    }
+
+    function getFullName() {
+        var first = (document.getElementById('iceFirstName') || {}).value || '';
+        var last = (document.getElementById('iceLastName') || {}).value || '';
+        return [first.trim(), last.trim()].filter(Boolean).join(' ');
     }
 
     function updateIceIdentityStrip() {
-        var nameEl = document.getElementById('iceName');
-        var name = nameEl ? nameEl.value : '';
+        var name = getFullName();
         var av = document.getElementById('iceIdentityAvatar');
         if (av) {
             var t = (name || '').trim();
@@ -386,20 +442,42 @@
         if (idInput) idInput.value = crId;
 
         var profile = data.profile || {};
-        var nameEl = document.getElementById('iceName');
+        var nameParts = (profile.name || '').trim().split(/\s+/);
+        var firstEl = document.getElementById('iceFirstName');
+        var lastEl = document.getElementById('iceLastName');
         var dobEl = document.getElementById('iceDob');
-        if (nameEl) nameEl.value = profile.name || '';
+        if (firstEl) firstEl.value = nameParts[0] || '';
+        if (lastEl) lastEl.value = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
         if (dobEl) dobEl.value = (profile.dob || '').slice(0, 10);
 
         var medical = data.medical || {};
         var dnrEl = document.getElementById('iceDnr');
         if (dnrEl) {
             if (dnrEl.tagName === 'SELECT') {
-                dnrEl.value = medical.dnr ? '1' : '0';
+                dnrEl.value = String(medical.dnr !== undefined && medical.dnr !== null ? medical.dnr : 0);
             } else {
                 dnrEl.checked = !!medical.dnr;
             }
         }
+        var dniEl = document.getElementById('iceDniStatus');
+        if (dniEl && medical.dni_status) dniEl.value = medical.dni_status;
+        var nutEl = document.getElementById('iceNutritionStatus');
+        if (nutEl && medical.nutrition_status) nutEl.value = medical.nutrition_status;
+        var polstDnrEl = document.getElementById('icePolstDnrSigned');
+        if (polstDnrEl) polstDnrEl.checked = !!medical.polst_dnr_signed;
+        var polstDniEl = document.getElementById('icePolstDniSigned');
+        if (polstDniEl) polstDniEl.checked = !!medical.polst_dni_signed;
+        var polstNutEl = document.getElementById('icePolstNutritionSigned');
+        if (polstNutEl) polstNutEl.checked = !!medical.polst_nutrition_signed;
+
+        _loadedPaths._devices_notes = data.devices_notes || null;
+        _loadedPaths._other_notes = data.other_notes || null;
+        var devEl = document.getElementById('iceDevicesNotes');
+        if (devEl) devEl.value = data.devices_notes || '';
+        var histEl = document.getElementById('iceBriefHistory');
+        if (histEl) histEl.value = data.brief_history || '';
+        var otherEl = document.getElementById('iceOtherNotes');
+        if (otherEl) otherEl.value = data.other_notes || '';
 
         var emergency = data.emergency || {};
         var proxy = emergency.proxy || {};
@@ -443,6 +521,148 @@
         renderEmergencyContacts(ecs);
         renderIceCompleteness(data);
         updateIceIdentityStrip();
+    }
+
+    var _DOC_TYPE_OPTIONS = [
+        'Physician orders / signed POLST',
+        'Health care POA',
+        'Advanced directive',
+        'ID or insurance (copy)',
+        'Other…'
+    ];
+
+    function docTypeSelectHtml(selected) {
+        return '<select class="input-tight ice-doc-type" aria-label="Document type">' +
+            _DOC_TYPE_OPTIONS.map(function (t) {
+                return '<option' + (t === selected ? ' selected' : '') + '>' + escapeHtml(t) + '</option>';
+            }).join('') +
+            '</select>';
+    }
+
+    function docRowHtml(doc) {
+        var id = doc.id || '';
+        var docType = doc.doc_type || _DOC_TYPE_OPTIONS[0];
+        var docLabel = doc.doc_label || '';
+        var docDate = doc.doc_date || '';
+        var filePath = doc.file_path || '';
+        return '<div class="doc-row-1l" data-doc-id="' + escapeHtml(String(id)) + '">' +
+            docTypeSelectHtml(docType) +
+            '<input class="input-tight ice-doc-label" type="text" value="' + escapeHtml(docLabel) + '" placeholder="Label (optional)" aria-label="Document label">' +
+            '<input class="input-tight ice-doc-date" type="date" value="' + escapeHtml(docDate) + '" aria-label="Last updated">' +
+            '<input type="text" class="input-tight ice-doc-filename" value="' + escapeHtml(filePath ? filePath.replace(/^[0-9a-f]{32}/, '').replace(/^\./, '') || filePath : 'No file') + '" readonly aria-label="File name">' +
+            '<div class="ice-mock-doc-cta">' +
+            '<input type="file" class="ice-mock-file ice-doc-file-input" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,application/pdf,image/*">' +
+            '<button type="button" class="btn btn-sm ice-doc-upload-btn">' + (filePath ? 'Replace' : 'Upload') + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline ice-doc-delete-btn">Remove</button>' +
+            '</div>' +
+            '</div>';
+    }
+
+    function renderDocuments(docs) {
+        _documents = docs || [];
+        var container = document.getElementById('iceDocsContainer');
+        if (!container) return;
+        if (_documents.length === 0) {
+            container.innerHTML = '<p class="tiny muted" style="margin:8px 0;">No documents on file — use + Add to upload a POLST, DNR order, or other document.</p>';
+        } else {
+            container.innerHTML = _documents.map(docRowHtml).join('');
+        }
+        var addBtn = document.getElementById('iceDocsAddBtn');
+        if (addBtn) addBtn.disabled = false;
+    }
+
+    function loadDocumentsPromise() {
+        if (!_familyCircleId) return Promise.resolve();
+        return meridianApiClient.getDocuments(_familyCircleId)
+            .then(function (response) {
+                var body = response && response.body;
+                renderDocuments((body && body.data) || []);
+                var container = document.getElementById('iceDocsContainer');
+                if (container) {
+                    container.querySelectorAll('[data-doc-id]').forEach(function (row) {
+                        wireDocumentRow(row);
+                    });
+                }
+            })
+            .catch(function (err) {
+                renderDocuments([]);
+                showIceStatus((err && err.message) || 'Could not load documents', 'error');
+            });
+    }
+
+    function loadDocuments() {
+        loadDocumentsPromise();
+    }
+
+    function wireDocumentRow(rowEl) {
+        var docId = parseInt(rowEl.getAttribute('data-doc-id'), 10);
+        var typeSel = rowEl.querySelector('.ice-doc-type');
+        var labelInp = rowEl.querySelector('.ice-doc-label');
+        var dateInp = rowEl.querySelector('.ice-doc-date');
+        var fileInp = rowEl.querySelector('.ice-doc-file-input');
+        var uploadBtn = rowEl.querySelector('.ice-doc-upload-btn');
+        var deleteBtn = rowEl.querySelector('.ice-doc-delete-btn');
+        var filenameInp = rowEl.querySelector('.ice-doc-filename');
+
+        function saveMetadata() {
+            if (!docId || !_familyCircleId) return Promise.resolve();
+            return meridianApiClient.updateDocument(_familyCircleId, docId, {
+                doc_type: typeSel ? typeSel.value : '',
+                doc_label: labelInp ? labelInp.value.trim() : '',
+                doc_date: dateInp ? dateInp.value : ''
+            });
+        }
+
+        if (typeSel) {
+            typeSel.addEventListener('change', saveMetadata);
+        }
+        if (dateInp) dateInp.addEventListener('change', saveMetadata);
+        if (labelInp) labelInp.addEventListener('change', saveMetadata);
+
+        if (fileInp && uploadBtn) {
+            uploadBtn.addEventListener('click', function () {
+                fileInp.click();
+            });
+            fileInp.addEventListener('change', function () {
+                var f = fileInp.files && fileInp.files[0];
+                if (!f || !_familyCircleId) return;
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading…';
+                saveMetadata()
+                    .then(function () {
+                        return meridianApiClient.uploadDocumentFile(_familyCircleId, docId, f);
+                    })
+                    .then(function (response) {
+                        var body = response && response.body;
+                        var fp = (body && body.data && body.data.file_path) || '';
+                        if (filenameInp) filenameInp.value = fp ? fp.replace(/^[0-9a-f]{32}/, '').replace(/^\./, '') || fp : '';
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = 'Replace';
+                        fileInp.value = '';
+                        showIceStatus('Saved ✓', 'success');
+                        loadDocuments();
+                    })
+                    .catch(function (err) {
+                        showIceStatus(err.message || 'Upload failed', 'error');
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = 'Upload';
+                    });
+            });
+        }
+
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function () {
+                if (!_familyCircleId) return;
+                meridianApiClient.deleteDocument(_familyCircleId, docId)
+                    .then(function () {
+                        rowEl.remove();
+                        showIceStatus('Saved ✓', 'success');
+                    })
+                    .catch(function (err) {
+                        showIceStatus(err.message || 'Delete failed', 'error');
+                    });
+            });
+        }
     }
 
     function updateDnrDocLink(crId) {
@@ -545,9 +765,35 @@
         }
     }
 
+    function wirePhotoUpload() {
+        var photoInput = document.getElementById('icePhotoInput');
+        var photoBtn = document.getElementById('icePhotoUploadBtn');
+        if (!photoInput) return;
+        // Clicking the avatar circle or photo preview also triggers upload
+        var avatar = document.querySelector('.identity-bar .avatar');
+        if (avatar) avatar.addEventListener('click', function () { photoInput.click(); });
+        var photoPreview = document.getElementById('icePhotoPreview');
+        if (photoPreview) photoPreview.addEventListener('click', function () { photoInput.click(); });
+        if (photoBtn) photoBtn.addEventListener('click', function () { photoInput.click(); });
+        photoInput.addEventListener('change', function () {
+            var f = photoInput.files && photoInput.files[0];
+            if (!f) return;
+            photoBtn.disabled = true;
+            photoBtn.textContent = 'Uploading…';
+            uploadCareRecipientPhoto(f).then(function () {
+                photoBtn.disabled = false;
+                photoBtn.textContent = 'Change photo';
+                photoInput.value = '';
+                showIceStatus('Saved ✓', 'success');
+            });
+        });
+    }
+
     function init() {
         var pdfLink = document.getElementById('icePdfLink');
+        wireDobValidation();
         wireUploadPreviews();
+        wirePhotoUpload();
 
         var openDocs = document.getElementById('iceOpenDocsBtn');
         if (openDocs) {
@@ -559,10 +805,10 @@
                 }
             });
         }
-        var nameForAvatar = document.getElementById('iceName');
-        if (nameForAvatar) {
-            nameForAvatar.addEventListener('input', updateIceIdentityStrip);
-        }
+        var firstForAvatar = document.getElementById('iceFirstName');
+        var lastForAvatar = document.getElementById('iceLastName');
+        if (firstForAvatar) firstForAvatar.addEventListener('input', updateIceIdentityStrip);
+        if (lastForAvatar) lastForAvatar.addEventListener('input', updateIceIdentityStrip);
         var dnrU = document.getElementById('iceDnr');
         if (dnrU) dnrU.addEventListener('change', updateIceIdentityStrip);
         var dniU = document.getElementById('iceDniStatus');
@@ -572,11 +818,8 @@
         var idEd = document.getElementById('iceIdentityEditBtn');
         if (idEd) {
             idEd.addEventListener('click', function () {
-                var n = document.getElementById('iceName');
-                if (n) {
-                    n.focus();
-                    n.select();
-                }
+                var n = document.getElementById('iceFirstName');
+                if (n) { n.focus(); n.select(); }
             });
         }
         var medEdit = document.getElementById('iceMedsEditAllBtn');
@@ -598,10 +841,23 @@
                 if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             });
         }
-        var ecAdd = document.getElementById('iceEcAddCompactBtn');
-        var ecAddMain = document.getElementById('iceAddEmergencyContactBtn');
-        if (ecAdd && ecAddMain) {
-            ecAdd.addEventListener('click', function () { ecAddMain.click(); });
+        var proxyClear = document.getElementById('iceProxyClearBtn');
+        if (proxyClear) {
+            proxyClear.addEventListener('click', function () {
+                var n = document.getElementById('iceProxyName');
+                var p = document.getElementById('iceProxyPhone');
+                if (n) n.value = '';
+                if (p) p.value = '';
+            });
+        }
+        var poaClear = document.getElementById('icePoaClearBtn');
+        if (poaClear) {
+            poaClear.addEventListener('click', function () {
+                var n = document.getElementById('icePoaName');
+                var p = document.getElementById('icePoaPhone');
+                if (n) n.value = '';
+                if (p) p.value = '';
+            });
         }
 
         var medContainer = document.getElementById('iceMedications');
@@ -649,6 +905,56 @@
             });
         }
 
+        var algContainer = document.getElementById('iceAllergies');
+        if (algContainer) {
+            algContainer.addEventListener('click', function (e) {
+                if (!e.target.classList.contains('ice-allergy-remove')) return;
+                var row = e.target.closest('.allergy-line');
+                if (row) {
+                    row.remove();
+                    if (!algContainer.querySelector('.ice-allergy-value')) {
+                        algContainer.innerHTML = '<p class="tiny muted" id="iceAllergiesEmpty">None listed — use + Allergy to add</p>';
+                    }
+                }
+            });
+        }
+        var addAllergyBtn = document.getElementById('iceAddAllergyBtn');
+        if (addAllergyBtn) {
+            addAllergyBtn.addEventListener('click', function () {
+                var emptyP = document.getElementById('iceAllergiesEmpty');
+                if (emptyP) emptyP.remove();
+                if (!algContainer) return;
+                var d = document.createElement('div');
+                d.innerHTML = allergyRowHtml('');
+                algContainer.appendChild(d.firstChild);
+            });
+        }
+
+        var docsAddBtn = document.getElementById('iceDocsAddBtn');
+        if (docsAddBtn) {
+            docsAddBtn.addEventListener('click', function () {
+                if (!_familyCircleId) return;
+                docsAddBtn.disabled = true;
+                meridianApiClient.addDocument(_familyCircleId, {
+                    doc_type: _DOC_TYPE_OPTIONS[0],
+                    doc_label: '',
+                    doc_date: '',
+                    sort_order: _documents.length
+                })
+                    .then(function () {
+                        return loadDocumentsPromise();
+                    })
+                    .then(function () {
+                        docsAddBtn.disabled = false;
+                        showIceStatus('Saved ✓', 'success');
+                    })
+                    .catch(function (err) {
+                        showIceStatus(err.message || 'Could not add row', 'error');
+                        docsAddBtn.disabled = false;
+                    });
+            });
+        }
+
         meridianApiClient.getSession()
             .then(function (response) {
                 var session = response && response.body;
@@ -670,6 +976,7 @@
                 if (app) app.hidden = false;
                 var data = body && body.data ? body.data : null;
                 applyProfile(data);
+                loadDocuments();
             })
             .catch(function () {
                 var pending = document.getElementById('icePending');
@@ -685,14 +992,43 @@
                     showIceStatus('Cannot save without a care recipient id on file.', 'error');
                     return;
                 }
+                // DOB validation — block save if out of range
+                var dobVal = (document.getElementById('iceDob') || {}).value || '';
+                var dobErr = validateDob(dobVal);
+                if (dobErr) {
+                    var errEl = document.getElementById('iceDobError');
+                    if (errEl) { errEl.textContent = dobErr; errEl.style.display = ''; }
+                    showIceStatus(dobErr, 'error');
+                    return;
+                }
+                // Phone validation — warn but don't block
+                var phoneWarnings = [];
+                var proxyPhoneVal = (document.getElementById('iceProxyPhone') || {}).value || '';
+                var poaPhoneVal = (document.getElementById('icePoaPhone') || {}).value || '';
+                if (proxyPhoneVal && !isValidPhone(proxyPhoneVal)) phoneWarnings.push('Medical proxy phone');
+                if (poaPhoneVal && !isValidPhone(poaPhoneVal)) phoneWarnings.push('POA phone');
+                document.querySelectorAll('#iceEmergencyContacts .ice-ec-phone').forEach(function (inp) {
+                    var v = inp.value.trim();
+                    if (v && !isValidPhone(v)) phoneWarnings.push('Emergency contact phone (' + v + ')');
+                });
+                if (phoneWarnings.length) {
+                    showIceStatus('Phone number may be invalid: ' + phoneWarnings.join(', ') + '. Saving anyway.', 'error');
+                }
+                var dniSel = document.getElementById('iceDniStatus');
+                var nutSel = document.getElementById('iceNutritionStatus');
                 var payload = {
                     care_recipient_user_id: crId,
                     profile: {
-                        name: (document.getElementById('iceName') || {}).value.trim(),
+                        name: getFullName(),
                         dob: (document.getElementById('iceDob') || {}).value || null
                     },
                     medical: {
-                        dnr: dnrBooleanFromForm()
+                        dnr: dnrValueFromForm(),
+                        dni_status: dniSel ? dniSel.value : null,
+                        nutrition_status: nutSel ? nutSel.value : null,
+                        polst_dnr_signed: document.getElementById('icePolstDnrSigned') ? (document.getElementById('icePolstDnrSigned').checked ? 1 : 0) : 0,
+                        polst_dni_signed: document.getElementById('icePolstDniSigned') ? (document.getElementById('icePolstDniSigned').checked ? 1 : 0) : 0,
+                        polst_nutrition_signed: document.getElementById('icePolstNutritionSigned') ? (document.getElementById('icePolstNutritionSigned').checked ? 1 : 0) : 0
                     },
                     emergency: {
                         proxy: {
@@ -703,9 +1039,16 @@
                     poa_name: (document.getElementById('icePoaName') || {}).value.trim() || null,
                     poa_phone: (document.getElementById('icePoaPhone') || {}).value.trim() || null,
                     notes: (document.getElementById('iceNotes') || {}).value.trim() || null,
+                    devices_notes: (document.getElementById('iceDevicesNotes') || {}).value ? (document.getElementById('iceDevicesNotes') || {}).value.trim() || null : _loadedPaths._devices_notes || null,
+                    brief_history: (document.getElementById('iceBriefHistory') || {}).value.trim() || null,
+                    other_notes: (document.getElementById('iceOtherNotes') || {}).value ? (document.getElementById('iceOtherNotes') || {}).value.trim() || null : _loadedPaths._other_notes || null,
                     photo_path: _loadedPaths.photo_path,
                     dnr_document_path: _loadedPaths.dnr_document_path
                 };
+                var condEl = document.getElementById('iceConditions');
+                var condText = condEl ? condEl.value : '';
+                var conditions = condText.split(/[,\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+                var allergens = collectAllergyRows();
                 var medContainer = document.getElementById('iceMedications');
                 var medRows = MeridianMedicationsInline.collectRows(medContainer);
                 var ecRows = collectEmergencyContactsFromDom();
@@ -717,13 +1060,19 @@
                         return meridianApiClient.updateEmergencyProfile(_familyCircleId, payload);
                     })
                     .then(function () {
+                        return meridianApiClient.replaceAllConditions(_familyCircleId, conditions);
+                    })
+                    .then(function () {
+                        return meridianApiClient.replaceAllAllergies(_familyCircleId, allergens);
+                    })
+                    .then(function () {
                         return meridianApiClient.getEmergencyProfile(_familyCircleId);
                     })
                     .then(function (response) {
                         var body = response && response.body;
                         var data = body && body.data ? body.data : null;
                         if (data) applyProfile(data);
-                        showIceStatus('Profile saved.', 'success');
+                        showIceStatus('Saved ✓', 'success');
                         if (typeof window.meridianRefreshHealthIceCompleteness === 'function') {
                             window.meridianRefreshHealthIceCompleteness();
                         }

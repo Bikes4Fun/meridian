@@ -92,25 +92,45 @@ def build_pdf(profile_data: Optional[dict[str, Any]] = None) -> bytes:
     y -= _LINE * 2
 
     name = (prof.get("name") or "").strip()
-    dob = (prof.get("dob") or "").strip()
-    if name or dob:
+    dob_raw = (prof.get("dob") or "").strip()
+    # Format YYYY-MM-DD → MM/DD/YYYY for display; fall back to raw if unparseable
+    dob_display = dob_raw
+    if dob_raw:
+        try:
+            from datetime import date as _date
+            parsed = _date.fromisoformat(dob_raw[:10])
+            dob_display = parsed.strftime("%m/%d/%Y")
+        except ValueError:
+            pass
+    if name or dob_display:
         y = _draw_heading(c, y, height, "Care recipient")
         block = []
         if name:
             block.append(f"Name: {name}")
-        if dob:
-            block.append(f"Date of birth: {dob}")
+        if dob_display:
+            block.append(f"Date of birth: {dob_display}")
         y = _draw_lines(c, y, height, block)
 
     dnr = med.get("dnr")
-    if dnr is not None:
+    dni_status = (med.get("dni_status") or "").strip()
+    nutrition_status = (med.get("nutrition_status") or "").strip()
+    polst_dnr_signed = bool(med.get("polst_dnr_signed"))
+    polst_dni_signed = bool(med.get("polst_dni_signed"))
+    polst_nutrition_signed = bool(med.get("polst_nutrition_signed"))
+    if dnr is not None or dni_status or nutrition_status:
         y = _draw_heading(c, y, height, "Advance directives")
-        y = _draw_lines(
-            c,
-            y,
-            height,
-            [f"DNR on file: {'Yes' if dnr else 'No'}"],
-        )
+        directives = []
+        if dnr is not None:
+            dnr_label = "DNR / No CPR" if dnr else "Full resuscitation"
+            signed_note = " (signed order on file)" if polst_dnr_signed else " (stated preference)"
+            directives.append(f"CPR: {dnr_label}{signed_note}")
+        if dni_status:
+            signed_note = " (signed order on file)" if polst_dni_signed else " (stated preference)"
+            directives.append(f"Intubation: {dni_status}{signed_note}")
+        if nutrition_status:
+            signed_note = " (signed order on file)" if polst_nutrition_signed else " (stated preference)"
+            directives.append(f"Nutrition: {nutrition_status}{signed_note}")
+        y = _draw_lines(c, y, height, directives)
 
     cond = (med.get("conditions") or "").strip()
     if cond:
@@ -121,7 +141,12 @@ def build_pdf(profile_data: Optional[dict[str, Any]] = None) -> bytes:
     if allergies:
         y = _draw_heading(c, y, height, "Allergies")
         for a in allergies:
-            label = str(a).strip()
+            if isinstance(a, dict):
+                allergen = (a.get("allergen") or "").strip()
+                reaction = (a.get("reaction") or "").strip()
+                label = f"{allergen} — {reaction}" if reaction else allergen
+            else:
+                label = str(a).strip()
             if label:
                 y = _draw_lines(c, y, height, [f"• {label}"])
 
@@ -187,6 +212,26 @@ def build_pdf(profile_data: Optional[dict[str, Any]] = None) -> bytes:
             parts = [nm, ph, rel]
             line = " · ".join(p for p in parts if p)
             y = _draw_lines(c, y, height, [f"• {line}"])
+
+    brief_history = (data.get("brief_history") or "").strip()
+    if brief_history:
+        y = _draw_heading(c, y, height, "Brief history & notes")
+        y = _draw_lines(c, y, height, _wrap_lines(brief_history))
+
+    documents = data.get("documents") or []
+    if documents:
+        y = _draw_heading(c, y, height, "Documents on file")
+        for doc in documents:
+            if not isinstance(doc, dict):
+                continue
+            doc_label = (doc.get("doc_label") or doc.get("doc_type") or "Document").strip()
+            doc_date = (doc.get("doc_date") or "").strip()
+            has_file = bool((doc.get("file_path") or "").strip())
+            parts = [doc_label]
+            if doc_date:
+                parts.append(doc_date)
+            parts.append("on file" if has_file else "no file uploaded")
+            y = _draw_lines(c, y, height, [f"• {' · '.join(parts)}"])
 
     c.save()
     buf.seek(0)

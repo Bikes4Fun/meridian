@@ -4,9 +4,14 @@
     "user_id": "fm_care_001",
     "profile": { "name": "Marian Foster", "dob": "1952-03-14" },
     "medical": {
-      "conditions": "Dementia, Type 2 Diabetes, Hypertension",
-      "dnr": false
+      "dnr": 1,
+      "dni_status": "Intubation not desired",
+      "nutrition_status": "Not desired"
     },
+    "notes": "DEMO — Notes for EMS / family. Edit this and save to verify.",
+    "brief_history": "DEMO — Brief history and care providers. Edit this and save to verify.",
+    "devices_notes": "DEMO — Devices, mobility, fall risk. Edit this and save to verify.",
+    "other_notes": "DEMO — Other notes. Edit this and save to verify.",
     "proxy_contact_id": "contact_james_foster",
     "poa_contact_id": "contact_james_foster"
   },
@@ -92,20 +97,12 @@
     }
   ],
   "allergies": [
-    { "allergen": "Penicillin" },
-    { "allergen": "Shellfish" }
+    { "allergen": "Penicillin", "reaction": "DEMO — edit reaction and save to verify" },
+    { "allergen": "Shellfish", "reaction": "DEMO — edit reaction and save to verify" }
   ],
   "conditions": [
-    {
-      "condition": "Type 2 Diabetes",
-      "diagnosis_date": "2018-03-15",
-      "notes": "Well controlled with diet and medication"
-    },
-    {
-      "condition": "Hypertension",
-      "diagnosis_date": "2019-07-22",
-      "notes": "Blood pressure well controlled with medication"
-    }
+    { "condition": "DEMO — Type 2 Diabetes (edit and save to verify)" },
+    { "condition": "DEMO — Hypertension (edit and save to verify)" }
   ],
   "emergency_info": {},
   "care_providers": {}

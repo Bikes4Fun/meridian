@@ -167,6 +167,18 @@
                 payload
             );
         },
+        deleteContact: function (familyCircleId, contactId) {
+            return del('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contacts/' + encodeURIComponent(contactId));
+        },
+        getContactRoles: function (familyCircleId) {
+            return get('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contact-roles');
+        },
+        setContactRole: function (familyCircleId, role, contactId) {
+            return postJson('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contact-roles', { role: role, contact_id: contactId });
+        },
+        deleteContactRole: function (familyCircleId, role) {
+            return del('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/contact-roles/' + encodeURIComponent(role));
+        },
         // Family permissions
         getFamilyMembers: function (familyCircleId) {
             return get('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/family-members');
@@ -282,6 +294,47 @@
                     '/care-recipient-dnr-document',
                 formData
             );
+        },
+        // Conditions (replace-all)
+        replaceAllConditions: function (familyCircleId, conditions) {
+            return postJson(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/conditions/replace-all',
+                { conditions: conditions }
+            );
+        },
+        // Allergies (replace-all)
+        replaceAllAllergies: function (familyCircleId, allergens) {
+            return postJson(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/allergies/replace-all',
+                { allergens: allergens }
+            );
+        },
+        // Documents
+        getDocuments: function (familyCircleId) {
+            return get('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents');
+        },
+        addDocument: function (familyCircleId, payload) {
+            return postJson('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents', payload);
+        },
+        updateDocument: function (familyCircleId, docId, payload) {
+            return putJson(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId),
+                payload
+            );
+        },
+        deleteDocument: function (familyCircleId, docId) {
+            return del('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId));
+        },
+        uploadDocumentFile: function (familyCircleId, docId, file) {
+            var formData = new FormData();
+            formData.append('document', file);
+            return postForm(
+                '/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId) + '/upload',
+                formData
+            );
+        },
+        getDocumentFileUrl: function (familyCircleId, docId) {
+            return build('/api/family_circles/' + encodeURIComponent(familyCircleId) + '/documents/' + encodeURIComponent(docId) + '/file');
         },
         getUserPhotoUrl: function (userId) {
             return buildUserPhotoUrl(userId);

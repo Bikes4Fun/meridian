@@ -159,19 +159,45 @@ def run_seed(api_url: str, user_id: str = DEMO_USER_ID) -> bool:
     }
     active_member_ids.update({user_id, "fm_care_001"})
 
+    # Guard: skip seed if any existing user data is found.
+    # If the check itself fails (auth error, server error), also skip — never clobber on uncertainty.
+    r = requests.get(
+        f"{base}/api/family_circles/{fam_id}/emergency-profile",
+        headers=_headers(user_id, fam_id),
+        timeout=5,
+    )
+    if not r.ok:
+        logger.warning(
+            "Seed guard check failed (%d) — skipping seed to avoid clobbering data.",
+            r.status_code,
+        )
+        return True
+    body = r.json() if r.content else {}
+    ep_data = body.get("data") if isinstance(body, dict) else {}
+    if ep_data:
+        profile = (ep_data or {}).get("profile") or {}
+        if (profile.get("name") or "").strip():
+            logger.debug("Care recipient already present, skipping seed")
+            return True
+
     r = requests.get(
         f"{base}/api/family_circles/{fam_id}/medications",
         headers=_headers(user_id, fam_id),
         timeout=5,
     )
-    if r.ok:
-        body = r.json() if r.content else {}
-        med_data = body.get("data") if isinstance(body, dict) else {}
-        if not isinstance(med_data, dict):
-            med_data = {}
-        if med_data.get("timed_medications") or med_data.get("prn_medications"):
-            logger.debug("Demo data already present, skipping seed")
-            return True
+    if not r.ok:
+        logger.warning(
+            "Medications guard check failed (%d) — skipping seed to avoid clobbering data.",
+            r.status_code,
+        )
+        return True
+    body = r.json() if r.content else {}
+    med_data = body.get("data") if isinstance(body, dict) else {}
+    if not isinstance(med_data, dict):
+        med_data = {}
+    if med_data.get("timed_medications") or med_data.get("prn_medications"):
+        logger.debug("Demo data already present, skipping seed")
+        return True
 
     r = requests.post(
         f"{base}/api/family_circles/{fam_id}",

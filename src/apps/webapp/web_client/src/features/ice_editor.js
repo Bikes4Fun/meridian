@@ -163,10 +163,12 @@
     function showIceStatus(message, type) {
         var container = document.getElementById('iceStatus');
         if (!container) return;
+        container.innerHTML = '';
         var box = document.createElement('div');
         box.className = type;
         box.textContent = message;
         container.appendChild(box);
+        setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 3000);
     }
 
     function setUploadButtonState(buttonId, enabled) {

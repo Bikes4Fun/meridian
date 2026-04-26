@@ -105,10 +105,20 @@ class CareRecipientService:
             cid = f"proxy_{family_circle_id}"
             if _ensure_contact(cid, proxy_name or "", medical_proxy_phone):
                 _set_role("medical_proxy", cid)
+        else:
+            self.db_manager.execute_update(
+                "DELETE FROM ice_contact_roles WHERE family_circle_id=? AND role='medical_proxy'",
+                (family_circle_id,),
+            )
         if poa_name or poa_phone:
             cid = f"poa_{family_circle_id}"
             if _ensure_contact(cid, poa_name or "", poa_phone):
                 _set_role("poa", cid)
+        else:
+            self.db_manager.execute_update(
+                "DELETE FROM ice_contact_roles WHERE family_circle_id=? AND role='poa'",
+                (family_circle_id,),
+            )
         return ServiceResult.success_result(
             {
                 "family_circle_id": family_circle_id,

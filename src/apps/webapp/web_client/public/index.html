@@ -90,7 +90,7 @@
                                                 </div>
                                                 <div>
                                                     <label for="iceDob">Date of birth</label>
-                                                    <input type="text" id="iceDob" class="ice-mock-identity-dob" placeholder="YYYY-MM-DD" autocomplete="bday">
+                                                    <input type="text" id="iceDob" class="ice-mock-identity-dob" placeholder="YYYY-MM-DD" autocomplete="bday" maxlength="10" pattern="\d{4}-\d{2}-\d{2}">
                                                 </div>
                                                 <div>
                                                     <label>Code status (current)</label>
@@ -173,17 +173,6 @@
                                                     <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">C · ARTIFICIAL NUTRITION / FLUIDS</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
                                                     <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">D · ANTIBIOTICS / BLOOD</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
                                                 </div>
-                                                <p class="row-h check-pair" style="margin:8px 0 0;padding-top:8px;border-top:1px solid var(--warm-border);flex-wrap:wrap;">
-                                                    <span class="row-h" style="font-size:12px;gap:4px;align-items:center;">
-                                                        <span>Matches signed order in Documents: DNR &middot; DNI &middot; Nutrition</span>
-                                                        <button type="button" class="ico-hint" title="Check each box if that goal is spelled out the same way in the physician order or POLST you uploaded under Documents.">i</button>
-                                                    </span>
-                                                    <span class="row-h" style="flex-wrap:wrap;gap:8px 12px;margin-top:4px;">
-                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNR</label>
-                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" checked> DNI</label>
-                                                        <label class="check-pair" style="margin:0;"><input type="checkbox"> Nutrition</label>
-                                                    </span>
-                                                </p>
                                             </div>
                                             <div class="hm-block">
                                                 <h3 class="subhead">Diagnoses</h3>
@@ -210,7 +199,7 @@
                                                 <h3 class="subhead">Medications</h3>
                                                 <div class="row-h" style="justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;">
                                                     <div class="med-toolbar" style="margin:0;">
-                                                        <button type="button" class="btn btn-primary" id="iceMedsEditAllBtn">Edit all medications</button>
+                                                        <button type="button" class="btn" id="iceMedsEditAllBtn">Edit all medications</button>
                                                         <button type="button" class="btn btn-sm btn-outline" id="iceMedsAddFocusBtn">Add</button>
                                                     </div>
                                                     <span class="tiny" style="margin:0;">Details below. <button type="button" class="ico-hint" title="List is editable in the table below.">i</button></span>
@@ -239,7 +228,7 @@
                                         <div class="section-body">
                                             <div class="row-h" style="justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
                                                 <div class="med-toolbar" style="margin:0;">
-                                                    <button type="button" class="btn btn-primary" id="iceEcEditAllBtn">Edit all contacts</button>
+                                                    <button type="button" class="btn" id="iceEcEditAllBtn">Edit all contacts</button>
                                                     <button type="button" class="btn btn-sm btn-outline" id="iceEcAddCompactBtn">Add</button>
                                                 </div>
                                                 <span class="tiny" style="margin:0;">Summary rows; full fields below. <button type="button" class="ico-hint" title="Name, role/type, relationship, level, phone.">i</button></span>
@@ -294,7 +283,7 @@
                                         </details>
                                         <div class="ice-bar-actions">
                                             <button type="submit" id="iceSaveBtn" class="btn btn-primary">Save profile</button>
-                                            <a id="icePdfLink" class="btn btn-outline" href="#" target="_blank" rel="noopener">Download emergency PDF</a>
+                                            <a id="icePdfLink" class="btn btn-sm" href="#" target="_blank" rel="noopener">Download emergency PDF</a>
                                         </div>
                                     </div>
                                 </div>

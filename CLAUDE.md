@@ -1,5 +1,28 @@
 # PatientHealthData Page — ICE/POLST Wiring Audit
 
+## Live audit findings (2026-04-25)
+
+### Webapp → DB: ALL fields wired. "Saved ✓" shows and reloads from server.
+- dist/ice_editor.js was outdated: used `iceName` (doesn't exist in HTML) instead of `iceFirstName`/`iceLastName` → name did NOT save. Fixed by syncing src → dist.
+- dist/ice_editor.js allergy display was broken: passed objects to old single-arg allergyRowHtml → showed "[object Object]". Fixed.
+
+### Kiosk emergency screen gaps (now fixed):
+| Field | Was shown? | Fix |
+|-------|------------|-----|
+| DNI status | No | Added POLST Directives section |
+| Nutrition status | No | Added POLST Directives section |
+| Medical proxy name + phone | No | Added Proxy & POA section |
+| POA name + phone | No | Added Proxy & POA section |
+| Devices notes | No | Added Additional Notes section |
+| Brief history | No | Added Additional Notes section |
+| Other notes | No | Added Additional Notes section |
+| Documents list | No | Added Documents on File section (needs doc in API response) |
+
+### documents in emergency-profile response
+emergency.py now queries care_recipient_documents and includes `documents` list in the API response.
+
+
+
 ## DB tables used by this page
 
 | Table | Key columns used |

@@ -44,6 +44,9 @@ class CareRecipientService:
         notes = data.get("notes")
         medical_dni_status = medical.get("dni_status")
         medical_nutrition_status = medical.get("nutrition_status")
+        polst_dnr_signed = int(bool(medical.get("polst_dnr_signed")))
+        polst_dni_signed = int(bool(medical.get("polst_dni_signed")))
+        polst_nutrition_signed = int(bool(medical.get("polst_nutrition_signed")))
         devices_notes = data.get("devices_notes")
         brief_history = data.get("brief_history")
         other_notes = data.get("other_notes")
@@ -57,8 +60,9 @@ class CareRecipientService:
               (family_circle_id, care_recipient_user_id, name, dob, photo_path,
                medical_dnr, dnr_document_path, notes,
                medical_dni_status, medical_nutrition_status,
+               polst_dnr_signed, polst_dni_signed, polst_nutrition_signed,
                devices_notes, brief_history, other_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 family_circle_id,
@@ -71,6 +75,9 @@ class CareRecipientService:
                 notes,
                 medical_dni_status,
                 medical_nutrition_status,
+                polst_dnr_signed,
+                polst_dni_signed,
+                polst_nutrition_signed,
                 devices_notes,
                 brief_history,
                 other_notes,

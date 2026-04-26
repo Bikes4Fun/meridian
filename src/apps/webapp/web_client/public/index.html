@@ -169,6 +169,17 @@
                                                         </select>
                                                     </div>
                                                 </div>
+                                                <p class="row-h check-pair" style="margin:8px 0 0;padding-top:8px;border-top:1px solid var(--warm-border);flex-wrap:wrap;">
+                                                    <span class="row-h" style="font-size:12px;gap:4px;align-items:center;">
+                                                        <span>Signed legal order on file matches this directive:</span>
+                                                        <button type="button" class="ico-hint" title="Check each box only if you have uploaded a signed physician order or POLST document under Documents that specifies this directive. Unchecked means stated preference only — not a binding order.">i</button>
+                                                    </span>
+                                                    <span class="row-h" style="flex-wrap:wrap;gap:8px 12px;margin-top:4px;">
+                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" id="icePolstDnrSigned"> DNR</label>
+                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" id="icePolstDniSigned"> DNI</label>
+                                                        <label class="check-pair" style="margin:0;"><input type="checkbox" id="icePolstNutritionSigned"> Nutrition</label>
+                                                    </span>
+                                                </p>
                                                 <div class="ice-polst-extra" role="note" aria-label="POLST sections C and D">
                                                     <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">C · ARTIFICIAL NUTRITION / FLUIDS</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>
                                                     <p class="ice-polst-extra-line"><span class="ice-polst-extra-label">D · ANTIBIOTICS / BLOOD</span> <span class="ice-polst-extra-val">Not specified — see POLST</span></p>

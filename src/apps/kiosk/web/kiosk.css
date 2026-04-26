@@ -2115,6 +2115,29 @@ button.family-panel-head:active {
   border: 1px solid #7a9b7640;
 }
 
+.emergency-polst-signed {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #14532d;
+  background: #14532d18;
+  border: 1px solid #7a9b7650;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 2px;
+}
+
+.emergency-polst-preference {
+  display: inline-block;
+  font-size: 10px;
+  color: #92400e;
+  background: #92400e12;
+  border: 1px solid #c9873050;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 2px;
+}
+
 .emergency-warm-note {
   margin-top: 6px;
   font-size: 11px;

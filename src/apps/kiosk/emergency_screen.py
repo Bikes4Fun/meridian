@@ -132,26 +132,35 @@ def build_emergency_html(services, api_url: str) -> str:
     dni_status = (medical_data.get("dni_status") or "").strip()
     nutrition_status = (medical_data.get("nutrition_status") or "").strip()
     dnr_detail = {0: "Full resuscitation", 1: "DNR / No CPR", 2: "See document"}.get(dnr_val, "See document")
+    polst_dnr_signed = bool(medical_data.get("polst_dnr_signed"))
+    polst_dni_signed = bool(medical_data.get("polst_dni_signed"))
+    polst_nutrition_signed = bool(medical_data.get("polst_nutrition_signed"))
+
+    def _signed_badge(signed: bool) -> str:
+        if signed:
+            return '<span class="emergency-polst-signed">Signed order on file</span>'
+        return '<span class="emergency-polst-preference">Stated preference — no signed order</span>'
+
     if dni_status or nutrition_status:
         html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">POLST Directives</div>')
         html_parts.append(
             '<div class="emergency-warm-info-row">'
             '<div class="emergency-warm-info-label">CPR / Code</div>'
-            f'<div class="emergency-warm-info-value">{_esc(dnr_detail)}</div>'
+            f'<div class="emergency-warm-info-value">{_esc(dnr_detail)}<br>{_signed_badge(polst_dnr_signed)}</div>'
             "</div>"
         )
         if dni_status:
             html_parts.append(
                 '<div class="emergency-warm-info-row">'
                 '<div class="emergency-warm-info-label">Intubation (DNI)</div>'
-                f'<div class="emergency-warm-info-value">{_esc(dni_status)}</div>'
+                f'<div class="emergency-warm-info-value">{_esc(dni_status)}<br>{_signed_badge(polst_dni_signed)}</div>'
                 "</div>"
             )
         if nutrition_status:
             html_parts.append(
                 '<div class="emergency-warm-info-row">'
                 '<div class="emergency-warm-info-label">Nutrition</div>'
-                f'<div class="emergency-warm-info-value">{_esc(nutrition_status)}</div>'
+                f'<div class="emergency-warm-info-value">{_esc(nutrition_status)}<br>{_signed_badge(polst_nutrition_signed)}</div>'
                 "</div>"
             )
         html_parts.append("</div>")

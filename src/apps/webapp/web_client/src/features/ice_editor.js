@@ -422,6 +422,12 @@
         if (dniEl && medical.dni_status) dniEl.value = medical.dni_status;
         var nutEl = document.getElementById('iceNutritionStatus');
         if (nutEl && medical.nutrition_status) nutEl.value = medical.nutrition_status;
+        var polstDnrEl = document.getElementById('icePolstDnrSigned');
+        if (polstDnrEl) polstDnrEl.checked = !!medical.polst_dnr_signed;
+        var polstDniEl = document.getElementById('icePolstDniSigned');
+        if (polstDniEl) polstDniEl.checked = !!medical.polst_dni_signed;
+        var polstNutEl = document.getElementById('icePolstNutritionSigned');
+        if (polstNutEl) polstNutEl.checked = !!medical.polst_nutrition_signed;
 
         var devEl = document.getElementById('iceDevicesNotes');
         if (devEl) devEl.value = data.devices_notes || '';
@@ -937,7 +943,10 @@
                     medical: {
                         dnr: dnrValueFromForm(),
                         dni_status: dniSel ? dniSel.value : null,
-                        nutrition_status: nutSel ? nutSel.value : null
+                        nutrition_status: nutSel ? nutSel.value : null,
+                        polst_dnr_signed: document.getElementById('icePolstDnrSigned') ? (document.getElementById('icePolstDnrSigned').checked ? 1 : 0) : 0,
+                        polst_dni_signed: document.getElementById('icePolstDniSigned') ? (document.getElementById('icePolstDniSigned').checked ? 1 : 0) : 0,
+                        polst_nutrition_signed: document.getElementById('icePolstNutritionSigned') ? (document.getElementById('icePolstNutritionSigned').checked ? 1 : 0) : 0
                     },
                     emergency: {
                         proxy: {

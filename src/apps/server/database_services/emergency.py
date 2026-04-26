@@ -24,7 +24,9 @@ class EmergencyService:
         """Compose emergency profile from canonical sources. No data stored in this service."""
         care = self.db_manager.execute_query(
             "SELECT care_recipient_user_id, name, dob, photo_path, medical_dnr, dnr_document_path, notes,"
-            " medical_dni_status, medical_nutrition_status, devices_notes, brief_history, other_notes"
+            " medical_dni_status, medical_nutrition_status,"
+            " polst_dnr_signed, polst_dni_signed, polst_nutrition_signed,"
+            " devices_notes, brief_history, other_notes"
             " FROM care_recipients WHERE family_circle_id = ?",
             (family_circle_id,),
         )
@@ -175,6 +177,9 @@ class EmergencyService:
                 "dnr": int(care_row["medical_dnr"]) if care_row and care_row["medical_dnr"] is not None else 0,
                 "dni_status": care_row["medical_dni_status"] if care_row else None,
                 "nutrition_status": care_row["medical_nutrition_status"] if care_row else None,
+                "polst_dnr_signed": bool(care_row["polst_dnr_signed"]) if care_row else False,
+                "polst_dni_signed": bool(care_row["polst_dni_signed"]) if care_row else False,
+                "polst_nutrition_signed": bool(care_row["polst_nutrition_signed"]) if care_row else False,
                 "allergies": allergies,
                 "medications": medications,
             },

@@ -50,6 +50,9 @@ _COLUMN_MIGRATIONS = [
     ("care_recipients", "devices_notes", "TEXT"),
     ("care_recipients", "brief_history", "TEXT"),
     ("care_recipients", "other_notes", "TEXT"),
+    ("care_recipients", "polst_dnr_signed", "INTEGER DEFAULT 0"),
+    ("care_recipients", "polst_dni_signed", "INTEGER DEFAULT 0"),
+    ("care_recipients", "polst_nutrition_signed", "INTEGER DEFAULT 0"),
     ("allergies", "reaction", "TEXT"),
 ]
 

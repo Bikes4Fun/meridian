@@ -480,6 +480,36 @@
             });
     }
 
+    function uploadCareRecipientPhoto(file) {
+        var crId = (document.getElementById('iceCareRecipientId') || {}).value;
+        if (!file || !crId) return Promise.resolve(false);
+        if (!_familyCircleId) {
+            showIceStatus('Still loading; wait a moment and choose the photo again.', 'error');
+            return Promise.resolve(false);
+        }
+        return meridianApiClient
+            .uploadCareRecipientPhoto(_familyCircleId, crId, file)
+            .then(function (response) {
+                var body = response && response.body;
+                var d = body && body.data;
+                if (d && d.photo_path) _loadedPaths.photo_path = d.photo_path;
+                var prev = document.getElementById('icePhotoPreview');
+                if (prev) {
+                    prev.hidden = false;
+                    prev.src = meridianApiClient.getUserPhotoUrl(crId);
+                    prev.onerror = function () {
+                        showIceStatus('Photo saved but preview could not load.', 'error');
+                    };
+                }
+                showIceStatus('Photo uploaded.', 'success');
+                return true;
+            })
+            .catch(function (err) {
+                showIceStatus(err.message || 'Photo upload failed', 'error');
+                return false;
+            });
+    }
+
     function wireUploadPreviews() {
         var dnrInput = document.getElementById('iceDnrDoc');
         var dnrName = document.getElementById('iceDnrDocName');

@@ -49,6 +49,123 @@ updateViewportDebugBadge();
 window.addEventListener('resize', updateViewportDebugBadge);
 window.addEventListener('orientationchange', updateViewportDebugBadge);
 
+window._familyListHtmlBackup = '';
+
+function meridianEscapeAttr(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+function meridianEscapeHtmlText(s) {
+  var d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function meridianFamilyInitials(name) {
+  var n = (name || '').trim();
+  if (!n) return '?';
+  var parts = n.split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return (n[0] || '?').toUpperCase();
+}
+
+window.meridianOpenFamilyMemberDetail = function(detailKey) {
+  if (!detailKey) return;
+  var body = document.getElementById('family-panel-body');
+  if (!body) return;
+  if (!window._familyListHtmlBackup) window._familyListHtmlBackup = body.innerHTML;
+  var script = document.getElementById('family-member-details');
+  if (!script || !script.textContent) return;
+  var map;
+  try {
+    map = JSON.parse(script.textContent);
+  } catch (err) {
+    return;
+  }
+  var d = map[detailKey];
+  if (!d) return;
+  var tpl = document.getElementById('family-call-btn-svg');
+  var svgInner = tpl ? tpl.innerHTML : '';
+  var name = d.display_name || '';
+  var phone = d.phone || '';
+  var rel = d.relationship || '';
+  var loc = d.location || '';
+  var last = d.last_seen || '';
+  var disabled = phone ? '' : ' disabled aria-disabled="true"';
+  var photo = d.photo_src || '';
+  var avHtml;
+  if (photo) {
+    avHtml =
+      '<div class="family-member-detail-avatar">' +
+      '<img src="' +
+      meridianEscapeAttr(photo) +
+      '" alt="' +
+      meridianEscapeAttr(name) +
+      '"/>' +
+      '</div>';
+  } else {
+    avHtml =
+      '<div class="family-member-detail-avatar family-member-detail-avatar--initial" aria-hidden="true">' +
+      meridianEscapeHtmlText(meridianFamilyInitials(name)) +
+      '</div>';
+  }
+  var relHtml = rel
+    ? '<div class="family-member-detail-rel">' + meridianEscapeHtmlText(rel) + '</div>'
+    : '';
+  var lastHtml = last
+    ? '<div class="family-member-detail-last">' + meridianEscapeHtmlText(last) + '</div>'
+    : '';
+  var callBtn =
+    '<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="' +
+    meridianEscapeAttr(phone) +
+    '" data-name="' +
+    meridianEscapeAttr(name) +
+    '" aria-label="Call ' +
+    meridianEscapeAttr(name) +
+    '"' +
+    disabled +
+    '>' +
+    svgInner +
+    '</button>';
+  body.innerHTML =
+    '<div class="family-member-detail">' +
+    '<div class="family-member-detail-header">' +
+    '<button type="button" class="family-member-detail-close" aria-label="Back to family list">' +
+    '\u00d7' +
+    '</button>' +
+    '</div>' +
+    '<div class="family-member-detail-scroll">' +
+    '<div class="family-member-detail-top">' +
+    avHtml +
+    '<div class="family-member-detail-text">' +
+    '<div class="family-member-detail-name">' +
+    meridianEscapeHtmlText(name) +
+    '</div>' +
+    relHtml +
+    '<div class="family-member-detail-loc">' +
+    meridianEscapeHtmlText(loc) +
+    '</div>' +
+    lastHtml +
+    '</div>' +
+    '</div>' +
+    '<div class="family-member-detail-actions">' +
+    callBtn +
+    '</div>' +
+    '</div>' +
+    '</div>';
+};
+
+window.meridianCloseFamilyMemberDetail = function() {
+  var body = document.getElementById('family-panel-body');
+  if (!body || !window._familyListHtmlBackup) return;
+  body.innerHTML = window._familyListHtmlBackup;
+};
+
 // Calendar modal: open/prefill in JS; Python bridge only submits/deletes (see app.py).
 window.meridianKioskEvents = {
   openAddModal: function() {
@@ -322,6 +439,39 @@ document.getElementById('screen-content').addEventListener('click', function(e) 
     kioskStartTwilioSpeakerCall(p, n);
     return;
   }
+  var mapPopRow = e.target.closest('.map-cluster-popup-item[data-detail-key-enc]');
+  if (mapPopRow) {
+    e.preventDefault();
+    var enc = mapPopRow.getAttribute('data-detail-key-enc') || '';
+    if (enc && typeof window.meridianOpenFamilyMemberDetail === 'function') {
+      try {
+        var dkm = decodeURIComponent(enc);
+        if (dkm) {
+          if (window._familyMap && typeof window._familyMap.closePopup === 'function') {
+            window._familyMap.closePopup();
+          }
+          window.meridianOpenFamilyMemberDetail(dkm);
+        }
+      } catch (err) {}
+    }
+    return;
+  }
+  var famDetailClose = e.target.closest('.family-member-detail-close');
+  if (famDetailClose) {
+    e.preventDefault();
+    if (typeof window.meridianCloseFamilyMemberDetail === 'function') {
+      window.meridianCloseFamilyMemberDetail();
+    }
+    return;
+  }
+  var famRow = e.target.closest('.family-member-row[data-detail-key]');
+  if (famRow && !e.target.closest('.contact-call-btn')) {
+    var dk = famRow.getAttribute('data-detail-key');
+    if (dk && typeof window.meridianOpenFamilyMemberDetail === 'function') {
+      window.meridianOpenFamilyMemberDetail(dk);
+    }
+    return;
+  }
   // Must not use closest('[data-screen]') alone: body has data-screen from showScreen() and would
   // match every click (inputs, checkboxes) and re-navigate → flash, no focus.
   var screenBtn = e.target.closest('button[data-screen]');
@@ -377,6 +527,7 @@ function updateNavActiveState(screenName) {
 function showScreen(name, html) {
   var el = document.getElementById('screen-content');
   if (el) {
+    window._familyListHtmlBackup = '';
     el.innerHTML = html;
     document.body.dataset.screen = name;
     updateNavActiveState(name);

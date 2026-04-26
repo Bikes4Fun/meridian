@@ -29,6 +29,55 @@ function getInitials(name) {
   return (name[0] || '?').toUpperCase();
 }
 
+/**
+ * @param {boolean} [forPopup] if true, add .map-cluster-popup-avatar (Leaflet popup list only).
+ */
+function mapClusterAvatarCellHtml(m, forPopup) {
+  var pCls = forPopup ? ' map-cluster-popup-avatar' : '';
+  if (m && m.photo_src) {
+    return (
+      '<div class="map-cluster-avatar' +
+      pCls +
+      '"><img src="' +
+      m.photo_src.replace(/"/g, '&quot;') +
+      '" alt=""/></div>'
+    );
+  }
+  var n = m ? m.name : '';
+  if (m && m.is_patient) n = 'You';
+  return (
+    '<div class="map-cluster-avatar map-cluster-avatar-initials' +
+    pCls +
+    '">' +
+    escapeHtml(getInitials(n || '?')) +
+    '</div>'
+  );
+}
+
+/** List row: avatar + name (+ optional subline for patient home); opens family detail when detail_key set. */
+function mapClusterPopupItemHtml(m) {
+  var name = m && m.is_patient ? 'You' : (m && m.name) || '';
+  var nameHtml = '<div class="map-cluster-popup-name-text">' + escapeHtml(name) + '</div>';
+  var dk = m && m.detail_key != null && String(m.detail_key).length ? m.detail_key : '';
+  var rowInner =
+    mapClusterAvatarCellHtml(m, true) +
+    '<div class="map-cluster-popup-text-wrap">' +
+    nameHtml +
+    '</div>';
+  if (dk) {
+    return (
+      '<div class="map-cluster-popup-item map-cluster-popup-item--action" data-detail-key-enc="' +
+      encodeURIComponent(dk) +
+      '" role="button" tabindex="0"><div class="map-cluster-popup-item-inner">' +
+      rowInner +
+      '</div></div>'
+    );
+  }
+  return (
+    '<div class="map-cluster-popup-item"><div class="map-cluster-popup-item-inner">' + rowInner + '</div></div>'
+  );
+}
+
 // -----------------------------------------------------------------------------
 // MARKERS: MarkerCreator and ClusterCreator classes (used repeatedly)
 // -----------------------------------------------------------------------------
@@ -97,24 +146,26 @@ class MarkerCreator {
 
   buildPopup(m) {
     if (m.is_patient) {
-      return '<strong>You are home at ' + escapeHtml(m.home_place_name || 'Home') + '</strong>';
+      var ph = '<div class="map-popup-patient-below">';
+      if (m.home_place_name) {
+        ph += '<div class="map-popup-place">' + escapeHtml(m.home_place_name) + '</div>';
+      }
+      ph += '<div class="map-cluster-popup-list">' + mapClusterPopupItemHtml(m) + '</div></div>';
+      return ph;
     }
-    var html = '';
+    var h = '';
     if (m.location_name) {
-      html += '<div class="map-popup-place">' + escapeHtml(m.location_name) + '</div>';
+      h += '<div class="map-popup-place">' + escapeHtml(m.location_name) + '</div>';
     }
-    html += '<div class="map-popup-name">' + escapeHtml(m.name || '') + '</div>';
-    return html;
+    h += '<div class="map-cluster-popup-list map-popup-single-below">' + mapClusterPopupItemHtml(m) + '</div>';
+    return h;
   }
 }
 
 /** Creates cluster markers for multiple people at same location. Used repeatedly per cluster. */
 class ClusterCreator {
   _avatarHtml(m) {
-    if (m.photo_src) {
-      return '<div class="map-cluster-avatar"><img src="' + m.photo_src.replace(/"/g, '&quot;') + '" alt=""/></div>';
-    }
-    return '<div class="map-cluster-avatar map-cluster-avatar-initials">' + escapeHtml(getInitials(m.name || (m.is_patient ? 'You' : '?'))) + '</div>';
+    return mapClusterAvatarCellHtml(m, false);
   }
 
   _calloutHtml(group) {
@@ -153,8 +204,7 @@ class ClusterCreator {
     var html = loc ? '<div class="map-popup-place">' + escapeHtml(loc) + '</div>' : '';
     html += '<div class="map-cluster-popup-list">';
     group.forEach(function(m) {
-      var name = m.is_patient ? 'You' : (m.name || '');
-      html += '<div class="map-cluster-popup-item">' + escapeHtml(name) + '</div>';
+      html += mapClusterPopupItemHtml(m);
     });
     html += '</div>';
     return html;
@@ -176,6 +226,11 @@ function buildMarkerLayer(markers, useClusters) {
       toAdd.forEach(function(m) {
         var marker = markerCreator.create(m);
         marker.bindPopup(markerCreator.buildPopup(m)).addTo(layer);
+        if (m.detail_key && typeof window.meridianOpenFamilyMemberDetail === 'function') {
+          marker.on('click', function() {
+            window.meridianOpenFamilyMemberDetail(m.detail_key);
+          });
+        }
       });
     }
   });
@@ -285,7 +340,9 @@ function initMap(markersJson, placesJson) {
       placeMarkers();
       if (markers.length > 0) map.on('zoomend', placeMarkers);
       map.invalidateSize();
-      applyKioskFamilyMapViewOffset(map);
+      requestAnimationFrame(function() {
+        map.invalidateSize();
+      });
     } catch (e) {
       var mapEl = document.getElementById('map');
       if (mapEl) mapEl.innerHTML = '<div class="state-placeholder state-error">Map unavailable</div>';

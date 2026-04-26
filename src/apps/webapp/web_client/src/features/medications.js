@@ -119,6 +119,18 @@
             : 'Mark all non-PRN (not as-needed) as taken';
     }
 
+    function updateMarkAllButton() {
+        var btn = document.getElementById('healthMedsMarkAllBtn');
+        if (!btn) return;
+        var dueCount = (_latestTakeRows.timedRows || []).filter(function (m) {
+            return m && m.status !== 'done' && (m.time || '').toLowerCase() !== 'prn';
+        }).length;
+        btn.disabled = _markAllBusy || dueCount < 1;
+        btn.textContent = _markAllBusy
+            ? 'Marking non-as-needed doses...'
+            : 'Mark all non-PRN (not as-needed) as taken';
+    }
+
     function buildSettingsEditorHTML() {
         var trash = MeridianMedicationsInline.TRASH_SVG;
         return '<div class="ice-med-toolbar-top">' +
@@ -365,7 +377,7 @@
                         '</div>' +
                         (
                             prnItems.length
-                                ? '<section class="health-meds-prn-sticky">' +
+                                ? '<section class="health-meds-prn-sticky" aria-label="As needed medications">' +
                                   '<h4 class="health-meds-prn-sticky__title">As needed</h4>' +
                                   '<ul class="list-panel list-panel--meds list-panel--prn-sticky">' +
                                   prnItems.join('') +

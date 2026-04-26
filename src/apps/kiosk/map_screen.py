@@ -9,6 +9,7 @@ import html
 import json
 import logging
 from datetime import datetime, timezone
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,16 @@ def _is_care_recipient(contact: dict, kiosk_user_id: str) -> bool:
     if kiosk_user_id and (user_id == kiosk_user_id or contact_id == kiosk_user_id):
         return True
     return relationship in ("care recipient", "care_recipient", "patient", "you")
+
+
+def _family_member_detail_key(user_id: str, display_name: str, location: str) -> str:
+    """Stable key for list rows, detail JSON, and map markers (must match across surfaces)."""
+    uid = (user_id or "").strip()
+    if uid:
+        return uid
+    n = (display_name or "").strip().lower()
+    loc = (location or "").strip().lower()
+    return f"n:{n}|{loc}"
 
 
 def _format_last_checked_label(checkin: dict) -> str:
@@ -131,15 +142,25 @@ def _family_panel_body_fragment(
     checkins_data: Optional[list],
     kiosk_user_id: str,
     home_place_name: str,
-) -> str:
+) -> tuple[str, dict[str, dict]]:
     rows: list[str] = []
+    details: dict[str, dict] = {}
     you_photo_src = (
         loc_svc.get_user_photo_b64((kiosk_user_id or "").strip())
         if loc_svc and kiosk_user_id
         else None
     )
+    dk_you = _family_member_detail_key(kiosk_user_id, "You", home_place_name)
+    details[dk_you] = {
+        "display_name": "You",
+        "relationship": "",
+        "location": home_place_name or "Home",
+        "last_seen": "",
+        "phone": "",
+        "photo_src": you_photo_src or "",
+    }
     rows.append(
-        '<div class="family-member-row family-member-row--you">'
+        f'<div class="family-member-row family-member-row--you" data-detail-key="{html.escape(dk_you)}">'
         f"{_family_avatar_fragment('You', you_photo_src)}"
         '<div class="family-member-main">'
         '<div class="family-member-topline">'
@@ -156,7 +177,7 @@ def _family_panel_body_fragment(
     )
     if not checkins_data:
         rows.append('<div class="family-empty-state">No locations yet</div>')
-        return f'<div class="family-member-list">{"".join(rows)}</div>'
+        return f'<div class="family-member-list">{"".join(rows)}</div>', details
 
     seen: set[str] = set()
     for c in checkins_data:
@@ -191,8 +212,17 @@ def _family_panel_body_fragment(
             if safe_last_checked
             else ""
         )
+        dk = _family_member_detail_key(uid, display_name, loc_raw)
+        details[dk] = {
+            "display_name": display_name,
+            "relationship": relationship,
+            "location": loc_raw or "Unknown location",
+            "last_seen": last_checked,
+            "phone": phone,
+            "photo_src": photo_src or "",
+        }
         rows.append(
-            '<div class="family-member-row">'
+            f'<div class="family-member-row" data-detail-key="{html.escape(dk)}">'
             f"{_family_avatar_fragment(display_name, photo_src)}"
             '<div class="family-member-main">'
             '<div class="family-member-topline">'
@@ -209,7 +239,7 @@ def _family_panel_body_fragment(
             f'<button type="button" class="timeline-action-btn btn-small contact-call-btn family-member-call-btn" data-phone="{safe_phone}" data-name="{safe_name}" aria-label="Call {safe_name}"{disabled}>{_PHONE_ICON_SVG}</button>'
             "</div>"
         )
-    return f'<div class="family-member-list">{"".join(rows)}</div>'
+    return f'<div class="family-member-list">{"".join(rows)}</div>', details
 
 
 def build_checkin_html(
@@ -273,7 +303,7 @@ def build_checkin_html(
         if not home_place:
             home_place = raw_places[0]
         home_place_name = (home_place.get("location_name") or "Home").strip() or "Home"
-    panel_body = _family_panel_body_fragment(
+    panel_body, family_details = _family_panel_body_fragment(
         loc_svc,
         hp,
         contacts_by_uid,
@@ -311,6 +341,8 @@ def build_checkin_html(
         kiosk_user_id=kiosk_user_id,
         places_result=places_result,
         checkins_result=checkins_result,
+        contacts_by_uid=contacts_by_uid,
+        contacts_by_name_unique=contacts_by_name_unique,
     )
     center: Optional[tuple[float, float]] = None
     if home_place:
@@ -334,6 +366,13 @@ def build_checkin_html(
         )
         if center:
             runtime_cache.put("last_map_center", center)
+    details_json = json.dumps(family_details, separators=(",", ":"))
+    call_icon_tpl = f'<template id="family-call-btn-svg">{_PHONE_ICON_SVG}</template>'
+    details_script = (
+        '<script type="application/json" id="family-member-details">'
+        + details_json
+        + "</script>"
+    )
     layout = (
         '<div class="family-locations-layout">'
         + map_html
@@ -346,6 +385,8 @@ def build_checkin_html(
         + '<div class="family-panel-body" id="family-panel-body">'
         + panel_body
         + "</div>"
+        + details_script
+        + call_icon_tpl
         + "</div>"
         + "</div>"
     )
@@ -360,6 +401,8 @@ def get_map_markers(
     kiosk_user_id: str = "",
     places_result=None,
     checkins_result=None,
+    contacts_by_uid: Optional[dict[str, dict]] = None,
+    contacts_by_name_unique: Optional[dict[str, Optional[dict]]] = None,
 ) -> list:
     """Build markers for the map: patient at home, then family check-ins. Returns list of marker dicts."""
     loc_svc = services.get_location_service()
@@ -385,12 +428,15 @@ def get_map_markers(
         lon = home_place.get("gps_longitude")
         if lat is not None and lon is not None:
             photo_src = loc_svc.get_user_photo_b64((kiosk_user_id or "").strip())
+            hname = home_place.get("location_name") or "Home"
             patient_m = {
                 "lat": lat,
                 "lon": lon,
                 "name": "You",
                 "is_patient": True,
-                "home_place_name": home_place.get("location_name") or "Home",
+                "home_place_name": hname,
+                "user_id": (kiosk_user_id or "").strip(),
+                "detail_key": _family_member_detail_key(kiosk_user_id, "You", hname),
             }
             if photo_src:
                 patient_m["photo_src"] = photo_src
@@ -405,11 +451,29 @@ def get_map_markers(
             lon = c.get("longitude")
             if lat is None or lon is None:
                 continue
-            name = c.get("contact_name", "Unknown")
+            name_raw = (c.get("contact_name") or "Unknown").strip()
             loc = c.get("location_name") or ""
-            user_id = c.get("user_id") or ""
+            user_id = (c.get("user_id") or "").strip()
             photo_src = loc_svc.get_user_photo_b64((user_id or "").strip())
-            m = {"lat": lat, "lon": lon, "name": name, "location_name": loc}
+            display_name = name_raw
+            if contacts_by_uid or contacts_by_name_unique:
+                name_key = name_raw.lower()
+                contact = (contacts_by_uid or {}).get(user_id) or (
+                    (contacts_by_name_unique or {}).get(name_key) or {}
+                )
+                display_name = (
+                    (contact.get("display_name") or name_raw or "").strip() or "Unknown"
+                )
+            loc_raw = (loc or "Unknown location").strip() or "Unknown location"
+            dk = _family_member_detail_key(user_id, display_name, loc_raw)
+            m = {
+                "lat": lat,
+                "lon": lon,
+                "name": display_name,
+                "location_name": loc,
+                "user_id": user_id,
+                "detail_key": dk,
+            }
             if photo_src:
                 m["photo_src"] = photo_src
             markers.append(m)

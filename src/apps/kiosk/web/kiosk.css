@@ -2015,6 +2015,25 @@ button.family-panel-head:active {
   background: rgba(255, 255, 255, 0.3);
 }
 
+.emergency-warm-refresh-btn {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.emergency-warm-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
 .emergency-warm-scroll {
   flex: 1;
   min-height: 0;

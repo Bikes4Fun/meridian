@@ -7,7 +7,6 @@
 
     var _familyCircleId = null;
     var _loadedPaths = { photo_path: null, dnr_document_path: null };
-    var _pendingPhotoFile = null;
     var _pendingDnrFile = null;
     var _iceMedsInitial = [];
     var _iceEcInitial = [];
@@ -65,7 +64,7 @@
         var optPri = selPri === 'primary_emergency' ? ' selected' : '';
         var optSec = selPri === 'secondary_emergency' ? ' selected' : '';
         var optNone = !selPri ? ' selected' : '';
-        return '<div class="ice-ec-row" data-contact-id="' + id + '">' +
+        return '<div class="ice-ec-row ec-line" data-contact-id="' + id + '">' +
             '<input type="text" class="event-input ice-ec-name" placeholder="Name" value="' + name + '">' +
             '<input type="text" class="event-input ice-ec-phone" placeholder="Phone" value="' + phone + '">' +
             '<input type="text" class="event-input ice-ec-rel" placeholder="Relationship" value="' + rel + '">' +
@@ -218,24 +217,37 @@
     }
 
     function renderIceCompleteness(data) {
-        var host = document.getElementById('iceCompleteness');
+        var host = document.getElementById('healthIceCompleteness') || document.getElementById('iceCompleteness');
         if (!host) return;
         var model = iceCompletenessModel(data);
         var done = model.done || 0;
+        var sm = document.getElementById('iceCompletionSummaryMain');
+        if (sm) sm.textContent = done + ' of 7 fields complete';
         var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
-        var tier = done >= 7 ? 'high' : (done >= 4 ? 'mid' : 'low');
+        var completeHints = [];
+        if (done >= 1) completeHints.push('Identity started');
+        if (done >= 3) completeHints.push('Core code-status fields saved');
+        if (done >= 5) completeHints.push('At least one contact and proxy info present');
+        if (done >= 7) completeHints.push('Critical fields complete');
+        if (!completeHints.length) completeHints.push('No core fields complete yet');
+        var completeHtml = '<ul class="list-tight">' + completeHints.map(function (w) {
+            return '<li>' + escapeHtml(w) + '</li>';
+        }).join('') + '</ul>';
         var missingHtml = model.warnings.length
-            ? '<ul class="ice-completeness__missing">' + model.warnings.map(function (w) {
+            ? '<ul class="list-tight list-tight--miss">' + model.warnings.map(function (w) {
                 return '<li>' + escapeHtml(w) + '</li>';
             }).join('') + '</ul>'
-            : '<ul class="ice-completeness__missing"><li>Critical fields look complete.</li></ul>';
+            : '<ul class="list-tight list-tight--miss"><li>No urgent missing items.</li></ul>';
         host.innerHTML =
-            '<div class="ice-completeness__head">' +
-            '<span class="ice-completeness__title">ICE completeness</span>' +
-            '<span class="ice-completeness__score ice-completeness__score--' + tier + '">' + done + ' / 7 complete</span>' +
+            '<div class="bar bar--slim"><div style="height:100%;width:' + pct + '%;background:#c4a574"></div></div>' +
+            '<div class="completion-sec">' +
+            '<p class="completion-sec-h">In place</p>' +
+            completeHtml +
             '</div>' +
-            '<div class="ice-completeness__bar"><div class="ice-completeness__fill ice-completeness__fill--' + tier + '" style="width:' + pct + '%"></div></div>' +
-            missingHtml;
+            '<div class="completion-sec">' +
+            '<p class="completion-sec-h">Still to do</p>' +
+            missingHtml +
+            '</div>';
     }
 
     // TODO: When conditions/allergies become editable on this page, add inputs and merge into save payload;
@@ -243,21 +255,91 @@
     function syncConditionsAllergiesFromMedical(medical) {
         medical = medical || {};
         var condEl = document.getElementById('iceConditions');
-        if (condEl) condEl.textContent = medical.conditions || '—';
+        if (condEl) {
+            var ct = medical.conditions || '—';
+            if (condEl.tagName === 'TEXTAREA' || (condEl.tagName === 'INPUT' && condEl.type === 'text')) {
+                condEl.value = ct;
+            } else {
+                condEl.textContent = ct;
+            }
+        }
 
         var algEl = document.getElementById('iceAllergies');
         if (algEl) {
-            algEl.innerHTML = '';
             var allergies = medical.allergies || [];
             if (allergies.length === 0) {
-                algEl.innerHTML = '<li class="muted">None listed</li>';
+                algEl.innerHTML = '<p class="tiny muted">None listed</p>';
             } else {
-                allergies.forEach(function (a) {
-                    var li = document.createElement('li');
-                    li.textContent = a;
-                    algEl.appendChild(li);
-                });
+                algEl.innerHTML = allergies.map(function (a) {
+                    return (
+                        '<div class="allergy-line">' +
+                        '<div><label class="block">Substance / drug</label>' +
+                        '<input class="input-tight" readonly value="' + escapeHtml(a) + '"></div>' +
+                        '<div><label class="block">Reaction / symptoms</label>' +
+                        '<input class="input-tight" readonly value=""></div>' +
+                        '<div><label class="block">Onset (approx.)</label>' +
+                        '<input class="input-tight" readonly value=""></div>' +
+                        '</div>'
+                    );
+                }).join('');
             }
+        }
+    }
+
+    function dnrBooleanFromForm() {
+        var dnrEl = document.getElementById('iceDnr');
+        if (!dnrEl) return false;
+        if (dnrEl.tagName === 'SELECT') {
+            return dnrEl.value === '1';
+        }
+        return !!dnrEl.checked;
+    }
+
+    function updateIceIdentityStrip() {
+        var nameEl = document.getElementById('iceName');
+        var name = nameEl ? nameEl.value : '';
+        var av = document.getElementById('iceIdentityAvatar');
+        if (av) {
+            var t = (name || '').trim();
+            if (!t) {
+                av.textContent = '—';
+            } else {
+                var parts = t.split(/\s+/);
+                var a = (parts[0].charAt(0) || '').toUpperCase();
+                var b = (parts.length > 1 ? parts[parts.length - 1].charAt(0) : a).toUpperCase();
+                av.textContent = (a + b).slice(0, 2);
+            }
+        }
+        var dnrEl = document.getElementById('iceDnr');
+        var dniSel = document.getElementById('iceDniStatus');
+        var nutSel = document.getElementById('iceNutritionStatus');
+        var dniT = dniSel && dniSel.options[dniSel.selectedIndex] ? dniSel.options[dniSel.selectedIndex].text : '—';
+        var nutT = nutSel && nutSel.options[nutSel.selectedIndex] ? nutSel.options[nutSel.selectedIndex].text : '—';
+        var dnrShort = 'not set';
+        if (dnrEl) {
+            if (dnrEl.tagName === 'SELECT' && dnrEl.options[dnrEl.selectedIndex]) {
+                dnrShort = dnrEl.options[dnrEl.selectedIndex].text;
+            } else {
+                dnrShort = dnrEl.checked ? 'no CPR' : 'not DNR (see form)';
+            }
+        }
+        var cr = document.getElementById('iceCodeReadout');
+        if (cr) {
+            cr.textContent = 'DNR: ' + dnrShort + ' · DNI: ' + dniT + ' · Nutrition: ' + nutT;
+        }
+        var dnc = document.getElementById('iceDnrCurrent');
+        if (dnc && dnrEl && dnrEl.tagName === 'SELECT' && dnrEl.options[dnrEl.selectedIndex]) {
+            dnc.textContent = dnrEl.options[dnrEl.selectedIndex].text;
+        } else if (dnc) {
+            dnc.textContent = dnrEl && dnrEl.checked ? 'DNR / no CPR' : 'Not DNR (see checkbox)';
+        }
+        var dniLine = document.getElementById('iceDniCurrentLine');
+        if (dniLine && dniSel && dniSel.options[dniSel.selectedIndex]) {
+            dniLine.textContent = dniSel.options[dniSel.selectedIndex].text;
+        }
+        var nutLine = document.getElementById('iceNutritionCurrentLine');
+        if (nutLine && nutSel && nutSel.options[nutSel.selectedIndex]) {
+            nutLine.textContent = nutSel.options[nutSel.selectedIndex].text;
         }
     }
 
@@ -274,6 +356,17 @@
                 'No emergency profile data yet for this family. Demo seed includes a care recipient (e.g. fm_care_001); until then, fields are disabled for save.',
                 true
             );
+            var av0 = document.getElementById('iceIdentityAvatar');
+            if (av0) av0.textContent = '—';
+            var prev0 = document.getElementById('icePhotoPreview');
+            if (prev0) {
+                prev0.hidden = true;
+                prev0.removeAttribute('src');
+            }
+            var cr0 = document.getElementById('iceCodeReadout');
+            if (cr0) cr0.textContent = '—';
+            var dnc0 = document.getElementById('iceDnrCurrent');
+            if (dnc0) dnc0.textContent = '—';
             syncConditionsAllergiesFromMedical({});
             _iceMedsInitial = [];
             renderIceMedications({ medications: [] });
@@ -300,7 +393,13 @@
 
         var medical = data.medical || {};
         var dnrEl = document.getElementById('iceDnr');
-        if (dnrEl) dnrEl.checked = !!medical.dnr;
+        if (dnrEl) {
+            if (dnrEl.tagName === 'SELECT') {
+                dnrEl.value = medical.dnr ? '1' : '0';
+            } else {
+                dnrEl.checked = !!medical.dnr;
+            }
+        }
 
         var emergency = data.emergency || {};
         var proxy = emergency.proxy || {};
@@ -322,10 +421,18 @@
         updateDnrDocLink(crId);
 
         var prev = document.getElementById('icePhotoPreview');
-        if (prev && crId) {
-            prev.hidden = false;
-            prev.src = meridianApiClient.getUserPhotoUrl(crId);
-            prev.onerror = function () { prev.hidden = true; };
+        if (prev) {
+            if (crId && _loadedPaths.photo_path) {
+                prev.hidden = false;
+                prev.src = meridianApiClient.getUserPhotoUrl(crId);
+                prev.onerror = function () {
+                    prev.hidden = true;
+                    prev.removeAttribute('src');
+                };
+            } else {
+                prev.hidden = true;
+                prev.removeAttribute('src');
+            }
         }
 
         syncConditionsAllergiesFromMedical(medical);
@@ -335,6 +442,7 @@
         _iceEcInitial = cloneEcSnapshot(ecs);
         renderEmergencyContacts(ecs);
         renderIceCompleteness(data);
+        updateIceIdentityStrip();
     }
 
     function updateDnrDocLink(crId) {
@@ -403,39 +511,6 @@
     }
 
     function wireUploadPreviews() {
-        var photoInput = document.getElementById('icePhoto');
-        var prev = document.getElementById('icePhotoPreview');
-        var photoName = document.getElementById('icePhotoName');
-        var photoUploadBtn = document.getElementById('icePhotoUploadBtn');
-        if (photoInput && prev) {
-            photoInput.addEventListener('change', function () {
-                var f = photoInput.files && photoInput.files[0];
-                _pendingPhotoFile = f || null;
-                setUploadButtonState('icePhotoUploadBtn', !!_pendingPhotoFile);
-                if (photoName) photoName.textContent = f ? f.name : '';
-                if (!f) return;
-                var r = new FileReader();
-                r.onload = function () {
-                    prev.hidden = false;
-                    prev.src = r.result;
-                };
-                r.readAsDataURL(f);
-            });
-        }
-        if (photoUploadBtn) {
-            photoUploadBtn.addEventListener('click', function () {
-                if (!_pendingPhotoFile) return;
-                setUploadButtonState('icePhotoUploadBtn', false);
-                uploadCareRecipientPhoto(_pendingPhotoFile).then(function (ok) {
-                    if (ok) {
-                        _pendingPhotoFile = null;
-                        if (photoInput) photoInput.value = '';
-                        if (photoName) photoName.textContent = '';
-                    }
-                    setUploadButtonState('icePhotoUploadBtn', !!_pendingPhotoFile);
-                });
-            });
-        }
         var dnrInput = document.getElementById('iceDnrDoc');
         var dnrName = document.getElementById('iceDnrDocName');
         var dnrUploadBtn = document.getElementById('iceDnrUploadBtn');
@@ -444,7 +519,11 @@
                 var f = dnrInput.files && dnrInput.files[0];
                 _pendingDnrFile = f || null;
                 setUploadButtonState('iceDnrUploadBtn', !!_pendingDnrFile);
-                dnrName.textContent = f ? f.name : '';
+                if (dnrName.tagName === 'INPUT') {
+                    dnrName.value = f ? f.name : 'No file';
+                } else {
+                    dnrName.textContent = f ? f.name : 'No file selected';
+                }
             });
         }
         if (dnrUploadBtn) {
@@ -455,7 +534,10 @@
                     if (ok) {
                         _pendingDnrFile = null;
                         if (dnrInput) dnrInput.value = '';
-                        if (dnrName) dnrName.textContent = '';
+                        if (dnrName) {
+                            if (dnrName.tagName === 'INPUT') dnrName.value = 'No file';
+                            else dnrName.textContent = 'No file selected';
+                        }
                     }
                     setUploadButtonState('iceDnrUploadBtn', !!_pendingDnrFile);
                 });
@@ -466,6 +548,61 @@
     function init() {
         var pdfLink = document.getElementById('icePdfLink');
         wireUploadPreviews();
+
+        var openDocs = document.getElementById('iceOpenDocsBtn');
+        if (openDocs) {
+            openDocs.addEventListener('click', function () {
+                var d = document.getElementById('ice-mock-section-docs');
+                if (d) {
+                    d.open = true;
+                    d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
+        }
+        var nameForAvatar = document.getElementById('iceName');
+        if (nameForAvatar) {
+            nameForAvatar.addEventListener('input', updateIceIdentityStrip);
+        }
+        var dnrU = document.getElementById('iceDnr');
+        if (dnrU) dnrU.addEventListener('change', updateIceIdentityStrip);
+        var dniU = document.getElementById('iceDniStatus');
+        if (dniU) dniU.addEventListener('change', updateIceIdentityStrip);
+        var nutU = document.getElementById('iceNutritionStatus');
+        if (nutU) nutU.addEventListener('change', updateIceIdentityStrip);
+        var idEd = document.getElementById('iceIdentityEditBtn');
+        if (idEd) {
+            idEd.addEventListener('click', function () {
+                var n = document.getElementById('iceName');
+                if (n) {
+                    n.focus();
+                    n.select();
+                }
+            });
+        }
+        var medEdit = document.getElementById('iceMedsEditAllBtn');
+        if (medEdit) {
+            medEdit.addEventListener('click', function () {
+                var b = document.getElementById('iceMedications');
+                if (b) b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+        var medAddF = document.getElementById('iceMedsAddFocusBtn');
+        var addMedB = document.getElementById('iceAddMedBtn');
+        if (medAddF && addMedB) {
+            medAddF.addEventListener('click', function () { addMedB.click(); });
+        }
+        var ecEd = document.getElementById('iceEcEditAllBtn');
+        if (ecEd) {
+            ecEd.addEventListener('click', function () {
+                var p = document.getElementById('iceProxyName');
+                if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+        var ecAdd = document.getElementById('iceEcAddCompactBtn');
+        var ecAddMain = document.getElementById('iceAddEmergencyContactBtn');
+        if (ecAdd && ecAddMain) {
+            ecAdd.addEventListener('click', function () { ecAddMain.click(); });
+        }
 
         var medContainer = document.getElementById('iceMedications');
         var addMedBtn = document.getElementById('iceAddMedBtn');
@@ -555,7 +692,7 @@
                         dob: (document.getElementById('iceDob') || {}).value || null
                     },
                     medical: {
-                        dnr: !!(document.getElementById('iceDnr') || {}).checked
+                        dnr: dnrBooleanFromForm()
                     },
                     emergency: {
                         proxy: {
@@ -587,6 +724,9 @@
                         var data = body && body.data ? body.data : null;
                         if (data) applyProfile(data);
                         showIceStatus('Profile saved.', 'success');
+                        if (typeof window.meridianRefreshHealthIceCompleteness === 'function') {
+                            window.meridianRefreshHealthIceCompleteness();
+                        }
                     })
                     .catch(function (err) {
                         showIceStatus(err.message || 'Save failed', 'error');

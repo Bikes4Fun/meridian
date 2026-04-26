@@ -64,20 +64,33 @@
     function renderIceCompleteness(el, model) {
         if (!el) return;
         var done = model.done || 0;
+        var sm = document.getElementById('iceCompletionSummaryMain');
+        if (sm) sm.textContent = done + ' of 7 fields complete';
         var pct = Math.max(0, Math.min(100, Math.round((done / 7) * 100)));
-        var tier = done >= 7 ? 'high' : (done >= 4 ? 'mid' : 'low');
+        var completeHints = [];
+        if (done >= 1) completeHints.push('Identity started');
+        if (done >= 3) completeHints.push('Core code-status fields saved');
+        if (done >= 5) completeHints.push('At least one contact and proxy info present');
+        if (done >= 7) completeHints.push('Critical fields complete');
+        if (!completeHints.length) completeHints.push('No core fields complete yet');
+        var completeHtml = '<ul class="list-tight">' + completeHints.map(function (w) {
+            return '<li>' + meridianEscapeHtml(w) + '</li>';
+        }).join('') + '</ul>';
         var missingHtml = model.warnings.length
-            ? '<ul class="ice-completeness__missing">' + model.warnings.map(function (w) {
+            ? '<ul class="list-tight list-tight--miss">' + model.warnings.map(function (w) {
                 return '<li>' + meridianEscapeHtml(w) + '</li>';
             }).join('') + '</ul>'
-            : '<ul class="ice-completeness__missing"><li>Critical fields look complete.</li></ul>';
+            : '<ul class="list-tight list-tight--miss"><li>No urgent missing items.</li></ul>';
         el.innerHTML =
-            '<div class="ice-completeness__head">' +
-            '<span class="ice-completeness__title">ICE completeness</span>' +
-            '<span class="ice-completeness__score ice-completeness__score--' + tier + '">' + done + ' / 7 complete</span>' +
+            '<div class="bar bar--slim"><div style="height:100%;width:' + pct + '%;background:#c4a574"></div></div>' +
+            '<div class="completion-sec">' +
+            '<p class="completion-sec-h">In place</p>' +
+            completeHtml +
             '</div>' +
-            '<div class="ice-completeness__bar"><div class="ice-completeness__fill ice-completeness__fill--' + tier + '" style="width:' + pct + '%"></div></div>' +
-            missingHtml;
+            '<div class="completion-sec">' +
+            '<p class="completion-sec-h">Still to do</p>' +
+            missingHtml +
+            '</div>';
     }
 
     function loadHealthIceCompleteness() {
@@ -92,6 +105,10 @@
             .catch(function () {
                 host.innerHTML = '<div class="ice-completeness__title">ICE completeness unavailable.</div>';
             });
+    }
+
+    if (typeof window !== 'undefined') {
+        window.meridianRefreshHealthIceCompleteness = loadHealthIceCompleteness;
     }
 
     function init() {
@@ -404,11 +421,12 @@
     function initNav() {
         var nav = document.getElementById('appNav');
         if (!nav) return;
-        nav.addEventListener('click', function (e) {
-            var raw = e.target;
-            var el = raw.nodeType === 1 ? raw : raw.parentElement;
-            if (!el || !el.closest) return;
-            var btn = el.closest('.nav-btn');
+        function collapseDetailsOnPage(pageEl) {
+            if (!pageEl) return;
+            var openDetails = pageEl.querySelectorAll('details[open]');
+            [].forEach.call(openDetails, function (d) { d.open = false; });
+        }
+        function activatePage(btn) {
             if (!btn) return;
             var pageId = btn.getAttribute('data-page') || '';
             var targetId = btn.getAttribute('data-target-id');
@@ -417,7 +435,10 @@
             [].forEach.call(document.querySelectorAll('.page'), function (p) { p.classList.remove('active'); });
             btn.classList.add('active');
             var target = document.getElementById(targetId);
-            if (target) target.classList.add('active');
+            if (target) {
+                target.classList.add('active');
+                collapseDetailsOnPage(target);
+            }
             if (pageId === 'events' && window.MeridianEvents) {
                 MeridianEvents.init(_familyCircleId, showStatus);
             }
@@ -437,7 +458,20 @@
             if (pageId === 'health' || pageId === 'settings') {
                 setTimeout(syncFoldDetailsFromHash, 0);
             }
+        }
+        nav.addEventListener('click', function (e) {
+            var raw = e.target;
+            var el = raw.nodeType === 1 ? raw : raw.parentElement;
+            if (!el || !el.closest) return;
+            var btn = el.closest('.nav-btn');
+            if (!btn) return;
+            activatePage(btn);
         });
+        var initialBtn =
+            nav.querySelector('.nav-btn.active') ||
+            nav.querySelector('.nav-btn[data-page="health"]') ||
+            nav.querySelector('.nav-btn');
+        activatePage(initialBtn);
     }
 
     function initKioskAlertShortcut() {
@@ -492,9 +526,11 @@
         var healthBtn = nav && nav.querySelector('.nav-btn[data-page="health"]');
         if (healthBtn) healthBtn.click();
         setTimeout(function () {
-            var el = document.getElementById('health-section-medications');
+            var el = document.getElementById('health-section-polst');
             if (el && el.tagName === 'DETAILS') el.open = true;
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            var medical = document.getElementById('ice-vnext-health');
+            if (medical && medical.tagName === 'DETAILS') medical.open = true;
         }, 50);
     }
 

@@ -78,31 +78,31 @@
   "named_places": [
     {
       "location_id": "loc_001",
-      "location_name": "Deanna's School",
+      "location_name": "Utah Tech",
       "gps": "37.103532,-113.565523",
       "radius_metres": 150
     },
     {
       "location_id": "loc_003",
-      "location_name": "Landon's School",
+      "location_name": "Random's School",
       "gps": "37.005556,-113.562030",
       "radius_metres": 150
     },
     {
       "location_id": "loc_004",
-      "location_name": "Eleanor Home",
+      "location_name": "Random Home",
       "gps": "37.139688,-113.503014",
       "radius_metres": 150
     },
     {
       "location_id": "loc_005",
-      "location_name": "Dean's Work",
+      "location_name": "Random Work",
       "gps": "37.0755,-113.3011",
       "radius_metres": 150
     },
     {
       "location_id": "loc_006",
-      "location_name": "Deanna's office",
+      "location_name": "Hurricane Office",
       "gps": "37.785834,-122.406417",
       "radius_metres": 150
     }

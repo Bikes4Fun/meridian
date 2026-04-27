@@ -5186,7 +5186,7 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
 .icev2-review-field {
     display: flex;
     gap: 12px;
-    align-items: baseline;
+    align-items: flex-start;
     margin-bottom: 8px;
     font-size: 14px;
 }
@@ -5195,8 +5195,15 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     font-size: 13px;
     min-width: 140px;
     flex-shrink: 0;
+    padding-top: 2px;
 }
-.icev2-review-field-value { color: var(--web-title); font-weight: 600; }
+.icev2-review-field-value {
+    color: var(--web-title);
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    white-space: pre-line;
+}
 .icev2-badge {
     display: inline-block;
     padding: 2px 8px;

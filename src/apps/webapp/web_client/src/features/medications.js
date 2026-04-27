@@ -702,6 +702,7 @@
                 containerEl.appendChild(htmlToEl(medRowHtml(m)));
             });
         }
+        containerEl.dispatchEvent(new CustomEvent('meridianMedRowsRendered', { bubbles: false }));
     }
 
     function validateUniqueMedicationNames(rows) {
@@ -767,11 +768,22 @@
         function notifyMutate() {
             if (typeof onListMutate === 'function') onListMutate();
         }
+        function syncDeleteToolbar() {
+            if (!deleteSelectedBtn || !listEl) return;
+            deleteSelectedBtn.disabled = !listEl.querySelector('.ice-med-select');
+        }
         if (!listEl) return;
+        listEl.addEventListener('meridianMedRowsRendered', syncDeleteToolbar);
+        listEl.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.classList && ev.target.classList.contains('ice-med-select')) {
+                syncDeleteToolbar();
+            }
+        });
         if (addBtn) {
             addBtn.addEventListener('click', function () {
                 listEl.appendChild(htmlToEl(medRowHtml({})));
                 notifyMutate();
+                syncDeleteToolbar();
             });
         }
         if (selectAllBtn) {
@@ -785,12 +797,20 @@
                 boxes.forEach(function (cb) {
                     cb.checked = next;
                 });
+                syncDeleteToolbar();
             });
         }
         if (deleteSelectedBtn) {
             deleteSelectedBtn.addEventListener('click', function () {
                 var cbs = listEl.querySelectorAll('.ice-med-select:checked');
-                if (!cbs.length) return;
+                if (!cbs.length) {
+                    if (typeof global.showToast === 'function') {
+                        global.showToast('Select at least one medication row to delete.', 'error');
+                    } else {
+                        alert('Select at least one medication row to delete.');
+                    }
+                    return;
+                }
                 var substantive = [];
                 cbs.forEach(function (cb) {
                     var row = cb.closest('.ice-med-row');
@@ -805,6 +825,7 @@
                         listEl.appendChild(htmlToEl(medRowHtml({})));
                     }
                     notifyMutate();
+                    syncDeleteToolbar();
                     return;
                 }
                 if (!confirm('Remove ' + substantive.length + ' medication row(s) from this list?')) return;
@@ -816,9 +837,11 @@
                     listEl.appendChild(htmlToEl(medRowHtml({})));
                 }
                 notifyMutate();
+                syncDeleteToolbar();
                 if (typeof hooks.onRowsDeleted === 'function') hooks.onRowsDeleted();
             });
         }
+        syncDeleteToolbar();
     }
 
     function wireAutoSave(listEl, options) {

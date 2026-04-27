@@ -100,7 +100,7 @@ On **Windows**, run the kiosk with **64-bit Python 3.11 or 3.12** from [python.o
 
 ```bash
 pip install -r requirements.txt
-PYTHONPATH=src python src/main.py           # local DB/server (default); add --remote-api to test remote API on Railway (requires RAILWAY_API_URL set to Railway API base URL)
+PYTHONPATH=src python src/main.py           # local DB/server (default); add `--remote` for kiosk-only against remote API (`RAILWAY_API_URL` / `.env`; legacy `--remote-api` works)
 PYTHONPATH=src python -m apps.server
 PYTHONPATH=src python -m apps.webapp
 PYTHONPATH=src python -m apps.kiosk

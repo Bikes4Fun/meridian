@@ -108,7 +108,7 @@
                 <p style="color:var(--warm-muted);margin:0 0 16px;font-size:14px;">Changes save automatically as you type.</p>
                 <div style="display:flex;gap:8px;margin-bottom:12px;">
                     <button type="button" id="icev2MedAddBtn" class="icev2-btn icev2-btn-secondary icev2-btn-sm">+ Add medication</button>
-                    <button type="button" id="icev2MedDelBtn" class="icev2-btn icev2-btn-danger icev2-btn-sm" disabled>Delete selected</button>
+                    <button type="button" id="icev2MedDelBtn" class="icev2-btn icev2-btn-danger icev2-btn-sm">Delete selected</button>
                     <button type="button" id="icev2MedSelAllBtn" class="icev2-btn icev2-btn-ghost icev2-btn-sm">Select all</button>
                 </div>
                 <div id="icev2MedList"></div>
@@ -629,9 +629,6 @@ window.meridianEscapeAttr = function (s) {
         var selAllBtn = document.getElementById('icev2MedSelAllBtn');
         if (!listEl) return;
         MeridianMedicationsInline.renderRows(listEl, meds);
-        MeridianMedicationsInline.wireList(listEl, addBtn, delBtn, selAllBtn, {
-            onSelectionChange: function (has) { if (delBtn) delBtn.disabled = !has; }
-        });
         _medAutosave = MeridianMedicationsInline.wireAutoSave(listEl, {
             debounceMs: 1500,
             isEnabled: function () { return !!_fid; },
@@ -651,6 +648,11 @@ window.meridianEscapeAttr = function (s) {
                         setSaveStatus('error', 'Save failed');
                         showToast((err && err.message) || 'Medications save failed', 'error');
                     });
+            }
+        });
+        MeridianMedicationsInline.wireList(listEl, addBtn, delBtn, selAllBtn, {
+            onListMutate: function () {
+                if (_medAutosave && _medAutosave.schedule) _medAutosave.schedule();
             }
         });
     }
@@ -753,8 +755,10 @@ window.meridianEscapeAttr = function (s) {
             card.appendChild(confirm);
             confirm.querySelector('.icev2-confirm-yes').addEventListener('click', function () {
                 var cid = card.getAttribute('data-contact-id');
-                if (cid && cid.indexOf('contact_') !== 0) {
-                    meridianApiClient.deleteContact(_fid, cid).catch(function () {});
+                if (cid) {
+                    meridianApiClient.deleteContact(_fid, cid).catch(function (err) {
+                        showToast((err && err.message) || 'Delete contact failed', 'error');
+                    });
                 }
                 if (card.parentNode) card.parentNode.removeChild(card);
             });

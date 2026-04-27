@@ -8,7 +8,6 @@
   {"id": "fm_004", "display_name": "Indigo", "photo_filename": "indigo_gps_pin.jpeg", "family_circle_id": "F00000"},
   {"id": "fm_005", "display_name": "Dylan", "photo_filename": "dylan_profile_photo.png", "family_circle_id": "F00000", "phone": null},
   {"id": "fm_care_001", "display_name": "Marian Foster", "photo_filename": "care_recipient_profile_photo.jpg", "family_circle_id": "F00000", "phone": null},
-  {"id": "fm_006", "display_name": "James Foster", "photo_filename": "james_profile_photo.jpg", "family_circle_id": "F00000"},
   {"id": "fm_007", "display_name": "Landon", "photo_filename": "landon_profile_photo.jpeg", "family_circle_id": "F00000", "phone": null},
   {"id": "fm_008", "display_name": "Morgan", "photo_filename": "morgan_profile_photo.jpg", "family_circle_id": "F00000"},
   {"id": "fm_009", "display_name": "Casey", "photo_filename": "casey_profile_photo.jpg", "family_circle_id": "F00000"},

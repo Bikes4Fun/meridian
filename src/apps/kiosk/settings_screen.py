@@ -79,15 +79,7 @@ def build_tilt_sensor_row_html(slot: int) -> str:
             "badge_class": "ts-down",
             "state": "No activity",
             "time": "\u2014",
-        },
-        4: {
-            "name": "Melatonin",
-            "med": "3mg",
-            "dot_class": "dot-offline",
-            "badge_class": "ts-down",
-            "state": "No activity",
-            "time": "\u2014",
-        },
+        }
     }
     row = row_map.get(slot, row_map[1])
     name = html_module.escape(row["name"])

@@ -527,6 +527,9 @@ function updateNavActiveState(screenName) {
 function showScreen(name, html) {
   var el = document.getElementById('screen-content');
   if (el) {
+    if (html === undefined) {
+      return;
+    }
     window._familyListHtmlBackup = '';
     el.innerHTML = html;
     document.body.dataset.screen = name;
@@ -899,7 +902,9 @@ function kioskAcceptCall(call, callerName) {
   var overlay = document.getElementById('kiosk-incoming-call-overlay');
   if (overlay) overlay.classList.add('kiosk-incoming-call--hidden');
   if (document.body.classList.contains('alert-active')) {
-    showScreen('emergency');
+    if (typeof pywebview !== 'undefined' && pywebview.api && pywebview.api.navigate) {
+      pywebview.api.navigate('emergency');
+    }
   }
   var minimizeInCall =
     document.body.classList.contains('alert-active') ||
@@ -944,7 +949,8 @@ function kioskShowIncomingCallUI(call, callerName) {
     document.body.appendChild(overlay);
   }
 
-  document.getElementById('kiosk-incoming-caller-name').textContent = callerName;
+  document.getElementById('kiosk-incoming-caller-name').textContent =
+    callerName != null && String(callerName).trim() !== '' ? String(callerName) : 'Family member';
   overlay.classList.remove('kiosk-incoming-call--hidden');
 
   document.getElementById('kioskAnswerBtn').onclick = function() {

@@ -27,6 +27,11 @@
 
     <main class="icev2-main">
         <div class="icev2-form-column">
+        <div id="icev2AttentionBanner" class="icev2-attention-banner" hidden>
+            <button type="button" class="icev2-attention-skip" id="icev2BannerDismiss" aria-label="Dismiss">✕</button>
+            <p class="icev2-attention-banner-title">⚠ A few things to check before exporting</p>
+            <ul class="icev2-attention-list" id="icev2AttentionList"></ul>
+        </div>
 
         <!-- Tab 0: Identity -->
         <section id="icev2Tab0" class="icev2-tab-content" role="tabpanel" aria-labelledby="icev2TabBtn0">
@@ -132,18 +137,11 @@
 
         <!-- Tab 6: Review -->
         <section id="icev2Tab6" class="icev2-tab-content" role="tabpanel" aria-labelledby="icev2TabBtn6" hidden>
-            <div id="icev2AttentionBanner" class="icev2-attention-banner" hidden>
-                <button type="button" class="icev2-attention-skip" id="icev2BannerDismiss" aria-label="Dismiss">✕</button>
-                <p class="icev2-attention-banner-title">⚠ A few things to check before exporting</p>
-                <ul class="icev2-attention-list" id="icev2AttentionList"></ul>
-            </div>
             <div id="icev2ReviewContent"></div>
             <div class="icev2-review-footer">
                 <p style="margin:0 0 16px;color:var(--warm-muted);font-size:14px;">This profile is visible to first responders on the Meridian kiosk emergency screen.</p>
-                <div class="icev2-review-actions">
-                    <a id="icev2PdfLink" href="#" target="_blank" rel="noopener" class="icev2-btn icev2-btn-outline">Download Emergency Profile PDF</a>
-                    <button type="button" id="icev2SaveAllBtn" class="icev2-btn icev2-btn-ghost icev2-btn-sm">Re-save all fields</button>
-                </div>
+                <a id="icev2PdfLink" href="#" target="_blank" rel="noopener" class="icev2-btn icev2-btn-outline">Download Emergency Profile PDF</a>
+                <button type="button" id="icev2SaveAllBtn" class="icev2-btn icev2-btn-outline" style="margin-left:12px;">Re-save all fields</button>
             </div>
         </section>
 
@@ -158,7 +156,6 @@
 
         <aside class="icev2-live-column" aria-label="Live profile preview">
             <div class="icev2-live-panel">
-                <h2 class="icev2-live-title">Live Preview</h2>
                 <div id="icev2LiveReviewContent"></div>
             </div>
         </aside>
@@ -389,11 +386,6 @@ window.meridianEscapeAttr = function (s) {
         _tab = n;
         var next = document.getElementById('icev2Tab' + _tab);
         if (next) next.hidden = false;
-        var inReview = (_tab === TABS.length - 1);
-        var main = document.querySelector('.icev2-main');
-        var live = document.querySelector('.icev2-live-column');
-        if (main) main.classList.toggle('icev2-main--review', inReview);
-        if (live) live.hidden = inReview;
         renderTabNav();
         updateFooter();
         renderReview();

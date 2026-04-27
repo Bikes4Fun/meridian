@@ -4537,9 +4537,6 @@ body.ice-editor-page > #icev2Shell {
     gap: 24px;
     align-items: start;
 }
-.icev2-main.icev2-main--review {
-    grid-template-columns: minmax(0, 1fr);
-}
 
 .icev2-tab-content { display: block; }
 .icev2-tab-content[hidden] { display: none; }
@@ -5059,9 +5056,6 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     position: sticky;
     top: 92px;
 }
-.icev2-live-column[hidden] {
-    display: none;
-}
 .icev2-live-panel {
     border: 1px solid var(--warm-border-strong);
     border-radius: var(--radius-lg);
@@ -5206,17 +5200,9 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    flex-wrap: wrap;
     font-size: 13px;
     color: var(--warm-muted);
 }
-.icev2-review-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: nowrap;
-}
-.icev2-review-actions .icev2-btn { white-space: nowrap; }
 
 /* Pending/loading state */
 #icev2Pending {

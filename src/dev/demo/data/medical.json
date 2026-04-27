@@ -12,8 +12,8 @@
     "brief_history": "Type 2 diabetes and hypertension; follows with primary care and endocrinology.",
     "devices_notes": "Uses cane for ambulation; high fall risk at night.",
     "other_notes": "Prefers daughter Deanna to receive first medical updates.",
-    "proxy_contact_id": "contact_james_foster",
-    "poa_contact_id": "contact_james_foster"
+    "proxy_contact_id": "contact_002",
+    "poa_contact_id": "contact_002"
   },
   "medication_times": {
     "Morning": { "time": "08:00:00", "display_name": "Morning" },

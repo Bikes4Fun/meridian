@@ -1758,10 +1758,11 @@ def create_server_app(db_path=None):
             ext = os.path.splitext(path)[1].lower()
             if ext == ".mjs":
                 resp.content_type = "text/javascript; charset=utf-8"
-            if (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1":
-                if ext in (".css", ".js", ".html", ".mjs"):
-                    resp.headers["Cache-Control"] = "no-store, max-age=0"
-                    resp.headers["Pragma"] = "no-cache"
+            # Qt/WebView on Windows caches aggressively; always skip cache for kiosk shell assets
+            # so local edits to kiosk.js / kiosk.css show without MERIDIAN_KIOSK_WEBVIEW_DEBUG=1.
+            if ext in (".css", ".js", ".html", ".mjs"):
+                resp.headers["Cache-Control"] = "no-store, max-age=0"
+                resp.headers["Pragma"] = "no-cache"
             return resp
 
     return app

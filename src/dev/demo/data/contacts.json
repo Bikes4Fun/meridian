@@ -59,15 +59,6 @@
       "emergency_priority": "secondary_emergency"
     },
     {
-      "id": "contact_james_foster",
-      "linked_user_id": "fm_006",
-      "display_name": "James Foster",
-      "phone": null,
-      "relationship": "son",
-      "emergency_priority": "primary_emergency",
-      "notes": "Primary caregiver. Medical proxy and POA."
-    },
-    {
       "id": "contact_patient",
       "linked_user_id": "fm_care_001",
       "display_name": "Marian Foster",

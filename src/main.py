@@ -178,6 +178,7 @@ def main() -> None:
             if not remote_api_url:
                 raise RuntimeError("RAILWAY_API_URL is required when using --remote-api")
             logger.info("Runtime mode: railway (--remote-api)")
+            logger.info(f"remote API base URL: {remote_api_url}")
             os.environ["MERIDIAN_API_URL"] = remote_api_url
             _run_module(logger, "apps.kiosk", kiosk_args)
             return

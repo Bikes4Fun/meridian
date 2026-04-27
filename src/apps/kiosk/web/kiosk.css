@@ -2838,6 +2838,21 @@ button.family-panel-head:active {
   background: #fff;
 }
 
+.kiosk-doc-viewer-canvas-wrap {
+  flex: 1;
+  overflow-y: auto;
+  background: #e8e2d9;
+  padding: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.kiosk-doc-viewer-canvas-wrap canvas {
+  max-width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
 /* =============================================================================
    MODALS & OVERLAYS
    ============================================================================= */

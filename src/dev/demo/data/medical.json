@@ -8,10 +8,10 @@
       "dni_status": "Intubation not desired",
       "nutrition_status": "Not desired"
     },
-    "notes": "DEMO — Notes for EMS / family. Edit this and save to verify.",
-    "brief_history": "DEMO — Brief history and care providers. Edit this and save to verify.",
-    "devices_notes": "DEMO — Devices, mobility, fall risk. Edit this and save to verify.",
-    "other_notes": "DEMO — Other notes. Edit this and save to verify.",
+    "notes": "Lives alone with daily caregiver check-ins; bring hearing aids and medication list to ER.",
+    "brief_history": "Type 2 diabetes and hypertension; follows with primary care and endocrinology.",
+    "devices_notes": "Uses cane for ambulation; high fall risk at night.",
+    "other_notes": "Prefers daughter Deanna to receive first medical updates.",
     "proxy_contact_id": "contact_james_foster",
     "poa_contact_id": "contact_james_foster"
   },
@@ -97,12 +97,12 @@
     }
   ],
   "allergies": [
-    { "allergen": "Penicillin", "reaction": "DEMO — edit reaction and save to verify" },
-    { "allergen": "Shellfish", "reaction": "DEMO — edit reaction and save to verify" }
+    { "allergen": "Penicillin", "reaction": "Rash and facial swelling" },
+    { "allergen": "Shellfish", "reaction": "Hives and nausea" }
   ],
   "conditions": [
-    { "condition": "DEMO — Type 2 Diabetes (edit and save to verify)" },
-    { "condition": "DEMO — Hypertension (edit and save to verify)" }
+    { "condition": "Type 2 Diabetes" },
+    { "condition": "Hypertension" }
   ],
   "emergency_info": {},
   "care_providers": {}

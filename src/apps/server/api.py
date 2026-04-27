@@ -1755,9 +1755,11 @@ def create_server_app(db_path=None):
                 resp = send_from_directory(_kiosk_icons, path[6:])
             else:
                 resp = send_from_directory(_kiosk_web, path)
+            ext = os.path.splitext(path)[1].lower()
+            if ext == ".mjs":
+                resp.content_type = "text/javascript; charset=utf-8"
             if (os.environ.get("MERIDIAN_KIOSK_WEBVIEW_DEBUG") or "").strip() == "1":
-                ext = os.path.splitext(path)[1].lower()
-                if ext in (".css", ".js", ".html"):
+                if ext in (".css", ".js", ".html", ".mjs"):
                     resp.headers["Cache-Control"] = "no-store, max-age=0"
                     resp.headers["Pragma"] = "no-cache"
             return resp

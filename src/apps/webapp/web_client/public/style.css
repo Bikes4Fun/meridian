@@ -4537,6 +4537,13 @@ body.ice-editor-page > #icev2Shell {
     gap: 24px;
     align-items: start;
 }
+/* Review tab: show single-column main review, hide right preview to avoid duplicate full review cards */
+.icev2-main:has(#icev2Tab6:not([hidden])) {
+    grid-template-columns: minmax(0, 1fr);
+}
+.icev2-main:has(#icev2Tab6:not([hidden])) .icev2-live-column {
+    display: none;
+}
 
 .icev2-tab-content { display: block; }
 .icev2-tab-content[hidden] { display: none; }
@@ -5051,6 +5058,17 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     gap: 12px;
 }
 .icev2-footer-spacer { flex: 1; }
+.icev2-footer-review-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.icev2-footer-review-actions[hidden] {
+    display: none !important;
+}
+.icev2-footer-review-actions .icev2-btn {
+    white-space: nowrap;
+}
 
 .icev2-live-column {
     position: sticky;
@@ -5200,8 +5218,24 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: nowrap;
     font-size: 13px;
     color: var(--warm-muted);
+}
+.icev2-review-footer > p {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+}
+.icev2-review-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    margin-left: auto;
+}
+.icev2-review-actions .icev2-btn {
+    white-space: nowrap;
 }
 
 /* Pending/loading state */

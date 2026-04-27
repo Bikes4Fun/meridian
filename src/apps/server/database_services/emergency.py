@@ -116,6 +116,7 @@ class EmergencyService:
         ]
 
         proxy_name, proxy_phone, poa_name, poa_phone = None, None, None, None
+        proxy_contact_id, poa_contact_id = None, None
         roles_result = self.db_manager.execute_query(
             "SELECT role, contact_id FROM ice_contact_roles WHERE family_circle_id = ?",
             (family_circle_id,),
@@ -137,14 +138,14 @@ class EmergencyService:
                     c = contacts_by_id.get(r["contact_id"])
                     if c:
                         if r["role"] == "medical_proxy":
-                            proxy_name, proxy_phone = c.get("display_name"), c.get(
-                                "phone"
-                            )
+                            proxy_name, proxy_phone = c.get("display_name"), c.get("phone")
+                            proxy_contact_id = r["contact_id"]
                         elif r["role"] == "poa":
                             poa_name, poa_phone = c.get("display_name"), c.get("phone")
+                            poa_contact_id = r["contact_id"]
 
         documents_result = self.db_manager.execute_query(
-            "SELECT doc_type, doc_label, doc_date, file_path"
+            "SELECT id, doc_type, doc_label, doc_date, file_path"
             " FROM care_recipient_documents"
             " WHERE family_circle_id = ?"
             " ORDER BY sort_order, id",
@@ -193,8 +194,10 @@ class EmergencyService:
             "photo_path": care_row["photo_path"] if care_row else None,
             "dnr_document_path": care_row["dnr_document_path"] if care_row else None,
             "medical_proxy_phone": proxy_phone,
+            "medical_proxy_contact_id": proxy_contact_id,
             "poa_name": poa_name,
             "poa_phone": poa_phone,
+            "poa_contact_id": poa_contact_id,
             "notes": care_row["notes"] if care_row else None,
             "devices_notes": care_row["devices_notes"] if care_row else None,
             "brief_history": care_row["brief_history"] if care_row else None,

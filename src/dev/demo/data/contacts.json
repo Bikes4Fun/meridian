@@ -35,17 +35,6 @@
       "notes": "Family doctor"
     },
     {
-      "id": "contact_pt",
-      "display_name": "Physical Therapist",
-      "phone": null,
-      "email": "pt@rehab.com",
-      "birthday": null,
-      "relationship": "therapist",
-      "emergency_priority": "not_emergency",
-      "photo_filename": null,
-      "notes": "Weekly sessions"
-    },
-    {
       "id": "contact_003",
       "linked_user_id": "fm_003",
       "display_name": "Eleanor",

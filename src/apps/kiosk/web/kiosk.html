@@ -49,5 +49,10 @@
   ></script>
   <script src="map_widget.js"></script>
   <script src="kiosk.js"></script>
+  <script type="module">
+    import * as pdfjsLib from 'pdfjs/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs/pdf.worker.min.mjs', import.meta.url).href;
+    window.pdfjsLib = pdfjsLib;
+  </script>
 </body>
 </html>

@@ -148,23 +148,19 @@ class KioskBridge:
         logger.debug("Print emergency (button)")
         self._app._print_emergency()
 
-    def fetch_url_to_tempfile(self, url: str) -> str:
-        """Fetch authenticated URL, write to a temp PDF file, return file:// path for iframe src."""
-        import os
-        import tempfile
+    def fetch_url_b64(self, url: str) -> str:
+        """Fetch authenticated URL and return raw bytes as base64 for PDF.js canvas rendering."""
+        import base64
         svc = self._app.services.get_emergency_service()
         if not svc:
             return ""
         result = svc.fetch_url_bytes(url)
         if not result.success or not result.data:
             return ""
-        fd, path = tempfile.mkstemp(suffix=".pdf")
         try:
-            os.write(fd, result.data)
-            os.close(fd)
-            return f"file://{path}"
+            return base64.b64encode(result.data).decode("ascii")
         except Exception as e:
-            logger.warning(f"fetch_url_to_tempfile failed writing temp file: {e}")
+            logger.warning(f"fetch_url_b64 failed: {e}")
             return ""
 
     def refresh_events(self):

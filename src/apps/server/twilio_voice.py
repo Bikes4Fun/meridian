@@ -145,6 +145,7 @@ def register_twilio_voice_routes(app, user_svc, family_svc):
             identity = "14359008919"
             token = AccessToken(account_sid, api_key_sid, api_key_secret, identity=identity, ttl=3600)
             token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid, incoming_allow=True))
+            token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid, incoming_allow=True))
             jwt_bytes = token.to_jwt()
             jwt_str = jwt_bytes.decode("utf-8") if isinstance(jwt_bytes, bytes) else jwt_bytes
             return jsonify({"token": jwt_str, "caller_id": caller_id})

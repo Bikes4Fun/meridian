@@ -558,7 +558,7 @@ function setBootLoading(active, message) {
           var from = call.parameters.From || 'Family member';
           if (_kioskForceAnswerArmed) {
             _kioskForceAnswerArmed = false;
-            kioskAcceptCall(call, kioskCallerLabel(call));
+            kioskAcceptCall(call, 'Family check-in');
             return;
           }
           kioskShowIncomingCallUI(call, from);
@@ -885,13 +885,6 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
     });
 }
 
-function kioskCallerLabel(call) {
-  var p = (call && call.parameters) || {};
-  var name = (p.CallerName || '').trim();
-  var from = (p.From || '').trim();
-  return name || from || 'Family member';
-}
-
 function kioskAcceptCall(call, callerName) {
   call.accept();
   _kioskActiveTwilioCall = call;
@@ -902,9 +895,6 @@ function kioskAcceptCall(call, callerName) {
     showScreen('emergency');
   }
   kioskShowInCallBar('ON A CALL', callerName || 'Family member');
-  if (document.body.classList.contains('alert-active')) {
-    kioskSetInCallMinimized(true);
-  }
   call.on('disconnect', function() {
     showToast('Call ended');
     _kioskTwilioCallUiEnded();
@@ -917,31 +907,15 @@ function kioskAcceptCall(call, callerName) {
 
 function kioskForceAnswer() {
   if (_kioskPendingIncomingCall) {
-    var st = typeof _kioskPendingIncomingCall.status === 'function'
-      ? _kioskPendingIncomingCall.status() : '';
-    if (st === 'closed' || st === 'open') {
-      _kioskPendingIncomingCall = null;
-    }
-  }
-  if (_kioskPendingIncomingCall) {
-    kioskAcceptCall(_kioskPendingIncomingCall, kioskCallerLabel(_kioskPendingIncomingCall));
+    kioskAcceptCall(_kioskPendingIncomingCall, 'Family check-in');
   } else {
     _kioskForceAnswerArmed = true;
     showToast('Connecting family check-in...');
   }
 }
 
-function _kioskClearPendingCall() {
-  _kioskPendingIncomingCall = null;
-  var ov = document.getElementById('kiosk-incoming-call-overlay');
-  if (ov) ov.classList.add('kiosk-incoming-call--hidden');
-}
-
 function kioskShowIncomingCallUI(call, callerName) {
   _kioskPendingIncomingCall = call;
-  call.on('cancel', _kioskClearPendingCall);
-  call.on('disconnect', _kioskClearPendingCall);
-  call.on('error', _kioskClearPendingCall);
   var overlay = document.getElementById('kiosk-incoming-call-overlay');
   if (!overlay) {
     overlay = document.createElement('div');

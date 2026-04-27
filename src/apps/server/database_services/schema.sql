@@ -227,3 +227,12 @@ CREATE TABLE IF NOT EXISTS care_recipient_documents (
     FOREIGN KEY (care_recipient_user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS force_answer_signals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    family_circle_id TEXT NOT NULL,
+    requested_by_user_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    acknowledged_at TEXT,
+    FOREIGN KEY (family_circle_id) REFERENCES family_circles(id)
+);
+

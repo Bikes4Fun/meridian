@@ -48,7 +48,7 @@ def _twilio_public_request_url() -> str:
     return url
 
 
-def register_twilio_voice_routes(app, user_svc):
+def register_twilio_voice_routes(app, user_svc, family_svc):
     """Register voice routes: TwiML, token (kiosk WebRTC), client TwiML App URL, status."""
 
     @app.route("/twilio/voice", methods=["GET", "POST"])
@@ -61,7 +61,7 @@ def register_twilio_voice_routes(app, user_svc):
 
     @app.route("/twilio/voice/client", methods=["POST"])
     def twilio_voice_client_twiml():
-        """TwiML App Voice URL: browser client outbound to PSTN. Called by Twilio only."""
+        """TwiML App Voice URL: inbound PSTN routing + kiosk outbound to PSTN. Called by Twilio only."""
         from twilio.request_validator import RequestValidator
         from twilio.twiml.voice_response import VoiceResponse
 
@@ -74,6 +74,23 @@ def register_twilio_voice_routes(app, user_svc):
         if not validator.validate(_twilio_public_request_url(), params, sig):
             logger.warning("Twilio signature validation failed for /twilio/voice/client")
             abort(403)
+
+        called = normalize_phone_e164(params.get("Called") or params.get("To") or "")
+        direction = params.get("Direction") or ""
+
+        # Inbound: someone called the kiosk's Twilio number — route to the kiosk WebRTC device
+        if called and "outbound" not in direction.lower():
+            family_id = family_svc.get_family_by_twilio_number(called)
+            if not family_id:
+                err = VoiceResponse()
+                err.say("This number is not configured.")
+                return Response(str(err), mimetype="text/xml")
+            vr = VoiceResponse()
+            dial = vr.dial()
+            dial.client(called)
+            return Response(str(vr), mimetype="text/xml")
+
+        # Outbound: kiosk dialling a PSTN number via the TwiML app
         to = normalize_phone_e164(params.get("To") or "")
         caller_id = normalize_phone_e164(params.get("callerId") or params.get("CallerId") or "")
         if not to or not caller_id:
@@ -141,9 +158,11 @@ def register_twilio_voice_routes(app, user_svc):
             from twilio.jwt.access_token import AccessToken
             from twilio.jwt.access_token.grants import VoiceGrant
 
-            identity = f"kiosk_{g.user_id}"[:120]
+            family_number = family_svc.get_twilio_number(g.family_circle_id)
+            identity = family_number if family_number else f"kiosk_{g.family_circle_id}"
+            identity = identity[:120]
             token = AccessToken(account_sid, api_key_sid, api_key_secret, identity=identity, ttl=3600)
-            token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid))
+            token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid, incoming_allow=True))
             jwt_bytes = token.to_jwt()
             jwt_str = jwt_bytes.decode("utf-8") if isinstance(jwt_bytes, bytes) else jwt_bytes
             return jsonify({"token": jwt_str, "caller_id": caller_id})

@@ -154,6 +154,17 @@ class CareRecipientService:
             (family_circle_id, role, contact_id),
         )
 
+    def get_care_recipient_user_id(self, family_circle_id: str) -> ServiceResult:
+        """Return the care recipient's user_id for a family circle."""
+        r = self.db_manager.execute_query(
+            "SELECT care_recipient_user_id FROM care_recipients WHERE family_circle_id = ? LIMIT 1",
+            (family_circle_id,),
+        )
+        if not r.success:
+            return ServiceResult(success=False, error=r.error)
+        row = r.data[0] if r.data else None
+        return ServiceResult(success=True, data=row["care_recipient_user_id"] if row else None)
+
     def care_recipient_exists(
         self, family_circle_id: str, care_recipient_user_id: str
     ) -> bool:

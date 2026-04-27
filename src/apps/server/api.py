@@ -337,7 +337,7 @@ def create_server_app(db_path=None):
     location_svc = container.get_location_service()
     emergency_svc = container.get_emergency_service()
     family_svc = container.get_family_service()
-    register_twilio_voice_routes(app, user_svc)
+    register_twilio_voice_routes(app, user_svc, family_svc)
 
     @app.before_request
     def verify_family_membership():
@@ -371,6 +371,7 @@ def create_server_app(db_path=None):
     care_recipient_svc = container.get_care_recipient_service()
     photo_upload_svc = container.get_photo_upload_service()
     call_signal_svc = container.get_call_signal_service()
+    force_answer_svc = container.get_force_answer_service()
 
     def _parse_date_param():
         """Parse optional ?date=YYYY-MM-DD from request (TV's local date). Use for calendar 'current' endpoints."""
@@ -567,10 +568,17 @@ def create_server_app(db_path=None):
             return jsonify({"error": r.error}), 500
         return jsonify({"data": [asdict(c) for c in (r.data or [])]})
 
-    @app.route("/api/family_circles/<family_circle_id>/care-recipient", methods=["PUT"])
+    @app.route("/api/family_circles/<family_circle_id>/care-recipient", methods=["GET", "PUT"])
     def api_update_care_recipient(family_circle_id):
-        """Update care recipient profile. Use set_contact_role for proxy/poa."""
+        """GET: return care recipient user_id. PUT: update care recipient profile."""
         _require_family_access(family_circle_id)
+        if request.method == "GET":
+            r = care_recipient_svc.get_care_recipient_user_id(family_circle_id)
+            if not r.success:
+                return jsonify({"error": r.error}), 500
+            if not r.data:
+                return jsonify({"error": "no care recipient for this family"}), 404
+            return jsonify({"data": {"user_id": r.data}})
         data = request.get_json() or {}
         r = care_recipient_svc.update_care_recipient(family_circle_id, data)
         if not r.success:
@@ -1218,6 +1226,56 @@ def create_server_app(db_path=None):
         if not r.success:
             return jsonify({"error": r.error}), 400
         return jsonify({"data": r.data or {"updated": 0}})
+
+    @app.route("/api/calls/force-answer", methods=["POST"])
+    def api_force_answer():
+        """Arm the kiosk to auto-answer the next incoming Twilio call."""
+        r = force_answer_svc.request_force_answer(g.family_circle_id, g.user_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data}), 201
+
+    @app.route("/api/calls/force-answer/pending", methods=["GET"])
+    def api_force_answer_pending():
+        """Kiosk polls this to detect a pending force-answer signal."""
+        r = force_answer_svc.get_pending(g.family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 500
+        return jsonify({"data": r.data})
+
+    @app.route("/api/calls/force-answer/<int:signal_id>/ack", methods=["POST"])
+    def api_force_answer_ack(signal_id):
+        """Kiosk acknowledges a force-answer signal after acting on it."""
+        r = force_answer_svc.acknowledge(signal_id, g.family_circle_id)
+        if not r.success:
+            return jsonify({"error": r.error}), 400
+        return jsonify({"data": r.data})
+
+    def _demo_twilio_from_repo_json(fc_id: str) -> str:
+        """E.164 from dev/demo/data/family_circles.json when DB and env have no number."""
+        try:
+            json_path = Path(__file__).resolve().parent.parent.parent / "dev" / "demo" / "data" / "family_circles.json"
+            if not json_path.is_file():
+                return ""
+            raw = json.loads(json_path.read_text(encoding="utf-8"))
+        except Exception:
+            return ""
+        if not isinstance(raw, list):
+            return ""
+        for row in raw:
+            if isinstance(row, dict) and (row.get("id") or "").strip() == fc_id:
+                return (row.get("twilio_phone_number") or "").strip()
+        return ""
+
+    @app.route("/api/family/kiosk-number", methods=["GET"])
+    def api_kiosk_number():
+        """Return the Twilio phone number for this family's kiosk."""
+        number = family_svc.get_twilio_number(g.family_circle_id)
+        if not number:
+            number = _demo_twilio_from_repo_json(g.family_circle_id) or None
+        if not number:
+            return jsonify({"error": "No kiosk number configured for this family"}), 404
+        return jsonify({"twilio_phone_number": number})
 
     @app.route("/api/calls/socket-event", methods=["POST"])
     def api_call_socket_event():

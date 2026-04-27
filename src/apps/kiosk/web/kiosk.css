@@ -2034,6 +2034,25 @@ button.family-panel-head:active {
   color: #fff;
 }
 
+.emergency-warm-refresh-btn {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.emergency-warm-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
 .emergency-warm-scroll {
   flex: 1;
   min-height: 0;
@@ -3899,4 +3918,89 @@ body[data-screen="family"] .leaflet-container {
 #kioskMedsEditorRoot .ice-med-autosave-cb {
   width: 20px;
   height: 20px;
+}
+
+/* Incoming call overlay — fullscreen, above everything */
+.kiosk-incoming-call {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kiosk-incoming-call--hidden {
+  display: none;
+}
+
+.kiosk-incoming-call__box {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 6vh 8vw;
+  text-align: center;
+  min-width: 36vw;
+}
+
+.kiosk-incoming-call__label {
+  font-size: var(--font-subheader);
+  color: var(--text-muted);
+  margin: 0 0 1vh;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.kiosk-incoming-call__name {
+  font-size: var(--font-hero);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 5vh;
+  line-height: 1.1;
+}
+
+.kiosk-incoming-call__actions {
+  display: flex;
+  gap: 4vw;
+  justify-content: center;
+}
+
+.kiosk-incoming-call__btn {
+  min-width: 18vw;
+  min-height: var(--touch-min);
+  font-size: var(--font-subheader);
+  font-weight: 700;
+  border-radius: var(--radius-lg);
+  border: none;
+  cursor: pointer;
+  padding: 2vh 3vw;
+}
+
+.kiosk-incoming-call__btn--answer {
+  background: var(--secondary);
+  color: #fff;
+}
+
+.kiosk-incoming-call__btn--answer:hover {
+  filter: brightness(1.1);
+}
+
+.kiosk-incoming-call__btn--decline {
+  background: var(--warm-delete);
+  color: #fff;
+}
+
+.kiosk-incoming-call__btn--decline:hover {
+  filter: brightness(1.1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .kiosk-incoming-call__box {
+    animation: kiosk-ring-pulse 1s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes kiosk-ring-pulse {
+  from { box-shadow: 0 0 0 0 rgba(46, 125, 155, 0.5); }
+  to   { box-shadow: 0 0 0 2.5vw rgba(46, 125, 155, 0); }
 }

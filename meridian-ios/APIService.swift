@@ -483,6 +483,34 @@ final class APIService {
         return 24 * 60
     }
 
+    // MARK: - Kiosk call
+
+    func getKioskPhoneNumber() async throws -> String {
+        let (data, res) = try await request("/api/family/kiosk-number", method: "GET")
+        if res.statusCode != 200 {
+            let hint = "On the API host set TWILIO_PHONE_NUMBER (or MERIDIAN_DEMO_KIOSK_TWILIO_NUMBER) to your kiosk E.164, or set family_circles.twilio_phone_number for that family."
+            let msg = serverErrorMessage(from: data, fallback: "Could not fetch kiosk number (\(res.statusCode)). \(hint)")
+            throw APIError.serverError(msg)
+        }
+        let json = try JSONDecoder().decode([String: String].self, from: data)
+        guard let number = json["twilio_phone_number"], !number.isEmpty else {
+            throw APIError.serverError("No kiosk number in response")
+        }
+        return number
+    }
+
+    func forceAnswerKiosk() async throws {
+        let (data, res) = try await request("/api/calls/force-answer", method: "POST", body: [:])
+        if res.statusCode != 201 {
+            let hint404 = "404 means this host has no POST /api/calls/force-answer (wrong API URL or old deploy)."
+            let fallback = res.statusCode == 404
+                ? "Force-answer failed (\(res.statusCode)). \(hint404)"
+                : "Force-answer failed (\(res.statusCode))"
+            let msg = serverErrorMessage(from: data, fallback: fallback)
+            throw APIError.serverError(msg)
+        }
+    }
+
     // MARK: - Device token (push)
 
     func registerDeviceToken(token: String, platform: String = "ios") async throws {

@@ -17,6 +17,13 @@ final class AlertViewController: UIViewController {
     private let stoveDetailLabel = UILabel()
     private let statusLabel = UILabel()
     private let progressIndicator = UIActivityIndicatorView(style: .medium)
+    private let forceAnswerToggle = UISwitch()
+    private let forceAnswerLabel = UILabel()
+    private let callKioskCard = UIView()
+    private let callKioskTitleLabel = UILabel()
+    private let callKioskButton = UIButton(type: .system)
+    private let forceCallKioskButton = UIButton(type: .system)
+    private let callKioskStatusLabel = UILabel()
     private var isRequestInFlight = false {
         didSet { updateControlsForRequestState() }
     }
@@ -104,7 +111,56 @@ final class AlertViewController: UIViewController {
         contentStack.spacing = 12
         contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        [titleLabel, activateEmergencyAlertButton, cancelEmergencyAlertButton, readinessCard, stoveCard, progressIndicator, statusLabel].forEach {
+        forceAnswerLabel.text = "Also force-answer the kiosk so I can speak with them"
+        forceAnswerLabel.font = .preferredFont(forTextStyle: .footnote)
+        forceAnswerLabel.textColor = MeridianPalette.primaryText
+        forceAnswerLabel.numberOfLines = 0
+        forceAnswerToggle.isOn = false
+        let forceAnswerRow = UIStackView(arrangedSubviews: [forceAnswerToggle, forceAnswerLabel])
+        forceAnswerRow.axis = .horizontal
+        forceAnswerRow.alignment = .center
+        forceAnswerRow.spacing = 12
+
+        callKioskCard.backgroundColor = MeridianPalette.surface
+        callKioskCard.layer.cornerRadius = 12
+        callKioskCard.layer.borderWidth = 1
+        callKioskCard.layer.borderColor = MeridianPalette.border.cgColor
+        callKioskCard.translatesAutoresizingMaskIntoConstraints = false
+
+        callKioskTitleLabel.text = "Call kiosk"
+        callKioskTitleLabel.font = .preferredFont(forTextStyle: .headline)
+        callKioskTitleLabel.textColor = MeridianPalette.primaryText
+
+        callKioskButton.applyMeridianButtonStyle(.primary, title: "Call")
+        callKioskButton.setImage(UIImage(systemName: "phone.fill"), for: .normal)
+        callKioskButton.addTarget(self, action: #selector(callKioskTapped), for: .touchUpInside)
+        forceCallKioskButton.applyMeridianButtonStyle(.bordered, title: "Force Call")
+        forceCallKioskButton.setImage(UIImage(systemName: "phone.badge.plus"), for: .normal)
+        forceCallKioskButton.addTarget(self, action: #selector(forceCallKioskTapped), for: .touchUpInside)
+        callKioskStatusLabel.font = .preferredFont(forTextStyle: .caption1)
+        callKioskStatusLabel.textColor = MeridianPalette.mutedText
+        callKioskStatusLabel.textAlignment = .center
+        callKioskStatusLabel.numberOfLines = 0
+        callKioskStatusLabel.isHidden = true
+        let callButtonRow = UIStackView(arrangedSubviews: [callKioskButton, forceCallKioskButton])
+        callButtonRow.axis = .horizontal
+        callButtonRow.spacing = 12
+        callButtonRow.distribution = .fillEqually
+        let callKioskInner = UIStackView(arrangedSubviews: [callKioskTitleLabel, callButtonRow, callKioskStatusLabel])
+        callKioskInner.axis = .vertical
+        callKioskInner.spacing = 10
+        callKioskInner.translatesAutoresizingMaskIntoConstraints = false
+        callKioskCard.addSubview(callKioskInner)
+        NSLayoutConstraint.activate([
+            callKioskInner.topAnchor.constraint(equalTo: callKioskCard.topAnchor, constant: 12),
+            callKioskInner.leadingAnchor.constraint(equalTo: callKioskCard.leadingAnchor, constant: 12),
+            callKioskInner.trailingAnchor.constraint(equalTo: callKioskCard.trailingAnchor, constant: -12),
+            callKioskInner.bottomAnchor.constraint(equalTo: callKioskCard.bottomAnchor, constant: -12),
+            callKioskButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight),
+            forceCallKioskButton.heightAnchor.constraint(equalToConstant: MeridianLayout.buttonHeight)
+        ])
+
+        [titleLabel, activateEmergencyAlertButton, forceAnswerRow, cancelEmergencyAlertButton, callKioskCard, readinessCard, stoveCard, progressIndicator, statusLabel].forEach {
             contentStack.addArrangedSubview($0)
         }
 
@@ -157,8 +213,46 @@ final class AlertViewController: UIViewController {
 
     private func performAlertUpdate(activated: Bool) {
         isRequestInFlight = true
+        let shouldForceAnswer = activated && forceAnswerToggle.isOn
         setStatus(activated ? "Sending emergency alert..." : "Cancelling emergency alert...")
         Task {
+            if activated && shouldForceAnswer {
+                var kioskCallPrepFinished = false
+                do {
+                    await MainActor.run { self.setStatus("Arming kiosk to auto-answer…") }
+                    try await APIService.shared.forceAnswerKiosk()
+                    await MainActor.run { self.setStatus("Fetching kiosk number…") }
+                    let number = try await APIService.shared.getKioskPhoneNumber()
+                    kioskCallPrepFinished = true
+                    await MainActor.run { self.setStatus("Activating emergency alert…") }
+                    try await APIService.shared.setAlert(activated: true)
+                    await MainActor.run {
+                        self.isRequestInFlight = false
+                        self.setStatus("Emergency alert sent. Opening kiosk call…", color: .systemGreen)
+                        let cleaned = number.filter { $0.isNumber || $0 == "+" }
+                        if let url = URL(string: "tel://\(cleaned)") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                } catch {
+                    let detail = Self.alertFlowUserMessage(for: error)
+                    await MainActor.run {
+                        self.isRequestInFlight = false
+                        if !kioskCallPrepFinished {
+                            self.setStatus(
+                                "Emergency alert was not turned on.\n\n\(detail)\n\nYou can try again, or activate without the auto-answer option.",
+                                color: .systemRed
+                            )
+                        } else {
+                            self.setStatus(
+                                "The kiosk may be ready to auto-answer, but the emergency alert could not be activated.\n\n\(detail)\n\nTry Call or Force Call below, or try activating again.",
+                                color: .systemOrange
+                            )
+                        }
+                    }
+                }
+                return
+            }
             do {
                 try await APIService.shared.setAlert(activated: activated)
                 await MainActor.run {
@@ -166,12 +260,17 @@ final class AlertViewController: UIViewController {
                     self.setStatus(activated ? "Emergency alert sent." : "Emergency alert cancelled.", color: .systemGreen)
                 }
             } catch {
+                let detail = Self.alertFlowUserMessage(for: error)
                 await MainActor.run {
                     self.isRequestInFlight = false
-                    self.setStatus(error.localizedDescription, color: .systemRed)
+                    self.setStatus(detail, color: .systemRed)
                 }
             }
         }
+    }
+
+    private static func alertFlowUserMessage(for error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
     private func updateControlsForRequestState() {
@@ -182,5 +281,73 @@ final class AlertViewController: UIViewController {
         } else {
             progressIndicator.stopAnimating()
         }
+    }
+
+    @objc private func callKioskTapped() {
+        callKioskButton.isEnabled = false
+        forceCallKioskButton.isEnabled = false
+        callKioskStatusLabel.text = "Fetching number…"
+        callKioskStatusLabel.textColor = MeridianPalette.mutedText
+        callKioskStatusLabel.isHidden = false
+        Task {
+            do {
+                let number = try await APIService.shared.getKioskPhoneNumber()
+                await MainActor.run {
+                    self.resetCallKioskButtons()
+                    let cleaned = number.filter { $0.isNumber || $0 == "+" }
+                    if let url = URL(string: "tel://\(cleaned)") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.callKioskStatusLabel.text = error.localizedDescription
+                    self.callKioskStatusLabel.textColor = MeridianPalette.alert
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                        self?.resetCallKioskButtons()
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func forceCallKioskTapped() {
+        callKioskButton.isEnabled = false
+        forceCallKioskButton.isEnabled = false
+        callKioskStatusLabel.text = "Arming kiosk…"
+        callKioskStatusLabel.textColor = MeridianPalette.mutedText
+        callKioskStatusLabel.isHidden = false
+        Task {
+            do {
+                async let forceAnswer: Void = APIService.shared.forceAnswerKiosk()
+                async let number: String = APIService.shared.getKioskPhoneNumber()
+                let (_, kioskNumber) = try await (forceAnswer, number)
+                await MainActor.run {
+                    self.callKioskStatusLabel.text = "Kiosk will answer automatically when you call."
+                    self.callKioskStatusLabel.textColor = MeridianPalette.primaryAction
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                        self?.resetCallKioskButtons()
+                    }
+                    let cleaned = kioskNumber.filter { $0.isNumber || $0 == "+" }
+                    if let url = URL(string: "tel://\(cleaned)") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.callKioskStatusLabel.text = error.localizedDescription
+                    self.callKioskStatusLabel.textColor = MeridianPalette.alert
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                        self?.resetCallKioskButtons()
+                    }
+                }
+            }
+        }
+    }
+
+    private func resetCallKioskButtons() {
+        callKioskButton.isEnabled = true
+        forceCallKioskButton.isEnabled = true
+        callKioskStatusLabel.isHidden = true
     }
 }

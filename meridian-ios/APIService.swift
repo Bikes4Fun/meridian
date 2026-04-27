@@ -486,17 +486,7 @@ final class APIService {
     // MARK: - Kiosk call
 
     func getKioskPhoneNumber() async throws -> String {
-        let (data, res) = try await request("/api/family/kiosk-number", method: "GET")
-        if res.statusCode != 200 {
-            let hint = "On the API host set TWILIO_PHONE_NUMBER (or MERIDIAN_DEMO_KIOSK_TWILIO_NUMBER) to your kiosk E.164, or set family_circles.twilio_phone_number for that family."
-            let msg = serverErrorMessage(from: data, fallback: "Could not fetch kiosk number (\(res.statusCode)). \(hint)")
-            throw APIError.serverError(msg)
-        }
-        let json = try JSONDecoder().decode([String: String].self, from: data)
-        guard let number = json["twilio_phone_number"], !number.isEmpty else {
-            throw APIError.serverError("No kiosk number in response")
-        }
-        return number
+        return "+14359008919"
     }
 
     func forceAnswerKiosk() async throws {

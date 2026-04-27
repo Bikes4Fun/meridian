@@ -58,6 +58,43 @@ def _apply_demo_twilio_number_if_configured(conn: sqlite3.Connection, family_cir
     )
 
 
+def _twilio_from_family_circles_json(family_circle_id: str) -> str:
+    """Optional twilio_phone_number per row in dev/demo/data/family_circles.json (list of objects)."""
+    path = os.path.join(os.path.dirname(__file__), "data", "family_circles.json")
+    if not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "r") as f:
+            raw = json.load(f)
+    except Exception:
+        return ""
+    if not isinstance(raw, list):
+        return ""
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        if (row.get("id") or "").strip() != family_circle_id:
+            continue
+        return (row.get("twilio_phone_number") or "").strip()
+    return ""
+
+
+def _apply_demo_twilio_number_if_configured(conn: sqlite3.Connection, family_circle_id: str) -> None:
+    """Write family_circles.twilio_phone_number from env, else from family_circles.json demo row."""
+    number = (
+        (os.environ.get("MERIDIAN_DEMO_KIOSK_TWILIO_NUMBER") or os.environ.get("TWILIO_PHONE_NUMBER") or "")
+        .strip()
+    )
+    if not number:
+        number = _twilio_from_family_circles_json(family_circle_id)
+    if not number:
+        return
+    conn.execute(
+        "UPDATE family_circles SET twilio_phone_number = ? WHERE id = ?",
+        (number, family_circle_id),
+    )
+
+
 def ensure_local_seed_prerequisites(db_path: str) -> None:
     """INSERT OR IGNORE minimal rows so verify_family_membership passes before HTTP seed (local SQLite)."""
     fam = (
@@ -78,7 +115,7 @@ def ensure_local_seed_prerequisites(db_path: str) -> None:
                 "INSERT OR IGNORE INTO family_memberships (user_id, family_circle_id) VALUES (?,?)",
                 (uid, fam),
             )
-        _apply_demo_twilio_number_if_configured(conn, fam)
+        # _apply_demo_twilio_number_if_configured(conn, fam)
         conn.commit()
     finally:
         conn.close()

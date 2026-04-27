@@ -251,6 +251,13 @@ class MeridianKioskApp:
             html_path = os.path.join(web_dir, "kiosk.html")
             url = "file://" + os.path.abspath(html_path).replace("\\", "/")
 
+        autoplay_flag = "--autoplay-policy=no-user-gesture-required"
+        chromium_flags = (os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS") or "").strip()
+        if autoplay_flag not in chromium_flags.split():
+            os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+                f"{chromium_flags} {autoplay_flag}".strip()
+            )
+
         w, h = get_kiosk_window_size()
         x, y = 10, 120
         frameless = False

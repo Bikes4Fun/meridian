@@ -878,16 +878,11 @@ def create_server_app(db_path=None):
                 photo_upload_svc.remove_replaced_file_in_uploads_dir(uploads, old_fp, None)
             return jsonify({"data": True})
         data = request.get_json() or {}
-        linked = data.get("linked_directives")
-        if isinstance(linked, list):
-            import json as _json
-            linked = _json.dumps(linked)
         r = care_recipient_svc.update_document(
             doc_id, family_circle_id,
             data.get("doc_type") or "",
             data.get("doc_label") or "",
             data.get("doc_date") or "",
-            linked,
         )
         if not r.success:
             return jsonify({"error": r.error}), 500
@@ -1267,15 +1262,31 @@ def create_server_app(db_path=None):
                 return (row.get("twilio_phone_number") or "").strip()
         return ""
 
+    def _is_placeholder_twilio_number(number: str) -> bool:
+        """Treat NANP 555 exchange numbers as placeholders; do not return to clients."""
+        digits = "".join(ch for ch in (number or "") if ch.isdigit())
+        if len(digits) < 10:
+            return False
+        national = digits[-10:]
+        return national[3:6] == "555"
+
     @app.route("/api/family/kiosk-number", methods=["GET"])
     def api_kiosk_number():
-        """Return the Twilio phone number for this family's kiosk."""
-        number = family_svc.get_twilio_number(g.family_circle_id)
-        if not number:
-            number = _demo_twilio_from_repo_json(g.family_circle_id) or None
-        if not number:
-            return jsonify({"error": "No kiosk number configured for this family"}), 404
-        return jsonify({"twilio_phone_number": number})
+        # """Return the Twilio phone number for this family's kiosk."""
+        # number = family_svc.get_twilio_number(g.family_circle_id)
+        # if number and _is_placeholder_twilio_number(number):
+        #     _logger.warning(f"Ignoring placeholder kiosk number for family {g.family_circle_id}")
+        #     number = None
+        # if not number:
+        #     number = _demo_twilio_from_repo_json(g.family_circle_id) or None
+        # if number and _is_placeholder_twilio_number(number):
+        #     _logger.warning(f"Ignoring placeholder demo kiosk number for family {g.family_circle_id}")
+        #     number = None
+        # if not number:
+        #     return jsonify({"error": "No kiosk number configured for this family"}), 404
+        # return jsonify({"twilio_phone_number": number})
+        """Return Marian's hard-coded kiosk Twilio phone number."""
+        return jsonify({"data": {"twilio_phone_number": "+14359008919"}})
 
     @app.route("/api/calls/socket-event", methods=["POST"])
     def api_call_socket_event():

@@ -21,7 +21,7 @@ from .emergency import EmergencyService
 from .care_recipient import CareRecipientService
 from .notification import PushNotificationService
 from .photos import PhotoUploadService
-from .call_signal import CallSignalService
+from .call_signal import CallSignalService, ForceAnswerService
 
 
 class DatabaseServices:
@@ -118,6 +118,12 @@ class DatabaseServices:
         return self._get_or_create(
             "call_signal_service",
             lambda: CallSignalService(self._get_query_manager()),
+        )
+
+    def get_force_answer_service(self):
+        return self._get_or_create(
+            "force_answer_service",
+            lambda: ForceAnswerService(self._get_query_manager()),
         )
 
 

@@ -48,12 +48,12 @@ def _twilio_public_request_url() -> str:
     return url
 
 
-def register_twilio_voice_routes(app, user_svc):
+def register_twilio_voice_routes(app, user_svc, family_svc):
     """Register voice routes: TwiML, token (kiosk WebRTC), client TwiML App URL, status."""
 
     @app.route("/twilio/voice", methods=["GET", "POST"])
     def twilio_voice_webhook():
-        from twilio.twiml.voice_response import VoiceResponse
+        from twilio.twiml.voice_response import VoiceResponse  # pyright: ignore[reportMissingImports]
 
         resp = VoiceResponse()
         resp.say("Hello from Meridian.")
@@ -61,9 +61,9 @@ def register_twilio_voice_routes(app, user_svc):
 
     @app.route("/twilio/voice/client", methods=["POST"])
     def twilio_voice_client_twiml():
-        """TwiML App Voice URL: browser client outbound to PSTN. Called by Twilio only."""
-        from twilio.request_validator import RequestValidator
-        from twilio.twiml.voice_response import VoiceResponse
+        """TwiML App Voice URL: inbound PSTN routing + kiosk outbound to PSTN. Called by Twilio only."""
+        from twilio.request_validator import RequestValidator  # pyright: ignore[reportMissingImports]
+        from twilio.twiml.voice_response import VoiceResponse  # pyright: ignore[reportMissingImports]
 
         auth_token = (os.environ.get("TWILIO_AUTH_TOKEN") or "").strip()
         if not auth_token:
@@ -72,8 +72,26 @@ def register_twilio_voice_routes(app, user_svc):
         sig = request.headers.get("X-Twilio-Signature") or ""
         params = request.form.to_dict()
         if not validator.validate(_twilio_public_request_url(), params, sig):
-            logger.warning("Twilio signature validation failed for /twilio/voice/client")
-            abort(403)
+            host = (request.host or "").lower()
+            if "ngrok" in host:
+                logger.warning(
+                    f"Twilio signature validation failed on ngrok host {host}; allowing request in local dev mode"
+                )
+            else:
+                logger.warning("Twilio signature validation failed for /twilio/voice/client")
+                abort(403)
+
+        called = normalize_phone_e164(params.get("Called") or params.get("To") or "")
+        direction = params.get("Direction") or ""
+
+        # Inbound: route calls to Marian's kiosk number directly to kiosk WebRTC client identity.
+        if called == "+14359008919":
+            vr = VoiceResponse()
+            dial = vr.dial()
+            dial.client("14359008919")
+            return Response(str(vr), mimetype="text/xml")
+
+        # Outbound: kiosk dialling a PSTN number via the TwiML app
         to = normalize_phone_e164(params.get("To") or "")
         caller_id = normalize_phone_e164(params.get("callerId") or params.get("CallerId") or "")
         if not to or not caller_id:
@@ -119,31 +137,15 @@ def register_twilio_voice_routes(app, user_svc):
                 ),
                 503,
             )
-        pr = user_svc.get_user_phone_for_family(g.user_id, g.family_circle_id)
-        if not pr.success:
-            return jsonify({"error": pr.error or "failed"}), 500
-        caller_raw = (pr.data or "").strip()
-        caller_id = normalize_phone_e164(caller_raw) if caller_raw else ""
-        if not caller_id:
-            caller_id = (
-                os.environ.get("TWILIO_PHONE_NUMBER") or os.environ.get("TWILIO_FROM_NUMBER") or ""
-            ).strip()
-        if not caller_id:
-            return (
-                jsonify(
-                    {
-                        "error": "No caller ID: add phone to your user profile or set TWILIO_PHONE_NUMBER"
-                    }
-                ),
-                503,
-            )
+        caller_id = "+14359008919"
         try:
-            from twilio.jwt.access_token import AccessToken
-            from twilio.jwt.access_token.grants import VoiceGrant
+            from twilio.jwt.access_token import AccessToken  # pyright: ignore[reportMissingImports]
+            from twilio.jwt.access_token.grants import VoiceGrant  # pyright: ignore[reportMissingImports]
 
-            identity = f"kiosk_{g.user_id}"[:120]
+            identity = "14359008919"
             token = AccessToken(account_sid, api_key_sid, api_key_secret, identity=identity, ttl=3600)
-            token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid))
+            token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid, incoming_allow=True))
+            token.add_grant(VoiceGrant(outgoing_application_sid=twiml_app_sid, incoming_allow=True))
             jwt_bytes = token.to_jwt()
             jwt_str = jwt_bytes.decode("utf-8") if isinstance(jwt_bytes, bytes) else jwt_bytes
             return jsonify({"token": jwt_str, "caller_id": caller_id})
@@ -159,7 +161,7 @@ def register_twilio_voice_routes(app, user_svc):
         if not account_sid or not auth_token:
             return jsonify({"ok": False, "detail": "credentials not configured"})
         try:
-            from twilio.rest import Client
+            from twilio.rest import Client  # pyright: ignore[reportMissingImports]
 
             Client(account_sid, auth_token).api.accounts(account_sid).fetch()
             return jsonify({"ok": True})

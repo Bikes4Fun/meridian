@@ -2,6 +2,7 @@
 User, family, and contact services for Meridian.
 """
 
+import os
 import sqlite3
 import logging
 from dataclasses import dataclass
@@ -310,6 +311,32 @@ class FamilyService:
         if target_user_id:
             return ServiceResult.success_result(data_by_user.get(target_user_id, []))
         return ServiceResult.success_result(data_by_user)
+
+    def get_twilio_number(self, family_circle_id: str) -> Optional[str]:
+        """Return E.164 Twilio number: MERIDIAN_DEMO_KIOSK_TWILIO_NUMBER or TWILIO_PHONE_NUMBER if set, else DB."""
+        from_env = (
+            (os.environ.get("MERIDIAN_DEMO_KIOSK_TWILIO_NUMBER") or os.environ.get("TWILIO_PHONE_NUMBER") or "")
+            .strip()
+        )
+        if from_env:
+            return from_env
+        r = self.db_manager.execute_query(
+            "SELECT twilio_phone_number FROM family_circles WHERE id = ? LIMIT 1",
+            (family_circle_id,),
+        )
+        if not r.success or not r.data:
+            return None
+        return (r.data[0].get("twilio_phone_number") or "").strip() or None
+
+    def get_family_by_twilio_number(self, phone: str) -> Optional[str]:
+        """Return family_circle_id for the given Twilio phone number, or None."""
+        r = self.db_manager.execute_query(
+            "SELECT id FROM family_circles WHERE twilio_phone_number = ? LIMIT 1",
+            ((phone or "").strip(),),
+        )
+        if not r.success or not r.data:
+            return None
+        return r.data[0].get("id")
 
     def can_manage_family_permissions(
         self, actor_user_id: str, family_circle_id: str

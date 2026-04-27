@@ -207,8 +207,8 @@ def find_available_port(host: str, start_port: int, max_tries: int = 20) -> int:
     )
 
 def get_remote_api_base_url() -> str | None:
-    """Remote Railway API URL from RAILWAY_API_URL, or None if unset."""
-    url = (os.getenv("RAILWAY_API_URL") or "").strip()
+    """Remote Railway API URL from env, with a default Meridian Railway host."""
+    url = (os.getenv("RAILWAY_API_URL") or "https://meridian-by-deanna.computerscience.build").strip()
     if not url:
         return None
     if "://" not in url:

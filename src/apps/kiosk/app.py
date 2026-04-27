@@ -251,6 +251,13 @@ class MeridianKioskApp:
             html_path = os.path.join(web_dir, "kiosk.html")
             url = "file://" + os.path.abspath(html_path).replace("\\", "/")
 
+        autoplay_flag = "--autoplay-policy=no-user-gesture-required"
+        chromium_flags = (os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS") or "").strip()
+        if autoplay_flag not in chromium_flags.split():
+            os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+                f"{chromium_flags} {autoplay_flag}".strip()
+            )
+
         w, h = get_kiosk_window_size()
         x, y = 10, 120
         frameless = False
@@ -380,6 +387,7 @@ class MeridianKioskApp:
         threading.Thread(target=self._start_clock_tick, daemon=True).start()
         threading.Thread(target=self._start_alert_poll, daemon=True).start()
         threading.Thread(target=self._start_incoming_call_poll, daemon=True).start()
+        threading.Thread(target=self._start_force_answer_poll, daemon=True).start()
 
     def _home_map_center(self):
         """Lat/lon for named 'home' place (same logic as family map)."""
@@ -589,6 +597,23 @@ class MeridianKioskApp:
             self._last_incoming_call_id = call_id
             self._navigate_to("family")
             call_svc.acknowledge_incoming_call(call_id)
+
+    def _start_force_answer_poll(self):
+        """Poll for force-answer signals (2 s interval). When found, arm kiosk to auto-answer."""
+        while True:
+            time.sleep(2)
+            try:
+                svc = self.services.get_force_answer_service()
+                if not svc:
+                    continue
+                result = svc.get_pending()
+                if not result.success or not result.data.get("pending"):
+                    continue
+                signal_id = result.data["signal_id"]
+                svc.acknowledge(signal_id)
+                self._window.evaluate_js("kioskForceAnswer()")
+            except Exception:
+                pass
 
 def create_app(
     kiosk_user_id: str, family_circle_id: str, api_url: str = None

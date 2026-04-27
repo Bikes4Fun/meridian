@@ -483,6 +483,24 @@ final class APIService {
         return 24 * 60
     }
 
+    // MARK: - Kiosk call
+
+    func getKioskPhoneNumber() async throws -> String {
+        return "+14359008919"
+    }
+
+    func forceAnswerKiosk() async throws {
+        let (data, res) = try await request("/api/calls/force-answer", method: "POST", body: [:])
+        if res.statusCode != 201 {
+            let hint404 = "404 means this host has no POST /api/calls/force-answer (wrong API URL or old deploy)."
+            let fallback = res.statusCode == 404
+                ? "Force-answer failed (\(res.statusCode)). \(hint404)"
+                : "Force-answer failed (\(res.statusCode))"
+            let msg = serverErrorMessage(from: data, fallback: fallback)
+            throw APIError.serverError(msg)
+        }
+    }
+
     // MARK: - Device token (push)
 
     func registerDeviceToken(token: String, platform: String = "ios") async throws {

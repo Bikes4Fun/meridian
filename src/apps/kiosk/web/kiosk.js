@@ -538,6 +538,8 @@ function showScreen(name, html) {
   }
 }
 
+var _kioskIncomingRegistered = false;
+
 function setBootLoading(active, message) {
   var overlay = document.getElementById('kiosk-boot-overlay');
   if (!overlay) return;
@@ -548,6 +550,24 @@ function setBootLoading(active, message) {
     return;
   }
   overlay.classList.add('kiosk-boot-overlay--hidden');
+  if (!_kioskIncomingRegistered) {
+    _kioskIncomingRegistered = true;
+    kioskEnsureTwilioDevice()
+      .then(function(device) {
+        device.on('incoming', function(call) {
+          var from = call.parameters.From || 'Family member';
+          if (_kioskForceAnswerArmed) {
+            _kioskForceAnswerArmed = false;
+            kioskAcceptCall(call, kioskCallerLabel(call));
+            return;
+          }
+          kioskShowIncomingCallUI(call, from);
+        });
+      })
+      .catch(function() {
+        // Twilio not configured — silent, kiosk still works without calling
+      });
+  }
 }
 
 function setKioskCornerBootLoading(active, message) {
@@ -595,6 +615,8 @@ function showToast(msg) {
 }
 
 var _kioskActiveTwilioCall = null;
+var _kioskPendingIncomingCall = null;
+var _kioskForceAnswerArmed = false;
 
 function kioskEnsureInCallBar() {
   var inner =
@@ -861,6 +883,95 @@ function kioskStartTwilioSpeakerCall(phone, displayName) {
       _kioskTwilioCallUiEnded();
       showToast('Call failed: ' + ((((err && err.message) || err || '') + '').slice(0, 80) || 'unknown error'));
     });
+}
+
+function kioskCallerLabel(call) {
+  var p = (call && call.parameters) || {};
+  var name = (p.CallerName || '').trim();
+  var from = (p.From || '').trim();
+  return name || from || 'Family member';
+}
+
+function kioskAcceptCall(call, callerName) {
+  call.accept();
+  _kioskActiveTwilioCall = call;
+  _kioskPendingIncomingCall = null;
+  var overlay = document.getElementById('kiosk-incoming-call-overlay');
+  if (overlay) overlay.classList.add('kiosk-incoming-call--hidden');
+  if (document.body.classList.contains('alert-active')) {
+    showScreen('emergency');
+  }
+  kioskShowInCallBar('ON A CALL', callerName || 'Family member');
+  if (document.body.classList.contains('alert-active')) {
+    kioskSetInCallMinimized(true);
+  }
+  call.on('disconnect', function() {
+    showToast('Call ended');
+    _kioskTwilioCallUiEnded();
+  });
+  call.on('error', function(err) {
+    _kioskTwilioCallUiEnded();
+    showToast('Call error: ' + ((err && err.message) || 'unknown'));
+  });
+}
+
+function kioskForceAnswer() {
+  if (_kioskPendingIncomingCall) {
+    var st = typeof _kioskPendingIncomingCall.status === 'function'
+      ? _kioskPendingIncomingCall.status() : '';
+    if (st === 'closed' || st === 'open') {
+      _kioskPendingIncomingCall = null;
+    }
+  }
+  if (_kioskPendingIncomingCall) {
+    kioskAcceptCall(_kioskPendingIncomingCall, kioskCallerLabel(_kioskPendingIncomingCall));
+  } else {
+    _kioskForceAnswerArmed = true;
+    showToast('Connecting family check-in...');
+  }
+}
+
+function _kioskClearPendingCall() {
+  _kioskPendingIncomingCall = null;
+  var ov = document.getElementById('kiosk-incoming-call-overlay');
+  if (ov) ov.classList.add('kiosk-incoming-call--hidden');
+}
+
+function kioskShowIncomingCallUI(call, callerName) {
+  _kioskPendingIncomingCall = call;
+  call.on('cancel', _kioskClearPendingCall);
+  call.on('disconnect', _kioskClearPendingCall);
+  call.on('error', _kioskClearPendingCall);
+  var overlay = document.getElementById('kiosk-incoming-call-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'kiosk-incoming-call-overlay';
+    overlay.className = 'kiosk-incoming-call';
+    overlay.innerHTML = [
+      '<div class="kiosk-incoming-call__box">',
+      '  <p class="kiosk-incoming-call__label">Incoming call</p>',
+      '  <p class="kiosk-incoming-call__name" id="kiosk-incoming-caller-name"></p>',
+      '  <div class="kiosk-incoming-call__actions">',
+      '    <button class="kiosk-incoming-call__btn kiosk-incoming-call__btn--answer" id="kioskAnswerBtn">Answer</button>',
+      '    <button class="kiosk-incoming-call__btn kiosk-incoming-call__btn--decline" id="kioskDeclineBtn">Decline</button>',
+      '  </div>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(overlay);
+  }
+
+  document.getElementById('kiosk-incoming-caller-name').textContent = callerName;
+  overlay.classList.remove('kiosk-incoming-call--hidden');
+
+  document.getElementById('kioskAnswerBtn').onclick = function() {
+    kioskAcceptCall(call, callerName);
+  };
+
+  document.getElementById('kioskDeclineBtn').onclick = function() {
+    call.reject();
+    overlay.classList.add('kiosk-incoming-call--hidden');
+    _kioskPendingIncomingCall = null;
+  };
 }
 
 // Call socket bootstrap removed; voice calls are triggered directly per contact button.

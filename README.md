@@ -89,6 +89,9 @@ GitHub Discussions for design decisions. Please engage in our current open polls
 **Push notifications (Where is everyone?)**  
 Without APNs config, the server logs requests but does not send pushes. To enable real push on a physical device, set: `APNS_AUTH_KEY_PATH` (path to .p8 key), `APNS_KEY_ID`, `APNS_TEAM_ID`. Optional: `APNS_BUNDLE_ID` (default com.meridian.Meridian), `APNS_USE_SANDBOX=1` for dev.
 
+**iOS kiosk call (`GET /api/family/kiosk-number`, force-answer)**  
+`FamilyService.get_twilio_number` uses **`MERIDIAN_DEMO_KIOSK_TWILIO_NUMBER`** or **`TWILIO_PHONE_NUMBER`** when set (same as Twilio Voice), else `family_circles.twilio_phone_number`, and the `api_kiosk_number` route can fall back to optional [`family_circles.json`](src/dev/demo/data/family_circles.json). **`POST /api/calls/force-answer` returning 404** means the route is missing on that host; a current server returns **201**.
+
 ---
 
 ## Run and Tests

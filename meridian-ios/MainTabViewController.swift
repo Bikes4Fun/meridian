@@ -87,17 +87,8 @@ final class HomeViewController: UIViewController {
     private let alertSummaryIconView = UIImageView()
     private let alertMedicalLabel = UILabel()
     private let alertMedicalValueLabel = UILabel()
-    private let checkInsCard = UIView()
-    private let recentCheckInsLabel = UILabel()
 
     private var hasCompletedHomeRefresh = false
-
-    private static let homeRecentTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .short
-        f.timeStyle = .short
-        return f
-    }()
 
     private static let scheduleHeroDateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -131,7 +122,6 @@ final class HomeViewController: UIViewController {
         configureCard(emergencyCard)
         configureCard(scheduleCard)
         configureCard(alertSummaryCard)
-        configureCard(checkInsCard)
         scheduleCard.backgroundColor = MeridianPalette.surfaceSchedule
 
         upNextContainer.backgroundColor = MeridianPalette.upNextFill
@@ -250,11 +240,6 @@ final class HomeViewController: UIViewController {
         scheduleFootnoteLabel.text = "Medications could not be loaded."
         scheduleFootnoteLabel.isHidden = true
 
-        recentCheckInsLabel.numberOfLines = 0
-        recentCheckInsLabel.font = .preferredFont(forTextStyle: .footnote)
-        recentCheckInsLabel.textColor = MeridianPalette.primaryText
-        recentCheckInsLabel.text = "Loading recent check-ins…"
-
         contentStack.axis = .vertical
         contentStack.spacing = MeridianLayout.sectionSpacing
         contentStack.translatesAutoresizingMaskIntoConstraints = false
@@ -280,16 +265,7 @@ final class HomeViewController: UIViewController {
         scheduleCard.addSubview(scheduleInner)
         scheduleInner.translatesAutoresizingMaskIntoConstraints = false
 
-        let checkInsStack = UIStackView(arrangedSubviews: [
-            sectionTitle("Family check-ins"),
-            recentCheckInsLabel
-        ])
-        checkInsStack.axis = .vertical
-        checkInsStack.spacing = 8
-        checkInsCard.addSubview(checkInsStack)
-        checkInsStack.translatesAutoresizingMaskIntoConstraints = false
-
-        [emergencyStack, scheduleInner, checkInsStack].forEach { stack in
+        [emergencyStack, scheduleInner].forEach { stack in
             NSLayoutConstraint.activate([
                 stack.topAnchor.constraint(equalTo: stack.superview!.topAnchor, constant: MeridianLayout.cardPadding),
                 stack.leadingAnchor.constraint(equalTo: stack.superview!.leadingAnchor, constant: MeridianLayout.cardPadding),
@@ -347,7 +323,6 @@ final class HomeViewController: UIViewController {
 
         contentStack.addArrangedSubview(serverPromptCard)
         contentStack.addArrangedSubview(scheduleCard)
-        contentStack.addArrangedSubview(checkInsCard)
         contentStack.addArrangedSubview(emergencyCard)
         contentStack.addArrangedSubview(alertSummaryCard)
 
@@ -442,13 +417,11 @@ final class HomeViewController: UIViewController {
 
             async let alertActive = APIService.shared.getEmergencyAlertStatus()
             async let today = APIService.shared.getTodayEventSummary(familyCircleId: s.familyCircleId)
-            async let recentCheckins = APIService.shared.getCheckins(familyCircleId: s.familyCircleId)
             async let meds = APIService.shared.getMedicationHomeSnapshot(familyCircleId: s.familyCircleId)
 
             let isActive = (try? await alertActive) ?? false
             let todaySummaryResult = try? await today
             let todaySummary = todaySummaryResult ?? nil
-            let checkinsResult = try? await recentCheckins
             let medsSnap = try? await meds
 
             await MainActor.run {
@@ -463,8 +436,6 @@ final class HomeViewController: UIViewController {
                     appointment: todaySummary
                 )
                 rebuildTimeline(entries: entries, medsFetchFailed: medsSnap == nil, sessionFailed: false)
-
-                recentCheckInsLabel.text = Self.formatRecentCheckIns(checkinsResult ?? [])
             }
         } catch {
             await MainActor.run {
@@ -473,7 +444,6 @@ final class HomeViewController: UIViewController {
                 emergencyStatusLabel.textColor = MeridianPalette.primaryText
                 scheduleHeroDateLabel.text = Self.scheduleHeroDateFormatter.string(from: Date())
                 rebuildTimeline(entries: [], medsFetchFailed: false, sessionFailed: true)
-                recentCheckInsLabel.text = "Could not load check-ins."
             }
         }
     }
@@ -738,18 +708,6 @@ final class HomeViewController: UIViewController {
         label.font = .preferredFont(forTextStyle: .subheadline)
         label.textColor = MeridianPalette.primaryText
         return label
-    }
-
-    private static func formatRecentCheckIns(_ checkins: [CheckIn]) -> String {
-        let top = Array(checkins.prefix(4))
-        guard !top.isEmpty else {
-            return "No check-ins yet. Use the Check-In tab to share your location."
-        }
-        return top.map { c in
-            let loc = c.locationName ?? "Location unknown"
-            let t = homeRecentTimeFormatter.string(from: c.timestamp)
-            return "• \(c.contactName) · \(loc) · \(t)"
-        }.joined(separator: "\n")
     }
 
 }

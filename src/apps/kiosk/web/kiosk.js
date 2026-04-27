@@ -1026,31 +1026,58 @@ function _kioskOpenDoc(btn) {
 
 function _kioskShowPdfInViewer(overlay, label, url) {
   var safeLabel = (label || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  // Show loading state immediately
   overlay.innerHTML =
     '<div class="kiosk-doc-viewer-inner kiosk-doc-viewer-inner--pdf">' +
     '<div class="kiosk-doc-viewer-header">' +
     '<span class="kiosk-doc-viewer-title">' + safeLabel + '</span>' +
     '<button class="kiosk-doc-viewer-close" onclick="document.getElementById(\'kiosk-doc-viewer\').remove()">Done</button>' +
     '</div>' +
-    '<div class="kiosk-doc-viewer-loading">Loading document…</div>' +
+    '<div class="kiosk-doc-viewer-loading" id="kiosk-doc-viewer-loading">Loading document…</div>' +
+    '<div class="kiosk-doc-viewer-canvas-wrap" id="kiosk-doc-viewer-canvas-wrap" style="display:none"></div>' +
     '</div>';
-  // Fetch via Python bridge (auth headers), write to temp file, load file:// URL inline
-  pywebview.api.fetch_url_to_tempfile(url).then(function(fileUrl) {
+
+  pywebview.api.fetch_url_b64(url).then(function(b64) {
     var viewer = document.getElementById('kiosk-doc-viewer');
     if (!viewer) return;
-    var inner = viewer.querySelector('.kiosk-doc-viewer-inner');
-    if (!inner) return;
-    var loading = inner.querySelector('.kiosk-doc-viewer-loading');
-    if (!fileUrl) {
+    var loading = document.getElementById('kiosk-doc-viewer-loading');
+    var wrap = document.getElementById('kiosk-doc-viewer-canvas-wrap');
+
+    if (!b64) {
       if (loading) loading.textContent = 'Could not load document.';
       return;
     }
-    if (loading) loading.remove();
-    var iframe = document.createElement('iframe');
-    iframe.className = 'kiosk-doc-viewer-frame';
-    iframe.src = fileUrl;
-    inner.appendChild(iframe);
+    if (!window.pdfjsLib) {
+      if (loading) loading.textContent = 'PDF viewer not available — reload the kiosk.';
+      return;
+    }
+
+    var binary = atob(b64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    window.pdfjsLib.getDocument({ data: bytes }).promise.then(function(pdf) {
+      if (loading) loading.style.display = 'none';
+      if (wrap) wrap.style.display = 'flex';
+      var numPages = pdf.numPages;
+      function renderPage(n) {
+        pdf.getPage(n).then(function(page) {
+          var viewport = page.getViewport({ scale: 1.5 });
+          var canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          if (wrap) wrap.appendChild(canvas);
+          page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise.then(function() {
+            if (n < numPages) renderPage(n + 1);
+          });
+        });
+      }
+      renderPage(1);
+    }).catch(function(err) {
+      if (loading) {
+        loading.style.display = '';
+        loading.textContent = 'Could not render PDF: ' + (err && err.message ? err.message.slice(0, 80) : 'Unknown error');
+      }
+    });
   });
 }
 

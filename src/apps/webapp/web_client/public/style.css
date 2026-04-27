@@ -4530,14 +4530,21 @@ body.ice-editor-page > #icev2Shell {
     max-width: 1200px;
     width: 100%;
     margin: 0 auto;
-    padding: 24px 24px 120px;
+    padding: 24px 24px 32px;
     box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 24px;
+    align-items: start;
 }
 
 .icev2-tab-content { display: block; }
 .icev2-tab-content[hidden] { display: none; }
 
-/* Form layout — single column */
+/* Form layout */
+.icev2-form-column {
+    min-width: 0;
+}
 .icev2-section {
     margin-bottom: 24px;
 }
@@ -5028,26 +5035,43 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     font-weight: 600;
 }
 
-/* Sticky footer */
+/* In-flow step nav: directly below the active tab content */
 .icev2-footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--web-surface);
+    margin: 24px 0 0;
+    padding: 14px 0 0;
     border-top: 1px solid var(--warm-border-strong);
-    z-index: 90;
-    box-shadow: 0 -2px 8px rgba(74,74,74,0.08);
+    box-sizing: border-box;
+    box-shadow: none;
 }
 .icev2-footer-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 12px 24px;
+    margin: 0;
+    padding: 0;
     display: flex;
     align-items: center;
     gap: 12px;
 }
 .icev2-footer-spacer { flex: 1; }
+
+.icev2-live-column {
+    position: sticky;
+    top: 92px;
+}
+.icev2-live-panel {
+    border: 1px solid var(--warm-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--web-surface);
+    overflow: hidden;
+}
+.icev2-live-title {
+    margin: 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--warm-terracotta);
+    border-bottom: 1px solid var(--warm-border-strong);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
 
 /* Review tab */
 .icev2-attention-banner {
@@ -5193,7 +5217,7 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
 /* Status toast */
 .icev2-toast {
     position: fixed;
-    bottom: 80px;
+    bottom: 24px;
     right: 24px;
     background: var(--web-surface);
     border: 1px solid var(--warm-border-strong);
@@ -5215,8 +5239,12 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
 @media (max-width: 640px) {
     .icev2-masthead-inner { padding: 10px 16px 0; }
     .icev2-tabs { padding: 0 16px; }
-    .icev2-main { padding: 16px 16px 120px; }
-    .icev2-footer-inner { padding: 10px 16px; }
+    .icev2-main {
+        padding: 16px 16px 24px;
+        display: block;
+    }
+    .icev2-live-column { display: none; }
+    .icev2-footer-inner { padding: 0; }
     .icev2-tab-btn { padding: 8px 12px; font-size: 13px; }
     .icev2-masthead-title { display: none; }
     .icev2-input--dob, .icev2-input--phone { width: 100%; }

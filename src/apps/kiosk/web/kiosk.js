@@ -706,12 +706,6 @@ function kioskEnsureInCallBar() {
 }
 
 function kioskSyncInCallBubbleLabels() {
-  var head = document.getElementById('kiosk-in-call-bar-head');
-  var sub = document.getElementById('kiosk-in-call-bar-sub');
-  var bh = document.getElementById('kiosk-in-call-bubble-head');
-  var bs = document.getElementById('kiosk-in-call-bubble-sub');
-  if (bh && head) bh.textContent = head.textContent || '';
-  if (bs && sub) bs.textContent = sub.textContent || '';
 }
 
 function kioskSetInCallMinimized(minimized) {
@@ -1047,7 +1041,7 @@ function _kioskShowPdfInViewer(overlay, label, url) {
       return;
     }
     if (!window.pdfjsLib) {
-      if (loading) loading.textContent = 'PDF viewer not available — reload the kiosk.';
+      if (loading) loading.textContent = 'PDF viewer not available' + (window._pdfjsLoadError ? ': ' + window._pdfjsLoadError : ' — reload the kiosk.');
       return;
     }
 
@@ -1065,10 +1059,27 @@ function _kioskShowPdfInViewer(overlay, label, url) {
           var canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           if (wrap) wrap.appendChild(canvas);
-          page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise.then(function() {
+          page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
             if (n < numPages) renderPage(n + 1);
+          }).catch(function(err) {
+            if (wrap) {
+              var errDiv = document.createElement('div');
+              errDiv.style.cssText = 'color:#c00;font-size:12px;padding:8px';
+              errDiv.textContent = 'Page ' + n + ' render error: ' + (err && err.message ? err.message.slice(0, 120) : String(err));
+              wrap.appendChild(errDiv);
+            }
           });
+        }).catch(function(err) {
+          if (wrap) {
+            var errDiv = document.createElement('div');
+            errDiv.style.cssText = 'color:#c00;font-size:12px;padding:8px';
+            errDiv.textContent = 'Page ' + n + ' load error: ' + (err && err.message ? err.message.slice(0, 120) : String(err));
+            wrap.appendChild(errDiv);
+          }
         });
       }
       renderPage(1);

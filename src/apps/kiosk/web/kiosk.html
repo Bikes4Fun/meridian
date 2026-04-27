@@ -49,10 +49,29 @@
   ></script>
   <script src="map_widget.js"></script>
   <script src="kiosk.js"></script>
+  <script>
+    // Map.prototype.getOrInsert / getOrInsertComputed — ES2025, missing in Safari 17 / WKWebView on Sonoma
+    if (!Map.prototype.getOrInsert) {
+      Map.prototype.getOrInsert = function(key, value) {
+        if (!this.has(key)) this.set(key, value);
+        return this.get(key);
+      };
+    }
+    if (!Map.prototype.getOrInsertComputed) {
+      Map.prototype.getOrInsertComputed = function(key, fn) {
+        if (!this.has(key)) this.set(key, fn(key));
+        return this.get(key);
+      };
+    }
+  </script>
   <script type="module">
-    import * as pdfjsLib from 'pdfjs/pdf.min.mjs';
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs/pdf.worker.min.mjs', import.meta.url).href;
-    window.pdfjsLib = pdfjsLib;
+    try {
+      const pdfjsLib = await import('./pdfjs/pdf.min.mjs');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./pdfjs/pdf.worker.min.mjs', import.meta.url).href;
+      window.pdfjsLib = pdfjsLib;
+    } catch (e) {
+      window._pdfjsLoadError = String(e);
+    }
   </script>
 </body>
 </html>

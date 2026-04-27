@@ -5,6 +5,7 @@ Scope: presentation + photo for this screen; client-side emergency PDF print pip
 Not here: alert activation/polling (app), or server-side PDF generation.
 """
 
+import json
 import logging
 import os
 import re
@@ -37,15 +38,6 @@ def build_emergency_html(services, api_url: str) -> str:
     patient_photo_src = None
     if care_recipient_user_id:
         patient_photo_src = emergency_svc.get_user_photo_b64(care_recipient_user_id)
-    e_contacts = {
-        "contacts": e_data.get("emergency_contacts") or [],
-        "poa_name": e_data.get("poa_name"),
-        "poa_phone": e_data.get("poa_phone"),
-        "medical_proxy_name": ((e_data.get("emergency") or {}).get("proxy") or {}).get(
-            "name"
-        ),
-        "medical_proxy_phone": e_data.get("medical_proxy_phone"),
-    }
 
     def _esc(value: str) -> str:
         return html_mod.escape(str(value or ""))
@@ -91,7 +83,8 @@ def build_emergency_html(services, api_url: str) -> str:
     else:
         conditions_text = ", ".join([str(c).strip() for c in conditions if str(c).strip()])
     medications = medical_data.get("medications") or []
-    contacts = e_contacts.get("contacts") or []
+    documents = e_data.get("documents") or []
+    contacts = e_data.get("emergency_contacts") or []
 
     sorted_contacts = sorted(
         contacts,
@@ -110,12 +103,30 @@ def build_emergency_html(services, api_url: str) -> str:
     polst_dnr_signed = bool(medical_data.get("polst_dnr_signed"))
     polst_dni_signed = bool(medical_data.get("polst_dni_signed"))
     polst_nutrition_signed = bool(medical_data.get("polst_nutrition_signed"))
-    any_signed = polst_dnr_signed or polst_dni_signed or polst_nutrition_signed
 
-    proxy_name = (e_contacts.get("medical_proxy_name") or "").strip()
-    proxy_phone = (e_contacts.get("medical_proxy_phone") or "").strip()
-    poa_name = (e_contacts.get("poa_name") or "").strip()
-    poa_phone = (e_contacts.get("poa_phone") or "").strip()
+    proxy_contact_id = e_data.get("medical_proxy_contact_id")
+    poa_contact_id = e_data.get("poa_contact_id")
+
+    # POLST/DNR document for viewer — single document via existing dnr_document_path field
+    import urllib.parse as _urlparse
+    family_circle_id = e_data.get("family_circle_id") or ""
+    dnr_document_path = (e_data.get("dnr_document_path") or "").strip()
+    polst_url = None
+    if dnr_document_path and care_recipient_user_id and family_circle_id:
+        polst_url = (
+            f"{api_url}/api/family_circles/{_urlparse.quote(str(family_circle_id), safe='')}"
+            f"/care-recipients/{_urlparse.quote(str(care_recipient_user_id), safe='')}/dnr-document"
+        )
+    # Encode as a single-element list; JS reads this via data-docs attribute
+    viewer_docs = [{"label": "POLST / DNR Document", "url": polst_url}] if polst_url else []
+    docs_data_attr = html_mod.escape(json.dumps(viewer_docs))
+    signed_items = []
+    if polst_dnr_signed:
+        signed_items.append("CPR")
+    if polst_dni_signed:
+        signed_items.append("DNI")
+    if polst_nutrition_signed:
+        signed_items.append("Nutrition")
 
     html_parts = []
     html_parts.append('<div class="emergency-warm-shell">')
@@ -216,50 +227,45 @@ def build_emergency_html(services, api_url: str) -> str:
         )
         html_parts.append("</div>")
 
-    # All contacts together — emergency contacts first, then decision-makers
+    # Unified contacts list — emergency contacts tagged with any special roles inline
     html_parts.append('<div class="emergency-warm-section"><div class="emergency-warm-section-head">Emergency Contacts &amp; Decision-Makers</div>')
     if sorted_contacts:
         for c in sorted_contacts:
+            cid = c.get("id")
             name = (c.get("display_name") or "").strip() or "Unknown"
-            relation = (c.get("relationship") or "").strip() or "No relationship"
+            relation = (c.get("relationship") or "").strip()
             phone = (c.get("phone") or "").strip()
             is_primary = str(c.get("emergency_priority") or "").lower() == "primary_emergency"
+            is_proxy = proxy_contact_id and cid and str(cid) == str(proxy_contact_id)
+            is_poa = poa_contact_id and cid and str(cid) == str(poa_contact_id)
             phone_html = (
                 f'<div class="emergency-warm-contact-phone">{_esc(phone)}</div>'
                 if phone
                 else '<div class="emergency-warm-contact-phone emergency-warm-contact-phone-empty">No phone on file</div>'
             )
-            primary_badge = (
-                '<span class="emergency-warm-primary-badge">Primary</span>' if is_primary else ""
+            badges = ""
+            if is_primary:
+                badges += '<span class="emergency-warm-primary-badge">Primary Contact</span>'
+            if is_proxy:
+                badges += '<span class="emergency-warm-role-badge emergency-warm-role-badge--proxy">Medical Proxy</span>'
+            if is_poa:
+                badges += '<span class="emergency-warm-role-badge emergency-warm-role-badge--poa">POA</span>'
+            relation_html = (
+                f' <span class="emergency-warm-contact-relation-inline">{_esc(relation)}</span>'
+                if relation
+                else ""
             )
             html_parts.append(
                 '<div class="emergency-warm-contact-row">'
                 f'<div class="emergency-warm-contact-avatar">{_esc(_initials(name))}</div>'
                 '<div class="emergency-warm-contact-info">'
-                f'<div class="emergency-warm-contact-name">{_esc(name)} {primary_badge}</div>'
-                f'<div class="emergency-warm-contact-relation">{_esc(relation)}</div>'
+                f'<div class="emergency-warm-contact-name">{_esc(name)}{relation_html} {badges}</div>'
                 "</div>"
                 f"{phone_html}"
                 "</div>"
             )
     else:
         html_parts.append('<div class="emergency-warm-empty">No emergency contacts configured</div>')
-    if proxy_name:
-        proxy_val = proxy_name + (f" · {proxy_phone}" if proxy_phone else "")
-        html_parts.append(
-            '<div class="emergency-warm-info-row emergency-warm-info-row--proxy">'
-            '<div class="emergency-warm-info-label">Medical Proxy</div>'
-            f'<div class="emergency-warm-info-value">{_esc(proxy_val)}</div>'
-            "</div>"
-        )
-    if poa_name:
-        poa_val = poa_name + (f" · {poa_phone}" if poa_phone else "")
-        html_parts.append(
-            '<div class="emergency-warm-info-row emergency-warm-info-row--proxy">'
-            '<div class="emergency-warm-info-label">POA</div>'
-            f'<div class="emergency-warm-info-value">{_esc(poa_val)}</div>'
-            "</div>"
-        )
     html_parts.append("</div>")
 
     # Documents
@@ -290,31 +296,22 @@ def build_emergency_html(services, api_url: str) -> str:
 
     html_parts.append("</div>")  # end scroll
 
-    # Physician orders floater (left side, bouncing)
-    orders_label = "View Physician Orders"
-    if any_signed:
-        signed_items = []
-        if polst_dnr_signed:
-            signed_items.append("CPR")
-        if polst_dni_signed:
-            signed_items.append("DNI")
-        if polst_nutrition_signed:
-            signed_items.append("Nutrition")
-        orders_sub = "Signed: " + " · ".join(signed_items)
-        floater_cls = "emergency-orders-floater emergency-orders-floater--signed"
-        bubble_cls = "emergency-orders-bubble emergency-orders-bubble--signed"
-        ring_cls = "emergency-orders-ring emergency-orders-ring--signed"
+    # Documents floater (bottom-left, mirrors On Call floater)
+    docs_label = "Documents"
+    if signed_items:
+        docs_sub = "Signed: " + " · ".join(signed_items)
+        docs_bubble_cls = "emergency-warm-docs-bubble emergency-warm-docs-bubble--signed"
+        docs_ring_cls = "emergency-warm-docs-ring emergency-warm-docs-ring--signed"
     else:
-        orders_sub = "No signed orders on file"
-        floater_cls = "emergency-orders-floater"
-        bubble_cls = "emergency-orders-bubble"
-        ring_cls = "emergency-orders-ring"
-
+        docs_sub = "POLST on file" if polst_url else "No document on file"
+        docs_bubble_cls = "emergency-warm-docs-bubble"
+        docs_ring_cls = "emergency-warm-docs-ring"
     html_parts.append(
-        f'<div class="{floater_cls}">'
-        f'<div class="{ring_cls}"></div>'
-        f'<div class="{ring_cls}"></div>'
-        f'<div class="{bubble_cls}">'
+        f'<div class="emergency-warm-docs-floater" data-docs="{docs_data_attr}" onclick="showKioskDocumentViewer(this.dataset.docs)" role="button" tabindex="0" aria-label="View documents and physician orders">'
+        f'<div class="{docs_ring_cls}"></div>'
+        f'<div class="{docs_ring_cls}"></div>'
+        f'<div class="{docs_ring_cls}"></div>'
+        f'<div class="{docs_bubble_cls}">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
         '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>'
         '<polyline points="14 2 14 8 20 8"/>'
@@ -323,12 +320,12 @@ def build_emergency_html(services, api_url: str) -> str:
         '<polyline points="10 9 9 9 8 9"/>'
         "</svg>"
         "</div>"
-        f'<div class="emergency-orders-label">{_esc(orders_label)}</div>'
-        f'<div class="emergency-orders-sub">{_esc(orders_sub)}</div>'
+        f'<div class="emergency-warm-docs-label">{_esc(docs_label)}</div>'
+        f'<div class="emergency-warm-docs-sub">{_esc(docs_sub)}</div>'
         "</div>"
     )
 
-    # Call floater (right side, existing)
+    # Call floater (bottom-right)
     html_parts.append(
         '<div class="emergency-warm-call-floater">'
         '<div class="emergency-warm-call-ring"></div>'

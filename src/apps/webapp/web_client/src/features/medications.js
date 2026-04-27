@@ -770,7 +770,7 @@
         }
         function syncDeleteToolbar() {
             if (!deleteSelectedBtn || !listEl) return;
-            deleteSelectedBtn.disabled = !listEl.querySelector('.ice-med-select:checked');
+            deleteSelectedBtn.disabled = !listEl.querySelector('.ice-med-select');
         }
         if (!listEl) return;
         listEl.addEventListener('meridianMedRowsRendered', syncDeleteToolbar);
@@ -803,7 +803,14 @@
         if (deleteSelectedBtn) {
             deleteSelectedBtn.addEventListener('click', function () {
                 var cbs = listEl.querySelectorAll('.ice-med-select:checked');
-                if (!cbs.length) return;
+                if (!cbs.length) {
+                    if (typeof global.showToast === 'function') {
+                        global.showToast('Select at least one medication row to delete.', 'error');
+                    } else {
+                        alert('Select at least one medication row to delete.');
+                    }
+                    return;
+                }
                 var substantive = [];
                 cbs.forEach(function (cb) {
                     var row = cb.closest('.ice-med-row');

@@ -755,8 +755,10 @@ window.meridianEscapeAttr = function (s) {
             card.appendChild(confirm);
             confirm.querySelector('.icev2-confirm-yes').addEventListener('click', function () {
                 var cid = card.getAttribute('data-contact-id');
-                if (cid && cid.indexOf('contact_') !== 0) {
-                    meridianApiClient.deleteContact(_fid, cid).catch(function () {});
+                if (cid) {
+                    meridianApiClient.deleteContact(_fid, cid).catch(function (err) {
+                        showToast((err && err.message) || 'Delete contact failed', 'error');
+                    });
                 }
                 if (card.parentNode) card.parentNode.removeChild(card);
             });

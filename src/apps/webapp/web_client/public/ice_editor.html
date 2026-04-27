@@ -140,10 +140,6 @@
             <div id="icev2ReviewContent"></div>
             <div class="icev2-review-footer">
                 <p style="margin:0;color:var(--warm-muted);font-size:14px;">This profile is visible to first responders on the Meridian kiosk emergency screen.</p>
-                <div class="icev2-review-actions">
-                    <a id="icev2PdfLink" href="#" target="_blank" rel="noopener" class="icev2-btn icev2-btn-outline">Download Emergency Profile PDF</a>
-                    <button type="button" id="icev2SaveAllBtn" class="icev2-btn icev2-btn-outline">Re-save all fields</button>
-                </div>
             </div>
         </section>
 
@@ -151,6 +147,10 @@
             <div class="icev2-footer-inner">
                 <button type="button" id="icev2PrevBtn" class="icev2-btn icev2-btn-secondary" hidden>&larr; Back</button>
                 <span class="icev2-footer-spacer"></span>
+                <div id="icev2FooterReviewActions" class="icev2-footer-review-actions" hidden>
+                    <a id="icev2PdfLink" href="#" target="_blank" rel="noopener" class="icev2-btn icev2-btn-outline">Download PDF</a>
+                    <button type="button" id="icev2SaveAllBtn" class="icev2-btn icev2-btn-outline">Save and Continue</button>
+                </div>
                 <button type="button" id="icev2NextBtn" class="icev2-btn icev2-btn-primary">Next &rarr;</button>
             </div>
         </div>
@@ -397,10 +397,12 @@ window.meridianEscapeAttr = function (s) {
     function updateFooter() {
         var prevBtn = document.getElementById('icev2PrevBtn');
         var nextBtn = document.getElementById('icev2NextBtn');
+        var reviewActions = document.getElementById('icev2FooterReviewActions');
         if (prevBtn) prevBtn.hidden = (_tab === 0);
+        if (reviewActions) reviewActions.hidden = (_tab !== TABS.length - 1);
         if (nextBtn) {
             nextBtn.hidden = false;
-            nextBtn.textContent = (_tab === TABS.length - 1) ? 'Done — return home' : 'Save & Next →';
+            nextBtn.textContent = (_tab === TABS.length - 1) ? 'Save and return home' : 'Save & Next →';
         }
     }
 

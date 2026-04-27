@@ -13,7 +13,7 @@ enum Config {
     /// Demo ngrok API (probed first when no saved base URL).
     static let demoNgrokApiBaseURL = "https://denary-unneglected-alease.ngrok-free.dev"
     /// Demo Railway API (second probe). Matches `src/shared/api_config.json` railway_api_url.
-    static let demoRailwayApiBaseURL = "https://meridian-development.up.railway.app"
+    static let demoRailwayApiBaseURL = "https://meridian-by-deanna.computerscience.build"
 
     private static let fallbackApiBaseURL = demoNgrokApiBaseURL
 

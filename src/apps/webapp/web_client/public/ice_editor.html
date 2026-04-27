@@ -26,6 +26,7 @@
     </div>
 
     <main class="icev2-main">
+        <div class="icev2-form-column">
 
         <!-- Tab 0: Identity -->
         <section id="icev2Tab0" class="icev2-tab-content" role="tabpanel" aria-labelledby="icev2TabBtn0">
@@ -144,15 +145,23 @@
             </div>
         </section>
 
-    </main>
-
-    <div class="icev2-footer" id="icev2Footer">
-        <div class="icev2-footer-inner">
-            <button type="button" id="icev2PrevBtn" class="icev2-btn icev2-btn-secondary" hidden>&larr; Back</button>
-            <span class="icev2-footer-spacer"></span>
-            <button type="button" id="icev2NextBtn" class="icev2-btn icev2-btn-primary">Next &rarr;</button>
+        <div class="icev2-footer" id="icev2Footer">
+            <div class="icev2-footer-inner">
+                <button type="button" id="icev2PrevBtn" class="icev2-btn icev2-btn-secondary" hidden>&larr; Back</button>
+                <span class="icev2-footer-spacer"></span>
+                <button type="button" id="icev2NextBtn" class="icev2-btn icev2-btn-primary">Next &rarr;</button>
+            </div>
         </div>
-    </div>
+        </div>
+
+        <aside class="icev2-live-column" aria-label="Live profile preview">
+            <div class="icev2-live-panel">
+                <h2 class="icev2-live-title">Live Preview</h2>
+                <div id="icev2LiveReviewContent"></div>
+            </div>
+        </aside>
+
+    </main>
 
 </div><!-- #icev2Shell -->
 
@@ -380,7 +389,7 @@ window.meridianEscapeAttr = function (s) {
         if (next) next.hidden = false;
         renderTabNav();
         updateFooter();
-        if (_tab === 6) renderReview();
+        renderReview();
         window.scrollTo(0, 0);
     }
 
@@ -503,12 +512,6 @@ window.meridianEscapeAttr = function (s) {
                 '<button type="button" class="icev2-toggle-btn' + polstNo + '" data-polst="' + dir.id + '" data-val="no">No</button>' +
                 '</div></div>';
 
-            var selectedLabel = dir.opts.find(function (o) { return String(o.v) === curVal; });
-            var confVisible = (curVal !== '0' || med[dir.polst]) && med[dir.polst] ? '' : ' hidden';
-            var confText = selectedLabel ? selectedLabel.label : '';
-            html += '<div class="icev2-directive-confirmed" id="icev2Conf_' + dir.id + '"' + (confVisible ? '' : ' hidden') + '>' +
-                '&#10003; Confirmed: <strong>' + esc(confText) + '</strong> &middot; Physician orders on file</div>';
-
             html += '</div>';
         });
         container.innerHTML = html;
@@ -527,35 +530,8 @@ window.meridianEscapeAttr = function (s) {
                     b.classList.remove('active--yes', 'active--no');
                 });
                 btn.classList.add(val === 'yes' ? 'active--yes' : 'active--no');
-                updateConfirmedReadout(dirId);
             });
         });
-        /* Radio changes */
-        container.querySelectorAll('input[type="radio"]').forEach(function (radio) {
-            radio.addEventListener('change', function () {
-                var name = radio.getAttribute('name'); // dir_dnr
-                var dirId = name.replace('dir_', '');
-                updateConfirmedReadout(dirId);
-            });
-        });
-    }
-
-    function updateConfirmedReadout(dirId) {
-        var dir = DIRS.find(function (d) { return d.id === dirId; });
-        if (!dir) return;
-        var checked = document.querySelector('input[name="dir_' + dirId + '"]:checked');
-        var toggleWrap = document.getElementById('icev2Toggle_' + dirId);
-        var polstYes = toggleWrap && toggleWrap.querySelector('.icev2-toggle-btn.active--yes');
-        var confEl = document.getElementById('icev2Conf_' + dirId);
-        if (!confEl) return;
-        if (checked && polstYes) {
-            var opt = dir.opts.find(function (o) { return String(o.v) === checked.value; });
-            var label = opt ? opt.label : checked.value;
-            confEl.innerHTML = '&#10003; Confirmed: <strong>' + esc(label) + '</strong> &middot; Physician orders on file';
-            confEl.hidden = false;
-        } else {
-            confEl.hidden = true;
-        }
     }
 
     function getPolstState(dirId) {
@@ -1001,32 +977,29 @@ window.meridianEscapeAttr = function (s) {
     function computeAttentionItems() {
         var items = [];
         var d = _data || {};
-        var med = d.medical || {};
         var profile = d.profile || {};
 
-        /* DOB missing or invalid */
+        /* DOB — prefer live identity field so checklist matches the form */
         var dob = profile.dob || '';
+        var dobEl = document.getElementById('icev2Dob');
+        if (dobEl && dobEl.value) dob = dobEl.value.trim();
         if (!dob || dob < '1900-01-01' || dob > todayIso()) {
             items.push({ msg: 'Date of birth is missing or appears invalid', tab: 0 });
         }
 
-        /* "Other / see document" selected but no docs exist at all */
+        /* Directives: use DOM (selected radio), not _data — 0 is valid; !0 was wrongly treated as "unset" */
         var hasDocs = _docs.length > 0;
         DIRS.forEach(function (dir) {
-            var raw = med[dir.field];
-            var val = parseInt(normalizeDirVal(dir.id, raw), 10);
+            var checked = document.querySelector('input[name="dir_' + dir.id + '"]:checked');
+            if (!checked) {
+                items.push({ msg: dir.label.replace(/—.*/, '').trim() + ' not set', tab: 1 });
+                return;
+            }
+            var val = parseInt(checked.value, 10);
             if (val === 2 && !hasDocs) {
                 items.push({ msg: dir.label.replace(/—.*/, '').trim() + ' directive has no document linked', tab: 1 });
             }
         });
-
-        /* Antibiotics / blood products not explicitly set (still at default 0) */
-        if (!med.antibiotic_status && med.antibiotic_status !== 1 && med.antibiotic_status !== 2) {
-            items.push({ msg: 'Antibiotic directive not set', tab: 1 });
-        }
-        if (!med.blood_product_status && med.blood_product_status !== 1 && med.blood_product_status !== 2) {
-            items.push({ msg: 'Blood product directive not set', tab: 1 });
-        }
 
         /* Documents with no file */
         var docsMissingFile = _docs.filter(function (doc) { return !doc.file_path; });
@@ -1045,15 +1018,81 @@ window.meridianEscapeAttr = function (s) {
         return items;
     }
 
+    function contactMergeKey(c) {
+        var name = String(c.display_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        var digits = String(c.phone || '').replace(/\D/g, '');
+        return name + '\x00' + digits;
+    }
+
+    /* One physical person may appear as multiple contact rows (legacy data or role assignment).
+       Review groups by name+phone and unions EC priority + proxy/POA roles. */
+    function mergedContactReviewLines(contacts, rolesMap) {
+        var order = [];
+        var buckets = {};
+        (contacts || []).forEach(function (c) {
+            var k = contactMergeKey(c);
+            if (!buckets[k]) {
+                buckets[k] = [];
+                order.push(k);
+            }
+            buckets[k].push(c);
+        });
+        return order.map(function (k) {
+            var grp = buckets[k];
+            var primary = grp.some(function (x) { return x.emergency_priority === 'primary_emergency'; });
+            var secondary = grp.some(function (x) { return x.emergency_priority === 'secondary_emergency'; });
+            var roleLabels = [];
+            if (primary) roleLabels.push('Primary EC');
+            else if (secondary) roleLabels.push('Secondary EC');
+            var hasProxy = false;
+            var hasPoa = false;
+            grp.forEach(function (x) {
+                var rs = x.roles || rolesMap[x.id] || [];
+                if (rs.indexOf('medical_proxy') !== -1) hasProxy = true;
+                if (rs.indexOf('poa') !== -1) hasPoa = true;
+            });
+            if (hasProxy) roleLabels.push('Medical proxy');
+            if (hasPoa) roleLabels.push('POA');
+            var displayName = grp[0].display_name || '';
+            var phone = '';
+            grp.forEach(function (x) {
+                if (x.phone) phone = x.phone;
+            });
+            return (displayName || '') + (phone ? ' · ' + phone : '') + (roleLabels.length ? ' (' + roleLabels.join(', ') + ')' : '');
+        });
+    }
+
     function renderReview() {
         var d = _data || {};
         var med = d.medical || {};
         var profile = d.profile || {};
+        var nameInput = document.getElementById('icev2FirstName');
+        var dobInput = document.getElementById('icev2Dob');
+        var notesInput = document.getElementById('icev2Notes');
+        if (nameInput) profile.name = joinName();
+        if (dobInput) profile.dob = getVal('icev2Dob');
+        if (notesInput) d.notes = getVal('icev2Notes');
+        DIRS.forEach(function (dir) {
+            var checked = document.querySelector('input[name="dir_' + dir.id + '"]:checked');
+            if (checked) med[dir.field] = parseInt(checked.value, 10);
+            med[dir.polst] = getPolstState(dir.id);
+        });
+        var condEl = document.getElementById('icev2Conditions');
+        if (condEl) med.conditions = condEl.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).join(', ');
+        var briefEl = document.getElementById('icev2BriefHistory');
+        if (briefEl) d.brief_history = briefEl.value.trim();
+        var medListEl = document.getElementById('icev2MedList');
+        if (medListEl && window.MeridianMedicationsInline) med.medications = MeridianMedicationsInline.collectRows(medListEl);
+        var contactListEl = document.getElementById('icev2ContactList');
+        if (contactListEl) _contacts = collectContacts();
+        var allergyContainer = document.getElementById('icev2AllergiesContainer');
+        if (allergyContainer) med.allergies = collectAllergies();
 
         var items = computeAttentionItems();
-        var banner = document.getElementById('icev2AttentionBanner');
-        var attnList = document.getElementById('icev2AttentionList');
-        if (banner && attnList) {
+        function renderAttentionInto(bannerId, listId) {
+            var banner = document.getElementById(bannerId);
+            var attnList = document.getElementById(listId);
+            if (!banner || !attnList) return;
             if (items.length) {
                 attnList.innerHTML = '';
                 items.forEach(function (item) {
@@ -1071,9 +1110,7 @@ window.meridianEscapeAttr = function (s) {
                 banner.hidden = true;
             }
         }
-
-        var reviewEl = document.getElementById('icev2ReviewContent');
-        if (!reviewEl) return;
+        renderAttentionInto('icev2AttentionBanner', 'icev2AttentionList');
 
         function badge(val, type) {
             return '<span class="icev2-badge icev2-badge--' + type + '">' + esc(val) + '</span>';
@@ -1103,15 +1140,7 @@ window.meridianEscapeAttr = function (s) {
             return m.name + (m.dosage ? ' · ' + m.dosage : '') + (m.frequency ? ' · ' + m.frequency : '');
         });
 
-        var contactRows = _contacts.map(function (c) {
-            var roleLabels = [];
-            if (c.emergency_priority === 'primary_emergency') roleLabels.push('Primary EC');
-            if (c.emergency_priority === 'secondary_emergency') roleLabels.push('Secondary EC');
-            var cRoles = _roles[c.id] || [];
-            if (cRoles.indexOf('medical_proxy') !== -1) roleLabels.push('Medical proxy');
-            if (cRoles.indexOf('poa') !== -1) roleLabels.push('POA');
-            return (c.display_name || '') + (c.phone ? ' · ' + c.phone : '') + (roleLabels.length ? ' (' + roleLabels.join(', ') + ')' : '');
-        });
+        var contactRows = mergedContactReviewLines(_contacts, _roles);
 
         var html = '';
         html += reviewSection('Identity', [
@@ -1137,19 +1166,25 @@ window.meridianEscapeAttr = function (s) {
         ], 3);
 
         html += reviewSection('Contacts', [
-            { label: _contacts.length ? _contacts.length + ' contact(s)' : 'None', value: contactRows.join('\n') || null }
+            { label: contactRows.length ? contactRows.length + ' contact(s)' : 'None', value: contactRows.join('\n') || null }
         ], 4);
 
         html += reviewSection('Documents', [
             { label: _docs.length ? _docs.length + ' document(s)' : 'None', value: _docs.map(function (d) { return (d.doc_label || d.doc_type) + (d.file_path ? ' ✓' : ' (no file)'); }).join('\n') || null }
         ], 5);
 
-        reviewEl.innerHTML = html;
-        reviewEl.querySelectorAll('.icev2-review-edit-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                saveCurrentTab().then(function () { switchTab(parseInt(btn.getAttribute('data-tab'), 10)); });
+        function renderReviewInto(reviewId) {
+            var reviewEl = document.getElementById(reviewId);
+            if (!reviewEl) return;
+            reviewEl.innerHTML = html;
+            reviewEl.querySelectorAll('.icev2-review-edit-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    saveCurrentTab().then(function () { switchTab(parseInt(btn.getAttribute('data-tab'), 10)); });
+                });
             });
-        });
+        }
+        renderReviewInto('icev2ReviewContent');
+        renderReviewInto('icev2LiveReviewContent');
 
         var pdfLink = document.getElementById('icev2PdfLink');
         if (pdfLink) pdfLink.href = meridianApiClient.getEmergencyProfilePdfUrl(_fid);
@@ -1210,9 +1245,9 @@ window.meridianEscapeAttr = function (s) {
             if (_tab > 0) saveCurrentTab().then(function () { switchTab(_tab - 1); });
         });
 
-        var saveAllBtn = document.getElementById('icev2SaveAllBtn');
-        saveAllBtn.addEventListener('click', function () {
-            saveAllBtn.disabled = true;
+        function runSaveAll(saveBtn) {
+            if (!saveBtn) return;
+            saveBtn.disabled = true;
             setSaveStatus('saving', 'Saving all…');
             saveIdentity()
                 .then(function () { return saveDirectivesTab(); })
@@ -1224,16 +1259,44 @@ window.meridianEscapeAttr = function (s) {
                     showToast('All changes saved', 'success');
                     return reloadData();
                 })
-                .then(function () { renderReview(); saveAllBtn.disabled = false; setTimeout(function () { setSaveStatus('', ''); }, 3000); })
+                .then(function () { renderReview(); saveBtn.disabled = false; setTimeout(function () { setSaveStatus('', ''); }, 3000); })
                 .catch(function (err) {
                     setSaveStatus('error', 'Save failed');
                     showToast((err && err.message) || 'Save failed', 'error');
-                    saveAllBtn.disabled = false;
+                    saveBtn.disabled = false;
                 });
-        });
+        }
+        var saveAllBtn = document.getElementById('icev2SaveAllBtn');
+        if (saveAllBtn) {
+            saveAllBtn.addEventListener('click', function () {
+                runSaveAll(saveAllBtn);
+            });
+        }
 
-        document.getElementById('icev2BannerDismiss').addEventListener('click', function () {
-            document.getElementById('icev2AttentionBanner').hidden = true;
+        var dismissMain = document.getElementById('icev2BannerDismiss');
+        if (dismissMain) {
+            dismissMain.addEventListener('click', function () {
+                document.getElementById('icev2AttentionBanner').hidden = true;
+            });
+        }
+    }
+
+    function wireLiveReviewRealtime() {
+        var root = document.getElementById('icev2Shell');
+        if (!root) return;
+        var timer = null;
+        function queueRender() {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(function () { renderReview(); }, 80);
+        }
+        root.addEventListener('input', queueRender);
+        root.addEventListener('change', queueRender);
+        root.addEventListener('click', function (e) {
+            var el = e.target;
+            if (!el || !el.closest) return;
+            if (el.closest('.icev2-btn') || el.closest('.icev2-toggle-btn') || el.closest('.icev2-review-edit-btn') || el.closest('.icev2-contact-remove-btn')) {
+                queueRender();
+            }
         });
     }
 
@@ -1256,6 +1319,7 @@ window.meridianEscapeAttr = function (s) {
                         var doc = { id: id, doc_type: 'polst', doc_label: '', doc_date: '', file_path: '' };
                         _docs.push(doc);
                         document.getElementById('icev2DocList').appendChild(makeDocRow(doc));
+                        renderReview();
                     }
                     btn.disabled = false;
                 })
@@ -1346,6 +1410,7 @@ window.meridianEscapeAttr = function (s) {
             renderDocuments(_docs);
             renderTabNav();
             updateFooter();
+            renderReview();
 
         });
     }
@@ -1364,6 +1429,7 @@ window.meridianEscapeAttr = function (s) {
         wireAddDoc();
         wireAddAllergy();
         wireFooter();
+        wireLiveReviewRealtime();
         wirePhotoUpload();
         loadAll().catch(function (err) {
             showToast('Failed to load profile. ' + ((err && err.message) || ''), 'error');

@@ -5059,6 +5059,9 @@ body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
     position: sticky;
     top: 92px;
 }
+.icev2-live-column[hidden] {
+    display: none;
+}
 .icev2-live-panel {
     border: 1px solid var(--warm-border-strong);
     border-radius: var(--radius-lg);

@@ -4528,6 +4528,7 @@ body.ice-editor-page > #icev2Shell {
 /* Main content area */
 .icev2-main {
     max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
     padding: 24px 24px 120px;
     box-sizing: border-box;
@@ -4538,10 +4539,10 @@ body.ice-editor-page > #icev2Shell {
 
 /* Form layout — single column */
 .icev2-section {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 .icev2-section-heading {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--web-title);
     margin: 0 0 4px;
@@ -4556,14 +4557,14 @@ body.ice-editor-page > #icev2Shell {
 }
 
 .icev2-field-group {
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 .icev2-label {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--web-title);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .icev2-label-required::after {
     content: ' *';
@@ -4574,14 +4575,30 @@ body.ice-editor-page > #icev2Shell {
 .icev2-select,
 .icev2-textarea {
     display: block;
-    padding: 10px 12px;
-    font-size: 15px;
+    padding: 4px 10px;
+    font-size: 14px;
+    line-height: 1.2;
     font-family: inherit;
     border: 2px solid var(--warm-border-strong);
     border-radius: var(--radius-md);
     background: var(--warm-input-bg);
     color: var(--web-body);
     box-sizing: border-box;
+}
+.icev2-input,
+.icev2-select {
+    height: 34px;
+}
+.icev2-input[type="date"] {
+    height: 34px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+.icev2-textarea {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    min-height: 4.5em;
+    height: auto;
 }
 .icev2-input:focus-visible,
 .icev2-select:focus-visible,
@@ -4600,6 +4617,26 @@ body.ice-editor-page > #icev2Shell {
 .icev2-textarea--full { width: 100%; }
 .icev2-input--dob { width: 200px; }
 .icev2-input--phone { width: 200px; }
+
+/*
+  Medications tab uses medications.js row HTML (.event-input), not .icev2-input.
+  Global .ice-medications-editor .event-input sets a different min-height; #icev2MedList
+  is not wrapped in .ice-medications-editor, so fields can also pick up unrelated defaults.
+  Force the same single-line height as .icev2-input above.
+*/
+body.ice-editor-page #icev2MedList .ice-med-fields .event-input {
+    min-height: 0;
+    height: 34px;
+    padding: 4px 10px;
+    font-size: 14px;
+    line-height: 1.2;
+    box-sizing: border-box;
+    border: 2px solid var(--warm-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--warm-input-bg);
+    color: var(--web-body);
+    font-family: inherit;
+}
 
 .icev2-error-msg {
     display: block;
@@ -4689,11 +4726,11 @@ body.ice-editor-page > #icev2Shell {
     background: var(--web-surface);
     border: 1px solid var(--warm-border);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 16px;
+    margin-bottom: 16px;
 }
 .icev2-directive-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--web-title);
     margin: 0 0 4px;
@@ -4795,21 +4832,6 @@ body.ice-editor-page > #icev2Shell {
 .icev2-toggle-btn + .icev2-toggle-btn { border-left: 1px solid var(--warm-border-strong); }
 .icev2-toggle-btn.active--yes { background: var(--warm-sage); color: #fff; }
 .icev2-toggle-btn.active--no { background: var(--warm-terracotta); color: #fff; }
-
-/* Directive confirmed readout */
-.icev2-directive-confirmed {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 8px 12px;
-    background: #eaf7ef;
-    border: 1px solid #4a9d6f;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    color: #2e6b4f;
-    font-weight: 600;
-}
 
 /* Allergy rows */
 .icev2-allergy-row {
@@ -5097,18 +5119,18 @@ body.ice-editor-page > #icev2Shell {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
+    padding: 8px 16px;
     background: var(--warm-chat-tint);
     border-bottom: 1px solid var(--warm-border);
 }
 .icev2-review-section-title {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--web-title);
     margin: 0;
 }
 .icev2-review-edit-btn {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--warm-terracotta);
     background: none;
     border: none;

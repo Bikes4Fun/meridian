@@ -128,3 +128,46 @@ class CallSignalService:
         if not r.success:
             return ServiceResult.error_result(r.error or "acknowledge failed")
         return ServiceResult.success_result({"updated": r.data})
+
+
+class ForceAnswerService:
+    FORCE_ANSWER_TTL_MINUTES = 5
+
+    def __init__(self, db_manager: QueryManager):
+        self.db_manager = db_manager
+
+    def request_force_answer(self, family_circle_id: str, requested_by_user_id: str) -> ServiceResult:
+        r = self.db_manager.execute_insert(
+            "INSERT INTO force_answer_signals (family_circle_id, requested_by_user_id) VALUES (?, ?)",
+            (family_circle_id, requested_by_user_id),
+        )
+        if not r.success:
+            return ServiceResult.error_result(r.error or "force answer insert failed")
+        return ServiceResult.success_result({"signal_id": r.data})
+
+    def get_pending(self, family_circle_id: str) -> ServiceResult:
+        self.db_manager.execute_update(
+            "DELETE FROM force_answer_signals WHERE acknowledged_at IS NULL "
+            "AND datetime(created_at) < datetime('now', ?)",
+            (f"-{self.FORCE_ANSWER_TTL_MINUTES} minutes",),
+        )
+        r = self.db_manager.execute_query(
+            "SELECT id FROM force_answer_signals WHERE family_circle_id = ? "
+            "AND acknowledged_at IS NULL ORDER BY created_at DESC LIMIT 1",
+            (family_circle_id,),
+        )
+        if not r.success:
+            return ServiceResult.error_result(r.error or "force answer query failed")
+        if not r.data:
+            return ServiceResult.success_result({"pending": False})
+        return ServiceResult.success_result({"pending": True, "signal_id": r.data[0]["id"]})
+
+    def acknowledge(self, signal_id: int, family_circle_id: str) -> ServiceResult:
+        r = self.db_manager.execute_update(
+            "UPDATE force_answer_signals SET acknowledged_at = datetime('now') "
+            "WHERE id = ? AND family_circle_id = ?",
+            (signal_id, family_circle_id),
+        )
+        if not r.success:
+            return ServiceResult.error_result(r.error or "ack failed")
+        return ServiceResult.success_result({"updated": r.data})

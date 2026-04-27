@@ -431,6 +431,41 @@ class RemoteIncomingCallService:
         return ServiceResult.success_result(j or {})
 
 
+class RemoteForceAnswerService:
+    def __init__(
+        self,
+        base_url: str,
+        kiosk_user_id: Optional[str] = None,
+        family_circle_id: Optional[str] = None,
+        session: Optional["requests.Session"] = None,
+    ):
+        self._base = base_url.rstrip("/")
+        self._headers = _headers(kiosk_user_id, family_circle_id)
+        self._session = session
+
+    def get_pending(self) -> Any:
+        ok, data, err = _get(
+            f"{self._base}/api/calls/force-answer/pending",
+            headers=self._headers,
+            session=self._session,
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "force-answer poll failed")
+        return ServiceResult.success_result((data or {}).get("data") or data or {})
+
+    def acknowledge(self, signal_id: int) -> Any:
+        ok, j, err = _request(
+            "POST",
+            f"{self._base}/api/calls/force-answer/{signal_id}/ack",
+            headers=self._headers,
+            session=self._session,
+            json_body={},
+        )
+        if not ok:
+            return ServiceResult.error_result(err or "ack failed")
+        return ServiceResult.success_result(j or {})
+
+
 class RemoteVoiceService:
     """Voice token and Twilio status for kiosk browser SDK (WebRTC outbound)."""
 
@@ -872,6 +907,9 @@ class KioskRemoteServiceContainer:
     def get_incoming_call_service(self):
         return self._s.get("incoming_call_service")
 
+    def get_force_answer_service(self):
+        return self._s.get("force_answer_service")
+
     def get_voice_service(self):
         return self._s.get("voice_service")
 
@@ -919,6 +957,9 @@ def create_kiosk_remote(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "incoming_call_service": RemoteIncomingCallService(
+            server_url, kiosk_user_id, family_circle_id, session
+        ),
+        "force_answer_service": RemoteForceAnswerService(
             server_url, kiosk_user_id, family_circle_id, session
         ),
         "voice_service": RemoteVoiceService(

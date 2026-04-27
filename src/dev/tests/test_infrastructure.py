@@ -74,8 +74,9 @@ def _install_fake_twilio_modules(
             return "<Response/>"
 
     class FakeVoiceGrant:
-        def __init__(self, outgoing_application_sid):
+        def __init__(self, outgoing_application_sid, incoming_allow=True, **kwargs):
             self.outgoing_application_sid = outgoing_application_sid
+            self.incoming_allow = incoming_allow
 
     class FakeAccessToken:
         def __init__(self, _account_sid, _api_key_sid, _api_key_secret, identity, ttl):
@@ -270,7 +271,7 @@ def test_twilio_voice_client_rejects_bad_signature(api_client, monkeypatch):
     monkeypatch.setenv("TWILIO_AUTH_TOKEN", "test-auth-token")
     r = api_client.post(
         "/twilio/voice/client",
-        data={"To": "+14155550100", "callerId": "+14155550101"},
+        data={"To": "+16178001100", "callerId": "+16178001101"},
         headers={"X-Twilio-Signature": "bad-signature"},
     )
     assert r.status_code == 403
@@ -284,12 +285,12 @@ def test_twilio_voice_token_success_returns_token_and_caller_id(api_client, monk
     monkeypatch.setenv("TWILIO_API_KEY_SID", "SK123")
     monkeypatch.setenv("TWILIO_API_KEY_SECRET", "secret123")
     monkeypatch.setenv("TWILIO_TWIML_APP_SID", "AP123")
-    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
+    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+16178009999")
     r = api_client.get("/api/voice/token", headers=API_HEADERS)
     body = r.get_json() or {}
     assert r.status_code == 200
     assert body.get("token") == "jwt-123"
-    assert body.get("caller_id") == "+14155550199"
+    assert body.get("caller_id") == "+16178009999"
 
 
 @pytest.mark.integration
@@ -300,7 +301,7 @@ def test_twilio_voice_token_handles_jwt_failure(api_client, monkeypatch):
     monkeypatch.setenv("TWILIO_API_KEY_SID", "SK123")
     monkeypatch.setenv("TWILIO_API_KEY_SECRET", "secret123")
     monkeypatch.setenv("TWILIO_TWIML_APP_SID", "AP123")
-    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+14155550199")
+    monkeypatch.setenv("TWILIO_PHONE_NUMBER", "+16178009999")
     r = api_client.get("/api/voice/token", headers=API_HEADERS)
     assert r.status_code == 500
     assert (r.get_json() or {}).get("error") == "Could not create voice token"

@@ -556,7 +556,8 @@ function setBootLoading(active, message) {
       .then(function(device) {
         device.on('incoming', function(call) {
           var from = call.parameters.From || 'Family member';
-          if (_kioskForceAnswerArmed) {
+          var alertActive = document.body.classList.contains('alert-active');
+          if (_kioskForceAnswerArmed || alertActive) {
             _kioskForceAnswerArmed = false;
             kioskAcceptCall(call, 'Family check-in');
             return;
@@ -617,6 +618,16 @@ function showToast(msg) {
 var _kioskActiveTwilioCall = null;
 var _kioskPendingIncomingCall = null;
 var _kioskForceAnswerArmed = false;
+
+/** Arm auto-answer before Twilio rings (Python calls on alert activation). */
+function kioskArmForceAnswerForAlert() {
+  _kioskForceAnswerArmed = true;
+}
+
+/** Clear arm when emergency alert ends (Python calls). */
+function kioskClearForceAnswerArm() {
+  _kioskForceAnswerArmed = false;
+}
 
 function kioskEnsureInCallBar() {
   var inner =
@@ -725,7 +736,9 @@ function kioskShowInCallBar(headText, subText, keepMinimized) {
   if (head) head.textContent = headText || '';
   if (sub) sub.textContent = subText || '';
   kioskSyncInCallBubbleLabels();
-  if (!keepMinimized) {
+  if (keepMinimized) {
+    bar.classList.add('kiosk-in-call-bar--minimized');
+  } else {
     bar.classList.remove('kiosk-in-call-bar--minimized');
   }
   bar.classList.remove('kiosk-in-call-bar--hidden');
@@ -888,7 +901,10 @@ function kioskAcceptCall(call, callerName) {
   if (document.body.classList.contains('alert-active')) {
     showScreen('emergency');
   }
-  kioskShowInCallBar('ON A CALL', callerName || 'Family member');
+  var minimizeInCall =
+    document.body.classList.contains('alert-active') ||
+    document.body.dataset.screen === 'emergency';
+  kioskShowInCallBar('ON A CALL', callerName || 'Family member', minimizeInCall);
   call.on('disconnect', function() {
     showToast('Call ended');
     _kioskTwilioCallUiEnded();

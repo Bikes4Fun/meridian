@@ -90,11 +90,6 @@ def build_emergency_html(services, api_url: str) -> str:
         contacts,
         key=lambda c: 0 if str(c.get("emergency_priority") or "").lower() == "primary_emergency" else 1,
     )
-    call_contact = next(
-        (c for c in sorted_contacts if (c.get("phone") or "").strip()),
-        None,
-    )
-    call_contact_name = (call_contact.get("display_name") if call_contact else "No active call") or "No active call"
 
     dni_status        = _dir_label(medical_data.get("dni_status"),            _DNI_LABELS)
     nutrition_status  = _dir_label(medical_data.get("nutrition_status"),       _NUTRITION_LABELS)
@@ -325,21 +320,6 @@ def build_emergency_html(services, api_url: str) -> str:
         "</div>"
     )
 
-    # Call floater (bottom-right)
-    html_parts.append(
-        '<div class="emergency-warm-call-floater">'
-        '<div class="emergency-warm-call-ring"></div>'
-        '<div class="emergency-warm-call-ring"></div>'
-        '<div class="emergency-warm-call-ring"></div>'
-        '<div class="emergency-warm-call-bubble">'
-        '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
-        '<path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.04 1.22 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>'
-        "</svg>"
-        "</div>"
-        '<div class="emergency-warm-call-label">On Call</div>'
-        f'<div class="emergency-warm-call-name">{_esc(call_contact_name)}</div>'
-        "</div>"
-    )
     html_parts.append("</div>")  # end shell
 
     return hp.panel("".join(html_parts), class_name="emergency-warm-panel")

@@ -63,19 +63,6 @@
       "last_taken": null
     },
     {
-      "name": "Melatonin",
-      "dosage": "3mg",
-      "frequency": "Once daily",
-      "medication_times": ["Bedtime"],
-      "temporary": false,
-      "taken": false,
-      "notes": "Sleep support",
-      "doctor": "Dr. Wilson",
-      "side_effects": "Drowsiness",
-      "max_daily": 1,
-      "last_taken": null
-    },
-    {
       "name": "Acetaminophen",
       "dosage": "500mg",
       "frequency": "As needed",

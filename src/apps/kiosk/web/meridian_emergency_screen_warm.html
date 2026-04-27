@@ -130,50 +130,6 @@
 }
 .print-btn:hover{background:#ede5d8;border-color:#c8b4a0}
 
-/* CALL FLOATER */
-.call-floater{
-  position:absolute;
-  bottom:22px;right:20px;
-  display:flex;flex-direction:column;align-items:center;gap:5px;
-  z-index:50;
-  animation:drift 3.5s ease-in-out infinite;
-}
-@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-.call-ring{
-  position:absolute;
-  width:58px;height:58px;
-  border-radius:50%;
-  border:2px solid rgba(122,155,118,0.4);
-  animation:expand 2.2s ease-out infinite;
-  top:50%;left:50%;transform:translate(-50%,-50%);
-}
-.call-ring:nth-child(2){animation-delay:0.75s}
-.call-ring:nth-child(3){animation-delay:1.5s}
-@keyframes expand{
-  0%{transform:translate(-50%,-50%) scale(1);opacity:0.8}
-  100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}
-}
-.call-bubble{
-  width:52px;height:52px;border-radius:50%;
-  background:#7a9b76;border:2px solid #6d8c69;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;z-index:1;cursor:pointer;
-  animation:breathe 2s ease-in-out infinite;
-  box-shadow:0 2px 10px rgba(122,155,118,0.35);
-}
-@keyframes breathe{
-  0%,100%{transform:scale(1)}
-  50%{transform:scale(1.08)}
-}
-.call-bubble svg{width:20px;height:20px}
-.call-label{
-  font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
-  color:#7a9b76;background:#fff;
-  padding:3px 8px;border-radius:4px;
-  border:1px solid #c4d9c1;white-space:nowrap;
-  box-shadow:0 1px 4px rgba(0,0,0,0.06);
-}
-.call-name{font-size:10px;color:#8a8075;white-space:nowrap}
 </style>
 
 <div style="display:flex;justify-content:center;padding:16px;background:transparent">
@@ -287,19 +243,6 @@
       <button class="print-btn">Print POLST / Emergency Document</button>
     </div>
 
-  </div>
-
-  <div class="call-floater">
-    <div class="call-ring"></div>
-    <div class="call-ring"></div>
-    <div class="call-ring"></div>
-    <div class="call-bubble">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.04 1.22 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
-      </svg>
-    </div>
-    <div class="call-label">On Call</div>
-    <div class="call-name">Deanna · 1:42</div>
   </div>
 
 </div>

@@ -948,6 +948,112 @@ function kioskShowIncomingCallUI(call, callerName) {
   };
 }
 
+/**
+ * Emergency document viewer: shows a list of available PDFs then an iframe preview.
+ * Called from the Documents button in the emergency top bar.
+ * docsJson is a JSON-encoded array of {label, url} objects.
+ */
+function showKioskDocumentViewer(docsJson) {
+  var existing = document.getElementById('kiosk-doc-viewer');
+  if (existing) existing.remove();
+
+  var docs = [];
+  try { docs = JSON.parse(docsJson); } catch (e) {}
+
+  var overlay = document.createElement('div');
+  overlay.id = 'kiosk-doc-viewer';
+  overlay.className = 'kiosk-doc-viewer';
+
+  if (docs.length === 0) {
+    overlay.innerHTML =
+      '<div class="kiosk-doc-viewer-inner kiosk-doc-viewer-inner--list">' +
+      '<div class="kiosk-doc-viewer-header">' +
+      '<span class="kiosk-doc-viewer-title">Documents &amp; Orders</span>' +
+      '<button class="kiosk-doc-viewer-close" onclick="document.getElementById(\'kiosk-doc-viewer\').remove()">Done</button>' +
+      '</div>' +
+      '<div class="kiosk-doc-viewer-empty">' +
+      '<div class="kiosk-doc-viewer-empty-icon">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>' +
+      '<line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>' +
+      '</svg>' +
+      '</div>' +
+      '<div class="kiosk-doc-viewer-empty-title">No POLST / DNR Document on File</div>' +
+      '<div class="kiosk-doc-viewer-empty-body">No document has been uploaded for this patient. Scan and upload the signed POLST or DNR from the web app.</div>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    return;
+  }
+
+  if (docs.length === 1) {
+    _kioskShowPdfInViewer(overlay, docs[0].label, docs[0].url);
+    document.body.appendChild(overlay);
+    return;
+  }
+
+  var items = docs.map(function(d, i) {
+    var safeLabel = d.label.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    // Store url/label in data attributes to avoid quote-escaping inside onclick
+    return '<button class="kiosk-doc-list-item"' +
+      ' data-url="' + d.url.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"' +
+      ' data-label="' + d.label.replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '"' +
+      ' onclick="_kioskOpenDoc(this)">' +
+      '<svg class="kiosk-doc-list-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>' +
+      '</svg>' +
+      '<span>' + safeLabel + '</span>' +
+      '</button>';
+  }).join('');
+
+  overlay.innerHTML =
+    '<div class="kiosk-doc-viewer-inner kiosk-doc-viewer-inner--list">' +
+    '<div class="kiosk-doc-viewer-header">' +
+    '<span class="kiosk-doc-viewer-title">Documents &amp; Orders</span>' +
+    '<button class="kiosk-doc-viewer-close" onclick="document.getElementById(\'kiosk-doc-viewer\').remove()">Done</button>' +
+    '</div>' +
+    '<div class="kiosk-doc-list">' + items + '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+}
+
+function _kioskOpenDoc(btn) {
+  var overlay = document.getElementById('kiosk-doc-viewer');
+  if (!overlay) return;
+  _kioskShowPdfInViewer(overlay, btn.dataset.label, btn.dataset.url);
+}
+
+function _kioskShowPdfInViewer(overlay, label, url) {
+  var safeLabel = (label || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  // Show loading state immediately
+  overlay.innerHTML =
+    '<div class="kiosk-doc-viewer-inner kiosk-doc-viewer-inner--pdf">' +
+    '<div class="kiosk-doc-viewer-header">' +
+    '<span class="kiosk-doc-viewer-title">' + safeLabel + '</span>' +
+    '<button class="kiosk-doc-viewer-close" onclick="document.getElementById(\'kiosk-doc-viewer\').remove()">Done</button>' +
+    '</div>' +
+    '<div class="kiosk-doc-viewer-loading">Loading document…</div>' +
+    '</div>';
+  // Fetch via Python bridge (auth headers), write to temp file, load file:// URL inline
+  pywebview.api.fetch_url_to_tempfile(url).then(function(fileUrl) {
+    var viewer = document.getElementById('kiosk-doc-viewer');
+    if (!viewer) return;
+    var inner = viewer.querySelector('.kiosk-doc-viewer-inner');
+    if (!inner) return;
+    var loading = inner.querySelector('.kiosk-doc-viewer-loading');
+    if (!fileUrl) {
+      if (loading) loading.textContent = 'Could not load document.';
+      return;
+    }
+    if (loading) loading.remove();
+    var iframe = document.createElement('iframe');
+    iframe.className = 'kiosk-doc-viewer-frame';
+    iframe.src = fileUrl;
+    inner.appendChild(iframe);
+  });
+}
+
 // Call socket bootstrap removed; voice calls are triggered directly per contact button.
 /**
  * Kiosk Medications screen: same inline editor as the webapp (bundled in webapp medications.js).

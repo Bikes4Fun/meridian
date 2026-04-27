@@ -550,6 +550,13 @@ class RemoteEmergencyProfileService:
         """URL for the printable PDF."""
         return f"{self._base}/api/family_circles/{self._fc_id}/emergency-profile/pdf"
 
+    def fetch_url_bytes(self, url: str) -> Any:
+        """Fetch any authenticated URL and return raw bytes."""
+        ok, data, err = _get_raw(url, headers=self._headers, session=self._session)
+        if not ok or not data:
+            return ServiceResult.error_result(err or "fetch failed")
+        return ServiceResult.success_result(data)
+
     def get_emergency_profile_pdf(self) -> Any:
         """Fetch PDF bytes for the emergency profile (for printing)."""
         ok, data, err = _get_raw(
